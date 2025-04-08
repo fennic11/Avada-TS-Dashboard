@@ -1,0 +1,714 @@
+[
+  {
+    "id": "67e43423e702c9f3d761ed91",
+    "idMemberCreator": "65f7bdde58e8e0a6ba703027",
+    "data": {
+      "card": {
+        "idList": "6629f8b136152f62cca0c46b",
+        "id": "67e2bd6ec18798de4ce844fa",
+        "name": "SEO: speed up ",
+        "idShort": 95193,
+        "shortLink": "if3FXW3M"
+      },
+      "old": {
+        "idList": "63f489b961f3a274163459a2"
+      },
+      "board": {
+        "id": "638d769884c52b05235a2310",
+        "name": "Avada App Issues",
+        "shortLink": "TM6Kg4eD"
+      },
+      "listBefore": {
+        "id": "63f489b961f3a274163459a2",
+        "name": "Waiting for Customer's Confirmation (SLA: 2 days)"
+      },
+      "listAfter": {
+        "id": "6629f8b136152f62cca0c46b",
+        "name": "CuongTT-Speed up"
+      }
+    },
+    "appCreator": null,
+    "type": "updateCard",
+    "date": "2025-03-26T17:06:43.717Z",
+    "limits": null,
+    "memberCreator": {
+      "id": "65f7bdde58e8e0a6ba703027",
+      "activityBlocked": false,
+      "avatarHash": "89889a161a7e4ab3d213c8fafb351e85",
+      "avatarUrl": "https://trello-members.s3.amazonaws.com/65f7bdde58e8e0a6ba703027/89889a161a7e4ab3d213c8fafb351e85",
+      "fullName": "Cuong TT",
+      "idMemberReferrer": null,
+      "initials": "CT",
+      "nonPublic": {},
+      "nonPublicAvailable": true,
+      "username": "max_avada"
+    }
+  },
+  {
+    "id": "67e434204b68556177cbafcf",
+    "idMemberCreator": "6308e9353f075502098ff04b",
+    "data": {
+      "idCard": "67e2bd6ec18798de4ce844fa",
+      "text": "Done issue",
+      "textData": {
+        "emoji": {}
+      },
+      "card": {
+        "id": "67e2bd6ec18798de4ce844fa",
+        "name": "SEO: speed up ",
+        "idShort": 95193,
+        "shortLink": "if3FXW3M"
+      },
+      "board": {
+        "id": "638d769884c52b05235a2310",
+        "name": "Avada App Issues",
+        "shortLink": "TM6Kg4eD"
+      },
+      "list": {
+        "id": "63f489b961f3a274163459a2",
+        "name": "Waiting for Customer's Confirmation (SLA: 2 days)"
+      }
+    },
+    "appCreator": {
+      "id": "56ff07afbc287582d36e19ac",
+      "name": "Automation",
+      "icon": {
+        "url": "https://app.butlerfortrello.com/assets/icon-butler-bot.png"
+      }
+    },
+    "type": "commentCard",
+    "date": "2025-03-26T17:06:40.197Z",
+    "limits": {
+      "reactions": {
+        "perAction": {
+          "status": "ok",
+          "disableAt": 900,
+          "warnAt": 720
+        },
+        "uniquePerAction": {
+          "status": "ok",
+          "disableAt": 17,
+          "warnAt": 14
+        }
+      }
+    },
+    "memberCreator": {
+      "id": "6308e9353f075502098ff04b",
+      "activityBlocked": false,
+      "avatarHash": "fc2c08d439e460b7a2a446f794eec21e",
+      "avatarUrl": "https://trello-members.s3.amazonaws.com/6308e9353f075502098ff04b/fc2c08d439e460b7a2a446f794eec21e",
+      "fullName": "Quang NQ",
+      "idMemberReferrer": null,
+      "initials": "QN",
+      "nonPublic": {},
+      "nonPublicAvailable": true,
+      "username": "fennic_avada"
+    }
+  },
+  {
+    "id": "67e2e1b940974f21dcb9f007",
+    "idMemberCreator": "65f7bdde58e8e0a6ba703027",
+    "data": {
+      "card": {
+        "idList": "63f489b961f3a274163459a2",
+        "id": "67e2bd6ec18798de4ce844fa",
+        "name": "SEO: speed up ",
+        "idShort": 95193,
+        "shortLink": "if3FXW3M"
+      },
+      "old": {
+        "idList": "64c0e7d742b8d2b000f342e3"
+      },
+      "board": {
+        "id": "638d769884c52b05235a2310",
+        "name": "Avada App Issues",
+        "shortLink": "TM6Kg4eD"
+      },
+      "listBefore": {
+        "id": "64c0e7d742b8d2b000f342e3",
+        "name": "Doing (Inshift)"
+      },
+      "listAfter": {
+        "id": "63f489b961f3a274163459a2",
+        "name": "Waiting for Customer's Confirmation (SLA: 2 days)"
+      }
+    },
+    "appCreator": null,
+    "type": "updateCard",
+    "date": "2025-03-25T17:02:49.683Z",
+    "limits": null,
+    "memberCreator": {
+      "id": "65f7bdde58e8e0a6ba703027",
+      "activityBlocked": false,
+      "avatarHash": "89889a161a7e4ab3d213c8fafb351e85",
+      "avatarUrl": "https://trello-members.s3.amazonaws.com/65f7bdde58e8e0a6ba703027/89889a161a7e4ab3d213c8fafb351e85",
+      "fullName": "Cuong TT",
+      "idMemberReferrer": null,
+      "initials": "CT",
+      "nonPublic": {},
+      "nonPublicAvailable": true,
+      "username": "max_avada"
+    }
+  },
+  {
+    "id": "67e2dc54e9d4f217d509ee22",
+    "idMemberCreator": "6641ba4ad264da0e9ba5819c",
+    "data": {
+      "idCard": "67e2bd6ec18798de4ce844fa",
+      "text": "oke anh",
+      "textData": {
+        "emoji": {}
+      },
+      "card": {
+        "id": "67e2bd6ec18798de4ce844fa",
+        "name": "SEO: speed up ",
+        "idShort": 95193,
+        "shortLink": "if3FXW3M"
+      },
+      "board": {
+        "id": "638d769884c52b05235a2310",
+        "name": "Avada App Issues",
+        "shortLink": "TM6Kg4eD"
+      },
+      "list": {
+        "id": "64c0e7d742b8d2b000f342e3",
+        "name": "Doing (Inshift)"
+      }
+    },
+    "appCreator": null,
+    "type": "commentCard",
+    "date": "2025-03-25T16:39:48.891Z",
+    "limits": {
+      "reactions": {
+        "perAction": {
+          "status": "ok",
+          "disableAt": 900,
+          "warnAt": 720
+        },
+        "uniquePerAction": {
+          "status": "ok",
+          "disableAt": 17,
+          "warnAt": 14
+        }
+      }
+    },
+    "memberCreator": {
+      "id": "6641ba4ad264da0e9ba5819c",
+      "activityBlocked": false,
+      "avatarHash": "a7dd5961f45d6759983d510c02c54c46",
+      "avatarUrl": "https://trello-members.s3.amazonaws.com/6641ba4ad264da0e9ba5819c/a7dd5961f45d6759983d510c02c54c46",
+      "fullName": "Nguyễn Hải Vũ",
+      "idMemberReferrer": null,
+      "initials": "NV",
+      "nonPublic": {},
+      "nonPublicAvailable": true,
+      "username": "ricky_avada"
+    }
+  },
+  {
+    "id": "67e2d9aeed0ba90e17cabb1a",
+    "idMemberCreator": "65f7bdde58e8e0a6ba703027",
+    "data": {
+      "idCard": "67e2bd6ec18798de4ce844fa",
+      "text": "@ricky_avada gửi mail giúp a nha",
+      "textData": {
+        "emoji": {}
+      },
+      "card": {
+        "id": "67e2bd6ec18798de4ce844fa",
+        "name": "SEO: speed up ",
+        "idShort": 95193,
+        "shortLink": "if3FXW3M"
+      },
+      "board": {
+        "id": "638d769884c52b05235a2310",
+        "name": "Avada App Issues",
+        "shortLink": "TM6Kg4eD"
+      },
+      "list": {
+        "id": "64c0e7d742b8d2b000f342e3",
+        "name": "Doing (Inshift)"
+      }
+    },
+    "appCreator": null,
+    "type": "commentCard",
+    "date": "2025-03-25T16:28:30.281Z",
+    "limits": {
+      "reactions": {
+        "perAction": {
+          "status": "ok",
+          "disableAt": 900,
+          "warnAt": 720
+        },
+        "uniquePerAction": {
+          "status": "ok",
+          "disableAt": 17,
+          "warnAt": 14
+        }
+      }
+    },
+    "memberCreator": {
+      "id": "65f7bdde58e8e0a6ba703027",
+      "activityBlocked": false,
+      "avatarHash": "89889a161a7e4ab3d213c8fafb351e85",
+      "avatarUrl": "https://trello-members.s3.amazonaws.com/65f7bdde58e8e0a6ba703027/89889a161a7e4ab3d213c8fafb351e85",
+      "fullName": "Cuong TT",
+      "idMemberReferrer": null,
+      "initials": "CT",
+      "nonPublic": {},
+      "nonPublicAvailable": true,
+      "username": "max_avada"
+    }
+  },
+  {
+    "id": "67e2d99ffba1247288d9d599",
+    "idMemberCreator": "65f7bdde58e8e0a6ba703027",
+    "data": {
+      "card": {
+        "idList": "64c0e7d742b8d2b000f342e3",
+        "id": "67e2bd6ec18798de4ce844fa",
+        "name": "SEO: speed up ",
+        "idShort": 95193,
+        "shortLink": "if3FXW3M"
+      },
+      "old": {
+        "idList": "63c7d18b4fe38a004885aadf"
+      },
+      "board": {
+        "id": "638d769884c52b05235a2310",
+        "name": "Avada App Issues",
+        "shortLink": "TM6Kg4eD"
+      },
+      "listBefore": {
+        "id": "63c7d18b4fe38a004885aadf",
+        "name": "Update workflow required or Waiting for access (SLA: 2 days)"
+      },
+      "listAfter": {
+        "id": "64c0e7d742b8d2b000f342e3",
+        "name": "Doing (Inshift)"
+      }
+    },
+    "appCreator": null,
+    "type": "updateCard",
+    "date": "2025-03-25T16:28:15.343Z",
+    "limits": null,
+    "memberCreator": {
+      "id": "65f7bdde58e8e0a6ba703027",
+      "activityBlocked": false,
+      "avatarHash": "89889a161a7e4ab3d213c8fafb351e85",
+      "avatarUrl": "https://trello-members.s3.amazonaws.com/65f7bdde58e8e0a6ba703027/89889a161a7e4ab3d213c8fafb351e85",
+      "fullName": "Cuong TT",
+      "idMemberReferrer": null,
+      "initials": "CT",
+      "nonPublic": {},
+      "nonPublicAvailable": true,
+      "username": "max_avada"
+    }
+  },
+  {
+    "id": "67e2d99920a1864d8d08b7dd",
+    "idMemberCreator": "65f7bdde58e8e0a6ba703027",
+    "data": {
+      "card": {
+        "idList": "63c7d18b4fe38a004885aadf",
+        "id": "67e2bd6ec18798de4ce844fa",
+        "name": "SEO: speed up ",
+        "idShort": 95193,
+        "shortLink": "if3FXW3M"
+      },
+      "old": {
+        "idList": "64c0e7d742b8d2b000f342e3"
+      },
+      "board": {
+        "id": "638d769884c52b05235a2310",
+        "name": "Avada App Issues",
+        "shortLink": "TM6Kg4eD"
+      },
+      "listBefore": {
+        "id": "64c0e7d742b8d2b000f342e3",
+        "name": "Doing (Inshift)"
+      },
+      "listAfter": {
+        "id": "63c7d18b4fe38a004885aadf",
+        "name": "Update workflow required or Waiting for access (SLA: 2 days)"
+      }
+    },
+    "appCreator": null,
+    "type": "updateCard",
+    "date": "2025-03-25T16:28:09.255Z",
+    "limits": null,
+    "memberCreator": {
+      "id": "65f7bdde58e8e0a6ba703027",
+      "activityBlocked": false,
+      "avatarHash": "89889a161a7e4ab3d213c8fafb351e85",
+      "avatarUrl": "https://trello-members.s3.amazonaws.com/65f7bdde58e8e0a6ba703027/89889a161a7e4ab3d213c8fafb351e85",
+      "fullName": "Cuong TT",
+      "idMemberReferrer": null,
+      "initials": "CT",
+      "nonPublic": {},
+      "nonPublicAvailable": true,
+      "username": "max_avada"
+    }
+  },
+  {
+    "id": "67e2d9958d9419d03f6543f0",
+    "idMemberCreator": "65f7bdde58e8e0a6ba703027",
+    "data": {
+      "idCard": "67e2bd6ec18798de4ce844fa",
+      "text": "Hi there,\n\nI hope this message finds you well. I'm reaching out to share the results of the Core Web Vitals Optimization audit conducted for your Shopify store.\n\n\\- Audit Finding\n\n\\+) TBT: We have deferred some of your third-party app scripts ([https://prnt.sc/jwfR_VTwvSGJ](https://prnt.sc/jwfR_VTwvSGJ \"smartCard-inline\")) using our Speed Up (App deferral) features to prevent these scripts from loading with high priority and slow down the page. These third-party apps and scripts will only load after the first user interaction.\n\nCurrent improvement result: [https://pagespeed.web.dev/analysis/https-serumgeeks-nl/72umzvnddl?form_factor=mobile](https://pagespeed.web.dev/analysis/https-serumgeeks-nl/72umzvnddl?form_factor=mobile \"‌\")\nMobile: 87\nDesktop: 91\n\nAll changes have been made to this theme: Avada Speed Up - [https://prnt.sc/ijJZQvMNVf2g](https://prnt.sc/ijJZQvMNVf2g \"smartCard-inline\") . Please take a moment to thoroughly review the theme to avoid any unexpected errors. Then you can publish this theme for the new score to take effect.\n\nThank you for entrusting us with this task. We are eager to collaborate with you to enhance your store's performance and ensure customer satisfaction.\n\nBest regards,\nAvada Technical Support",
+      "textData": {
+        "emoji": {}
+      },
+      "card": {
+        "id": "67e2bd6ec18798de4ce844fa",
+        "name": "SEO: speed up ",
+        "idShort": 95193,
+        "shortLink": "if3FXW3M"
+      },
+      "board": {
+        "id": "638d769884c52b05235a2310",
+        "name": "Avada App Issues",
+        "shortLink": "TM6Kg4eD"
+      },
+      "list": {
+        "id": "64c0e7d742b8d2b000f342e3",
+        "name": "Doing (Inshift)"
+      }
+    },
+    "appCreator": null,
+    "type": "commentCard",
+    "date": "2025-03-25T16:28:05.311Z",
+    "limits": {
+      "reactions": {
+        "perAction": {
+          "status": "ok",
+          "disableAt": 900,
+          "warnAt": 720
+        },
+        "uniquePerAction": {
+          "status": "ok",
+          "disableAt": 17,
+          "warnAt": 14
+        }
+      }
+    },
+    "memberCreator": {
+      "id": "65f7bdde58e8e0a6ba703027",
+      "activityBlocked": false,
+      "avatarHash": "89889a161a7e4ab3d213c8fafb351e85",
+      "avatarUrl": "https://trello-members.s3.amazonaws.com/65f7bdde58e8e0a6ba703027/89889a161a7e4ab3d213c8fafb351e85",
+      "fullName": "Cuong TT",
+      "idMemberReferrer": null,
+      "initials": "CT",
+      "nonPublic": {},
+      "nonPublicAvailable": true,
+      "username": "max_avada"
+    }
+  },
+  {
+    "id": "67e2d66ebf572f40ec91aaa7",
+    "idMemberCreator": "6641ba4ad264da0e9ba5819c",
+    "data": {
+      "idCard": "67e2bd6ec18798de4ce844fa",
+      "text": "@max_avada anh cứ speed up cho họ nhé anh ơi, họ ko hỏi về điểm hay gì đâu, trước đó ông ấy dùng spee dup bị lỗi, em sợ lỗi lại xuất hiện nếu để ông ấy tự mày mò, anh cứ làm theme speed up tiêu chuẩn rồi defer các thứ cho họ nhé ạ",
+      "textData": {
+        "emoji": {}
+      },
+      "card": {
+        "id": "67e2bd6ec18798de4ce844fa",
+        "name": "SEO: speed up ",
+        "idShort": 95193,
+        "shortLink": "if3FXW3M"
+      },
+      "board": {
+        "id": "638d769884c52b05235a2310",
+        "name": "Avada App Issues",
+        "shortLink": "TM6Kg4eD"
+      },
+      "list": {
+        "id": "64c0e7d742b8d2b000f342e3",
+        "name": "Doing (Inshift)"
+      }
+    },
+    "appCreator": null,
+    "type": "commentCard",
+    "date": "2025-03-25T16:14:38.619Z",
+    "limits": {
+      "reactions": {
+        "perAction": {
+          "status": "ok",
+          "disableAt": 900,
+          "warnAt": 720
+        },
+        "uniquePerAction": {
+          "status": "ok",
+          "disableAt": 17,
+          "warnAt": 14
+        }
+      }
+    },
+    "memberCreator": {
+      "id": "6641ba4ad264da0e9ba5819c",
+      "activityBlocked": false,
+      "avatarHash": "a7dd5961f45d6759983d510c02c54c46",
+      "avatarUrl": "https://trello-members.s3.amazonaws.com/6641ba4ad264da0e9ba5819c/a7dd5961f45d6759983d510c02c54c46",
+      "fullName": "Nguyễn Hải Vũ",
+      "idMemberReferrer": null,
+      "initials": "NV",
+      "nonPublic": {},
+      "nonPublicAvailable": true,
+      "username": "ricky_avada"
+    }
+  },
+  {
+    "id": "67e2d49bb75a6bbabc35a6d7",
+    "idMemberCreator": "65f7bdde58e8e0a6ba703027",
+    "data": {
+      "idCard": "67e2bd6ec18798de4ce844fa",
+      "text": "@ricky_avada a thấy tốc độ này là tốt lắm rồi, em bảo KH check xem chỗ nào chậm không thì bảo lại để mình check thêm cho nha [https://pagespeed.web.dev/analysis/https-serumgeeks-nl/di8kxgxhkh?form_factor=mobile](https://pagespeed.web.dev/analysis/https-serumgeeks-nl/di8kxgxhkh?form_factor=mobile \"‌\")",
+      "textData": {
+        "emoji": {}
+      },
+      "card": {
+        "id": "67e2bd6ec18798de4ce844fa",
+        "name": "SEO: speed up ",
+        "idShort": 95193,
+        "shortLink": "if3FXW3M"
+      },
+      "board": {
+        "id": "638d769884c52b05235a2310",
+        "name": "Avada App Issues",
+        "shortLink": "TM6Kg4eD"
+      },
+      "list": {
+        "id": "64c0e7d742b8d2b000f342e3",
+        "name": "Doing (Inshift)"
+      }
+    },
+    "appCreator": null,
+    "type": "commentCard",
+    "date": "2025-03-25T16:06:51.339Z",
+    "limits": {
+      "reactions": {
+        "perAction": {
+          "status": "ok",
+          "disableAt": 900,
+          "warnAt": 720
+        },
+        "uniquePerAction": {
+          "status": "ok",
+          "disableAt": 17,
+          "warnAt": 14
+        }
+      }
+    },
+    "memberCreator": {
+      "id": "65f7bdde58e8e0a6ba703027",
+      "activityBlocked": false,
+      "avatarHash": "89889a161a7e4ab3d213c8fafb351e85",
+      "avatarUrl": "https://trello-members.s3.amazonaws.com/65f7bdde58e8e0a6ba703027/89889a161a7e4ab3d213c8fafb351e85",
+      "fullName": "Cuong TT",
+      "idMemberReferrer": null,
+      "initials": "CT",
+      "nonPublic": {},
+      "nonPublicAvailable": true,
+      "username": "max_avada"
+    }
+  },
+  {
+    "id": "67e2d3a36e7128d45e25391a",
+    "idMemberCreator": "65f7bdde58e8e0a6ba703027",
+    "data": {
+      "card": {
+        "idList": "64c0e7d742b8d2b000f342e3",
+        "id": "67e2bd6ec18798de4ce844fa",
+        "name": "SEO: speed up ",
+        "idShort": 95193,
+        "shortLink": "if3FXW3M"
+      },
+      "old": {
+        "idList": "6535dfb2602fb050e415a2d5"
+      },
+      "board": {
+        "id": "638d769884c52b05235a2310",
+        "name": "Avada App Issues",
+        "shortLink": "TM6Kg4eD"
+      },
+      "listBefore": {
+        "id": "6535dfb2602fb050e415a2d5",
+        "name": "New Speed up (SLA: 2d)"
+      },
+      "listAfter": {
+        "id": "64c0e7d742b8d2b000f342e3",
+        "name": "Doing (Inshift)"
+      }
+    },
+    "appCreator": null,
+    "type": "updateCard",
+    "date": "2025-03-25T16:02:43.625Z",
+    "limits": null,
+    "memberCreator": {
+      "id": "65f7bdde58e8e0a6ba703027",
+      "activityBlocked": false,
+      "avatarHash": "89889a161a7e4ab3d213c8fafb351e85",
+      "avatarUrl": "https://trello-members.s3.amazonaws.com/65f7bdde58e8e0a6ba703027/89889a161a7e4ab3d213c8fafb351e85",
+      "fullName": "Cuong TT",
+      "idMemberReferrer": null,
+      "initials": "CT",
+      "nonPublic": {},
+      "nonPublicAvailable": true,
+      "username": "max_avada"
+    }
+  },
+  {
+    "id": "67e2c5950624b87e56023161",
+    "idMemberCreator": "6641ba4ad264da0e9ba5819c",
+    "data": {
+      "idCard": "67e2bd6ec18798de4ce844fa",
+      "text": "ko minify ạ",
+      "textData": {
+        "emoji": {}
+      },
+      "card": {
+        "id": "67e2bd6ec18798de4ce844fa",
+        "name": "SEO: speed up ",
+        "idShort": 95193,
+        "shortLink": "if3FXW3M"
+      },
+      "board": {
+        "id": "638d769884c52b05235a2310",
+        "name": "Avada App Issues",
+        "shortLink": "TM6Kg4eD"
+      },
+      "list": {
+        "id": "6535dfb2602fb050e415a2d5",
+        "name": "New Speed up (SLA: 2d)"
+      }
+    },
+    "appCreator": null,
+    "type": "commentCard",
+    "date": "2025-03-25T15:02:45.679Z",
+    "limits": {
+      "reactions": {
+        "perAction": {
+          "status": "ok",
+          "disableAt": 900,
+          "warnAt": 720
+        },
+        "uniquePerAction": {
+          "status": "ok",
+          "disableAt": 17,
+          "warnAt": 14
+        }
+      }
+    },
+    "memberCreator": {
+      "id": "6641ba4ad264da0e9ba5819c",
+      "activityBlocked": false,
+      "avatarHash": "a7dd5961f45d6759983d510c02c54c46",
+      "avatarUrl": "https://trello-members.s3.amazonaws.com/6641ba4ad264da0e9ba5819c/a7dd5961f45d6759983d510c02c54c46",
+      "fullName": "Nguyễn Hải Vũ",
+      "idMemberReferrer": null,
+      "initials": "NV",
+      "nonPublic": {},
+      "nonPublicAvailable": true,
+      "username": "ricky_avada"
+    }
+  },
+  {
+    "id": "67e2bd8783a24255ff1d9625",
+    "idMemberCreator": "65f7bdde58e8e0a6ba703027",
+    "data": {
+      "card": {
+        "idList": "6535dfb2602fb050e415a2d5",
+        "id": "67e2bd6ec18798de4ce844fa",
+        "name": "SEO: speed up ",
+        "idShort": 95193,
+        "shortLink": "if3FXW3M"
+      },
+      "old": {
+        "idList": "66262386cb856f894f7cdca2"
+      },
+      "board": {
+        "id": "638d769884c52b05235a2310",
+        "name": "Avada App Issues",
+        "shortLink": "TM6Kg4eD"
+      },
+      "listBefore": {
+        "id": "66262386cb856f894f7cdca2",
+        "name": "New Issues"
+      },
+      "listAfter": {
+        "id": "6535dfb2602fb050e415a2d5",
+        "name": "New Speed up (SLA: 2d)"
+      }
+    },
+    "appCreator": null,
+    "type": "updateCard",
+    "date": "2025-03-25T14:28:23.711Z",
+    "limits": null,
+    "memberCreator": {
+      "id": "65f7bdde58e8e0a6ba703027",
+      "activityBlocked": false,
+      "avatarHash": "89889a161a7e4ab3d213c8fafb351e85",
+      "avatarUrl": "https://trello-members.s3.amazonaws.com/65f7bdde58e8e0a6ba703027/89889a161a7e4ab3d213c8fafb351e85",
+      "fullName": "Cuong TT",
+      "idMemberReferrer": null,
+      "initials": "CT",
+      "nonPublic": {},
+      "nonPublicAvailable": true,
+      "username": "max_avada"
+    }
+  },
+  {
+    "id": "67e2bd700bdd72f31f51f046",
+    "idMemberCreator": "61a886478176518087f3e853",
+    "data": {
+      "card": {
+        "idList": "66262386cb856f894f7cdca2",
+        "id": "67e2bd6ec18798de4ce844fa",
+        "name": "SEO: speed up ",
+        "idShort": 95193,
+        "shortLink": "if3FXW3M"
+      },
+      "old": {
+        "idList": "638d769884c52b05235a231b"
+      },
+      "board": {
+        "id": "638d769884c52b05235a2310",
+        "name": "Avada App Issues",
+        "shortLink": "TM6Kg4eD"
+      },
+      "listBefore": {
+        "id": "638d769884c52b05235a231b",
+        "name": "Blank ( Ko sửa ko xóa ')"
+      },
+      "listAfter": {
+        "id": "66262386cb856f894f7cdca2",
+        "name": "New Issues"
+      }
+    },
+    "appCreator": {
+      "id": "56ff07afbc287582d36e19ac",
+      "name": "Automation",
+      "icon": {
+        "url": "https://app.butlerfortrello.com/assets/icon-butler-bot.png"
+      }
+    },
+    "type": "updateCard",
+    "date": "2025-03-25T14:28:00.298Z",
+    "limits": null,
+    "memberCreator": {
+      "id": "61a886478176518087f3e853",
+      "activityBlocked": false,
+      "avatarHash": "b1991650a1ea66228c8ed9329dd63ce7",
+      "avatarUrl": "https://trello-members.s3.amazonaws.com/61a886478176518087f3e853/b1991650a1ea66228c8ed9329dd63ce7",
+      "fullName": "Daisy Vo",
+      "idMemberReferrer": null,
+      "initials": "DV",
+      "nonPublic": {},
+      "nonPublicAvailable": true,
+      "username": "daisy_avada"
+    }
+  }
+]

@@ -1,0 +1,352 @@
+[
+  {
+    "id": "64ccb0e537f2a9f2b0ddc592",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Low",
+    "color": "orange_light",
+    "uses": 72497
+  },
+  {
+    "id": "63bbd668fa414f00ebacf580",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Issue: level 1",
+    "color": "sky_light",
+    "uses": 68003
+  },
+  {
+    "id": "638d76cfd476a305922fa6e5",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "App: Air Reviews",
+    "color": "black_light",
+    "uses": 18031
+  },
+  {
+    "id": "638d76dd7bd9e90164eb55e3",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "App: SEO",
+    "color": "black_light",
+    "uses": 17429
+  },
+  {
+    "id": "64cca0f98a8f4b805ddbc569",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Others",
+    "color": null,
+    "uses": 14665
+  },
+  {
+    "id": "638f173495ad8a0ab3f51c40",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Issue: level 2",
+    "color": "sky",
+    "uses": 10036
+  },
+  {
+    "id": "638d769884c52b05235a235f",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "App: Boost Sales",
+    "color": "black_light",
+    "uses": 8378
+  },
+  {
+    "id": "64cca285344b225233d6a289",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Shop SEO checklist",
+    "color": null,
+    "uses": 8171
+  },
+  {
+    "id": "64cca264bcc213d4ffde8182",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Speedup",
+    "color": null,
+    "uses": 7574
+  },
+  {
+    "id": "638d769884c52b05235a2362",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "App: Joy",
+    "color": "purple",
+    "uses": 7095
+  },
+  {
+    "id": "650970432ffe03ad0611e993",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Review box",
+    "color": null,
+    "uses": 4612
+  },
+  {
+    "id": "6509705167e14161c0621983",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Star rating",
+    "color": null,
+    "uses": 4565
+  },
+  {
+    "id": "638f173f3f616900fb46c8a1",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Issue: level 3",
+    "color": "sky_dark",
+    "uses": 4243
+  },
+  {
+    "id": "638d76d79633db014e8164d5",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "App: Email Marketing",
+    "color": "black_light",
+    "uses": 3755
+  },
+  {
+    "id": "66bd5e9212eab179f03139dc",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Bug: level 2",
+    "color": "red_dark",
+    "uses": 3561
+  },
+  {
+    "id": "640566cf0b473ec702100133",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "shift 6",
+    "color": "pink_light",
+    "uses": 3323
+  },
+  {
+    "id": "640566c97dce4576b3d4a126",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "shift 5",
+    "color": "red_light",
+    "uses": 3228
+  },
+  {
+    "id": "638d769884c52b05235a2365",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "App: Size Chart",
+    "color": "black_light",
+    "uses": 3079
+  },
+  {
+    "id": "638d769884c52b05235a235c",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "App: PDF Invoice",
+    "color": "black_light",
+    "uses": 2860
+  },
+  {
+    "id": "64ccb0eda9112b3fda962e90",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Medium",
+    "color": "red",
+    "uses": 2817
+  },
+  {
+    "id": "63b42b61d9c6bc0059b0df0b",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "App: FAQs",
+    "color": "black_light",
+    "uses": 2796
+  },
+  {
+    "id": "64cca4c1b0508e18b868d720",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Import reviews",
+    "color": null,
+    "uses": 2552
+  },
+  {
+    "id": "64cca161c19670f2a76f29fc",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Trust badge",
+    "color": null,
+    "uses": 2487
+  },
+  {
+    "id": "64cca3ece24e3c11f1e13aa4",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Size chart display",
+    "color": null,
+    "uses": 2387
+  },
+  {
+    "id": "66cc28f8a415f27156eaa24f",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "App: Chatty",
+    "color": null,
+    "uses": 2362
+  },
+  {
+    "id": "640566af8f2ac468cd264f01",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "shift 3",
+    "color": "lime_light",
+    "uses": 2283
+  },
+  {
+    "id": "638d76c3a6e1af01cc9f8435",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "App: Cookie Bar",
+    "color": "black_light",
+    "uses": 2240
+  },
+  {
+    "id": "638d769884c52b05235a2359",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "App: Free Gift",
+    "color": "black_light",
+    "uses": 1924
+  },
+  {
+    "id": "64cca477f1f2b8e5284fdbf2",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Branding",
+    "color": null,
+    "uses": 1808
+  },
+  {
+    "id": "6405668609c48529779213cc",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "shift 1",
+    "color": "yellow_light",
+    "uses": 1648
+  },
+  {
+    "id": "64cca39ad1bd72311cbd10d3",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Templates",
+    "color": null,
+    "uses": 1439
+  },
+  {
+    "id": "64cca28fac37492796e0ec70",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "On page SEO audit",
+    "color": null,
+    "uses": 1368
+  },
+  {
+    "id": "64cca33a1d1e087b239db2b0",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "FAQs widget",
+    "color": null,
+    "uses": 1318
+  },
+  {
+    "id": "64cca30d50bc26baa94882a7",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Cookie bar display",
+    "color": null,
+    "uses": 1274
+  },
+  {
+    "id": "64cca4b9f9d400f50927aa66",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Manage reviews",
+    "color": null,
+    "uses": 1103
+  },
+  {
+    "id": "64cca2ac41f8632a8658cfa6",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Meta tag",
+    "color": null,
+    "uses": 1086
+  },
+  {
+    "id": "64cca0ec8c4b4363395c8f1f",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "others",
+    "color": null,
+    "uses": 976
+  },
+  {
+    "id": "66cc2913ff6bba0a5312b014",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Chatbox",
+    "color": null,
+    "uses": 963
+  },
+  {
+    "id": "64cca25aa7ba4a9924071f83",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Image optimization",
+    "color": null,
+    "uses": 935
+  },
+  {
+    "id": "64d9cd6fea61cfe221272a47",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "shift 4",
+    "color": "lime_light",
+    "uses": 902
+  },
+  {
+    "id": "669107f8584a0d5bd9a29b26",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "App: Order Limit",
+    "color": "black_light",
+    "uses": 895
+  },
+  {
+    "id": "6509705a96b337030b44a7db",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Review carousel",
+    "color": null,
+    "uses": 889
+  },
+  {
+    "id": "64cca34659bcc5d6f5a6a632",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "FAQs page",
+    "color": null,
+    "uses": 846
+  },
+  {
+    "id": "66cc29835deab314e8e0b14b",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "App: Joy Subscriptions",
+    "color": "black_light",
+    "uses": 826
+  },
+  {
+    "id": "66aa0f08da5fd2db8063030a",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "App: Blog",
+    "color": null,
+    "uses": 755
+  },
+  {
+    "id": "64cca2c1991d046026dc0aa9",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Google Structured Data",
+    "color": null,
+    "uses": 705
+  },
+  {
+    "id": "64cca044089e34cec45c1f6a",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Email sending",
+    "color": null,
+    "uses": 684
+  },
+  {
+    "id": "64cca19e8f97abf509d38271",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Sticky add to cart",
+    "color": null,
+    "uses": 662
+  },
+  {
+    "id": "64cca16d21f5af6e5457c9bf",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Sales popup",
+    "color": null,
+    "uses": 656
+  },
+  {
+    "id": "64cca077b7e599ed094ec2e3",
+    "idBoard": "638d769884c52b05235a2310",
+    "name": "Form",
+    "color": null,
+    "uses": 649
+  }
+]

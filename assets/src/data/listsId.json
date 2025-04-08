@@ -1,0 +1,62 @@
+[
+    {
+        "id": "638d769884c52b05235a231b",
+        "name": "Blank ( Ko sửa ko xóa ')"
+    },
+    {
+        "id": "6535dfb2602fb050e415a2d5",
+        "name": "New Speed up (SLA: 2d)"
+    },
+    {
+        "id": "66262386cb856f894f7cdca2",
+        "name": "New Issues"
+    },
+    {
+        "id": "64c0e7d742b8d2b000f342e3",
+        "name": "Doing (Inshift)"
+    },
+    {
+        "id": "63c7b1a68e5576001577d65c",
+        "name": "Waiting to fix (from dev)"
+    },
+    {
+        "id": "63c7d18b4fe38a004885aadf",
+        "name": "Update workflow required or Waiting for access (SLA: 2 days)"
+    },
+    {
+        "id": "63f489b961f3a274163459a2",
+        "name": "Waiting for Customer's Confirmation (SLA: 2 days)"
+    },
+    {
+        "id": "66d7d254bdad4fb0a354495a",
+        "name": "Done"
+    },
+    {
+        "id": "67c68b22af77d39946a8b964",
+        "name": "Done-T3-2025"
+    },
+    {
+        "id": "663ae7d6feac5f2f8d7a1c86",
+        "name": "Fix done from dev"
+    },
+    {
+        "id": "64dde9dc1fa67c936d8fec89",
+        "name": "Billing"
+    },
+    {
+        "id": "67931344e4b8ba8d2295df93",
+        "name": "Pending on solution 2025"
+    },
+    {
+        "id": "6629f8b136152f62cca0c46b",
+        "name": "CuongTT-Speed up"
+    },
+    {
+        "id": "66ab3ead4afa398ea70ac212",
+        "name": "Issues level"
+    },
+    {
+        "id": "67452828b324c700a9ea960d",
+        "name": "Error Card"
+    }
+]
