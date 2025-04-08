@@ -1,7 +1,7 @@
 export const postCards = async (cardData) => {
     try {
         console.log('Data before posting:', cardData);
-        const response = await fetch('http://localhost:5000/api/cards', {
+        const response = await fetch('https://avada-ts-dashboard-1.onrender.com/api/cards', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -32,7 +32,7 @@ export const postCards = async (cardData) => {
 
 export const getResolutionTimes = async (startDate, endDate) => {
     try {
-        const response = await fetch(`http://localhost:5000/api/cards?start=${startDate}&end=${endDate}`);
+        const response = await fetch(`https://avada-ts-dashboard-1.onrender.com/api/cards?start=${startDate}&end=${endDate}`);
         if (!response.ok) {
             throw new Error("Không thể lấy dữ liệu từ API");
         }
