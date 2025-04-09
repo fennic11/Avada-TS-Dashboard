@@ -3,10 +3,12 @@ import {
     Modal, Box, Typography, CircularProgress, Chip,
     Link, Stack, IconButton,
     MenuItem, Select, Dialog, DialogTitle, DialogContent,
-    DialogContentText, DialogActions, Button, Paper
+    DialogContentText, DialogActions, Button, Paper,
+    TextField, List, ListItem, ListItemText
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
+import SearchIcon from '@mui/icons-material/Search';
 import {
     getActionsByCard,
     removeMemberByID,
@@ -24,6 +26,7 @@ import TimeToDoneBox from "./TimeToDoneBox";
 import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from '../firebase/firebase';
 import { calculateResolutionTime } from '../utils/resolutionTime';
+import { searchArticles } from '../api/notionApi';
 
 
 
@@ -52,7 +55,11 @@ const CardDetailModal = ({ open, onClose, card }) => {
     const [confirmAction, setConfirmAction] = useState(null);
     const [newComment, setNewComment] = useState('');
     const [commentLoading, setCommentLoading] = useState(false);
+    const [notionQuery, setNotionQuery] = useState('');
+    const [notionResults, setNotionResults] = useState([]);
+    const [notionLoading, setNotionLoading] = useState(false);
 
+    const NOTION_DATABASE_ID = process.env.REACT_APP_NOTION_DATABASE_ID;
 
     useEffect(() => {
         if (open && card) {
@@ -197,6 +204,20 @@ const CardDetailModal = ({ open, onClose, card }) => {
         }
     };
 
+    const handleNotionSearch = async () => {
+        if (!notionQuery.trim()) return;
+
+        setNotionLoading(true);
+        try {
+            const { articles, hasMore } = await searchArticles(notionQuery);
+            setNotionResults(articles);
+            console.log('Search results:', articles);
+        } catch (error) {
+            console.error('Error searching articles:', error);
+        } finally {
+            setNotionLoading(false);
+        }
+    };
 
     const handleConfirm = async () => {
         if (confirmAction?.onConfirm) {
@@ -295,7 +316,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
                     <Box sx={{ p: 4 }}>
                         {/* Description Section */}
                         <Paper elevation={0} sx={{ mb: 4, p: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
-                            <Typography variant="h6" sx={{ mb: 2, color: '#1a237e', display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="h6" component="div" sx={{ mb: 2, color: '#1a237e', display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <span>📝</span> Description
                             </Typography>
                             <Box sx={{
@@ -313,7 +334,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
                             {(shopUrl || crispUrl) && (
                                 <Stack spacing={2} sx={{ mt: 2 }}>
                                     {shopUrl && (
-                                        <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Typography variant="body1" component="div" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <span>🛒</span> <strong>Shop URL:</strong>&nbsp;
                                             <Link href={shopUrl} target="_blank" underline="hover" sx={{ color: '#1976d2' }}>
                                                 {shopUrl}
@@ -321,7 +342,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
                                         </Typography>
                                     )}
                                     {crispUrl && (
-                                        <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Typography variant="body1" component="div" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <span>💬</span> <strong>Crisp Chat:</strong>&nbsp;
                                             <Link href={crispUrl} target="_blank" underline="hover" sx={{ color: '#1976d2' }}>
                                                 {crispUrl}
@@ -530,6 +551,99 @@ const CardDetailModal = ({ open, onClose, card }) => {
                                 >
                                     {commentLoading ? 'Đang gửi...' : 'Gửi'}
                                 </Button>
+                            </Stack>
+                        </Paper>
+
+                        {/* Notion Search Section */}
+                        <Paper elevation={0} sx={{ mb: 4, p: 3, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+                            <Typography variant="h6" sx={{ mb: 2, color: '#1a237e', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <span>📚</span> Tìm kiếm tài liệu
+                            </Typography>
+                            <Stack spacing={3}>
+                                <Stack direction="row" spacing={2}>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        placeholder="Nhập từ khóa tìm kiếm..."
+                                        value={notionQuery}
+                                        onChange={(e) => setNotionQuery(e.target.value)}
+                                        onKeyPress={(e) => {
+                                            if (e.key === 'Enter') {
+                                                handleNotionSearch();
+                                            }
+                                        }}
+                                        sx={{
+                                            bgcolor: 'white',
+                                            '& .MuiOutlinedInput-root': {
+                                                '& fieldset': {
+                                                    borderColor: '#e0e0e0',
+                                                },
+                                            },
+                                        }}
+                                    />
+                                    <Button
+                                        variant="contained"
+                                        onClick={handleNotionSearch}
+                                        disabled={notionLoading || !notionQuery.trim()}
+                                        startIcon={<SearchIcon />}
+                                        sx={{
+                                            bgcolor: 'primary.main',
+                                            '&:hover': { bgcolor: 'primary.dark' }
+                                        }}
+                                    >
+                                        Tìm kiếm
+                                    </Button>
+                                </Stack>
+
+                                {notionLoading ? (
+                                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                                        <CircularProgress size={24} />
+                                    </Box>
+                                ) : notionResults.length > 0 ? (
+                                    <List sx={{ 
+                                        bgcolor: 'white', 
+                                        borderRadius: 1,
+                                        border: '1px solid #e0e0e0',
+                                        maxHeight: 300,
+                                        overflow: 'auto'
+                                    }}>
+                                        {notionResults.map((article) => (
+                                            <ListItem
+                                                key={article.id}
+                                                component={Link}
+                                                href={article.url}
+                                                target="_blank"
+                                                sx={{
+                                                    borderBottom: '1px solid #f0f0f0',
+                                                    '&:last-child': { borderBottom: 'none' },
+                                                    textDecoration: 'none',
+                                                    color: 'inherit',
+                                                    '&:hover': {
+                                                        bgcolor: '#f5f5f5'
+                                                    }
+                                                }}
+                                            >
+                                                <ListItemText
+                                                    primary={article.title}
+                                                    secondary={
+                                                        <Stack spacing={1}>
+                                                            <Typography variant="body2" color="text.secondary">
+                                                                {article.preview}
+                                                            </Typography>
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                Cập nhật: {new Date(article.lastEdited).toLocaleDateString()}
+                                                            </Typography>
+                                                        </Stack>
+                                                    }
+                                                />
+                                            </ListItem>
+                                        ))}
+                                    </List>
+                                ) : notionQuery && !notionLoading && (
+                                    <Typography color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                                        Không tìm thấy kết quả
+                                    </Typography>
+                                )}
                             </Stack>
                         </Paper>
 

@@ -1,6 +1,7 @@
-const key = "6617086a2ab6e15e6c89bd4466ce8839";
-const token = "ATTAdcc1a6c00170c2de207cda726497211c43fa01dab5b18d0eced273cbce16ac195DADA9A9";
+const key = process.env.REACT_APP_TRELLO_KEY || "6617086a2ab6e15e6c89bd4466ce8839";
+const token = process.env.REACT_APP_TRELLO_TOKEN || "ATTAdcc1a6c00170c2de207cda726497211c43fa01dab5b18d0eced273cbce16ac195DADA9A9";
 const API_URL = `https://api.trello.com/1`;
+const BOARD_ID = process.env.REACT_APP_BOARD_ID || "638d769884c52b05235a2310";
 
 
 
@@ -228,5 +229,26 @@ export async function addCommentToCard(cardId, text) {
     } catch (error) {
         console.error('Error:', error.message);
         throw error;
+    }
+}
+
+export async function getCardsByBoardAndMember(idMember) {
+    try {
+        const resp = await fetch(`${API_URL}/boards/${BOARD_ID}/cards/member/${idMember}?key=${key}&token=${token}&fields=all`, {
+            headers: {
+                Accept: "application/json"
+            }
+        });
+
+        if (!resp.ok) {
+            throw new Error(`Failed to fetch cards for member ${idMember}: ${resp.statusText}`);
+        }
+
+        const cards = await resp.json();
+        console.log(`Found ${cards.length} cards for member ${idMember}`);
+        return cards;
+    } catch (error) {
+        console.error(`Error getting cards for member ${idMember}:`, error);
+        return null;
     }
 }

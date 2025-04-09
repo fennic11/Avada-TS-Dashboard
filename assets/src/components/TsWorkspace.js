@@ -27,6 +27,7 @@ import {
     CheckCircle as CheckCircleIcon,
     RadioButtonUnchecked as UncheckedIcon
 } from '@mui/icons-material';
+import { getCardsByBoardAndMember } from '../api/trelloApi';
 
 const sections = [
     {

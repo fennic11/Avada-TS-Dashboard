@@ -1,4 +1,4 @@
-const API_URL = 'https://avada-ts-dashboard-1.onrender.com/api';
+import { API_URL, getAuthHeaders, handleResponse } from './apiConfig';
 
 // Login user
 export const login = async (email, password) => {

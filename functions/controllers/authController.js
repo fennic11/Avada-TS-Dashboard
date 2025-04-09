@@ -35,7 +35,8 @@ const register = async (req, res) => {
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
-
+        console.log('Login request body:', req.body);
+        
         if (!email || !password) {
             return res.status(400).json({
                 success: false,
