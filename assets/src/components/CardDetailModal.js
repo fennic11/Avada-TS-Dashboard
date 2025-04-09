@@ -84,6 +84,12 @@ const CardDetailModal = ({ open, onClose, card }) => {
             const assigned = members.filter(m => card.idMembers.includes(m.id));
             setAgents(assigned);
             setCurrentListId(card.idList);
+
+            // Auto search Notion when modal opens
+            if (card.name) {
+                setNotionQuery(card.name);
+                handleNotionSearch(card.name);
+            }
         }
     }, [open, card]);
 
@@ -204,16 +210,17 @@ const CardDetailModal = ({ open, onClose, card }) => {
         }
     };
 
-    const handleNotionSearch = async () => {
-        if (!notionQuery.trim()) return;
+    const handleNotionSearch = async (query = notionQuery) => {
+        if (!query?.trim()) return;
 
         setNotionLoading(true);
         try {
-            const { articles, hasMore } = await searchArticles(notionQuery);
+            const { articles, hasMore } = await searchArticles(query);
             setNotionResults(articles);
             console.log('Search results:', articles);
         } catch (error) {
             console.error('Error searching articles:', error);
+            setNotionResults([]);
         } finally {
             setNotionLoading(false);
         }
@@ -624,7 +631,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
                                                 }}
                                             >
                                                 <ListItemText
-                                                    primary={article.title}
+                                                    primary={article.properties.title? article.properties.title : article.title}
                                                     secondary={
                                                         <Stack spacing={1}>
                                                             <Typography variant="body2" color="text.secondary">
