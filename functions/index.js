@@ -14,7 +14,13 @@ const port = process.env.PORT || 5000;
 
 // CORS configuration
 const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: [
+        'http://localhost:3000',
+        'https://avada-ts-dashboard.vercel.app',
+        'https://avada-ts-dashboard-1.onrender.com'
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
     optionsSuccessStatus: 200
 };
