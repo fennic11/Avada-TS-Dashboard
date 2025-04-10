@@ -27,6 +27,32 @@ export async function getCardsByList(listId) {
     }
 }
 
+export async function getCardsByListandMember(listId, idMember) {
+    try {
+        const resp = await fetch(`${API_URL}/lists/${listId}/cards?key=${key}&token=${token}`, {
+            headers: {
+                Accept: "application/json"
+            }
+        });
+
+        if (!resp.ok) {
+            throw new Error(`Failed to fetch cards for list ${listId}: ${resp.statusText}`);
+        }
+
+        const allCards = await resp.json();
+        // Filter cards by member ID
+        const memberCards = allCards.filter(card => 
+            card.idMembers && card.idMembers.includes(idMember)
+        );
+        
+        console.log(`Found ${memberCards.length} cards for member ${idMember} in list ${listId}`);
+        return memberCards;
+    } catch (error) {
+        console.error(`Error getting cards for list ${listId}:`, error);
+        return null;
+    }
+}
+
 export async function getListsByBoardId(boardId) {
     try {
         const openListsRes = await fetch(`${API_URL}/boards/${boardId}/lists?key=${key}&token=${token}`, {

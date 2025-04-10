@@ -4,7 +4,7 @@ import { getResolutionTimes } from "../../api/cardsApi";
 import members from "../../data/members.json";
 import {
     Table, TableHead, TableBody, TableRow, TableCell,
-    Typography, Paper, CircularProgress, Box, Grid, TextField, MenuItem, Button
+    Typography, Paper, CircularProgress, Box, Grid, TextField, MenuItem, Button, Chip
 } from "@mui/material";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, LabelList } from "recharts";
 import { format } from "date-fns";
@@ -178,6 +178,36 @@ function groupByTimeAndCount(cards, field, groupBy) {
     return result;
 }
 
+function calculateAgentLeaderboard(cards) {
+    const agentStats = new Map();
+
+    cards.forEach(card => {
+        if (!card.members || !card.resolutionTime) return;
+
+        card.members.forEach(memberId => {
+            if (!memberMap[memberId]) return;
+
+            if (!agentStats.has(memberId)) {
+                agentStats.set(memberId, {
+                    name: memberMap[memberId],
+                    totalTime: 0,
+                    cardCount: 0,
+                    averageTime: 0
+                });
+            }
+
+            const stats = agentStats.get(memberId);
+            stats.totalTime += card.resolutionTime;
+            stats.cardCount += 1;
+            stats.averageTime = stats.totalTime / stats.cardCount;
+        });
+    });
+
+    return Array.from(agentStats.values())
+        .sort((a, b) => a.averageTime - b.averageTime)
+        .slice(0, 10); // Top 10 agents
+}
+
 const ResolutionTimeList = () => {
     const [data, setData] = useState([]);
     const [filteredData, setFilteredData] = useState([]);
@@ -302,6 +332,7 @@ const ResolutionTimeList = () => {
         firstActionTime: "First Action Time",
         resolutionTimeTS: "TS Done Issues Time"
     };
+
 
     return (
         <Paper 
@@ -507,6 +538,9 @@ const ResolutionTimeList = () => {
                     </Grid>
                 </Grid>
             </Paper>
+
+            {/* Add Agent Leaderboard after filters */}
+            {!loading && <AgentLeaderboard data={filteredData} />}
 
             {loading ? (
                 <Box sx={{ 
@@ -1146,6 +1180,70 @@ const ResolutionTimeList = () => {
                             <TableCell sx={{ color: '#1e293b', fontWeight: 500 }}>{formatMinutes(card.firstActionTime)}</TableCell>
                             <TableCell sx={{ color: '#1e293b', fontWeight: 500 }}>{formatMinutes(card.resolutionTimeTS)}</TableCell>
                             <TableCell sx={{ color: '#64748b' }}>{safeFormatDate(card.createdAt)}</TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </Paper>
+    );
+};
+
+const AgentLeaderboard = ({ data }) => {
+    const leaderboard = calculateAgentLeaderboard(data);
+
+    return (
+        <Paper
+            sx={{
+                p: 4,
+                mb: 4,
+                background: 'rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(8px)',
+                borderRadius: 3,
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 12px 24px rgba(0,0,0,0.1)'
+                }
+            }}
+        >
+            <Typography 
+                variant="h5" 
+                sx={{ 
+                    mb: 4,
+                    color: '#1e293b',
+                    fontWeight: 700
+                }}
+            >
+                Agent Leaderboard
+            </Typography>
+            <Table>
+                <TableHead>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Rank</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Agent</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Average Resolution Time</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Total Cards</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {leaderboard.map((agent, index) => (
+                        <TableRow key={agent.name}>
+                            <TableCell>
+                                <Chip 
+                                    label={`#${index + 1}`}
+                                    color={index === 0 ? "success" : index < 3 ? "primary" : "default"}
+                                    sx={{ 
+                                        fontWeight: 600,
+                                        minWidth: '40px'
+                                    }}
+                                />
+                            </TableCell>
+                            <TableCell sx={{ fontWeight: 500, color: '#1e293b' }}>{agent.name}</TableCell>
+                            <TableCell sx={{ fontWeight: 500, color: '#1e293b' }}>
+                                {formatMinutes(agent.averageTime)}
+                            </TableCell>
+                            <TableCell sx={{ color: '#64748b' }}>{agent.cardCount}</TableCell>
                         </TableRow>
                     ))}
                 </TableBody>

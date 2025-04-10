@@ -5,84 +5,227 @@ import {
     CardHeader,
     CardContent,
     Typography,
-    Box
+    Box,
+    Stack,
+    Link,
+    Paper
 } from "@mui/material";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 
+const CardActivityHistory = ({ actions }) => {
+    const extractImageUrl = (text) => {
+        // Match Trello image attachment pattern
+        const imagePattern = /\[image\.png\]\((https:\/\/trello\.com\/1\/cards\/[^)]+)\)/;
+        const match = text.match(imagePattern);
+        return match ? match[1] : null;
+    };
 
-
-const CardActivityHistory = ({ actions }: { actions: any[] }) => {
-    return (
-        <Box display="flex" flexDirection="column" gap={2}>
-            {actions.map((action) => {
-                const {
-                    id,
-                    type,
-                    date,
-                    memberCreator,
-                    data,
-                } = action;
-
-                const timeFormatted = format(new Date(date), "dd/MM/yyyy HH:mm:ss");
-
-                const renderContent = () => {
-                    switch (type) {
-                        case "commentCard":
-                            return (
-                                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                                    {data.text}
-                                </Typography>
-                            );
-                        case "updateCard":
-                            const from = data.listBefore?.name;
-                            const to = data.listAfter?.name;
-                            if (from && to) {
-                                return (
-                                    <Typography variant="body2">
-                                        Moved card from <strong>{from}</strong> to <strong>{to}</strong>.
+    const renderContent = (action) => {
+        switch (action.type) {
+            case "commentCard":
+                const imageUrl = extractImageUrl(action.data.text);
+                return (
+                    <Stack spacing={1}>
+                        <Typography variant="body2" sx={{ whiteSpace: "pre-line" }}>
+                            {action.data.text.replace(/\[image\.png\]\(.*\)/, "")}
+                        </Typography>
+                        {imageUrl && (
+                            <Box
+                                sx={{
+                                    position: "relative",
+                                    "&:hover .image-overlay": {
+                                        opacity: 1
+                                    }
+                                }}
+                            >
+                                <Paper
+                                    variant="outlined"
+                                    sx={{
+                                        p: 1,
+                                        borderRadius: 1,
+                                        borderColor: "rgba(0, 0, 0, 0.12)",
+                                        overflow: "hidden"
+                                    }}
+                                >
+                                    <Box
+                                        component="img"
+                                        src={imageUrl}
+                                        alt="Comment attachment"
+                                        sx={{
+                                            width: "100%",
+                                            height: "auto",
+                                            maxHeight: 300,
+                                            objectFit: "contain",
+                                            borderRadius: 0.5,
+                                            cursor: "pointer"
+                                        }}
+                                        onClick={() => window.open(imageUrl, "_blank")}
+                                    />
+                                </Paper>
+                                <Box
+                                    className="image-overlay"
+                                    sx={{
+                                        position: "absolute",
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        bgcolor: "rgba(0, 0, 0, 0.5)",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        opacity: 0,
+                                        transition: "opacity 0.2s",
+                                        borderRadius: 1
+                                    }}
+                                >
+                                    <Typography
+                                        variant="button"
+                                        sx={{
+                                            color: "white",
+                                            bgcolor: "rgba(0, 0, 0, 0.7)",
+                                            px: 2,
+                                            py: 1,
+                                            borderRadius: 1
+                                        }}
+                                    >
+                                        View Full Size
                                     </Typography>
-                                );
-                            }
-                            return (
-                                <Typography variant="body2" color="text.secondary">
-                                    Updated card.
-                                </Typography>
-                            );
-                        default:
-                            return (
-                                <Typography variant="body2" color="text.secondary">
-                                    Other action type.
-                                </Typography>
-                            );
+                                </Box>
+                            </Box>
+                        )}
+                    </Stack>
+                );
+
+            case "updateCard":
+                const { listBefore, listAfter, old, card } = action.data;
+                
+                // List movement
+                if (listBefore && listAfter) {
+                    return (
+                        <Typography variant="body2" color="text.secondary">
+                            Moved card from <strong>{listBefore.name}</strong> to <strong>{listAfter.name}</strong>
+                        </Typography>
+                    );
+                }
+                
+                // Due date changes
+                if (old && old.due != null) {
+                    if (!card.due) {
+                        return (
+                            <Typography variant="body2" color="text.secondary">
+                                Removed due date
+                            </Typography>
+                        );
                     }
-                };
+                    return (
+                        <Typography variant="body2" color="text.secondary">
+                            Updated due date to <strong>{format(new Date(card.due), "MMM d, yyyy")}</strong>
+                        </Typography>
+                    );
+                }
+                
+                // Description changes
+                if (old && 'desc' in old) {
+                    return (
+                        <Typography variant="body2" color="text.secondary">
+                            Updated description
+                        </Typography>
+                    );
+                }
 
                 return (
-                    <Card key={id} elevation={2}>
-                        <CardHeader
-                            avatar={
-                                <Avatar
-                                    src={memberCreator.avatarUrl}
-                                    alt={memberCreator.fullName}
-                                >
-                                    {memberCreator.initials || memberCreator.fullName.slice(0, 2)}
-                                </Avatar>
-                            }
-                            title={
-                                <Typography variant="subtitle1" fontWeight="bold">
-                                    {memberCreator.fullName}
-                                </Typography>
-                            }
-                            subheader={timeFormatted}
-                            sx={{ paddingBottom: 0 }}
-                        />
-                        <CardContent>
-                            {renderContent()}
-                        </CardContent>
-                    </Card>
+                    <Typography variant="body2" color="text.secondary">
+                        Updated card
+                    </Typography>
                 );
-            })}
-        </Box>
+
+            case "addMemberToCard":
+                return (
+                    <Typography variant="body2" color="text.secondary">
+                        Added <strong>{action.member?.fullName}</strong> to card
+                    </Typography>
+                );
+
+            case "removeMemberFromCard":
+                return (
+                    <Typography variant="body2" color="text.secondary">
+                        Removed <strong>{action.member?.fullName}</strong> from card
+                    </Typography>
+                );
+
+            case "addAttachmentToCard":
+                return (
+                    <Typography variant="body2" color="text.secondary">
+                        Added attachment: <strong>{action.data.attachment?.name}</strong>
+                    </Typography>
+                );
+
+            case "deleteAttachmentFromCard":
+                return (
+                    <Typography variant="body2" color="text.secondary">
+                        Removed attachment: <strong>{action.data.attachment?.name}</strong>
+                    </Typography>
+                );
+
+            case "addChecklistToCard":
+                return (
+                    <Typography variant="body2" color="text.secondary">
+                        Added checklist: <strong>{action.data.checklist?.name}</strong>
+                    </Typography>
+                );
+
+            case "createCard":
+                return (
+                    <Typography variant="body2" color="text.secondary">
+                        Created this card
+                    </Typography>
+                );
+
+            default:
+                return (
+                    <Typography variant="body2" color="text.secondary">
+                        {action.type}
+                    </Typography>
+                );
+        }
+    };
+
+    return (
+        <Stack spacing={2}>
+            {actions.map((action) => (
+                <Box
+                    key={action.id}
+                    sx={{
+                        display: "flex",
+                        gap: 2,
+                        p: 2,
+                        borderRadius: 1,
+                        bgcolor: "background.paper",
+                        "&:hover": {
+                            bgcolor: "action.hover"
+                        }
+                    }}
+                >
+                    <Avatar
+                        src={action.memberCreator?.avatarUrl}
+                        alt={action.memberCreator?.fullName}
+                        sx={{ width: 32, height: 32 }}
+                    />
+                    <Box sx={{ flex: 1 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                            <Typography variant="subtitle2">
+                                {action.memberCreator?.fullName}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                {formatDistanceToNow(new Date(action.date), { addSuffix: true })}
+                            </Typography>
+                        </Box>
+                        {renderContent(action)}
+                    </Box>
+                </Box>
+            ))}
+        </Stack>
     );
 };
 

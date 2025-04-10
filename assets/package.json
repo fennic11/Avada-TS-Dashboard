@@ -7,6 +7,7 @@
     "@emotion/styled": "^11.14.0",
     "@fullcalendar/daygrid": "^6.1.15",
     "@fullcalendar/react": "^6.1.15",
+    "@hello-pangea/dnd": "^18.0.1",
     "@mui/icons-material": "^6.4.8",
     "@mui/material": "^6.4.8",
     "@mui/x-charts": "^7.28.0",

@@ -136,6 +136,53 @@ const TSLeadSummary = () => {
         return Object.entries(memberCount).map(([name, value]) => ({ name, value }));
     }, [filteredCards]);
 
+    const handleTaskClick = (card) => {
+        console.log('Original card:', card);
+        
+        // Transform card data to match CardDetailModal's expected format
+        const transformedCard = {
+            ...card,
+            name: card.name || '',
+            desc: card.desc || '',
+            idMembers: card.idMembers || [],
+            idList: card.idList || '',
+            labels: card.labels || [],
+            due: card.due || null,
+            shortUrl: card.shortUrl || '',
+            badges: card.badges || {},
+            dateLastActivity: card.dateLastActivity || new Date().toISOString(),
+            idBoard: card.idBoard || '',
+            idShort: card.idShort || '',
+            url: card.url || '',
+            section: {
+                id: card.idList || '',
+                name: card.listName || 'Unknown'
+            },
+            // Add default values for other required properties
+            customer: card.desc?.split('\n')[0] || '',
+            ticketId: card.shortUrl?.split('/').pop() || '',
+            priority: card.labels?.find(label => label.name?.toLowerCase().includes('priority'))?.name || 'No priority',
+            completed: card.dueComplete || false,
+            agents: (card.idMembers || []).map(memberId => {
+                const member = members.find(m => m.id === memberId);
+                return member ? {
+                    id: member.id,
+                    name: member.name,
+                    username: member.username
+                } : null;
+            }).filter(Boolean),
+            comments: card.badges?.comments || 0,
+            activityLogs: [],
+            notionResults: [],
+            resolutionTime: null,
+            TSResolutionTime: null,
+            firstActionTime: null
+        };
+        
+        console.log('Transformed card:', transformedCard);
+        setSelectedCard(transformedCard);
+    };
+
     return (
         <Box sx={{ 
             width: '100%', 
@@ -394,7 +441,7 @@ const TSLeadSummary = () => {
                                             <TableCell>
                                                 <Link
                                                     component="button"
-                                                    onClick={() => setSelectedCard(card)}
+                                                    onClick={() => handleTaskClick(card)}
                                                     sx={{
                                                         color: 'inherit',
                                                         textDecoration: 'none',
