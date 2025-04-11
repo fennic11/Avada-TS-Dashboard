@@ -23,10 +23,9 @@ const TSLeadSummary = () => {
     const [filter, setFilter] = useState({ type: null, value: null });
     const [selectedCard, setSelectedCard] = useState(null);
     const [sortByDueAsc, setSortByDueAsc] = useState(true);
-    const [startDate, setStartDate] = useState(null);
-    const [endDate, setEndDate] = useState(null);
     const [selectedTab, setSelectedTab] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [selectedTSMember, setSelectedTSMember] = useState('');
 
     const tabLabels = [
         { 
@@ -97,32 +96,27 @@ const TSLeadSummary = () => {
         return members.filter(member => member.role === 'TS');
     }, []);
 
-    // Memoize filtered cards to prevent unnecessary recalculations
+    // Memoize filtered cards
     const filteredCards = useMemo(() => {
         return cards
             .filter(card => {
                 let pass = true;
 
+                // Filter by TS member if selected
+                if (selectedTSMember) {
+                    pass = card.idMembers.some(id => id === selectedTSMember);
+                }
+
                 if (filter.type === 'app') {
-                    pass = getAppLabel(card.labels || []) === filter.value;
+                    pass = pass && getAppLabel(card.labels || []) === filter.value;
                 } else if (filter.type === 'member') {
-                    pass = card.idMembers.some(id => {
+                    pass = pass && card.idMembers.some(id => {
                         const member = members.find(m => m.id === id);
                         return member?.name === filter.value;
                     });
                 } else if (filter.type === 'overdue') {
                     const days = getOverdueDays(card.due);
-                    pass = !!days;
-                }
-
-                if (card.due && (startDate || endDate)) {
-                    const createdAt = subDays(parseISO(card.due), 2);
-                    if (startDate && isBefore(createdAt, parseISO(startDate))) {
-                        pass = false;
-                    }
-                    if (endDate && isAfter(createdAt, parseISO(endDate))) {
-                        pass = false;
-                    }
+                    pass = pass && !!days;
                 }
 
                 return pass;
@@ -137,7 +131,7 @@ const TSLeadSummary = () => {
 
                 return sortByDueAsc ? dateA - dateB : dateB - dateA;
             });
-    }, [cards, filter, startDate, endDate, sortByDueAsc]);
+    }, [cards, filter, sortByDueAsc, selectedTSMember]);
 
     // Memoized data for charts
     const chartsData = useMemo(() => {
@@ -226,6 +220,31 @@ const TSLeadSummary = () => {
 
     const handleTaskClick = (card) => {
         setSelectedCard(card);
+    };
+
+    const getCardStatus = (card) => {
+        console.log('Card List Name:', card.listName);
+        console.log('Due Complete:', card.dueComplete);
+        
+        if (card.dueComplete) {
+            return {
+                label: "Done",
+                color: "success"
+            };
+        }
+        
+        // Check for New Issues list
+        if (card.listName && card.listName.trim() === "New Issues") {
+            return {
+                label: "Waiting",
+                color: "info"
+            };
+        }
+        
+        return {
+            label: "In Progress",
+            color: "warning"
+        };
     };
 
     return (
@@ -327,96 +346,82 @@ const TSLeadSummary = () => {
             </Paper>
 
             <Grid container spacing={2} sx={{ mb: 2 }}>
-                <Grid item xs={6} md={3}>
-                    <TextField
-                        type="date"
-                        label="📆 Start Date"
-                        InputLabelProps={{ shrink: true }}
-                        fullWidth
-                        value={startDate || ''}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        sx={{
-                            '& .MuiOutlinedInput-root': {
+                {/* TS Member Filter */}
+                <Grid item xs={12} md={4}>
+                    <FormControl fullWidth>
+                        <InputLabel id="ts-member-label">🎯 TS Member</InputLabel>
+                        <Select
+                            labelId="ts-member-label"
+                            value={selectedTSMember}
+                            onChange={(e) => setSelectedTSMember(e.target.value)}
+                            label="🎯 TS Member"
+                            sx={{
                                 borderRadius: 2,
                                 background: 'white',
                                 boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'rgba(0, 0, 0, 0.12)',
+                                },
                                 '&:hover .MuiOutlinedInput-notchedOutline': {
                                     borderColor: 'primary.main',
                                 },
                                 '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                                     borderColor: 'primary.main',
-                                    borderWidth: 2,
                                 }
-                            }
-                        }}
-                    />
-                </Grid>
-                <Grid item xs={6} md={3}>
-                    <TextField
-                        type="date"
-                        label="📆 End Date"
-                        InputLabelProps={{ shrink: true }}
-                        fullWidth
-                        value={endDate || ''}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        sx={{
-                            '& .MuiOutlinedInput-root': {
-                                borderRadius: 2,
-                                background: 'white',
-                                boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-                                '&:hover .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: 'primary.main',
-                                },
-                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: 'primary.main',
-                                    borderWidth: 2,
-                                }
-                            }
-                        }}
-                    />
+                            }}
+                        >
+                            <MenuItem value="">
+                                <em>All TS Members</em>
+                            </MenuItem>
+                            {tsMembers.map((member) => (
+                                <MenuItem key={member.id} value={member.id}>
+                                    {member.fullName}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
                 </Grid>
             </Grid>
 
-            {filter.type && (
+            {/* Active Filters Display */}
+            {(selectedTSMember || filter.type) && (
                 <Box sx={{ mb: 2 }}>
-                    <Chip
-                        label={`Filtered by ${filter.type === 'app' ? 'App' : 'Member'}: ${filter.value}`}
-                        color="primary"
-                        onDelete={() => setFilter({ type: null, value: null })}
-                        variant="outlined"
-                        sx={{
-                            borderRadius: 2,
-                            '& .MuiChip-deleteIcon': {
-                                color: 'primary.main',
-                                '&:hover': {
-                                    color: 'error.main',
+                    {selectedTSMember && (
+                        <Chip
+                            label={`TS Member: ${tsMembers.find(m => m.id === selectedTSMember)?.fullName}`}
+                            onDelete={() => setSelectedTSMember('')}
+                            color="primary"
+                            variant="outlined"
+                            sx={{
+                                m: 0.5,
+                                borderRadius: 2,
+                                '& .MuiChip-deleteIcon': {
+                                    color: 'primary.main',
+                                    '&:hover': {
+                                        color: 'error.main',
+                                    }
                                 }
-                            }
-                        }}
-                    />
-                </Box>
-            )}
-
-            {(startDate || endDate) && (
-                <Box sx={{ mb: 2 }}>
-                    <Chip
-                        label={`CreatedAt: ${startDate || '...'} → ${endDate || '...'}`}
-                        color="secondary"
-                        onDelete={() => {
-                            setStartDate(null);
-                            setEndDate(null);
-                        }}
-                        variant="outlined"
-                        sx={{
-                            borderRadius: 2,
-                            '& .MuiChip-deleteIcon': {
-                                color: 'secondary.main',
-                                '&:hover': {
-                                    color: 'error.main',
+                            }}
+                        />
+                    )}
+                    {filter.type && (
+                        <Chip
+                            label={`Filtered by ${filter.type === 'app' ? 'App' : 'Member'}: ${filter.value}`}
+                            onDelete={() => setFilter({ type: null, value: null })}
+                            color="primary"
+                            variant="outlined"
+                            sx={{
+                                m: 0.5,
+                                borderRadius: 2,
+                                '& .MuiChip-deleteIcon': {
+                                    color: 'primary.main',
+                                    '&:hover': {
+                                        color: 'error.main',
+                                    }
                                 }
-                            }
-                        }}
-                    />
+                            }}
+                        />
+                    )}
                 </Box>
             )}
 
@@ -552,6 +557,7 @@ const TSLeadSummary = () => {
                         {filteredCards.map((card, index) => {
                             const dueDate = card.due ? new Date(card.due) : null;
                             const dueColor = getOverdueColor(getOverdueDays(card.due));
+                            const status = getCardStatus(card);
 
                             return (
                                 <TableRow 
@@ -625,9 +631,9 @@ const TSLeadSummary = () => {
                                     </TableCell>
                                     <TableCell>
                                         <Chip
-                                            label={card.dueComplete ? "Done" : "In Progress"}
+                                            label={status.label}
                                             size="small"
-                                            color={card.dueComplete ? "success" : "warning"}
+                                            color={status.color}
                                             sx={{
                                                 fontWeight: 500,
                                                 minWidth: '100px'
