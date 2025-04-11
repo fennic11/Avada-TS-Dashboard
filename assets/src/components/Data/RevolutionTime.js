@@ -1099,107 +1099,177 @@ const ResolutionTimeList = () => {
             )}
 
             {/* Data Table */}
-            <Table 
-                sx={{ 
-                    minWidth: 1000, 
-                    border: "1px solid #e2e8f0", 
-                    borderRadius: 3,
-                    overflow: 'hidden',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                    backgroundColor: '#ffffff',
-                    mb: 4,
-                    mt: 8
-                }}
-            >
-                <TableHead>
-                    <TableRow sx={{ backgroundColor: "#f8fafc" }}>
-                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Card</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Link</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>App</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Members</TableCell>
-                        <TableCell 
-                            onClick={() => handleSort("resolutionTime")} 
-                            sx={{ 
-                                cursor: "pointer", 
-                                fontWeight: 600,
+            <Box sx={{ 
+                width: '100%', 
+                overflowX: 'auto',
+                borderRadius: 3,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                backgroundColor: '#ffffff',
+                mb: 4,
+                mt: 8
+            }}>
+                <Table 
+                    sx={{ 
+                        minWidth: { xs: 800, sm: 1000 },
+                        border: "1px solid #e2e8f0", 
+                        borderRadius: 3,
+                        overflow: 'hidden',
+                        backgroundColor: '#ffffff',
+                    }}
+                >
+                    <TableHead>
+                        <TableRow sx={{ backgroundColor: "#f8fafc" }}>
+                            <TableCell sx={{ 
+                                fontWeight: 600, 
                                 color: '#1e293b',
-                                '&:hover': {
-                                    backgroundColor: '#f1f5f9'
-                                }
-                            }}
-                        >
-                            Resolution Time {sortConfig.key === "resolutionTime" ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}
-                        </TableCell>
-                        <TableCell 
-                            onClick={() => handleSort("firstActionTime")} 
-                            sx={{ 
-                                cursor: "pointer", 
-                                fontWeight: 600,
+                                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                py: { xs: 1, sm: 2 }
+                            }}>Card</TableCell>
+                            <TableCell sx={{ 
+                                fontWeight: 600, 
                                 color: '#1e293b',
-                                '&:hover': {
-                                    backgroundColor: '#f1f5f9'
-                                }
-                            }}
-                        >
-                            First Action Time {sortConfig.key === "firstActionTime" ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}
-                        </TableCell>
-                        <TableCell 
-                            onClick={() => handleSort("resolutionTimeTS")} 
-                            sx={{ 
-                                cursor: "pointer", 
-                                fontWeight: 600,
+                                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                py: { xs: 1, sm: 2 }
+                            }}>Link</TableCell>
+                            <TableCell sx={{ 
+                                fontWeight: 600, 
                                 color: '#1e293b',
-                                '&:hover': {
-                                    backgroundColor: '#f1f5f9'
-                                }
-                            }}
-                        >
-                            TS Done Issues Time {sortConfig.key === "resolutionTimeTS" ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Created At</TableCell>
-                    </TableRow>
-                </TableHead>
-
-                <TableBody>
-                    {sortedData.map((card) => (
-                        <TableRow
-                            key={card.cardUrl}
-                            sx={{
-                                transition: "all 0.2s ease",
-                                "&:hover": {
-                                    backgroundColor: "#f8fafc",
-                                }
-                            }}
-                        >
-                            <TableCell sx={{ color: '#1e293b' }}>{card.cardName}</TableCell>
-                            <TableCell>
-                                <a
-                                    href={card.cardUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{ 
-                                        color: "#3b82f6", 
-                                        textDecoration: "none", 
-                                        fontWeight: 500,
-                                        '&:hover': {
-                                            color: '#2563eb',
-                                            textDecoration: 'underline'
-                                        }
-                                    }}
-                                >
-                                    Trello
-                                </a>
+                                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                py: { xs: 1, sm: 2 }
+                            }}>App</TableCell>
+                            <TableCell sx={{ 
+                                fontWeight: 600, 
+                                color: '#1e293b',
+                                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                py: { xs: 1, sm: 2 }
+                            }}>Members</TableCell>
+                            <TableCell 
+                                onClick={() => handleSort("resolutionTime")} 
+                                sx={{ 
+                                    cursor: "pointer", 
+                                    fontWeight: 600,
+                                    color: '#1e293b',
+                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                    py: { xs: 1, sm: 2 },
+                                    '&:hover': {
+                                        backgroundColor: '#f1f5f9'
+                                    }
+                                }}
+                            >
+                                Resolution Time {sortConfig.key === "resolutionTime" ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}
                             </TableCell>
-                            <TableCell sx={{ color: '#64748b' }}>{card.labels?.filter(l => l.startsWith("App:")).join(", ")}</TableCell>
-                            <TableCell sx={{ color: '#64748b' }}>{card.members?.map(id => memberMap[id]).filter(Boolean).join(", ")}</TableCell>
-                            <TableCell sx={{ color: '#1e293b', fontWeight: 500 }}>{formatMinutes(card.resolutionTime)}</TableCell>
-                            <TableCell sx={{ color: '#1e293b', fontWeight: 500 }}>{formatMinutes(card.firstActionTime)}</TableCell>
-                            <TableCell sx={{ color: '#1e293b', fontWeight: 500 }}>{formatMinutes(card.resolutionTimeTS)}</TableCell>
-                            <TableCell sx={{ color: '#64748b' }}>{safeFormatDate(card.createdAt)}</TableCell>
+                            <TableCell 
+                                onClick={() => handleSort("firstActionTime")} 
+                                sx={{ 
+                                    cursor: "pointer", 
+                                    fontWeight: 600,
+                                    color: '#1e293b',
+                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                    py: { xs: 1, sm: 2 },
+                                    '&:hover': {
+                                        backgroundColor: '#f1f5f9'
+                                    }
+                                }}
+                            >
+                                First Action Time {sortConfig.key === "firstActionTime" ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}
+                            </TableCell>
+                            <TableCell 
+                                onClick={() => handleSort("resolutionTimeTS")} 
+                                sx={{ 
+                                    cursor: "pointer", 
+                                    fontWeight: 600,
+                                    color: '#1e293b',
+                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                    py: { xs: 1, sm: 2 },
+                                    '&:hover': {
+                                        backgroundColor: '#f1f5f9'
+                                    }
+                                }}
+                            >
+                                TS Done Issues Time {sortConfig.key === "resolutionTimeTS" ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}
+                            </TableCell>
+                            <TableCell sx={{ 
+                                fontWeight: 600, 
+                                color: '#1e293b',
+                                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                py: { xs: 1, sm: 2 }
+                            }}>Created At</TableCell>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+                    </TableHead>
+
+                    <TableBody>
+                        {sortedData.map((card) => (
+                            <TableRow
+                                key={card.cardUrl}
+                                sx={{
+                                    transition: "all 0.2s ease",
+                                    "&:hover": {
+                                        backgroundColor: "#f8fafc",
+                                    }
+                                }}
+                            >
+                                <TableCell sx={{ 
+                                    color: '#1e293b',
+                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                    py: { xs: 1, sm: 2 }
+                                }}>{card.cardName}</TableCell>
+                                <TableCell>
+                                    <a
+                                        href={card.cardUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ 
+                                            color: "#3b82f6", 
+                                            textDecoration: "none", 
+                                            fontWeight: 500,
+                                            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                            '&:hover': {
+                                                color: '#2563eb',
+                                                textDecoration: 'underline'
+                                            }
+                                        }}
+                                    >
+                                        Trello
+                                    </a>
+                                </TableCell>
+                                <TableCell sx={{ 
+                                    color: '#64748b',
+                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                    py: { xs: 1, sm: 2 }
+                                }}>{card.labels?.filter(l => l.startsWith("App:")).join(", ")}</TableCell>
+                                <TableCell sx={{ 
+                                    color: '#64748b',
+                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                    py: { xs: 1, sm: 2 }
+                                }}>{card.members?.map(id => memberMap[id]).filter(Boolean).join(", ")}</TableCell>
+                                <TableCell sx={{ 
+                                    color: '#1e293b', 
+                                    fontWeight: 500,
+                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                    py: { xs: 1, sm: 2 }
+                                }}>{formatMinutes(card.resolutionTime)}</TableCell>
+                                <TableCell sx={{ 
+                                    color: '#1e293b', 
+                                    fontWeight: 500,
+                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                    py: { xs: 1, sm: 2 }
+                                }}>{formatMinutes(card.firstActionTime)}</TableCell>
+                                <TableCell sx={{ 
+                                    color: '#1e293b', 
+                                    fontWeight: 500,
+                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                    py: { xs: 1, sm: 2 }
+                                }}>{formatMinutes(card.resolutionTimeTS)}</TableCell>
+                                <TableCell sx={{ 
+                                    color: '#64748b',
+                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                    py: { xs: 1, sm: 2 }
+                                }}>{safeFormatDate(card.createdAt)}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </Box>
         </Paper>
     );
 };

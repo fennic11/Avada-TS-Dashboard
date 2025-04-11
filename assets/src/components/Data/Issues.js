@@ -1,26 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import {
   Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, Select, MenuItem, InputLabel, FormControl, CircularProgress, Chip
+  Paper, Select, MenuItem, InputLabel, FormControl, CircularProgress, Chip, Avatar,
+  AvatarGroup, Tooltip
 } from '@mui/material';
 import { getCardsByList } from '../../api/trelloApi';
 import memberList from '../../data/members.json';
 import listsId from '../../data/listsId.json';
+import CardDetailModal from '../CardDetailModal';
 
 import {
-  PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList
+  PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from 'recharts';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#B455B6', '#FF6666', '#26A69A', '#FFA726'];
+const COLORS = ['#FFB1B1', '#FFD6A5', '#EDEDFF', '#9CFFA4'];
+const STATUS_COLORS = {
+  'Pending': '#FFB1B1',
+  'Doing': '#FFD6A5',
+  'Waiting Confirm': '#EDEDFF',
+  'Done': '#9CFFA4'
+};
 
 const IssueSummary = () => {
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedAgent, setSelectedAgent] = useState('Tất cả');
-  const [selectedStatus, setSelectedStatus] = useState('Pending');
-  const [selectedApp, setSelectedApp] = useState('Tất cả');
-  const [chartType, setChartType] = useState('pie');
+  const [selectedAgent, setSelectedAgent] = useState('All');
+  const [selectedStatus, setSelectedStatus] = useState('All');
+  const [selectedApp, setSelectedApp] = useState('All');
+  const [selectedTimeRange, setSelectedTimeRange] = useState('Last 30 days');
+  const [selectedCard, setSelectedCard] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const formatDate = (str) => {
     if (!str) return '';
@@ -54,6 +64,54 @@ const IssueSummary = () => {
     return Object.entries(dataMap).map(([name, value]) => ({ name, value }));
   };
 
+  const getAppFromLabels = (labels) => {
+    if (!labels || !labels.length) return 'Other';
+    const appLabels = labels.filter(label => label.name.startsWith('App:'));
+    if (appLabels.length === 0) return 'Other';
+    return appLabels.map(label => label.name.replace('App:', '').trim()).join(', ');
+  };
+
+  const getUniqueApps = () => {
+    const apps = new Set();
+    issues.forEach(issue => {
+      const appLabels = issue.labels?.filter(label => label.name.startsWith('App:')) || [];
+      if (appLabels.length > 0) {
+        appLabels.forEach(label => {
+          apps.add(label.name.replace('App:', '').trim());
+        });
+      } else {
+        apps.add('Other');
+      }
+    });
+    return Array.from(apps).sort();
+  };
+
+  const getAssigneeInfo = (memberIds = []) => {
+    if (!memberIds.length) return [];
+    return memberIds.map(id => {
+      const member = memberList.find(m => m.id === id);
+      return member || { name: 'Unknown', avatarUrl: null };
+    });
+  };
+
+  const getAssigneeInitials = (name) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
+  };
+
+  const handleCardClick = (card) => {
+    setSelectedCard(card);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedCard(null);
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -72,66 +130,48 @@ const IssueSummary = () => {
             const listCards = await getCardsByList(listId);
             listCards.forEach(card => {
               if (!filterFn || filterFn(card)) {
-                cards.push({ ...card, status });
+                cards.push({ 
+                  ...card, 
+                  status,
+                  app: getAppFromLabels(card.labels)
+                });
               }
             });
           }
           return cards;
         };
 
-        const isNewIssuesExpired = (card) => {
-          if (!card.due) return false;
-          const due = new Date(card.due);
-          const created = new Date(due.getTime() - 2 * 24 * 60 * 60 * 1000);
-          return now - created > 2 * 24 * 60 * 60 * 1000;
-        };
+        // Get cards from New Issues list
+        const newIssuesListId = getListIdByName('New Issues');
+        if (newIssuesListId) {
+          const newIssuesCards = await getCardsByList(newIssuesListId);
+          newIssuesCards.forEach(card => {
+            const overdueDays = getOverdueDays(card.due);
+            if (overdueDays !== null) {
+              allResults.push({ ...card, status: 'Pending' });
+            }
+          });
+        }
 
-        // Fetch all lists in parallel
-        const [pendingCards, expiredNewCards, waitingCards, doingCards, doneCards] = await Promise.all([
-          // Pending cards
-          getAllCardsFromLists(
-            ['Update workflow required or Waiting for access (SLA: 2 days)'],
-            null,
-            'Pending'
-          ),
-          // Expired new issues
-          getAllCardsFromLists(
-            ['New Issues'],
-            isNewIssuesExpired,
-            'Pending'
-          ),
-          // Waiting for confirmation
-          getAllCardsFromLists(
-            ["Waiting for Customer's Confirmation (SLA: 2 days)"],
-            null,
-            'Waiting for Customer Confirmation'
-          ),
-          // Doing cards
-          getAllCardsFromLists(
-            ['Doing (Inshift)'],
-            null,
-            'Doing'
-          ),
-          // Done cards
-          getAllCardsFromLists(
-            listsId.filter(l => l.name.startsWith('Done')).map(l => l.name),
-            null,
-            'Done'
-          )
+        // Get cards from Update workflow required or Waiting for access
+        const waitingAccessListId = getListIdByName('Update workflow required or Waiting for access (SLA: 2 days)');
+        if (waitingAccessListId) {
+          const waitingAccessCards = await getCardsByList(waitingAccessListId);
+          waitingAccessCards.forEach(card => {
+            allResults.push({ ...card, status: 'Pending' });
+          });
+        }
+
+        // Get cards from other lists
+        const [doingCards, waitingCards, doneCards] = await Promise.all([
+          getAllCardsFromLists(['Doing (Inshift)'], null, 'Doing'),
+          getAllCardsFromLists(["Waiting for Customer's Confirmation (SLA: 2 days)"], null, 'Waiting Confirm'),
+          getAllCardsFromLists(['Done'], null, 'Done')
         ]);
 
-        // Combine all results
-        setIssues([
-          ...pendingCards,
-          ...expiredNewCards,
-          ...waitingCards,
-          ...doingCards,
-          ...doneCards
-        ]);
-
+        setIssues([...allResults, ...doingCards, ...waitingCards, ...doneCards]);
       } catch (err) {
-        console.error('Lỗi khi tải issue:', err);
-        // TODO: Add error notification for user
+        console.error('Error loading issues:', err);
       } finally {
         setLoading(false);
       }
@@ -140,544 +180,471 @@ const IssueSummary = () => {
     fetchData();
   }, []);
 
-  const totalIssues = issues.length;
-  const allStatuses = ['Pending', 'Doing', 'Waiting for Customer Confirmation', 'Done'];
+  const getFilteredIssues = () => {
+    return issues.filter(issue => {
+      if (selectedAgent !== 'All') {
+        const assignees = getAssigneeInfo(issue.idMembers);
+        if (!assignees.some(a => a.name === selectedAgent)) return false;
+      }
+      if (selectedStatus !== 'All' && issue.status !== selectedStatus) return false;
+      if (selectedApp !== 'All' && issue.app !== selectedApp) return false;
+      return true;
+    });
+  };
 
-  const allApps = Array.from(new Set(
-    issues.flatMap(card =>
-      card.labels?.filter(l => l.name.startsWith('App:')).map(l => l.name)
-    )
-  )).filter(Boolean);
+  const getStatusCount = (status) => {
+    return getFilteredIssues().filter(issue => issue.status === status).length;
+  };
 
-  const totalByStatus = Object.fromEntries(
-    allStatuses.map(status => [status, issues.filter(i => i.status === status).length])
-  );
+  const statusSummary = [
+    { status: 'Pending', count: getStatusCount('Pending') },
+    { status: 'Doing', count: getStatusCount('Doing') },
+    { status: 'Waiting Confirm', count: getStatusCount('Waiting Confirm') },
+    { status: 'Done', count: getStatusCount('Done') }
+  ];
 
-  const filtered = issues.filter(card => {
-    const matchAgent = selectedAgent === 'Tất cả' || getAgentName(card) === selectedAgent;
-    const matchStatus = card.status === selectedStatus;
-    const cardApp = card.labels?.find(l => l.name.startsWith('App:'))?.name || 'Không có';
-    const matchApp = selectedApp === 'Tất cả' || cardApp === selectedApp;
-    return matchAgent && matchStatus && matchApp;
-  });
+  const getIssuesByAssignee = () => {
+    const assigneeData = {};
+    const filteredIssues = getFilteredIssues();
+    
+    // Initialize data for all members
+    memberList.forEach(member => {
+      assigneeData[member.name] = {
+        name: member.name,
+        Pending: 0,
+        Doing: 0,
+        'Waiting Confirm': 0,
+        Done: 0
+      };
+    });
 
-  const filteredCount = filtered.length;
-  const totalFilteredStatus = totalByStatus[selectedStatus] || 0;
+    // Count issues for each member
+    filteredIssues.forEach(issue => {
+      const assignees = getAssigneeInfo(issue.idMembers);
+      assignees.forEach(assignee => {
+        if (assigneeData[assignee.name]) {
+          assigneeData[assignee.name][issue.status]++;
+        }
+      });
+    });
 
-  const appBoxColor = (i) => COLORS[i % COLORS.length];
+    // Convert to array and sort by name
+    return Object.values(assigneeData).sort((a, b) => a.name.localeCompare(b.name));
+  };
 
-  // Sort apps by number of issues descending
-  const appStats = allApps.map(app => {
-    const count = issues.filter(card =>
-      card.labels?.some(label => label.name === app)
-    ).length;
-    const percent = totalIssues > 0 ? ((count / totalIssues) * 100).toFixed(1) : 0;
-    return { app, count, percent };
-  }).sort((a, b) => b.count - a.count);
+  const getStatusData = () => {
+    return statusSummary.map(({ status, count }) => ({
+      name: status,
+      value: count
+    }));
+  };
 
   return (
-    <Box 
-      sx={{ 
-        p: 4,
-        maxWidth: '1800px',
-        margin: '0 auto',
-        minHeight: '100vh',
-        background: 'linear-gradient(to bottom right, #ffffff, #f8fafc)'
-      }}
-    >
-      <Typography 
-        variant="h4" 
-        sx={{ 
-          mb: 4,
-          fontWeight: 700,
-          color: '#1e293b',
-          fontSize: { xs: '1.5rem', md: '2rem' }
-        }}
-      >
-        Issues Dashboard
+    <Box sx={{ p: 4, maxWidth: '1800px', margin: '0 auto' }}>
+      <Typography variant="h4" sx={{ mb: 4, fontWeight: 600 }}>
+        Issue Dashboard
       </Typography>
 
-      {/* Filters Section */}
-      <Paper 
-        elevation={0}
-        sx={{ 
-          p: 3, 
-          mb: 4, 
-          borderRadius: 3,
-          backgroundColor: '#ffffff',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-          border: '1px solid #e2e8f0'
-        }}
-      >
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          <FormControl 
-            sx={{ 
-              minWidth: 200,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-                backgroundColor: '#ffffff',
-                '&:hover fieldset': {
-                  borderColor: '#3b82f6'
-                }
-              }
-            }}
-          >
-            <InputLabel id="agent-label">Chọn Agent</InputLabel>
-            <Select
-              labelId="agent-label"
-              value={selectedAgent}
-              label="Chọn Agent"
-              onChange={(e) => setSelectedAgent(e.target.value)}
-            >
-              <MenuItem value="Tất cả">Tất cả</MenuItem>
-              {memberList.map(m => (
-                <MenuItem key={m.id} value={m.name}>{m.name}</MenuItem>
-              ))}
-              <MenuItem value="CS">CS</MenuItem>
-            </Select>
-          </FormControl>
-
-          <FormControl 
-            sx={{ 
-              minWidth: 200,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-                backgroundColor: '#ffffff',
-                '&:hover fieldset': {
-                  borderColor: '#3b82f6'
-                }
-              }
-            }}
-          >
-            <InputLabel id="status-label">Trạng thái</InputLabel>
-            <Select
-              labelId="status-label"
-              value={selectedStatus}
-              label="Trạng thái"
-              onChange={(e) => setSelectedStatus(e.target.value)}
-            >
-              {allStatuses.map(status => (
-                <MenuItem key={status} value={status}>{status}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl 
-            sx={{ 
-              minWidth: 200,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-                backgroundColor: '#ffffff',
-                '&:hover fieldset': {
-                  borderColor: '#3b82f6'
-                }
-              }
-            }}
-          >
-            <InputLabel id="app-label">Chọn App</InputLabel>
-            <Select
-              labelId="app-label"
-              value={selectedApp}
-              label="Chọn App"
-              onChange={(e) => setSelectedApp(e.target.value)}
-            >
-              <MenuItem value="Tất cả">Tất cả</MenuItem>
-              {allApps.map(app => (
-                <MenuItem key={app} value={app}>{app}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl 
-            sx={{ 
-              minWidth: 200,
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-                backgroundColor: '#ffffff',
-                '&:hover fieldset': {
-                  borderColor: '#3b82f6'
-                }
-              }
-            }}
-          >
-            <InputLabel id="chart-label">Loại biểu đồ</InputLabel>
-            <Select
-              labelId="chart-label"
-              value={chartType}
-              label="Loại biểu đồ"
-              onChange={(e) => setChartType(e.target.value)}
-            >
-              <MenuItem value="pie">🥧 Biểu đồ tròn</MenuItem>
-              <MenuItem value="bar">📊 Biểu đồ cột</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
-
-        {/* Status Summary */}
-        <Box 
-          sx={{ 
-            mt: 3,
-            display: 'flex', 
-            gap: 3, 
-            flexWrap: 'wrap',
-            borderTop: '1px solid #e2e8f0',
-            pt: 3
-          }}
-        >
-          {allStatuses.map(status => {
-            const count = totalByStatus[status];
-            const percent = totalIssues > 0 ? (count / totalIssues * 100).toFixed(1) : 0;
-            return (
-              <Box 
-                key={status}
-                sx={{
-                  p: 2,
-                  borderRadius: 2,
-                  backgroundColor: status === selectedStatus ? '#f0f9ff' : 'transparent',
-                  border: '1px solid #e2e8f0',
-                  minWidth: '200px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  '&:hover': {
-                    backgroundColor: '#f0f9ff',
-                    transform: 'translateY(-2px)'
-                  }
-                }}
-                onClick={() => setSelectedStatus(status)}
-              >
-                <Typography 
-                  variant="body2" 
-                  sx={{ 
-                    color: '#64748b',
-                    mb: 1
-                  }}
-                >
-                  {status}
-                </Typography>
-                <Typography 
-                  variant="h6" 
-                  sx={{ 
-                    fontWeight: 600,
-                    color: '#1e293b'
-                  }}
-                >
-                  {count} <span style={{ fontSize: '0.9rem', color: '#64748b' }}>({percent}%)</span>
-                </Typography>
-              </Box>
-            );
-          })}
-        </Box>
-      </Paper>
-
-      {/* App Distribution */}
-      <Paper 
-        elevation={0}
-        sx={{ 
-          p: 3, 
-          mb: 4, 
-          borderRadius: 3,
-          backgroundColor: '#ffffff',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-          border: '1px solid #e2e8f0'
-        }}
-      >
-        <Typography 
-          variant="h6" 
-          sx={{ 
-            mb: 3,
-            fontWeight: 600,
-            color: '#1e293b'
-          }}
-        >
-          📱 Phân bổ theo App
-        </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-          {appStats.map((appStat, i) => (
-            <Box
-              key={appStat.app}
-              onClick={() => setSelectedApp(appStat.app)}
+      {/* Status Summary Cards */}
+      <Box sx={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+        gap: 3, 
+        mb: 4 
+      }}>
+        {loading ? (
+          Array(4).fill(0).map((_, index) => (
+            <Paper
+              key={index}
               sx={{
-                backgroundColor: 'white',
-                border: '1px solid #e2e8f0',
-                p: 2,
+                p: 3,
                 borderRadius: 2,
-                minWidth: 200,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                position: 'relative',
-                overflow: 'hidden',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '4px',
-                  height: '100%',
-                  backgroundColor: appBoxColor(i)
-                },
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.05)'
-                },
-                ...(selectedApp === appStat.app && {
-                  backgroundColor: '#f8fafc',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.05)'
-                })
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '120px'
               }}
             >
-              <Typography 
-                sx={{ 
-                  fontWeight: 600,
-                  color: '#1e293b',
-                  mb: 1
-                }}
-              >
-                {appStat.app}
-              </Typography>
-              <Typography 
-                sx={{ 
-                  color: '#64748b',
-                  fontSize: '0.9rem'
-                }}
-              >
-                {appStat.count} cards ({appStat.percent}%)
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-      </Paper>
-
-      {/* Filter Results */}
-      <Typography 
-        sx={{ 
-          mb: 3,
-          color: '#64748b',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1
-        }}
-      >
-        <span style={{ color: '#3b82f6', fontSize: '1.2rem' }}>🎯</span>
-        {selectedStatus} – {filteredCount} cards ({totalFilteredStatus > 0 ? ((filteredCount / totalFilteredStatus) * 100).toFixed(1) : 0}%)
-      </Typography>
-
-      {loading ? (
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center',
-            minHeight: '200px'
-          }}
-        >
-          <CircularProgress sx={{ color: '#3b82f6' }} />
-        </Box>
-      ) : (
-        <Paper 
-          elevation={0}
-          sx={{ 
-            borderRadius: 3,
-            overflow: 'hidden',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-            border: '1px solid #e2e8f0'
-          }}
-        >
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow sx={{ backgroundColor: '#f8fafc' }}>
-                  <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Tên</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Trạng thái</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>App</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Agent</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Due</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Trễ (ngày)</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {[...filtered]
-                  .sort((a, b) => new Date(a.due || 0) - new Date(b.due || 0))
-                  .map((card) => {
-                    const overdue = getOverdueDays(card.due);
-                    const agent = getAgentName(card);
-                    const statusColor = card.status === 'Done'
-                      ? '#10b981'
-                      : card.status === 'Waiting for Customer Confirmation'
-                        ? '#f59e0b'
-                        : card.status === 'Doing'
-                          ? '#3b82f6'
-                          : '#ef4444';
-                    const app = card.labels?.find(l => l.name.startsWith('App:'))?.name || 'Không có';
-
-                    return (
-                      <TableRow 
-                        key={card.id}
-                        sx={{
-                          '&:hover': {
-                            backgroundColor: '#f8fafc'
-                          }
-                        }}
-                      >
-                        <TableCell>
-                          <a 
-                            href={card.shortUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            style={{
-                              color: '#3b82f6',
-                              textDecoration: 'none',
-                              fontWeight: 500,
-                              '&:hover': {
-                                textDecoration: 'underline'
-                              }
-                            }}
-                          >
-                            {card.name}
-                          </a>
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={card.status} 
-                            sx={{ 
-                              backgroundColor: statusColor,
-                              color: 'white',
-                              fontWeight: 500
-                            }} 
-                          />
-                        </TableCell>
-                        <TableCell sx={{ color: '#64748b' }}>{app}</TableCell>
-                        <TableCell sx={{ color: '#64748b' }}>{agent}</TableCell>
-                        <TableCell sx={{ color: '#64748b' }}>{formatDate(card.due)}</TableCell>
-                        <TableCell>
-                          {overdue !== null ? (
-                            <Typography 
-                              sx={{ 
-                                color: '#ef4444',
-                                fontWeight: 500
-                              }}
-                            >
-                              {overdue} ngày
-                            </Typography>
-                          ) : '-'}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-      )}
-
-      {/* Charts Section */}
-      <Box sx={{ mt: 6 }}>
-        <Typography 
-          variant="h5" 
-          sx={{ 
-            mb: 4,
-            fontWeight: 600,
-            color: '#1e293b'
-          }}
-        >
-          📊 Biểu đồ trạng thái theo Agent
-        </Typography>
-        {allStatuses.map((status) => {
-          const data = getChartDataByStatus(status);
-          return (
+              <CircularProgress size={40} />
+            </Paper>
+          ))
+        ) : (
+          statusSummary.map(({ status, count }) => (
             <Paper
               key={status}
-              elevation={0}
-              sx={{ 
-                mb: 4,
+              sx={{
                 p: 3,
-                borderRadius: 3,
-                backgroundColor: '#ffffff',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                border: '1px solid #e2e8f0'
+                borderRadius: 2,
+                backgroundColor: STATUS_COLORS[status],
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1
               }}
             >
-              <Typography 
-                variant="h6" 
-                sx={{ 
-                  mb: 3,
-                  fontWeight: 600,
-                  color: '#1e293b'
-                }}
-              >
+              <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                {count}
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
                 {status}
               </Typography>
+            </Paper>
+          ))
+        )}
+      </Box>
+
+      {/* Filters */}
+      <Box sx={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+        gap: 3, 
+        mb: 4 
+      }}>
+        {loading ? (
+          Array(4).fill(0).map((_, index) => (
+            <Paper
+              key={index}
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '56px'
+              }}
+            >
+              <CircularProgress size={24} />
+            </Paper>
+          ))
+        ) : (
+          <>
+            <FormControl fullWidth>
+              <InputLabel>Assignee</InputLabel>
+              <Select
+                value={selectedAgent}
+                label="Assignee"
+                onChange={(e) => setSelectedAgent(e.target.value)}
+                sx={{
+                  '& .MuiSelect-select': {
+                    fontSize: '1rem',
+                    padding: '12px 14px'
+                  }
+                }}
+              >
+                <MenuItem value="All">All</MenuItem>
+                {memberList.map(member => (
+                  <MenuItem key={member.id} value={member.name}>{member.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={selectedStatus}
+                label="Status"
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                sx={{
+                  '& .MuiSelect-select': {
+                    fontSize: '1rem',
+                    padding: '12px 14px'
+                  }
+                }}
+              >
+                <MenuItem value="All">All</MenuItem>
+                {Object.keys(STATUS_COLORS).map(status => (
+                  <MenuItem key={status} value={status}>{status}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth>
+              <InputLabel>App</InputLabel>
+              <Select
+                value={selectedApp}
+                label="App"
+                onChange={(e) => setSelectedApp(e.target.value)}
+                sx={{
+                  '& .MuiSelect-select': {
+                    fontSize: '1rem',
+                    padding: '12px 14px'
+                  }
+                }}
+              >
+                <MenuItem value="All">All</MenuItem>
+                {getUniqueApps().map(app => (
+                  <MenuItem key={app} value={app}>{app}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth>
+              <InputLabel>Time Range</InputLabel>
+              <Select
+                value={selectedTimeRange}
+                label="Time Range"
+                onChange={(e) => setSelectedTimeRange(e.target.value)}
+                disabled
+                sx={{
+                  '& .MuiSelect-select': {
+                    fontSize: '1rem',
+                    padding: '12px 14px',
+                    color: 'text.disabled'
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(0, 0, 0, 0.12)'
+                  }
+                }}
+              >
+                <MenuItem value="Last 30 days">Last 30 days</MenuItem>
+                <MenuItem value="Last 7 days">Last 7 days</MenuItem>
+                <MenuItem value="Last 24 hours">Last 24 hours</MenuItem>
+              </Select>
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  position: 'absolute', 
+                  right: 8, 
+                  top: '50%', 
+                  transform: 'translateY(-50%)',
+                  color: 'text.secondary',
+                  fontStyle: 'italic'
+                }}
+              >
+                Coming Soon
+              </Typography>
+            </FormControl>
+          </>
+        )}
+      </Box>
+
+      {/* Charts */}
+      <Box sx={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', 
+        gap: 4, 
+        mb: 4 
+      }}>
+        {loading ? (
+          Array(2).fill(0).map((_, index) => (
+            <Paper
+              key={index}
+              sx={{
+                p: 3,
+                borderRadius: 2,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '300px'
+              }}
+            >
+              <CircularProgress size={60} />
+            </Paper>
+          ))
+        ) : (
+          <>
+            {/* Issues by Assignee Chart */}
+            <Paper sx={{ p: 3, borderRadius: 2 }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>Issues by Assignee</Typography>
               <Box sx={{ height: 300 }}>
                 <ResponsiveContainer>
-                  {chartType === 'pie' ? (
-                    <PieChart>
-                      <Pie
-                        data={data}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={100}
-                        label
-                      >
-                        {data.map((entry, i) => (
-                          <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 20px rgba(0,0,0,0.05)'
-                        }}
+                  <BarChart 
+                    data={getIssuesByAssignee()}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <Legend 
+                      verticalAlign="top" 
+                      height={36}
+                      wrapperStyle={{ paddingBottom: '20px' }}
+                    />
+                    <XAxis 
+                      dataKey="name" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                      interval={0}
+                    />
+                    <YAxis />
+                    <RechartsTooltip />
+                    {Object.keys(STATUS_COLORS).map((status, index) => (
+                      <Bar
+                        key={status}
+                        dataKey={status}
+                        stackId="a"
+                        fill={COLORS[index]}
                       />
-                      <Legend />
-                    </PieChart>
-                  ) : (
-                    <BarChart data={data}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis 
-                        dataKey="name" 
-                        tick={{ fill: '#64748b' }}
-                        axisLine={{ stroke: '#e2e8f0' }}
-                      />
-                      <YAxis 
-                        allowDecimals={false}
-                        tick={{ fill: '#64748b' }}
-                        axisLine={{ stroke: '#e2e8f0' }}
-                      />
-                      <Tooltip 
-                        contentStyle={{
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 20px rgba(0,0,0,0.05)'
-                        }}
-                      />
-                      <Legend />
-                      <Bar 
-                        dataKey="value" 
-                        fill="#3b82f6"
-                        radius={[4, 4, 0, 0]}
-                      >
-                        <LabelList
-                          dataKey="value"
-                          position="top"
-                          style={{
-                            fill: '#64748b',
-                            fontSize: '12px',
-                            fontWeight: 500
-                          }}
-                        />
-                      </Bar>
-                    </BarChart>
-                  )}
+                    ))}
+                  </BarChart>
                 </ResponsiveContainer>
               </Box>
             </Paper>
-          );
-        })}
+
+            {/* Issues by Status Chart */}
+            <Paper sx={{ p: 3, borderRadius: 2 }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>Issues by Status</Typography>
+              <Box sx={{ height: 300 }}>
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Legend 
+                      verticalAlign="top" 
+                      height={36}
+                      wrapperStyle={{ paddingBottom: '20px' }}
+                    />
+                    <Pie
+                      data={getStatusData()}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      label
+                    >
+                      {getStatusData().map((entry, index) => (
+                        <Cell key={entry.name} fill={COLORS[index]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </Box>
+            </Paper>
+          </>
+        )}
       </Box>
+
+      {/* Issues Table */}
+      <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>
+        <Typography variant="h6" sx={{ p: 2, borderBottom: '1px solid #eee' }}>
+          Issues {!loading && `(${getFilteredIssues().length})`}
+        </Typography>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Title</TableCell>
+                <TableCell>Assignee</TableCell>
+                <TableCell>App</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Created</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                    <CircularProgress size={40} />
+                  </TableCell>
+                </TableRow>
+              ) : (
+                getFilteredIssues().map(issue => {
+                  const assignees = getAssigneeInfo(issue.idMembers);
+                  
+                  return (
+                    <TableRow 
+                      key={issue.id}
+                      onClick={() => handleCardClick(issue)}
+                      sx={{
+                        cursor: 'pointer',
+                        '&:hover': {
+                          backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                        }
+                      }}
+                    >
+                      <TableCell sx={{ color: 'primary.main', fontWeight: 500 }}>
+                        {issue.name}
+                      </TableCell>
+                      <TableCell>
+                        {assignees.length > 0 ? (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <AvatarGroup 
+                              max={3}
+                              sx={{
+                                '& .MuiAvatar-root': {
+                                  width: 28,
+                                  height: 28,
+                                  fontSize: '0.875rem',
+                                  border: '2px solid #fff'
+                                }
+                              }}
+                            >
+                              {assignees.map((assignee, index) => (
+                                <Tooltip key={index} title={assignee.name}>
+                                  <Avatar
+                                    src={assignee.avatarUrl}
+                                    alt={assignee.name}
+                                    sx={{
+                                      bgcolor: !assignee.avatarUrl ? `hsl(${(index * 60) % 360}, 70%, 50%)` : undefined
+                                    }}
+                                  >
+                                    {getAssigneeInitials(assignee.name)}
+                                  </Avatar>
+                                </Tooltip>
+                              ))}
+                            </AvatarGroup>
+                            <Typography variant="body2" color="text.secondary">
+                              {assignees.length === 1 
+                                ? assignees[0].name 
+                                : `${assignees[0].name} +${assignees.length - 1}`
+                              }
+                            </Typography>
+                          </Box>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            Unassigned
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {getAppFromLabels(issue.labels).split(', ').map((app, index) => (
+                            <Chip
+                              key={index}
+                              label={app}
+                              size="small"
+                              sx={{
+                                backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                                color: 'text.primary',
+                                fontWeight: 500,
+                                '&:not(:last-child)': {
+                                  marginRight: 0.5
+                                }
+                              }}
+                            />
+                          ))}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={issue.status}
+                          sx={{
+                            backgroundColor: STATUS_COLORS[issue.status],
+                            color: '#000',
+                            fontWeight: 500
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {new Date(issue.dateLastActivity).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+
+      {/* Card Detail Modal */}
+      {selectedCard && (
+        <CardDetailModal 
+          open={isModalOpen}
+          onClose={handleCloseModal}
+          card={selectedCard}
+        />
+      )}
     </Box>
   );
 };
