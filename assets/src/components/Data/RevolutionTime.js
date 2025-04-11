@@ -360,7 +360,7 @@ const ResolutionTimeList = () => {
             {/* Filters Section */}
             <Paper 
                 sx={{ 
-                    p: 3, 
+                    p: { xs: 2, sm: 3 }, 
                     mb: 4,
                     background: 'rgba(255, 255, 255, 0.5)',
                     backdropFilter: 'blur(8px)',
@@ -372,20 +372,21 @@ const ResolutionTimeList = () => {
                     display: 'flex', 
                     justifyContent: 'space-between', 
                     alignItems: 'center',
-                    mb: 3
+                    mb: { xs: 2, sm: 3 }
                 }}>
                     <Typography 
                         variant="h6" 
                         sx={{ 
                             color: '#1e293b',
-                            fontWeight: 600
+                            fontWeight: 600,
+                            fontSize: { xs: '1rem', sm: '1.25rem' }
                         }}
                     >
                         Filters
                     </Typography>
                 </Box>
-                <Grid container spacing={2} alignItems="center">
-                    <Grid item xs={12} sm={3}>
+                <Grid container spacing={{ xs: 1, sm: 2 }} alignItems="center">
+                    <Grid item xs={12} sm={6} md={3}>
                         <TextField
                             select 
                             fullWidth 
@@ -402,6 +403,9 @@ const ResolutionTimeList = () => {
                                 },
                                 '& .MuiInputLabel-root': {
                                     color: '#64748b'
+                                },
+                                '& .MuiSelect-select': {
+                                    fontSize: { xs: '0.875rem', sm: '1rem' }
                                 }
                             }}
                         >
@@ -411,7 +415,7 @@ const ResolutionTimeList = () => {
                             ))}
                         </TextField>
                     </Grid>
-                    <Grid item xs={12} sm={3}>
+                    <Grid item xs={12} sm={6} md={3}>
                         <TextField
                             select 
                             fullWidth 
@@ -428,6 +432,9 @@ const ResolutionTimeList = () => {
                                 },
                                 '& .MuiInputLabel-root': {
                                     color: '#64748b'
+                                },
+                                '& .MuiSelect-select': {
+                                    fontSize: { xs: '0.875rem', sm: '1rem' }
                                 }
                             }}
                         >
@@ -437,7 +444,7 @@ const ResolutionTimeList = () => {
                             ))}
                         </TextField>
                     </Grid>
-                    <Grid item xs={12} sm={2}>
+                    <Grid item xs={12} sm={6} md={2}>
                         <TextField
                             type="date" 
                             label="From Date" 
@@ -455,11 +462,14 @@ const ResolutionTimeList = () => {
                                 },
                                 '& .MuiInputLabel-root': {
                                     color: '#64748b'
+                                },
+                                '& .MuiInputBase-input': {
+                                    fontSize: { xs: '0.875rem', sm: '1rem' }
                                 }
                             }}
                         />
                     </Grid>
-                    <Grid item xs={12} sm={2}>
+                    <Grid item xs={12} sm={6} md={2}>
                         <TextField
                             type="date" 
                             label="To Date" 
@@ -477,17 +487,21 @@ const ResolutionTimeList = () => {
                                 },
                                 '& .MuiInputLabel-root': {
                                     color: '#64748b'
+                                },
+                                '& .MuiInputBase-input': {
+                                    fontSize: { xs: '0.875rem', sm: '1rem' }
                                 }
                             }}
                         />
                     </Grid>
-                    <Grid item xs={12} sm={2}>
+                    <Grid item xs={12} sm={12} md={2}>
                         <Box sx={{ 
                             display: 'flex', 
                             gap: 1, 
                             height: '100%',
                             alignItems: 'center',
-                            justifyContent: 'flex-end'
+                            justifyContent: { xs: 'flex-start', sm: 'flex-end' },
+                            mt: { xs: 1, sm: 0 }
                         }}>
                             {chartFilter.field && (
                                 <Button 
@@ -502,6 +516,7 @@ const ResolutionTimeList = () => {
                                         borderColor: '#ef4444',
                                         color: '#ef4444',
                                         minWidth: '100px',
+                                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
                                         '&:hover': {
                                             borderColor: '#dc2626',
                                             backgroundColor: '#fef2f2'
@@ -522,6 +537,7 @@ const ResolutionTimeList = () => {
                                     py: 1,
                                     px: 2,
                                     minWidth: '120px',
+                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
                                     background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
                                     boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
                                     '&:hover': {
