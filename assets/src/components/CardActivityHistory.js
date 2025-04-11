@@ -8,7 +8,9 @@ import {
     Box,
     Stack,
     Link,
-    Paper
+    Paper,
+    Chip,
+    Divider
 } from "@mui/material";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -76,8 +78,10 @@ const CardActivityHistory = ({ actions }) => {
                                         justifyContent: "center",
                                         opacity: 0,
                                         transition: "opacity 0.2s",
-                                        borderRadius: 1
+                                        borderRadius: 1,
+                                        cursor: "pointer"
                                     }}
+                                    onClick={() => window.open(imageUrl, "_blank")}
                                 >
                                     <Typography
                                         variant="button"
@@ -86,7 +90,11 @@ const CardActivityHistory = ({ actions }) => {
                                             bgcolor: "rgba(0, 0, 0, 0.7)",
                                             px: 2,
                                             py: 1,
-                                            borderRadius: 1
+                                            borderRadius: 1,
+                                            cursor: "pointer",
+                                            "&:hover": {
+                                                bgcolor: "rgba(0, 0, 0, 0.8)"
+                                            }
                                         }}
                                     >
                                         View Full Size
@@ -104,7 +112,7 @@ const CardActivityHistory = ({ actions }) => {
                 if (listBefore && listAfter) {
                     return (
                         <Typography variant="body2" color="text.secondary">
-                            Moved card from <strong>{listBefore.name}</strong> to <strong>{listAfter.name}</strong>
+                            Moved to <strong>{listAfter.name}</strong>
                         </Typography>
                     );
                 }
@@ -120,7 +128,16 @@ const CardActivityHistory = ({ actions }) => {
                     }
                     return (
                         <Typography variant="body2" color="text.secondary">
-                            Updated due date to <strong>{format(new Date(card.due), "MMM d, yyyy")}</strong>
+                            Due date: <strong>{format(new Date(card.due), "MMM d, yyyy")}</strong>
+                        </Typography>
+                    );
+                }
+
+                // Due complete changes
+                if (old && old.dueComplete != null) {
+                    return (
+                        <Typography variant="body2" color="text.secondary">
+                            Marked as <strong>{card.dueComplete ? "complete" : "incomplete"}</strong>
                         </Typography>
                     );
                 }
@@ -143,28 +160,28 @@ const CardActivityHistory = ({ actions }) => {
             case "addMemberToCard":
                 return (
                     <Typography variant="body2" color="text.secondary">
-                        Added <strong>{action.member?.fullName}</strong> to card
+                        Added <strong>{action.member?.fullName}</strong>
                     </Typography>
                 );
 
             case "removeMemberFromCard":
                 return (
                     <Typography variant="body2" color="text.secondary">
-                        Removed <strong>{action.member?.fullName}</strong> from card
+                        Removed <strong>{action.member?.fullName}</strong>
                     </Typography>
                 );
 
             case "addAttachmentToCard":
                 return (
                     <Typography variant="body2" color="text.secondary">
-                        Added attachment: <strong>{action.data.attachment?.name}</strong>
+                        Added <strong>{action.data.attachment?.name}</strong>
                     </Typography>
                 );
 
             case "deleteAttachmentFromCard":
                 return (
                     <Typography variant="body2" color="text.secondary">
-                        Removed attachment: <strong>{action.data.attachment?.name}</strong>
+                        Removed <strong>{action.data.attachment?.name}</strong>
                     </Typography>
                 );
 
@@ -178,7 +195,7 @@ const CardActivityHistory = ({ actions }) => {
             case "createCard":
                 return (
                     <Typography variant="body2" color="text.secondary">
-                        Created this card
+                        Created card
                     </Typography>
                 );
 
@@ -193,7 +210,7 @@ const CardActivityHistory = ({ actions }) => {
 
     return (
         <Stack spacing={2}>
-            {actions.map((action) => (
+            {actions.map((action, index) => (
                 <Box
                     key={action.id}
                     sx={{
@@ -202,31 +219,105 @@ const CardActivityHistory = ({ actions }) => {
                         p: 2,
                         borderRadius: 1,
                         bgcolor: "background.paper",
+                        position: "relative",
+                        transition: "all 0.2s ease-in-out",
                         "&:hover": {
-                            bgcolor: "action.hover"
+                            bgcolor: "action.hover",
+                            transform: "translateX(4px)",
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+                        },
+                        "&::before": {
+                            content: '""',
+                            position: "absolute",
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: "4px",
+                            bgcolor: getActionColor(action.type),
+                            borderTopLeftRadius: "4px",
+                            borderBottomLeftRadius: "4px"
                         }
                     }}
                 >
                     <Avatar
                         src={action.memberCreator?.avatarUrl}
                         alt={action.memberCreator?.fullName}
-                        sx={{ width: 32, height: 32 }}
+                        sx={{ 
+                            width: 32, 
+                            height: 32,
+                            border: "2px solid white",
+                            boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                        }}
                     />
                     <Box sx={{ flex: 1 }}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-                            <Typography variant="subtitle2">
+                        <Box sx={{ 
+                            display: "flex", 
+                            alignItems: "center", 
+                            gap: 1, 
+                            mb: 0.5,
+                            flexWrap: "wrap"
+                        }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                                 {action.memberCreator?.fullName}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
+                            <Typography variant="caption" color="text.secondary" sx={{ 
+                                bgcolor: "rgba(0,0,0,0.05)",
+                                px: 1,
+                                py: 0.5,
+                                borderRadius: 1
+                            }}>
                                 {formatDistanceToNow(new Date(action.date), { addSuffix: true })}
                             </Typography>
+                            {action.appCreator && (
+                                <Chip
+                                    size="small"
+                                    label={action.appCreator.name}
+                                    sx={{ 
+                                        ml: 1,
+                                        bgcolor: "rgba(0,0,0,0.05)",
+                                        "& .MuiChip-label": {
+                                            fontSize: "0.75rem"
+                                        }
+                                    }}
+                                />
+                            )}
                         </Box>
-                        {renderContent(action)}
+                        <Box sx={{ 
+                            mt: 1,
+                            "& strong": {
+                                color: "primary.main"
+                            }
+                        }}>
+                            {renderContent(action)}
+                        </Box>
                     </Box>
                 </Box>
             ))}
         </Stack>
     );
+};
+
+const getActionColor = (type) => {
+    switch (type) {
+        case "commentCard":
+            return "#4CAF50";
+        case "updateCard":
+            return "#2196F3";
+        case "addMemberToCard":
+            return "#9C27B0";
+        case "removeMemberFromCard":
+            return "#F44336";
+        case "addAttachmentToCard":
+            return "#FF9800";
+        case "deleteAttachmentFromCard":
+            return "#E91E63";
+        case "addChecklistToCard":
+            return "#00BCD4";
+        case "createCard":
+            return "#8BC34A";
+        default:
+            return "#607D8B";
+    }
 };
 
 export default CardActivityHistory;

@@ -29,7 +29,6 @@ import members from '../data/members.json';
 import lists from '../data/listsId.json';
 import labels from '../data/labels.json';
 import CardActivityHistory from './CardActivityHistory';
-import TimeToDoneBox from "./TimeToDoneBox";
 import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from '../firebase/firebase';
 import { calculateResolutionTime } from '../utils/resolutionTime';
@@ -118,21 +117,21 @@ const CardDetailModal = ({ open, onClose, card }) => {
     const extractLinksFromDescription = useCallback((desc) => {
         if (!desc) return { shopUrl: '', crispUrl: '' };
         
-        const shopUrlPattern = /Shop URL:\s*(https?:\/\/[^\s\n]+)/i;
-        const crispUrlPattern = /Crisp chat URL:\s*(https?:\/\/[^\s\n]+)/i;
+        // Updated patterns to be more flexible
+        const shopUrlPattern = /(shop url|shop|store url|store):\s*(https?:\/\/[^\s\n]+)/i;
+        const crispUrlPattern = /(crisp chat url|crisp url|chat url|chat):\s*(https?:\/\/[^\s\n]+)/i;
         
         const shopMatch = desc.match(shopUrlPattern);
         const crispMatch = desc.match(crispUrlPattern);
         
         return {
-            shopUrl: shopMatch ? shopMatch[1] : '',
-            crispUrl: crispMatch ? crispMatch[1] : ''
+            shopUrl: shopMatch ? shopMatch[2] : '',
+            crispUrl: crispMatch ? crispMatch[2] : ''
         };
     }, []);
 
-    const { shopUrl = '', crispUrl = '' } = useMemo(() => {
-        if (!safeCard?.desc) return { shopUrl: '', crispUrl: '' };
-        return extractLinksFromDescription(safeCard.desc);
+    const { shopUrl, crispUrl } = useMemo(() => {
+        return extractLinksFromDescription(safeCard?.desc);
     }, [safeCard?.desc, extractLinksFromDescription]);
 
     const handleNotionSearch = useCallback(async (query = notionQuery) => {
@@ -180,7 +179,25 @@ const CardDetailModal = ({ open, onClose, card }) => {
         };
 
         fetchActions();
-        const assigned = members.filter(m => card.idMembers.includes(m.id));
+        
+        // Update agents with full member data
+        const assigned = card.idMembers.map(id => {
+            const member = members.find(m => m.id === id);
+            if (!member) return null;
+            
+            // Ensure we have the correct avatar URL
+            const avatarUrl = member.avatarUrl || member.avatarHash ? 
+                `https://trello-members.s3.amazonaws.com/${member.id}/${member.avatarHash}/170.png` : 
+                null;
+            
+            return {
+                id: member.id,
+                fullName: member.fullName,
+                initials: member.initials,
+                avatarUrl: avatarUrl
+            };
+        }).filter(Boolean);
+        
         setAgents(assigned);
         setCurrentListId(card.idList);
 
@@ -208,7 +225,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
     const handleRemoveMember = (memberId) => {
         const member = agents.find(a => a.id === memberId);
         setConfirmAction({
-            message: `Xoá agent "${member.name}" khỏi card?`,
+            message: `Xoá agent "${member.fullName}" khỏi card?`,
             onConfirm: async () => {
                 await removeMemberByID(card.id, memberId);
                 setAgents(prev => prev.filter(a => a.id !== memberId));
@@ -220,7 +237,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
     const handleAddMember = () => {
         const member = members.find(m => m.id === newAgentId);
         setConfirmAction({
-            message: `Thêm agent "${member.name}" vào card?`,
+            message: `Thêm agent "${member.fullName}" vào card?`,
             onConfirm: async () => {
                 await addMemberByID(card.id, newAgentId);
                 setAgents(prev => [...prev, member]);
@@ -797,87 +814,94 @@ const CardDetailModal = ({ open, onClose, card }) => {
                         }}>
                             <Stack spacing={2.5} divider={<Divider sx={{ borderColor: 'rgba(0, 0, 0, 0.08)' }} />}>
                                 {/* Quick Links */}
-                                {(shopUrl || crispUrl) && renderSidebarField(
-                                    <LinkIcon fontSize="small" />,
-                                    'Quick Links',
-                                    <Stack spacing={1}>
-                                        {shopUrl && (
-                                            <Link
-                                                href={shopUrl}
-                                                target="_blank"
-                                                sx={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 1,
-                                                    color: 'primary.main',
-                                                    textDecoration: 'none',
-                                                    p: 1,
-                                                    borderRadius: 1,
-                                                    bgcolor: 'rgba(25, 118, 210, 0.08)',
-                                                    transition: 'all 0.2s',
-                                                    '&:hover': {
-                                                        bgcolor: 'rgba(25, 118, 210, 0.12)',
-                                                        transform: 'translateY(-1px)'
-                                                    }
-                                                }}
-                                            >
-                                                <Box component="span" sx={{ 
-                                                    width: 24,
-                                                    height: 24,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    borderRadius: '50%',
-                                                    bgcolor: 'primary.main',
-                                                    color: 'white',
-                                                    fontSize: '14px'
-                                                }}>
-                                                    🛒
-                                                </Box>
-                                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                                    View Shop
-                                                </Typography>
-                                            </Link>
-                                        )}
-                                        {crispUrl && (
-                                            <Link
-                                                href={crispUrl}
-                                                target="_blank"
-                                                sx={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 1,
-                                                    color: '#00B884',
-                                                    textDecoration: 'none',
-                                                    p: 1,
-                                                    borderRadius: 1,
-                                                    bgcolor: 'rgba(0, 184, 132, 0.08)',
-                                                    transition: 'all 0.2s',
-                                                    '&:hover': {
-                                                        bgcolor: 'rgba(0, 184, 132, 0.12)',
-                                                        transform: 'translateY(-1px)'
-                                                    }
-                                                }}
-                                            >
-                                                <Box component="span" sx={{ 
-                                                    width: 24,
-                                                    height: 24,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    borderRadius: '50%',
-                                                    bgcolor: '#00B884',
-                                                    color: 'white',
-                                                    fontSize: '14px'
-                                                }}>
-                                                    💬
-                                                </Box>
-                                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                                    View Chat
-                                                </Typography>
-                                            </Link>
-                                        )}
-                                    </Stack>
+                                {(shopUrl || crispUrl) && (
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                                            Quick Links
+                                        </Typography>
+                                        <Stack spacing={1}>
+                                            {shopUrl && (
+                                                <Link
+                                                    href={shopUrl}
+                                                    target="_blank"
+                                                    sx={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 1,
+                                                        color: 'primary.main',
+                                                        textDecoration: 'none',
+                                                        p: 1,
+                                                        borderRadius: 1,
+                                                        bgcolor: 'rgba(25, 118, 210, 0.08)',
+                                                        transition: 'all 0.2s',
+                                                        '&:hover': {
+                                                            bgcolor: 'rgba(25, 118, 210, 0.12)',
+                                                            transform: 'translateY(-1px)'
+                                                        }
+                                                    }}
+                                                >
+                                                    <Box component="span" sx={{ 
+                                                        width: 24,
+                                                        height: 24,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        borderRadius: '50%',
+                                                        bgcolor: 'primary.main',
+                                                        color: 'white',
+                                                        fontSize: '16px'
+                                                    }}>
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                                            <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 3c0 .55.45 1 1 1h1l3.6 7.59-1.35 2.44C4.52 15.37 5.48 17 7 17h11c.55 0 1-.45 1-1s-.45-1-1-1H7l1.1-2h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A.996.996 0 0020.01 4H5.21l-.67-1.43a.993.993 0 00-.9-.57H2c-.55 0-1 .45-1 1zm16 15c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
+                                                        </svg>
+                                                    </Box>
+                                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                                        View Shop
+                                                    </Typography>
+                                                </Link>
+                                            )}
+                                            {crispUrl && (
+                                                <Link
+                                                    href={crispUrl}
+                                                    target="_blank"
+                                                    sx={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 1,
+                                                        color: '#00B884',
+                                                        textDecoration: 'none',
+                                                        p: 1,
+                                                        borderRadius: 1,
+                                                        bgcolor: 'rgba(0, 184, 132, 0.08)',
+                                                        transition: 'all 0.2s',
+                                                        '&:hover': {
+                                                            bgcolor: 'rgba(0, 184, 132, 0.12)',
+                                                            transform: 'translateY(-1px)'
+                                                        }
+                                                    }}
+                                                >
+                                                    <Box component="span" sx={{ 
+                                                        width: 24,
+                                                        height: 24,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        borderRadius: '50%',
+                                                        bgcolor: '#00B884',
+                                                        color: 'white',
+                                                        fontSize: '16px'
+                                                    }}>
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                                            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12zM7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/>
+                                                        </svg>
+                                                    </Box>
+                                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                                        View Chat
+                                                    </Typography>
+                                                </Link>
+                                            )}
+                                        </Stack>
+                                    </Box>
                                 )}
 
                                 {/* Status */}
@@ -912,32 +936,153 @@ const CardDetailModal = ({ open, onClose, card }) => {
                                     <PersonIcon fontSize="small" />,
                                     'Assignees',
                                     <Stack spacing={1}>
-                                        <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
                                             {agents.map(agent => (
                                                 <Chip
                                                     key={agent.id}
-                                                    label={agent.name}
+                                                    label={agent.fullName}
                                                     size="small"
                                                     onDelete={() => handleRemoveMember(agent.id)}
+                                                    avatar={
+                                                        <Avatar
+                                                            src={agent.avatarUrl}
+                                                            alt={agent.initials}
+                                                            sx={{ 
+                                                                width: 24, 
+                                                                height: 24,
+                                                                bgcolor: '#1976d2',
+                                                                fontSize: '0.75rem',
+                                                                fontWeight: 500
+                                                            }}
+                                                        >
+                                                            {agent.initials}
+                                                        </Avatar>
+                                                    }
+                                                    sx={{
+                                                        height: '28px',
+                                                        backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                                                        color: '#1976d2',
+                                                        fontWeight: 500,
+                                                        fontSize: '0.95rem',
+                                                        border: '1px solid rgba(25, 118, 210, 0.1)',
+                                                        '& .MuiChip-label': {
+                                                            fontSize: '0.95rem',
+                                                            lineHeight: 1.2
+                                                        },
+                                                        '& .MuiChip-deleteIcon': {
+                                                            color: '#1976d2',
+                                                            width: '16px',
+                                                            height: '16px',
+                                                            margin: '0 4px 0 -6px',
+                                                            '&:hover': {
+                                                                color: '#d32f2f',
+                                                            }
+                                                        },
+                                                        '&:hover': {
+                                                            backgroundColor: 'rgba(25, 118, 210, 0.12)',
+                                                        }
+                                                    }}
                                                 />
                                             ))}
                                         </Stack>
                                         {availableAgents.length > 0 && (
-                                            <Select
-                                                size="small"
-                                                fullWidth
-                                                value={newAgentId}
-                                                onChange={(e) => setNewAgentId(e.target.value)}
-                                                displayEmpty
-                                                renderValue={(value) => value ? members.find(m => m.id === value)?.name : 'Add assignee'}
+                                            <Box
+                                                sx={{
+                                                    display: 'inline-flex',
+                                                    position: 'relative',
+                                                    height: '28px',
+                                                    mt: -0.5
+                                                }}
                                             >
-                                                {availableAgents.map(agent => (
-                                                    <MenuItem key={agent.id} value={agent.id}>{agent.name}</MenuItem>
-                                                ))}
-                                            </Select>
+                                                <Select
+                                                    size="small"
+                                                    value={newAgentId}
+                                                    onChange={(e) => {
+                                                        setNewAgentId(e.target.value);
+                                                        if (e.target.value) {
+                                                            handleAddMember();
+                                                        }
+                                                    }}
+                                                    displayEmpty
+                                                    variant="standard"
+                                                    sx={{
+                                                        '& .MuiSelect-select': {
+                                                            py: 0,
+                                                            px: 0,
+                                                            width: '28px',
+                                                            height: '28px',
+                                                            minHeight: '28px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            border: '1px solid rgba(0, 0, 0, 0.12)',
+                                                            borderRadius: '14px',
+                                                            bgcolor: '#ffffff',
+                                                            '&:hover': {
+                                                                bgcolor: 'rgba(0, 0, 0, 0.04)',
+                                                                borderColor: '#1976d2'
+                                                            }
+                                                        },
+                                                        '&:before, &:after': { display: 'none' }
+                                                    }}
+                                                    renderValue={() => (
+                                                        <Typography sx={{ 
+                                                            fontSize: '1.25rem',
+                                                            lineHeight: 1,
+                                                            color: 'rgba(0, 0, 0, 0.54)',
+                                                            fontWeight: 400
+                                                        }}>
+                                                            +
+                                                        </Typography>
+                                                    )}
+                                                >
+                                                    {availableAgents.map(agent => {
+                                                        const avatarUrl = agent.avatarUrl || agent.avatarHash ? 
+                                                            `https://trello-members.s3.amazonaws.com/${agent.id}/${agent.avatarHash}/170.png` : 
+                                                            null;
+                                                        
+                                                        return (
+                                                            <MenuItem 
+                                                                key={agent.id} 
+                                                                value={agent.id}
+                                                                sx={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: 1,
+                                                                    py: 1
+                                                                }}
+                                                            >
+                                                                <Avatar
+                                                                    src={avatarUrl}
+                                                                    alt={agent.initials}
+                                                                    sx={{ 
+                                                                        width: 24, 
+                                                                        height: 24,
+                                                                        bgcolor: '#1976d2',
+                                                                        fontSize: '0.75rem',
+                                                                        fontWeight: 500
+                                                                    }}
+                                                                >
+                                                                    {agent.initials}
+                                                                </Avatar>
+                                                                <Typography variant="body2" sx={{ 
+                                                                    fontSize: '0.95rem', 
+                                                                    fontWeight: 500,
+                                                                    color: 'text.primary'
+                                                                }}>
+                                                                    {agent.fullName}
+                                                                </Typography>
+                                                            </MenuItem>
+                                                        );
+                                                    })}
+                                                </Select>
+                                            </Box>
                                         )}
                                     </Stack>
                                 )}
+
+                                {/* Resolution Times */}
+                                {renderResolutionTimes()}
 
                                 {/* Labels */}
                                 {renderSidebarField(
@@ -978,12 +1123,12 @@ const CardDetailModal = ({ open, onClose, card }) => {
                                         </Stack>
                                         {availableLabels.length > 0 && (
                                             <Paper variant="outlined" sx={{ 
-                                                bgcolor: 'background.paper',
-                                                borderColor: 'divider',
+                                                bgcolor: '#ffffff',
+                                                borderColor: 'rgba(0, 0, 0, 0.12)',
                                                 borderStyle: 'dashed',
                                                 '&:hover': {
-                                                    borderColor: 'primary.main',
-                                                    bgcolor: 'action.hover'
+                                                    borderColor: '#1976d2',
+                                                    bgcolor: 'rgba(0, 0, 0, 0.04)'
                                                 }
                                             }}>
                                                 <Select
@@ -1013,7 +1158,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             gap: 1,
-                                                            color: value ? 'text.primary' : 'text.secondary',
+                                                            color: value ? '#1976d2' : 'rgba(0, 0, 0, 0.6)',
                                                             fontSize: '0.875rem'
                                                         }}>
                                                             <AddIcon fontSize="small" />
@@ -1054,9 +1199,6 @@ const CardDetailModal = ({ open, onClose, card }) => {
                                         )}
                                     </Stack>
                                 )}
-
-                                {/* Resolution Times */}
-                                {renderResolutionTimes()}
                             </Stack>
                         </Box>
                     </Box>

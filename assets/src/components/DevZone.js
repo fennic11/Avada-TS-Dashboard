@@ -12,17 +12,29 @@ import {
     Paper,
     Alert,
     Snackbar,
-    Autocomplete
+    Autocomplete,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    IconButton,
+    Chip,
+    Tooltip
 } from "@mui/material";
 import {
     getCardsByList,
     getActionsByCard,
-    getListsByBoardId
+    getListsByBoardId,
+    getMembers
 } from "../api/trelloApi";
 import { calculateResolutionTime } from "../utils/resolutionTime";
 import { postCards } from "../api/cardsApi";
 import { register } from "../api/usersApi";
 import members from "../data/members.json";
+import CloseIcon from '@mui/icons-material/Close';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { alpha } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -46,6 +58,13 @@ const DevZone = () => {
         message: "",
         severity: "success"
     });
+    const [selectedCard, setSelectedCard] = useState(null);
+    const [cardActions, setCardActions] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [cardIdInput, setCardIdInput] = useState('');
+    const [boardMembers, setBoardMembers] = useState(null);
+    const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
+    const theme = useTheme();
 
     // Tạo Set chứa các member ID hợp lệ
     const validMemberIds = new Set(members.map(m => m.id));
@@ -168,6 +187,116 @@ const DevZone = () => {
         setIsLoading(false);
     };
 
+    const handleCardClick = async (card) => {
+        try {
+            setSelectedCard(card);
+            const actions = await getActionsByCard(card.id);
+            setCardActions(actions);
+            setIsModalOpen(true);
+        } catch (error) {
+            console.error('Error fetching card actions:', error);
+        }
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setSelectedCard(null);
+        setCardActions(null);
+    };
+
+    const handleGetActions = async () => {
+        if (!cardIdInput.trim()) {
+            setSnackbar({
+                open: true,
+                message: "Vui lòng nhập Card ID",
+                severity: "warning"
+            });
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            const actions = await getActionsByCard(cardIdInput.trim());
+            setCardActions(actions);
+            setSelectedCard({ id: cardIdInput.trim(), name: "Custom Card" });
+            setIsModalOpen(true);
+        } catch (error) {
+            console.error('Error fetching card actions:', error);
+            setSnackbar({
+                open: true,
+                message: "Không thể lấy actions của card. Vui lòng kiểm tra lại ID.",
+                severity: "error"
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCopyJSON = () => {
+        if (cardActions) {
+            navigator.clipboard.writeText(JSON.stringify(cardActions, null, 2))
+                .then(() => {
+                    setSnackbar({
+                        open: true,
+                        message: "Đã sao chép JSON vào clipboard",
+                        severity: "success"
+                    });
+                })
+                .catch(err => {
+                    console.error('Failed to copy:', err);
+                    setSnackbar({
+                        open: true,
+                        message: "Không thể sao chép JSON",
+                        severity: "error"
+                    });
+                });
+        }
+    };
+
+    const handleGetBoardMembers = async () => {
+        try {
+            setIsLoading(true);
+            const members = await getMembers();
+            setBoardMembers(members);
+            setIsMembersModalOpen(true);
+        } catch (error) {
+            console.error('Error fetching board members:', error);
+            setSnackbar({
+                open: true,
+                message: "Không thể lấy danh sách members. Vui lòng thử lại.",
+                severity: "error"
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCloseMembersModal = () => {
+        setIsMembersModalOpen(false);
+        setBoardMembers(null);
+    };
+
+    const handleCopyMembersJSON = () => {
+        if (boardMembers) {
+            navigator.clipboard.writeText(JSON.stringify(boardMembers, null, 2))
+                .then(() => {
+                    setSnackbar({
+                        open: true,
+                        message: "Đã sao chép JSON vào clipboard",
+                        severity: "success"
+                    });
+                })
+                .catch(err => {
+                    console.error('Failed to copy:', err);
+                    setSnackbar({
+                        open: true,
+                        message: "Không thể sao chép JSON",
+                        severity: "error"
+                    });
+                });
+        }
+    };
+
     return (
         <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -202,6 +331,51 @@ const DevZone = () => {
                             Tính Resolution Time và Gửi lên API
                         </Button>
                     </Box>
+                </Paper>
+
+                {/* Phần lấy actions theo ID */}
+                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
+                        Lấy Actions theo Card ID
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                        <TextField
+                            label="Card ID"
+                            value={cardIdInput}
+                            onChange={(e) => setCardIdInput(e.target.value)}
+                            fullWidth
+                            placeholder="Nhập ID của card"
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
+                        />
+                        <Button 
+                            variant="contained" 
+                            onClick={handleGetActions}
+                            disabled={isLoading}
+                            sx={{ 
+                                minWidth: 120,
+                                height: '56px',
+                                borderRadius: 1
+                            }}
+                        >
+                            Lấy Actions
+                        </Button>
+                    </Box>
+                    {cardActions && (
+                        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body2" color="text.secondary">
+                                Số lượng actions:
+                            </Typography>
+                            <Chip 
+                                label={cardActions.length} 
+                                size="small"
+                                sx={{ 
+                                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                    color: 'primary.main',
+                                    fontWeight: 500
+                                }}
+                            />
+                        </Box>
+                    )}
                 </Paper>
 
                 {/* Phần đăng ký tài khoản */}
@@ -287,6 +461,26 @@ const DevZone = () => {
                     </Box>
                 </Paper>
 
+                {/* Phần lấy board members */}
+                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
+                        Lấy Board Members
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                        <Button 
+                            variant="contained" 
+                            onClick={handleGetBoardMembers}
+                            disabled={isLoading}
+                            sx={{ 
+                                minWidth: 200,
+                                borderRadius: 1
+                            }}
+                        >
+                            Lấy Board Members
+                        </Button>
+                    </Box>
+                </Paper>
+
                 {isLoading && (
                     <Box sx={{ mt: 2 }}>
                         <Typography sx={{ mb: 1 }}>{log}</Typography>
@@ -309,6 +503,165 @@ const DevZone = () => {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
+
+            {/* Actions Modal */}
+            <Dialog
+                open={isModalOpen}
+                onClose={handleCloseModal}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center' 
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Typography variant="h6">
+                                Card Actions
+                            </Typography>
+                            {cardActions && (
+                                <Chip 
+                                    label={`${cardActions.length} actions`}
+                                    size="small"
+                                    sx={{ 
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                        color: 'primary.main',
+                                        fontWeight: 500
+                                    }}
+                                />
+                            )}
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {cardActions && (
+                                <Tooltip title="Copy JSON">
+                                    <IconButton 
+                                        onClick={handleCopyJSON}
+                                        sx={{ 
+                                            color: 'primary.main',
+                                            '&:hover': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                                            }
+                                        }}
+                                    >
+                                        <ContentCopyIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                            <IconButton onClick={handleCloseModal}>
+                                <CloseIcon />
+                            </IconButton>
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    {selectedCard && (
+                        <Box sx={{ mb: 2 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                                Card: {selectedCard.name}
+                            </Typography>
+                        </Box>
+                    )}
+                    {cardActions && (
+                        <Paper 
+                            sx={{ 
+                                p: 2, 
+                                backgroundColor: '#f5f5f5',
+                                maxHeight: '60vh',
+                                overflow: 'auto'
+                            }}
+                        >
+                            <pre style={{ 
+                                margin: 0,
+                                whiteSpace: 'pre-wrap',
+                                wordWrap: 'break-word'
+                            }}>
+                                {JSON.stringify(cardActions, null, 2)}
+                            </pre>
+                        </Paper>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseModal}>Close</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Board Members Modal */}
+            <Dialog
+                open={isMembersModalOpen}
+                onClose={handleCloseMembersModal}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center' 
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Typography variant="h6">
+                                Board Members
+                            </Typography>
+                            {boardMembers && (
+                                <Chip 
+                                    label={`${boardMembers.length} members`}
+                                    size="small"
+                                    sx={{ 
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                        color: 'primary.main',
+                                        fontWeight: 500
+                                    }}
+                                />
+                            )}
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {boardMembers && (
+                                <Tooltip title="Copy JSON">
+                                    <IconButton 
+                                        onClick={handleCopyMembersJSON}
+                                        sx={{ 
+                                            color: 'primary.main',
+                                            '&:hover': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                                            }
+                                        }}
+                                    >
+                                        <ContentCopyIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                            <IconButton onClick={handleCloseMembersModal}>
+                                <CloseIcon />
+                            </IconButton>
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    {boardMembers && (
+                        <Paper 
+                            sx={{ 
+                                p: 2, 
+                                backgroundColor: '#f5f5f5',
+                                maxHeight: '60vh',
+                                overflow: 'auto'
+                            }}
+                        >
+                            <pre style={{ 
+                                margin: 0,
+                                whiteSpace: 'pre-wrap',
+                                wordWrap: 'break-word'
+                            }}>
+                                {JSON.stringify(boardMembers, null, 2)}
+                            </pre>
+                        </Paper>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseMembersModal}>Close</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

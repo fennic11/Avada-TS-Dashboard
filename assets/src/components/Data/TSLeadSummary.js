@@ -3,10 +3,11 @@ import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
     Typography, Link, Grid, Button, Box, Chip, TextField,
     FormControl, InputLabel, Select, MenuItem, Checkbox, ListItemText,
-    useTheme, alpha
+    useTheme, alpha, Tabs, Tab, CircularProgress, Backdrop
 } from '@mui/material';
 import {
-    PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer
+    PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
+    BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from 'recharts';
 import { getCardsByList } from '../../api/trelloApi';
 import members from '../../data/members.json';
@@ -24,55 +25,79 @@ const TSLeadSummary = () => {
     const [sortByDueAsc, setSortByDueAsc] = useState(true);
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
+    const [selectedTab, setSelectedTab] = useState(0);
+    const [loading, setLoading] = useState(false);
 
-    const defaultList = listsId.find(list => list.name === 'New Issues');
-    const [selectedListIds, setSelectedListIds] = useState(defaultList ? [defaultList.id] : []);
+    const tabLabels = [
+        { 
+            label: 'Doing', 
+            listNames: ['New Issues', 'Doing (Inshift)'] 
+        },
+        { 
+            label: 'Speed up', 
+            listNames: ['Speed up'] 
+        },
+        { 
+            label: 'Waiting Confirmation', 
+            listNames: ["Waiting for Customer's Confirmation (SLA: 2 days)"] 
+        },
+        { 
+            label: 'Waiting Permission', 
+            listNames: ['Update workflow required or Waiting for access (SLA: 2 days)'] 
+        },
+        { 
+            label: 'Done', 
+            listNames: ['Done'] 
+        }
+    ];
 
-    const getAppLabel = (labels) => {
-        const appLabel = labels.find(label => label.name?.startsWith('App:'));
-        return appLabel ? appLabel.name.replace('App:', '').trim() : 'Unknown';
+    const handleTabChange = async (event, newValue) => {
+        setSelectedTab(newValue);
+        await fetchTabData(newValue);
     };
 
-    const getAgentName = (idMembers) => {
-        if (!idMembers || idMembers.length === 0) return '—';
-        const member = members.find(m => idMembers.includes(m.id));
-        return member ? member.name : '—';
-    };
-
-    const getOverdueColor = (daysOverdue) => {
-        if (!daysOverdue) return 'inherit';
-        const alpha = Math.min(0.2 + daysOverdue * 0.1, 1);
-        return `rgba(255, 0, 0, ${alpha})`;
-    };
-
-    const getOverdueDays = (dueDate) => {
-        if (!dueDate) return null;
-        const diff = differenceInDays(new Date(), parseISO(dueDate));
-        return diff > 0 ? diff : null;
-    };
-
-    const fetchCards = useCallback(async () => {
+    const fetchTabData = useCallback(async (tabIndex) => {
         try {
-            const allCards = [];
-            for (const list of listsId.filter(l => selectedListIds.includes(l.id))) {
-                const cardsInList = await getCardsByList(list.id);
-                const cardsWithListName = cardsInList.map(card => ({
-                    ...card,
-                    listName: list.name
-                }));
-                allCards.push(...cardsWithListName);
-            }
-            setCards(allCards);
+            setLoading(true);
+            
+            // Get lists for this tab
+            const tabLists = listsId.filter(list => 
+                tabLabels[tabIndex].listNames.includes(list.name)
+            );
+
+            // Fetch cards for these lists
+            const fetchPromises = tabLists.map(list => 
+                getCardsByList(list.id).then(cardsInList => 
+                    cardsInList.map(card => ({
+                        ...card,
+                        listName: list.name
+                    }))
+                )
+            );
+
+            const results = await Promise.all(fetchPromises);
+            const tabCards = results.flat();
+
+            setCards(tabCards);
             setFilter({ type: null, value: null });
         } catch (error) {
-            console.error('Error fetching cards:', error);
+            console.error('Error fetching tab data:', error);
+        } finally {
+            setLoading(false);
         }
-    }, [selectedListIds]);
+    }, []);
 
+    // Fetch initial tab data
     useEffect(() => {
-        fetchCards();
-    }, [fetchCards]);
+        fetchTabData(0);
+    }, [fetchTabData]);
 
+    // Get TS members
+    const tsMembers = useMemo(() => {
+        return members.filter(member => member.role === 'TS');
+    }, []);
+
+    // Memoize filtered cards to prevent unnecessary recalculations
     const filteredCards = useMemo(() => {
         return cards
             .filter(card => {
@@ -114,73 +139,93 @@ const TSLeadSummary = () => {
             });
     }, [cards, filter, startDate, endDate, sortByDueAsc]);
 
-    const appStats = useMemo(() => {
-        const appCount = {};
-        filteredCards.forEach(card => {
-            const app = getAppLabel(card.labels || []);
-            appCount[app] = (appCount[app] || 0) + 1;
-        });
-        return Object.entries(appCount).map(([name, value]) => ({ name, value }));
-    }, [filteredCards]);
+    // Memoized data for charts
+    const chartsData = useMemo(() => {
+        // Count total cards per TS member
+        const memberTotals = {};
+        const memberListTotals = {};
+        const memberCompletedTotals = {};
 
-    const memberStats = useMemo(() => {
-        const memberCount = {};
-        filteredCards.forEach(card => {
-            card.idMembers.forEach(id => {
-                const member = members.find(m => m.id === id);
-                if (member) {
-                    memberCount[member.name] = (memberCount[member.name] || 0) + 1;
+        cards.forEach(card => {
+            card.idMembers.forEach(memberId => {
+                const member = tsMembers.find(m => m.id === memberId);
+                if (!member) return; // Skip if not a TS member
+
+                // Update total cards per member
+                memberTotals[member.fullName] = (memberTotals[member.fullName] || 0) + 1;
+
+                // Update completed cards count
+                if (card.dueComplete) {
+                    memberCompletedTotals[member.fullName] = (memberCompletedTotals[member.fullName] || 0) + 1;
                 }
+
+                // Update cards per member per list
+                if (!memberListTotals[member.fullName]) {
+                    memberListTotals[member.fullName] = {};
+                }
+                const listName = listsId.find(l => l.id === card.idList)?.name || 'Unknown';
+                memberListTotals[member.fullName][listName] = (memberListTotals[member.fullName][listName] || 0) + 1;
             });
         });
-        return Object.entries(memberCount).map(([name, value]) => ({ name, value }));
-    }, [filteredCards]);
+
+        // Format data for pie chart
+        const pieData = Object.entries(memberTotals).map(([name, value]) => ({
+            name,
+            value
+        }));
+
+        // Format data for bar chart
+        const uniqueLists = [...new Set(cards.map(card => 
+            listsId.find(l => l.id === card.idList)?.name || 'Unknown'
+        ))];
+
+        const barData = Object.entries(memberTotals).map(([name]) => ({
+            name,
+            'Total Issues': memberTotals[name] || 0,
+            'Done Issues': memberCompletedTotals[name] || 0,
+            ...uniqueLists.reduce((acc, listName) => ({
+                ...acc,
+                [listName]: memberListTotals[name]?.[listName] || 0
+            }), {})
+        }));
+
+        return {
+            pieData,
+            barData,
+            uniqueLists
+        };
+    }, [cards, tsMembers]);
+
+    const getAppLabel = (labels) => {
+        const appLabel = labels.find(label => label.name?.startsWith('App:'));
+        return appLabel ? appLabel.name.replace('App:', '').trim() : 'Unknown';
+    };
+
+    const getAgentName = (idMembers) => {
+        if (!idMembers || idMembers.length === 0) return '—';
+        const memberNames = idMembers
+            .map(id => {
+                const member = members.find(m => m.id === id);
+                return member ? member.fullName : null;
+            })
+            .filter(name => name !== null);
+        return memberNames.length > 0 ? memberNames.join(', ') : '—';
+    };
+
+    const getOverdueColor = (daysOverdue) => {
+        if (!daysOverdue) return 'inherit';
+        const alpha = Math.min(0.2 + daysOverdue * 0.1, 1);
+        return `rgba(255, 0, 0, ${alpha})`;
+    };
+
+    const getOverdueDays = (dueDate) => {
+        if (!dueDate) return null;
+        const diff = differenceInDays(new Date(), parseISO(dueDate));
+        return diff > 0 ? diff : null;
+    };
 
     const handleTaskClick = (card) => {
-        console.log('Original card:', card);
-        
-        // Transform card data to match CardDetailModal's expected format
-        const transformedCard = {
-            ...card,
-            name: card.name || '',
-            desc: card.desc || '',
-            idMembers: card.idMembers || [],
-            idList: card.idList || '',
-            labels: card.labels || [],
-            due: card.due || null,
-            shortUrl: card.shortUrl || '',
-            badges: card.badges || {},
-            dateLastActivity: card.dateLastActivity || new Date().toISOString(),
-            idBoard: card.idBoard || '',
-            idShort: card.idShort || '',
-            url: card.url || '',
-            section: {
-                id: card.idList || '',
-                name: card.listName || 'Unknown'
-            },
-            // Add default values for other required properties
-            customer: card.desc?.split('\n')[0] || '',
-            ticketId: card.shortUrl?.split('/').pop() || '',
-            priority: card.labels?.find(label => label.name?.toLowerCase().includes('priority'))?.name || 'No priority',
-            completed: card.dueComplete || false,
-            agents: (card.idMembers || []).map(memberId => {
-                const member = members.find(m => m.id === memberId);
-                return member ? {
-                    id: member.id,
-                    name: member.name,
-                    username: member.username
-                } : null;
-            }).filter(Boolean),
-            comments: card.badges?.comments || 0,
-            activityLogs: [],
-            notionResults: [],
-            resolutionTime: null,
-            TSResolutionTime: null,
-            firstActionTime: null
-        };
-        
-        console.log('Transformed card:', transformedCard);
-        setSelectedCard(transformedCard);
+        setSelectedCard(card);
     };
 
     return (
@@ -217,7 +262,7 @@ const TSLeadSummary = () => {
                 <Box>
                     <Button 
                         variant="outlined" 
-                        onClick={fetchCards} 
+                        onClick={() => fetchTabData(selectedTab)} 
                         sx={{ 
                             mr: 1,
                             borderRadius: 2,
@@ -247,42 +292,39 @@ const TSLeadSummary = () => {
                 </Box>
             </Box>
 
-            <FormControl fullWidth sx={{ 
-                mb: 3,
-                '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    background: 'white',
-                    boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'primary.main',
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'primary.main',
-                        borderWidth: 2,
-                    }
-                }
-            }}>
-                <InputLabel id="list-select-label" shrink>
-                    🗂&nbsp;Lists
-                </InputLabel>
-                <Select
-                    labelId="list-select-label"
-                    multiple
-                    value={selectedListIds}
-                    onChange={(e) => setSelectedListIds(e.target.value)}
-                    notched
-                    renderValue={(selected) =>
-                        selected.map(id => listsId.find(l => l.id === id)?.name).join(', ')
-                    }
+            <Paper sx={{ mb: 3, borderRadius: 2, overflow: 'hidden' }}>
+                <Tabs
+                    value={selectedTab}
+                    onChange={handleTabChange}
+                    variant="scrollable"
+                    scrollButtons="auto"
+                    sx={{
+                        '& .MuiTab-root': {
+                            textTransform: 'none',
+                            fontWeight: 500,
+                            minWidth: 'auto',
+                            px: 3,
+                            py: 1.5,
+                        },
+                        '& .MuiTabs-indicator': {
+                            height: 3,
+                        }
+                    }}
                 >
-                    {listsId.map((list) => (
-                        <MenuItem key={list.id} value={list.id}>
-                            <Checkbox checked={selectedListIds.includes(list.id)} />
-                            <ListItemText primary={list.name} />
-                        </MenuItem>
+                    {tabLabels.map((tab, index) => (
+                        <Tab 
+                            key={index} 
+                            label={tab.label} 
+                            sx={{
+                                '&.Mui-selected': {
+                                    color: 'primary.main',
+                                    fontWeight: 600,
+                                }
+                            }}
+                        />
                     ))}
-                </Select>
-            </FormControl>
+                </Tabs>
+            </Paper>
 
             <Grid container spacing={2} sx={{ mb: 2 }}>
                 <Grid item xs={6} md={3}>
@@ -378,197 +420,252 @@ const TSLeadSummary = () => {
                 </Box>
             )}
 
-            <Grid container spacing={3}>
+            {/* Charts Section */}
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+                {/* Pie Chart */}
                 <Grid item xs={12} md={6}>
-                    <TableContainer 
-                        component={Paper} 
-                        sx={{ 
-                            borderRadius: 3,
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                            overflow: 'hidden',
-                            background: 'white',
-                            '& .MuiTableCell-root': {
-                                py: 2,
-                                px: 3,
-                            }
-                        }}
-                    >
-                        <Table>
-                            <TableHead>
-                                <TableRow sx={{ 
-                                    background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.primary.main, 0.05)} 100%)`,
-                                    '& .MuiTableCell-root': {
-                                        fontWeight: 600,
-                                        color: 'primary.main',
-                                        fontSize: '1rem',
-                                    }
-                                }}>
-                                    <TableCell><b>#</b></TableCell>
-                                    <TableCell><b>Tên Card</b></TableCell>
-                                    <TableCell><b>Agent</b></TableCell>
-                                    <TableCell><b>App</b></TableCell>
-                                    <TableCell
-                                        sx={{ 
-                                            cursor: 'pointer',
-                                            '&:hover': {
-                                                color: 'primary.main',
-                                            }
-                                        }}
-                                        onClick={() => setSortByDueAsc(prev => !prev)}
-                                    >
-                                        <b>Due Date {sortByDueAsc ? '▲' : '▼'}</b>
-                                    </TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {filteredCards.map((card, index) => {
-                                    const dueDate = card.due ? new Date(card.due) : null;
-                                    const dueColor = getOverdueColor(getOverdueDays(card.due));
+                    <Paper sx={{ 
+                        p: 3, 
+                        borderRadius: 2,
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                        height: '400px'
+                    }}>
+                        <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+                            Total Cards per TS Member
+                        </Typography>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Legend 
+                                    verticalAlign="top" 
+                                    align="center"
+                                    height={36}
+                                />
+                                <Pie
+                                    data={chartsData.pieData}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    cx="50%"
+                                    cy="50%"
+                                    outerRadius={120}
+                                    fill="#8884d8"
+                                    label={(entry) => `${entry.name}: ${entry.value}`}
+                                >
+                                    {chartsData.pieData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </Paper>
+                </Grid>
 
-                                    return (
-                                        <TableRow 
-                                            key={card.id} 
-                                            hover 
-                                            sx={{ 
-                                                backgroundColor: dueColor,
-                                                transition: 'all 0.2s ease',
+                {/* Bar Chart */}
+                <Grid item xs={12} md={6}>
+                    <Paper sx={{ 
+                        p: 3, 
+                        borderRadius: 2,
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                        height: '400px'
+                    }}>
+                        <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+                            Cards per TS Member per List
+                        </Typography>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartsData.barData}>
+                                <Legend 
+                                    verticalAlign="top" 
+                                    align="center"
+                                    height={36}
+                                />
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} />
+                                <YAxis />
+                                <Tooltip />
+                                <Bar 
+                                    dataKey="Total Issues" 
+                                    fill="#8884d8"
+                                    name="Total Issues"
+                                />
+                                <Bar 
+                                    dataKey="Done Issues" 
+                                    fill="#82ca9d"
+                                    name="Done Issues"
+                                />
+                                {chartsData.uniqueLists.map((list, index) => (
+                                    <Bar 
+                                        key={list} 
+                                        dataKey={list} 
+                                        stackId="a" 
+                                        fill={COLORS[index % COLORS.length]} 
+                                    />
+                                ))}
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </Paper>
+                </Grid>
+            </Grid>
+
+            <TableContainer 
+                component={Paper} 
+                sx={{ 
+                    borderRadius: 3,
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                    overflow: 'hidden',
+                    background: 'white',
+                    '& .MuiTableCell-root': {
+                        py: 2,
+                        px: 3,
+                    }
+                }}
+            >
+                <Table>
+                    <TableHead>
+                        <TableRow sx={{ 
+                            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.primary.main, 0.05)} 100%)`,
+                            '& .MuiTableCell-root': {
+                                fontWeight: 600,
+                                color: 'primary.main',
+                                fontSize: '1rem',
+                            }
+                        }}>
+                            <TableCell><b>#</b></TableCell>
+                            <TableCell><b>Tên Card</b></TableCell>
+                            <TableCell><b>Agent</b></TableCell>
+                            <TableCell><b>App</b></TableCell>
+                            <TableCell><b>List</b></TableCell>
+                            <TableCell><b>Status</b></TableCell>
+                            <TableCell
+                                sx={{ 
+                                    cursor: 'pointer',
+                                    '&:hover': {
+                                        color: 'primary.main',
+                                    }
+                                }}
+                                onClick={() => setSortByDueAsc(prev => !prev)}
+                            >
+                                <b>Due Date {sortByDueAsc ? '▲' : '▼'}</b>
+                            </TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {filteredCards.map((card, index) => {
+                            const dueDate = card.due ? new Date(card.due) : null;
+                            const dueColor = getOverdueColor(getOverdueDays(card.due));
+
+                            return (
+                                <TableRow 
+                                    key={card.id} 
+                                    hover 
+                                    sx={{ 
+                                        backgroundColor: dueColor,
+                                        transition: 'all 0.2s ease',
+                                        '&:hover': {
+                                            transform: 'scale(1.01)',
+                                        }
+                                    }}
+                                >
+                                    <TableCell>{index + 1}</TableCell>
+                                    <TableCell>
+                                        <Link
+                                            component="button"
+                                            onClick={() => handleTaskClick(card)}
+                                            sx={{
+                                                color: 'inherit',
+                                                textDecoration: 'none',
+                                                fontWeight: 500,
                                                 '&:hover': {
-                                                    transform: 'scale(1.01)',
+                                                    textDecoration: 'underline',
                                                 }
                                             }}
                                         >
-                                            <TableCell>{index + 1}</TableCell>
-                                            <TableCell>
-                                                <Link
-                                                    component="button"
-                                                    onClick={() => handleTaskClick(card)}
-                                                    sx={{
-                                                        color: 'inherit',
-                                                        textDecoration: 'none',
-                                                        fontWeight: 500,
-                                                        '&:hover': {
-                                                            textDecoration: 'underline',
-                                                        }
-                                                    }}
-                                                >
-                                                    {card.name}
-                                                </Link>
-                                            </TableCell>
-                                            <TableCell>{getAgentName(card.idMembers)}</TableCell>
-                                            <TableCell>{getAppLabel(card.labels || [])}</TableCell>
-                                            <TableCell sx={{ fontWeight: 500 }}>
-                                                {dueDate ? dueDate.toLocaleDateString() : '—'}
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                </Grid>
-
-                <Grid item xs={12} md={3}>
-                    <Box sx={{ 
-                        background: 'white',
-                        borderRadius: 3,
-                        p: 3,
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                        height: '100%'
-                    }}>
-                        <Typography 
-                            variant="h6" 
-                            align="center" 
-                            sx={{ 
-                                mb: 2,
-                                color: 'primary.main',
-                                fontWeight: 600,
-                                textShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                            }}
-                        >
-                            📱 Số lượng theo App
-                        </Typography>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <PieChart>
-                                <Pie
-                                    data={appStats}
-                                    dataKey="value"
-                                    nameKey="name"
-                                    outerRadius={100}
-                                    label
-                                    onClick={(data) => setFilter({ type: 'app', value: data.name })}
-                                >
-                                    {appStats.map((entry, index) => (
-                                        <Cell 
-                                            key={index} 
-                                            fill={COLORS[index % COLORS.length]}
-                                            style={{ cursor: 'pointer' }}
+                                            {card.name}
+                                        </Link>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Box sx={{ 
+                                            display: 'flex', 
+                                            flexWrap: 'wrap', 
+                                            gap: 1,
+                                            maxWidth: '300px'
+                                        }}>
+                                            {card.idMembers.map(id => {
+                                                const member = members.find(m => m.id === id);
+                                                if (!member) return null;
+                                                return (
+                                                    <Chip
+                                                        key={id}
+                                                        label={member.fullName}
+                                                        size="small"
+                                                        sx={{
+                                                            backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                                            color: 'primary.main',
+                                                            fontWeight: 500,
+                                                            '&:hover': {
+                                                                backgroundColor: alpha(theme.palette.primary.main, 0.2),
+                                                            }
+                                                        }}
+                                                    />
+                                                );
+                                            })}
+                                        </Box>
+                                    </TableCell>
+                                    <TableCell>{getAppLabel(card.labels || [])}</TableCell>
+                                    <TableCell>
+                                        <Chip
+                                            label={card.listName}
+                                            size="small"
+                                            sx={{
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                                color: 'primary.main',
+                                                fontWeight: 500,
+                                                minWidth: '120px'
+                                            }}
                                         />
-                                    ))}
-                                </Pie>
-                                <Tooltip 
-                                    contentStyle={{
-                                        background: 'white',
-                                        borderRadius: 2,
-                                        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                                    }}
-                                />
-                                <Legend />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </Box>
-                </Grid>
-
-                <Grid item xs={12} md={3}>
-                    <Box sx={{ 
-                        background: 'white',
-                        borderRadius: 3,
-                        p: 3,
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                        height: '100%'
-                    }}>
-                        <Typography 
-                            variant="h6" 
-                            align="center" 
-                            sx={{ 
-                                mb: 2,
-                                color: 'primary.main',
-                                fontWeight: 600,
-                                textShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                            }}
-                        >
-                            👤 Số lượng theo Member
-                        </Typography>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <PieChart>
-                                <Pie
-                                    data={memberStats}
-                                    dataKey="value"
-                                    nameKey="name"
-                                    outerRadius={100}
-                                    label
-                                    onClick={(data) => setFilter({ type: 'member', value: data.name })}
-                                >
-                                    {memberStats.map((entry, index) => (
-                                        <Cell 
-                                            key={index} 
-                                            fill={COLORS[index % COLORS.length]}
-                                            style={{ cursor: 'pointer' }}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Chip
+                                            label={card.dueComplete ? "Done" : "In Progress"}
+                                            size="small"
+                                            color={card.dueComplete ? "success" : "warning"}
+                                            sx={{
+                                                fontWeight: 500,
+                                                minWidth: '100px'
+                                            }}
                                         />
-                                    ))}
-                                </Pie>
-                                <Tooltip 
-                                    contentStyle={{
-                                        background: 'white',
-                                        borderRadius: 2,
-                                        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                                    }}
-                                />
-                                <Legend />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </Box>
-                </Grid>
-            </Grid>
+                                    </TableCell>
+                                    <TableCell sx={{ fontWeight: 500 }}>
+                                        {dueDate ? dueDate.toLocaleDateString() : '—'}
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
+                    </TableBody>
+                </Table>
+            </TableContainer>
+
+            <Backdrop
+                sx={{ 
+                    color: '#fff', 
+                    zIndex: (theme) => theme.zIndex.drawer + 1,
+                    position: 'absolute',
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    backdropFilter: 'blur(4px)'
+                }}
+                open={loading}
+            >
+                <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center',
+                    gap: 2
+                }}>
+                    <CircularProgress size={60} />
+                    <Typography variant="h6" color="primary">
+                        Đang tải dữ liệu...
+                    </Typography>
+                </Box>
+            </Backdrop>
 
             <CardDetailModal
                 open={!!selectedCard}

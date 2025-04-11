@@ -86,18 +86,10 @@ export async function getListsByBoardId(boardId) {
 }
 
 
-export async function getMembers(boardId) {
-    const resp = await fetch(`${API_URL}/boards/${boardId}/members?key=${key}&token=${token}`, {
-        headers: {
-            Accept: "application/json"
-        }
-    })
-    return await resp.json();
-}
 
 export async function getActionsByCard(cardId) {
     try {
-        const resp = await fetch(`${API_URL}/cards/${cardId}/actions?key=${key}&token=${token}`, {
+        const resp = await fetch(`${API_URL}/cards/${cardId}/actions?filter=all&key=${key}&token=${token}`, {
             headers: {
                 Accept: "application/json"
             }
@@ -108,6 +100,29 @@ export async function getActionsByCard(cardId) {
         }
 
         return await resp.json();
+    } catch (error) {
+        console.error(`Error getting actions for card ${cardId}:`, error);
+        return null;
+    }
+}
+
+export async function getCreateCardAction(cardId) {
+    try {
+        const resp = await fetch(`${API_URL}/cards/${cardId}/actions?filter=createCard&key=${key}&token=${token}`, {
+            headers: {
+                Accept: "application/json"
+            }
+        });
+
+        if (!resp.ok) {
+            throw new Error(`Failed to fetch actions for card ${cardId}: ${resp.statusText}`);
+        }
+
+        const actions = await resp.json();
+        if (actions && actions.length > 0) {
+            return actions[0].date; // Chỉ trả về date của action đầu tiên
+        }
+        return null;
     } catch (error) {
         console.error(`Error getting actions for card ${cardId}:`, error);
         return null;
@@ -276,5 +291,43 @@ export async function getCardsByBoardAndMember(idMember) {
     } catch (error) {
         console.error(`Error getting cards for member ${idMember}:`, error);
         return null;
+    }
+}
+
+export async function getBoardMembers(boardId) {
+    try {
+        const resp = await fetch(`${API_URL}/boards/${boardId}/members?key=${key}&token=${token}&fields=id,fullName,username,avatarUrl,initials`, {
+            headers: {
+                Accept: "application/json"
+            }
+        });
+
+        if (!resp.ok) {
+            throw new Error(`Failed to fetch board members: ${resp.statusText}`);
+        }
+
+        return await resp.json();
+    } catch (error) {
+        console.error('Error fetching board members:', error);
+        throw error;
+    }
+}
+
+export async function getMembers() {
+    try {
+        const resp = await fetch(`${API_URL}/boards/${BOARD_ID}/members?key=${key}&token=${token}&fields=id,fullName,username,avatarUrl,initials`, {
+            headers: {
+                Accept: "application/json"
+            }
+        });
+
+        if (!resp.ok) {
+            throw new Error(`Failed to fetch members: ${resp.statusText}`);
+        }
+
+        return await resp.json();
+    } catch (error) {
+        console.error('Error fetching members:', error);
+        throw error;
     }
 }
