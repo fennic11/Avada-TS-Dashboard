@@ -50,7 +50,7 @@ const IssueSummary = () => {
 
   const getAgentName = (card) => {
     const agent = memberList.find(m => card.idMembers?.includes(m.id));
-    return agent ? agent.name : 'CS';
+    return agent ? agent.fullName : 'CS';
   };
 
   const getChartDataByStatus = (status) => {
@@ -68,7 +68,7 @@ const IssueSummary = () => {
     if (!labels || !labels.length) return 'Other';
     const appLabels = labels.filter(label => label.name.startsWith('App:'));
     if (appLabels.length === 0) return 'Other';
-    return appLabels.map(label => label.name.replace('App:', '').trim()).join(', ');
+    return appLabels.map(label => label.name.replace('App:', '').trim()).join(', ') || 'Other';
   };
 
   const getUniqueApps = () => {
@@ -90,12 +90,14 @@ const IssueSummary = () => {
     if (!memberIds.length) return [];
     return memberIds.map(id => {
       const member = memberList.find(m => m.id === id);
-      return member || { name: 'Unknown', avatarUrl: null };
+      return member || { fullName: 'Unknown', avatarUrl: null, initials: '?' };
     });
   };
 
   const getAssigneeInitials = (name) => {
-    return name
+    if (!name) return '?';
+    const member = memberList.find(m => m.fullName === name);
+    return member?.initials || name
       .split(' ')
       .map(part => part[0])
       .join('')
@@ -184,7 +186,7 @@ const IssueSummary = () => {
     return issues.filter(issue => {
       if (selectedAgent !== 'All') {
         const assignees = getAssigneeInfo(issue.idMembers);
-        if (!assignees.some(a => a.name === selectedAgent)) return false;
+        if (!assignees.some(a => a.fullName === selectedAgent)) return false;
       }
       if (selectedStatus !== 'All' && issue.status !== selectedStatus) return false;
       if (selectedApp !== 'All' && issue.app !== selectedApp) return false;
@@ -207,23 +209,25 @@ const IssueSummary = () => {
     const assigneeData = {};
     const filteredIssues = getFilteredIssues();
     
-    // Initialize data for all members
-    memberList.forEach(member => {
-      assigneeData[member.name] = {
-        name: member.name,
-        Pending: 0,
-        Doing: 0,
-        'Waiting Confirm': 0,
-        Done: 0
-      };
-    });
+    // Initialize data for TS members only
+    memberList
+      .filter(member => member.role === 'TS')
+      .forEach(member => {
+        assigneeData[member.fullName] = {
+          name: member.fullName,
+          Pending: 0,
+          Doing: 0,
+          'Waiting Confirm': 0,
+          Done: 0
+        };
+      });
 
-    // Count issues for each member
+    // Count issues for each TS member
     filteredIssues.forEach(issue => {
       const assignees = getAssigneeInfo(issue.idMembers);
       assignees.forEach(assignee => {
-        if (assigneeData[assignee.name]) {
-          assigneeData[assignee.name][issue.status]++;
+        if (assigneeData[assignee.fullName]) {
+          assigneeData[assignee.fullName][issue.status]++;
         }
       });
     });
@@ -333,9 +337,11 @@ const IssueSummary = () => {
                 }}
               >
                 <MenuItem value="All">All</MenuItem>
-                {memberList.map(member => (
-                  <MenuItem key={member.id} value={member.name}>{member.name}</MenuItem>
-                ))}
+                {memberList
+                  .filter(member => member.role === 'TS')
+                  .map(member => (
+                    <MenuItem key={member.id} value={member.fullName}>{member.fullName}</MenuItem>
+                  ))}
               </Select>
             </FormControl>
 
@@ -570,23 +576,23 @@ const IssueSummary = () => {
                               }}
                             >
                               {assignees.map((assignee, index) => (
-                                <Tooltip key={index} title={assignee.name}>
+                                <Tooltip key={index} title={assignee.fullName}>
                                   <Avatar
                                     src={assignee.avatarUrl}
-                                    alt={assignee.name}
+                                    alt={assignee.fullName}
                                     sx={{
                                       bgcolor: !assignee.avatarUrl ? `hsl(${(index * 60) % 360}, 70%, 50%)` : undefined
                                     }}
                                   >
-                                    {getAssigneeInitials(assignee.name)}
+                                    {getAssigneeInitials(assignee.fullName)}
                                   </Avatar>
                                 </Tooltip>
                               ))}
                             </AvatarGroup>
                             <Typography variant="body2" color="text.secondary">
                               {assignees.length === 1 
-                                ? assignees[0].name 
-                                : `${assignees[0].name} +${assignees.length - 1}`
+                                ? assignees[0].fullName 
+                                : `${assignees[0].fullName} +${assignees.length - 1}`
                               }
                             </Typography>
                           </Box>
@@ -598,7 +604,7 @@ const IssueSummary = () => {
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {getAppFromLabels(issue.labels).split(', ').map((app, index) => (
+                          {(getAppFromLabels(issue.labels) || 'Other').split(', ').map((app, index) => (
                             <Chip
                               key={index}
                               label={app}
