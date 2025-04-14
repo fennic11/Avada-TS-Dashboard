@@ -16,16 +16,23 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^13.5.0",
+    "@tinymce/tinymce-react": "^6.1.0",
     "axios": "^1.8.4",
+    "buffer": "^6.0.3",
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "firebase": "^11.5.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "process": "^0.11.10",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-router-dom": "^7.4.0",
     "react-scripts": "5.0.1",
     "recharts": "^2.15.1",
-    "web-vitals": "^2.1.4"
+    "stream-browserify": "^3.0.0",
+    "util": "^0.12.5",
+    "web-vitals": "^2.1.4",
+    "webpack": "^5.99.5",
+    "webpack-cli": "^6.0.1"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -50,5 +57,10 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  }
+  },
+  "description": "This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

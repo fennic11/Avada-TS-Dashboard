@@ -4,7 +4,7 @@ import {
   Paper, FormControl, InputLabel, MenuItem, Select,
   Card, CardContent, Typography, Grid, LinearProgress, Box,
   Tabs, Tab, CircularProgress, Stack, useTheme, alpha,
-  TableSortLabel
+  TableSortLabel, Avatar
 } from '@mui/material';
 import { getCardsByList } from '../../api/trelloApi';
 import memberList from '../../data/members.json';
@@ -19,7 +19,6 @@ export default function DevFixingDashboard() {
   const [doneCards, setDoneCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedApp, setSelectedApp] = useState('Tất cả');
-  const [selectedAgent, setSelectedAgent] = useState('Tất cả');
   const [tab, setTab] = useState(0);
   const [orderBy, setOrderBy] = useState('due');
   const [order, setOrder] = useState('asc');
@@ -58,16 +57,13 @@ export default function DevFixingDashboard() {
     fetchData();
   }, []);
 
-  const agentMap = Object.fromEntries(memberList.map(m => [m.id, m.name]));
-  const allAgents = ['Tất cả', ...new Set(memberList.map(m => m.name)), 'CS'];
+  const memberMap = Object.fromEntries(memberList.map(m => [m.id, m.name]));
+  const allMembers = ['Tất cả', ...new Set(memberList.map(m => m.name))];
 
   const filterCards = (cards) =>
     cards.filter(card => {
       const matchApp = selectedApp === 'Tất cả' || card.app === selectedApp;
-      const matchAgent = selectedAgent === 'Tất cả' ||
-        (card.idMembers.length === 0 && selectedAgent === 'CS') ||
-        card.idMembers.some(id => agentMap[id] === selectedAgent);
-      return matchApp && matchAgent;
+      return matchApp;
     });
 
   const filteredCards = filterCards(cards);
@@ -130,106 +126,6 @@ export default function DevFixingDashboard() {
 
   const handleAppClick = (app) => {
     setSelectedApp(app === selectedApp ? 'Tất cả' : app);
-  };
-
-  const renderTable = (cardList) => {
-    const sortedCards = sortCards(cardList);
-    
-    return (
-      <TableContainer 
-        component={Paper} 
-        sx={{ 
-          borderRadius: 3,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-          overflow: 'hidden',
-          background: 'white',
-          '& .MuiTableCell-root': {
-            py: 2,
-            px: 3,
-          }
-        }}
-      >
-        <Table>
-          <TableHead>
-            <TableRow sx={{ 
-              background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.primary.main, 0.05)} 100%)`,
-              '& .MuiTableCell-root': {
-                fontWeight: 600,
-                color: 'primary.main',
-                fontSize: '1rem',
-              }
-            }}>
-              <TableCell>Card</TableCell>
-              <TableCell>App</TableCell>
-              <TableCell>
-                <TableSortLabel
-                  active={orderBy === 'due'}
-                  direction={orderBy === 'due' ? order : 'asc'}
-                  onClick={() => handleRequestSort('due')}
-                  sx={{
-                    color: 'primary.main',
-                    '&.MuiTableSortLabel-active': {
-                      color: 'primary.main',
-                    },
-                    '&:hover': {
-                      color: 'primary.main',
-                    }
-                  }}
-                >
-                  Due
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>Trễ</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {sortedCards.map(card => {
-              const overdueLevel = getOverdueLevel(card.due);
-              const status = getCardStatus(card.due);
-              const rowStyle = {
-                ...(overdueLevel !== null && {
-                  background: `linear-gradient(135deg, ${alpha(theme.palette.error.main, 0.05 + overdueLevel * 0.02)} 0%, ${alpha(theme.palette.error.main, 0.02)} 100%)`,
-                }),
-                color:
-                  status === 'overdue' ? theme.palette.error.main :
-                  status === 'soon' ? theme.palette.warning.main :
-                  'inherit',
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.05),
-                  transform: 'scale(1.01)',
-                }
-              };
-
-              return (
-                <TableRow key={card.shortUrl} sx={rowStyle}>
-                  <TableCell>
-                    <a
-                      href={card.shortUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        color: 'inherit',
-                        textDecoration: 'none',
-                        fontWeight: 500,
-                        '&:hover': {
-                          textDecoration: 'underline',
-                        }
-                      }}
-                    >
-                      {card.name}
-                    </a>
-                  </TableCell>
-                  <TableCell>{card.app}</TableCell>
-                  <TableCell>{formatDate(card.due)}</TableCell>
-                  <TableCell>{getOverdueDays(card.due) ?? '-'}</TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    );
   };
 
   const renderAppStats = (cardList, title) => {
@@ -380,6 +276,109 @@ export default function DevFixingDashboard() {
     );
   };
 
+  const renderTable = (cardList) => {
+    const sortedCards = sortCards(cardList);
+    const filteredCards = selectedApp === 'Tất cả' 
+      ? sortedCards 
+      : sortedCards.filter(card => card.app === selectedApp);
+    
+    return (
+      <TableContainer 
+        component={Paper} 
+        sx={{ 
+          borderRadius: 3,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+          overflow: 'hidden',
+          background: 'white',
+          '& .MuiTableCell-root': {
+            py: 2,
+            px: 3,
+          }
+        }}
+      >
+        <Table>
+          <TableHead>
+            <TableRow sx={{ 
+              background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.primary.main, 0.05)} 100%)`,
+              '& .MuiTableCell-root': {
+                fontWeight: 600,
+                color: 'primary.main',
+                fontSize: '1rem',
+              }
+            }}>
+              <TableCell>Card</TableCell>
+              <TableCell>App</TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={orderBy === 'due'}
+                  direction={orderBy === 'due' ? order : 'asc'}
+                  onClick={() => handleRequestSort('due')}
+                  sx={{
+                    color: 'primary.main',
+                    '&.MuiTableSortLabel-active': {
+                      color: 'primary.main',
+                    },
+                    '&:hover': {
+                      color: 'primary.main',
+                    }
+                  }}
+                >
+                  Due
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>Trễ</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredCards.map(card => {
+              const overdueLevel = getOverdueLevel(card.due);
+              const status = getCardStatus(card.due);
+              const rowStyle = {
+                ...(overdueLevel !== null && {
+                  background: `linear-gradient(135deg, ${alpha(theme.palette.error.main, 0.05 + overdueLevel * 0.02)} 0%, ${alpha(theme.palette.error.main, 0.02)} 100%)`,
+                }),
+                color:
+                  status === 'overdue' ? theme.palette.error.main :
+                  status === 'soon' ? theme.palette.warning.main :
+                  'inherit',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                  transform: 'scale(1.01)',
+                }
+              };
+
+              return (
+                <TableRow key={card.shortUrl} sx={rowStyle}>
+                  <TableCell>
+                    <a
+                      href={card.shortUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        color: 'inherit',
+                        textDecoration: 'none',
+                        fontWeight: 500,
+                        '&:hover': {
+                          textDecoration: 'underline',
+                        }
+                      }}
+                    >
+                      {card.name}
+                    </a>
+                  </TableCell>
+                  <TableCell>{card.app}</TableCell>
+                  <TableCell>{formatDate(card.due)}</TableCell>
+                  <TableCell>{getOverdueDays(card.due) ?? '-'}</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
+  };
+
   if (loading) {
     return (
       <Box
@@ -517,43 +516,6 @@ export default function DevFixingDashboard() {
           iconPosition="start"
         />
       </Tabs>
-
-      <Stack 
-        direction="row" 
-        spacing={2} 
-        sx={{ 
-          mb: 4,
-          '& .MuiFormControl-root': {
-            minWidth: 200,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: 2,
-              background: 'white',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-              '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: 'primary.main',
-              },
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                borderColor: 'primary.main',
-                borderWidth: 2,
-              }
-            }
-          }
-        }}
-      >
-        <FormControl>
-          <InputLabel id="select-agent-label">Chọn Agent</InputLabel>
-          <Select
-            labelId="select-agent-label"
-            value={selectedAgent}
-            label="Chọn Agent"
-            onChange={(e) => setSelectedAgent(e.target.value)}
-          >
-            {allAgents.map(agent => (
-              <MenuItem key={agent} value={agent}>{agent}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Stack>
 
       {tab === 0 && (
         <>

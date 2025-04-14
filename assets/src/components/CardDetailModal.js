@@ -5,17 +5,18 @@ import {
     MenuItem, Select, Dialog, DialogTitle, DialogContent,
     DialogContentText, DialogActions, Button, Paper,
     TextField, List, ListItem, ListItemText, Avatar,
-    Divider, Tabs, Tab
+    Divider, Tabs, Tab, Snackbar, Alert
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
-import LinkIcon from '@mui/icons-material/Link';
 import DescriptionIcon from '@mui/icons-material/Description';
 import PersonIcon from '@mui/icons-material/Person';
 import LabelIcon from '@mui/icons-material/Label';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import ImageIcon from '@mui/icons-material/Image';
+import ChatIcon from '@mui/icons-material/Chat';
+import SendIcon from '@mui/icons-material/Send';
 import {
     getActionsByCard,
     removeMemberByID,
@@ -23,7 +24,8 @@ import {
     moveCardToList,
     removeLabelByID,
     addLabelByID,
-    addCommentToCard
+    addCommentToCard,
+    addAttachmentToCard
 } from '../api/trelloApi';
 import members from '../data/members.json';
 import lists from '../data/listsId.json';
@@ -33,6 +35,8 @@ import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from '../firebase/firebase';
 import { calculateResolutionTime } from '../utils/resolutionTime';
 import { searchArticles } from '../api/notionApi';
+import { storage } from '../firebase/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Label color mapping
 const LABEL_COLORS = {
@@ -85,7 +89,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
     const [currentListId, setCurrentListId] = useState('');
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
-    const [newComment, setNewComment] = useState('');
+    const [commentContent, setCommentContent] = useState('');
     const [commentLoading, setCommentLoading] = useState(false);
     const [notionQuery, setNotionQuery] = useState('');
     const [notionResults, setNotionResults] = useState([]);
@@ -95,6 +99,14 @@ const CardDetailModal = ({ open, onClose, card }) => {
         TSResolutionTime: null,
         firstActionTime: null
     });
+    const [imageUpload, setImageUpload] = useState(null);
+    const [snackbar, setSnackbar] = useState({
+        open: false,
+        message: '',
+        severity: 'success' // 'success' | 'error' | 'warning' | 'info'
+    });
+    const [lastUpdateTime, setLastUpdateTime] = useState(null);
+    const [lastActionId, setLastActionId] = useState(null);
 
     const safeCard = useMemo(() => {
         if (!card) return null;
@@ -200,13 +212,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
         
         setAgents(assigned);
         setCurrentListId(card.idList);
-
-        // Auto search Notion when modal opens
-        if (card.name) {
-            setNotionQuery(card.name);
-            handleNotionSearch(card.name);
-        }
-    }, [open, card, handleNotionSearch]);
+    }, [open, card]);
 
     const availableAgents = members.filter(m => !agents.some(a => a.id === m.id));
     const availableLabels = card?.labels
@@ -314,13 +320,33 @@ const CardDetailModal = ({ open, onClose, card }) => {
         setConfirmOpen(true);
     };
 
+    const handleImageUpload = async () => {
+        if (!imageUpload) return;
+        
+        try {
+            const formData = new FormData();
+            formData.append('file', imageUpload);
+            
+            await addAttachmentToCard(card.id, formData);
+            return true;
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            return false;
+        }
+    };
+
     const handleAddComment = async () => {
-        if (!newComment.trim()) return;
+        if (!commentContent.trim()) return;
 
         setCommentLoading(true);
         try {
-            await addCommentToCard(card.id, newComment.trim());
-            setNewComment('');
+            if (imageUpload) {
+                await handleImageUpload();
+            }
+
+            await addCommentToCard(card.id, commentContent.trim());
+            setCommentContent('');
+            setImageUpload(null);
 
             // Load lại actions để hiển thị comment mới
             const updatedActions = await getActionsByCard(card.id);
@@ -339,6 +365,95 @@ const CardDetailModal = ({ open, onClose, card }) => {
         setConfirmOpen(false);
         setConfirmAction(null);
     };
+
+    const handlePaste = async (e) => {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const file = items[i].getAsFile();
+                if (file) {
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        
+                        await addAttachmentToCard(card.id, formData);
+                        
+                        // Load lại actions để hiển thị ảnh mới
+                        const updatedActions = await getActionsByCard(card.id);
+                        setActions(updatedActions);
+
+                        // Hiển thị thông báo thành công
+                        setSnackbar({
+                            open: true,
+                            message: 'Ảnh đã được upload thành công',
+                            severity: 'success'
+                        });
+                    } catch (error) {
+                        console.error('Error uploading pasted image:', error);
+                        // Hiển thị thông báo lỗi
+                        setSnackbar({
+                            open: true,
+                            message: 'Có lỗi xảy ra khi upload ảnh',
+                            severity: 'error'
+                        });
+                    }
+                }
+            }
+        }
+    };
+
+    // Hàm kiểm tra comment mới
+    const checkForNewComments = async () => {
+        if (!card?.id || !open) return;
+
+        try {
+            const currentActions = await getActionsByCard(card.id);
+            
+            // Nếu có action mới
+            if (currentActions.length > 0 && currentActions[0].id !== lastActionId) {
+                setActions(currentActions);
+                setLastActionId(currentActions[0].id);
+                
+                // Chỉ hiển thị thông báo nếu action mới là comment
+                if (currentActions[0].type === 'commentCard') {
+                    setSnackbar({
+                        open: true,
+                        message: 'Có comment mới',
+                        severity: 'info'
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error checking for new comments:', error);
+        }
+    };
+
+    // Bắt đầu polling khi modal mở
+    useEffect(() => {
+        if (open && card?.id) {
+            // Lấy actions ban đầu và set lastActionId
+            const fetchInitialActions = async () => {
+                try {
+                    const initialActions = await getActionsByCard(card.id);
+                    setActions(initialActions);
+                    if (initialActions.length > 0) {
+                        setLastActionId(initialActions[0].id);
+                    }
+                } catch (error) {
+                    console.error('Error fetching initial actions:', error);
+                }
+            };
+            
+            fetchInitialActions();
+            
+            // Bắt đầu polling
+            const interval = setInterval(checkForNewComments, 2000); // Kiểm tra mỗi 2 giây
+            
+            return () => {
+                clearInterval(interval);
+            };
+        }
+    }, [open, card?.id]);
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -361,15 +476,30 @@ const CardDetailModal = ({ open, onClose, card }) => {
                                     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
                                 }
                             }}>
-                                <Typography 
-                                    variant="body2" 
-                                    sx={{ 
-                                        whiteSpace: 'pre-line',
-                                        minHeight: 100
+                                <TextField
+                                    fullWidth
+                                    multiline
+                                    rows={10}
+                                    value={card.desc || ''}
+                                    onChange={(e) => {
+                                        // Handle content change
                                     }}
-                                >
-                                    {safeCard.desc?.trim() || 'No description provided'}
-                                </Typography>
+                                    onPaste={handlePaste}
+                                    variant="outlined"
+                                    sx={{
+                                        '& .MuiOutlinedInput-root': {
+                                            '& fieldset': {
+                                                borderColor: 'rgba(0, 0, 0, 0.12)',
+                                            },
+                                            '&:hover fieldset': {
+                                                borderColor: 'primary.main',
+                                            },
+                                            '&.Mui-focused fieldset': {
+                                                borderColor: 'primary.main',
+                                            },
+                                        },
+                                    }}
+                                />
                             </Paper>
                         </Box>
 
@@ -454,7 +584,8 @@ const CardDetailModal = ({ open, onClose, card }) => {
 
                         {/* Comments Section */}
                         <Box>
-                            <Typography variant="subtitle1" gutterBottom>
+                            <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <ChatIcon fontSize="small" />
                                 Comments
                             </Typography>
                             <Stack spacing={2}>
@@ -471,18 +602,59 @@ const CardDetailModal = ({ open, onClose, card }) => {
                                     <TextField
                                         fullWidth
                                         multiline
-                                        rows={3}
+                                        rows={4}
+                                        value={commentContent}
+                                        onChange={(e) => setCommentContent(e.target.value)}
+                                        onPaste={handlePaste}
                                         placeholder="Add a comment..."
-                                        value={newComment}
-                                        onChange={(e) => setNewComment(e.target.value)}
-                                        variant="standard"
-                                        sx={{ mb: 2 }}
+                                        variant="outlined"
+                                        sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                                '& fieldset': {
+                                                    borderColor: 'rgba(0, 0, 0, 0.12)',
+                                                },
+                                                '&:hover fieldset': {
+                                                    borderColor: 'primary.main',
+                                                },
+                                                '&.Mui-focused fieldset': {
+                                                    borderColor: 'primary.main',
+                                                },
+                                            },
+                                        }}
                                     />
-                                    <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                    <Box sx={{ 
+                                        display: 'flex', 
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        mt: 2
+                                    }}>
+                                        <Button
+                                            component="label"
+                                            variant="outlined"
+                                            startIcon={<ImageIcon />}
+                                            sx={{ 
+                                                textTransform: 'none',
+                                                fontWeight: 500
+                                            }}
+                                        >
+                                            Upload Image
+                                            <input
+                                                type="file"
+                                                hidden
+                                                accept="image/*"
+                                                onChange={(e) => setImageUpload(e.target.files[0])}
+                                            />
+                                        </Button>
                                         <Button
                                             variant="contained"
                                             onClick={handleAddComment}
-                                            disabled={commentLoading || !newComment.trim()}
+                                            disabled={commentLoading || !commentContent.trim()}
+                                            startIcon={commentLoading ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
+                                            sx={{
+                                                textTransform: 'none',
+                                                fontWeight: 500,
+                                                minWidth: '120px'
+                                            }}
                                         >
                                             {commentLoading ? 'Sending...' : 'Comment'}
                                         </Button>
@@ -510,28 +682,70 @@ const CardDetailModal = ({ open, onClose, card }) => {
                                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
                             }}>
                                 <Stack spacing={2}>
-                                    <TextField
-                                        fullWidth
-                                        size="small"
-                                        placeholder="Search documentation..."
-                                        value={notionQuery}
-                                        onChange={(e) => setNotionQuery(e.target.value)}
-                                        onKeyPress={(e) => e.key === 'Enter' && handleNotionSearch()}
-                                        InputProps={{
-                                            startAdornment: (
-                                                <SearchIcon color="action" sx={{ mr: 1 }} />
-                                            ),
-                                            endAdornment: notionLoading && (
-                                                <CircularProgress size={20} sx={{ mr: 1 }} />
-                                            )
-                                        }}
-                                    />
+                                    <Box sx={{ 
+                                        display: 'flex', 
+                                        gap: 1,
+                                        alignItems: 'center'
+                                    }}>
+                                        <TextField
+                                            fullWidth
+                                            size="small"
+                                            placeholder="Tìm kiếm tài liệu..."
+                                            value={notionQuery}
+                                            onChange={(e) => {
+                                                const newValue = e.target.value;
+                                                setNotionQuery(newValue);
+                                            }}
+                                            InputProps={{
+                                                startAdornment: (
+                                                    <SearchIcon color="action" sx={{ mr: 1 }} />
+                                                ),
+                                                endAdornment: notionLoading && (
+                                                    <CircularProgress size={20} sx={{ mr: 1 }} />
+                                                )
+                                            }}
+                                            variant="outlined"
+                                            sx={{
+                                                '& .MuiOutlinedInput-root': {
+                                                    '& fieldset': {
+                                                        borderColor: 'rgba(0, 0, 0, 0.23)',
+                                                    },
+                                                    '&:hover fieldset': {
+                                                        borderColor: 'primary.main',
+                                                    },
+                                                    '&.Mui-focused fieldset': {
+                                                        borderColor: 'primary.main',
+                                                    },
+                                                },
+                                                '& .MuiInputBase-input': {
+                                                    cursor: 'text',
+                                                    '&:focus': {
+                                                        cursor: 'text',
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                        <Button
+                                            variant="contained"
+                                            onClick={() => handleNotionSearch()}
+                                            disabled={notionLoading || !notionQuery}
+                                            sx={{
+                                                minWidth: '100px',
+                                                textTransform: 'none',
+                                                fontWeight: 500
+                                            }}
+                                        >
+                                            Tìm kiếm
+                                        </Button>
+                                    </Box>
                                     {notionResults.length > 0 && (
                                         <List sx={{ 
                                             bgcolor: 'background.paper',
                                             borderRadius: 1,
                                             border: '1px solid',
-                                            borderColor: 'divider'
+                                            borderColor: 'divider',
+                                            maxHeight: '400px',
+                                            overflow: 'auto'
                                         }}>
                                             {notionResults.map((article) => (
                                                 <ListItem
@@ -542,28 +756,47 @@ const CardDetailModal = ({ open, onClose, card }) => {
                                                     divider
                                                     sx={{
                                                         display: 'block',
+                                                        py: 2,
                                                         '&:hover': {
-                                                            bgcolor: 'action.hover'
+                                                            bgcolor: 'action.hover',
+                                                            cursor: 'pointer'
                                                         }
                                                     }}
                                                 >
-                                                    <Typography variant="subtitle2" gutterBottom>
-                                                        {article.properties.title || article.title}
-                                                    </Typography>
-                                                    <Typography variant="body2" color="text.secondary" noWrap>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                                                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                                                            {article.properties.title || article.title}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            {new Date(article.lastEdited).toLocaleDateString()}
+                                                        </Typography>
+                                                    </Box>
+                                                    <Typography variant="body2" color="text.secondary" sx={{ 
+                                                        display: '-webkit-box',
+                                                        WebkitLineClamp: 2,
+                                                        WebkitBoxOrient: 'vertical',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis'
+                                                    }}>
                                                         {article.preview}
-                                                    </Typography>
-                                                    <Typography variant="caption" color="text.secondary">
-                                                        Updated: {new Date(article.lastEdited).toLocaleDateString()}
                                                     </Typography>
                                                 </ListItem>
                                             ))}
                                         </List>
                                     )}
                                     {notionQuery && !notionLoading && notionResults.length === 0 && (
-                                        <Box sx={{ textAlign: 'center', py: 2 }}>
+                                        <Box sx={{ 
+                                            textAlign: 'center', 
+                                            py: 4,
+                                            bgcolor: 'background.default',
+                                            borderRadius: 1
+                                        }}>
+                                            <SearchIcon sx={{ fontSize: 40, color: 'text.secondary', mb: 1 }} />
                                             <Typography color="text.secondary">
-                                                No results found
+                                                Không tìm thấy kết quả cho "{notionQuery}"
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                                                Hãy thử từ khóa khác hoặc kiểm tra lại chính tả
                                             </Typography>
                                         </Box>
                                     )}
@@ -1231,6 +1464,23 @@ const CardDetailModal = ({ open, onClose, card }) => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Snackbar Notification */}
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={3000}
+                onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            >
+                <Alert
+                    onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+                    severity={snackbar.severity}
+                    variant="filled"
+                    sx={{ width: '100%' }}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </>
     );
 };

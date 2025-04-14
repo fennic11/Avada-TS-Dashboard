@@ -139,12 +139,23 @@ function groupByTimeAndCount(cards, field, groupBy) {
     const timeMap = new Map();
     const countMap = new Map();
 
+    // Initialize maps for all TS members
+    members
+        .filter(member => member.role === 'TS')
+        .forEach(member => {
+            timeMap.set(member.fullName, 0);
+            countMap.set(member.fullName, 0);
+        });
+
     cards.forEach(card => {
         const value = Number(card[field]);
         if (isNaN(value)) return;
 
         const keys = groupBy === "member"
-            ? card.members?.filter(id => memberMap[id])
+            ? card.members?.filter(id => {
+                const member = members.find(m => m.id === id);
+                return member && member.role === 'TS';
+            })
             : card.labels?.filter(l => l.startsWith("App:"));
 
         if (!keys || keys.length === 0) return;
@@ -155,7 +166,8 @@ function groupByTimeAndCount(cards, field, groupBy) {
         const unique = new Set();
 
         keys.forEach(k => {
-            const name = isMember ? memberMap[k] : k;
+            const name = isMember ? members.find(m => m.id === k)?.fullName : k;
+            if (!name) return;
 
             // Tổng thời gian
             if (!timeMap.has(name)) timeMap.set(name, 0);
@@ -169,11 +181,13 @@ function groupByTimeAndCount(cards, field, groupBy) {
         });
     });
 
-    const result = Array.from(timeMap.entries()).map(([name, time]) => ({
-        name,
-        time: Math.round(time * 10) / 10,
-        count: countMap.get(name) || 0,
-    }));
+    const result = Array.from(timeMap.entries())
+        .map(([name, time]) => ({
+            name,
+            time: Math.round(time * 10) / 10,
+            count: countMap.get(name) || 0,
+        }))
+        .filter(item => item.count > 0); // Only show members with cards
 
     return result;
 }
@@ -181,31 +195,51 @@ function groupByTimeAndCount(cards, field, groupBy) {
 function calculateAgentLeaderboard(cards) {
     const agentStats = new Map();
 
+    // Initialize stats for all TS members
+    members
+        .filter(member => member.role === 'TS')
+        .forEach(member => {
+            agentStats.set(member.id, {
+                name: member.fullName,
+                totalTime: 0,
+                cardCount: 0,
+                averageTime: 0,
+                resolutionTime: 0,
+                firstActionTime: 0,
+                resolutionTimeTS: 0
+            });
+        });
+
+    // Calculate stats for each card
     cards.forEach(card => {
         if (!card.members || !card.resolutionTime) return;
 
         card.members.forEach(memberId => {
-            if (!memberMap[memberId]) return;
-
-            if (!agentStats.has(memberId)) {
-                agentStats.set(memberId, {
-                    name: memberMap[memberId],
-                    totalTime: 0,
-                    cardCount: 0,
-                    averageTime: 0
-                });
-            }
+            const member = members.find(m => m.id === memberId);
+            if (!member || member.role !== 'TS') return;
 
             const stats = agentStats.get(memberId);
-            stats.totalTime += card.resolutionTime;
+            if (!stats) return;
+
+            stats.totalTime += card.resolutionTime || 0;
             stats.cardCount += 1;
-            stats.averageTime = stats.totalTime / stats.cardCount;
+            stats.resolutionTime += card.resolutionTime || 0;
+            stats.firstActionTime += card.firstActionTime || 0;
+            stats.resolutionTimeTS += card.resolutionTimeTS || 0;
         });
     });
 
+    // Calculate averages and filter out members with no cards
     return Array.from(agentStats.values())
-        .sort((a, b) => a.averageTime - b.averageTime)
-        .slice(0, 10); // Top 10 agents
+        .map(stats => ({
+            ...stats,
+            averageTime: stats.cardCount > 0 ? stats.totalTime / stats.cardCount : 0,
+            avgResolutionTime: stats.cardCount > 0 ? stats.resolutionTime / stats.cardCount : 0,
+            avgFirstActionTime: stats.cardCount > 0 ? stats.firstActionTime / stats.cardCount : 0,
+            avgResolutionTimeTS: stats.cardCount > 0 ? stats.resolutionTimeTS / stats.cardCount : 0
+        }))
+        .filter(stats => stats.cardCount > 0)
+        .sort((a, b) => a.averageTime - b.averageTime);
 }
 
 const ResolutionTimeList = () => {
@@ -265,7 +299,16 @@ const ResolutionTimeList = () => {
                 : true;
             return hasApp && hasMember && chartMatch;
         });
-        setFilteredData(filtered);
+
+        // Filter out cards that don't have any TS members
+        const filteredWithTS = filtered.filter(card => 
+            !selectedMember ? true : card.members?.some(id => {
+                const member = members.find(m => m.id === id);
+                return member && member.role === 'TS';
+            })
+        );
+
+        setFilteredData(filteredWithTS);
     }, [data, selectedApp, selectedMember, chartFilter]);
 
     // Handle manual data fetch
@@ -439,9 +482,32 @@ const ResolutionTimeList = () => {
                             }}
                         >
                             <MenuItem value="">All Members</MenuItem>
-                            {members.map(m => (
-                                <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
-                            ))}
+                            {members
+                                .filter(member => member.role === 'TS')
+                                .map(m => (
+                                    <MenuItem 
+                                        key={m.id} 
+                                        value={m.id}
+                                        sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1
+                                        }}
+                                    >
+                                        <Box
+                                            component="img"
+                                            src={m.avatarUrl}
+                                            alt={m.fullName}
+                                            sx={{
+                                                width: 24,
+                                                height: 24,
+                                                borderRadius: '50%',
+                                                objectFit: 'cover'
+                                            }}
+                                        />
+                                        {m.fullName}
+                                    </MenuItem>
+                                ))}
                         </TextField>
                     </Grid>
                     <Grid item xs={12} sm={6} md={2}>
@@ -962,138 +1028,291 @@ const ResolutionTimeList = () => {
                     >
                         Time & Card Count Analysis
                     </Typography>
+
+                    {/* TS Team Analysis */}
+                    <Typography 
+                        variant="h6" 
+                        sx={{ 
+                            mb: 3,
+                            color: '#1e293b',
+                            fontWeight: 600
+                        }}
+                    >
+                        TS Team Analysis
+                    </Typography>
                     <Grid container spacing={3} sx={{ mb: 4 }}>
-                        {["member", "app"].map((type) =>
-                            Object.entries(timeAndCountData[type]).map(([key, data]) => (
-                                <Grid item xs={12} md={6} key={`dual-chart-${type}-${key}`}>
-                                    <Paper
-                                        sx={{
-                                            p: 4,
-                                            height: '100%',
-                                            background: 'rgba(255, 255, 255, 0.8)',
-                                            backdropFilter: 'blur(8px)',
-                                            borderRadius: 3,
-                                            border: '1px solid rgba(255, 255, 255, 0.3)',
-                                            transition: 'all 0.3s ease',
-                                            '&:hover': {
-                                                transform: 'translateY(-4px)',
-                                                boxShadow: '0 12px 24px rgba(0,0,0,0.1)'
-                                            }
+                        {Object.entries(timeAndCountData.member).map(([key, data]) => (
+                            <Grid item xs={12} md={6} key={`member-chart-${key}`}>
+                                <Paper
+                                    sx={{
+                                        p: 4,
+                                        height: '100%',
+                                        background: 'rgba(255, 255, 255, 0.8)',
+                                        backdropFilter: 'blur(8px)',
+                                        borderRadius: 3,
+                                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                                        transition: 'all 0.3s ease',
+                                        '&:hover': {
+                                            transform: 'translateY(-4px)',
+                                            boxShadow: '0 12px 24px rgba(0,0,0,0.1)'
+                                        }
+                                    }}
+                                >
+                                    <Typography 
+                                        variant="h6" 
+                                        sx={{ 
+                                            mb: 4,
+                                            color: '#1e293b',
+                                            fontWeight: 600
                                         }}
                                     >
-                                        <Typography 
-                                            variant="h6" 
-                                            sx={{ 
-                                                mb: 4,
-                                                color: '#1e293b',
-                                                fontWeight: 600
-                                            }}
-                                        >
-                                            {CHART_TITLES[key]} by {type === "member" ? "Member" : "App"}
-                                        </Typography>
-                                        <Box sx={{ height: 400 }}>
-                                            <ResponsiveContainer>
-                                                <BarChart
-                                                    layout="vertical"
-                                                    data={data.sort((a, b) => b.time - a.time)}
-                                                    margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
-                                                    barCategoryGap="20%"
-                                                    barGap={4}
-                                                >
-                                                    <XAxis 
-                                                        type="number"
-                                                        tick={{ fontSize: 12, fill: '#64748b' }}
-                                                        axisLine={{ stroke: '#e2e8f0' }}
-                                                        tickLine={{ stroke: '#e2e8f0' }}
-                                                    />
-                                                    <YAxis 
-                                                        dataKey="name" 
-                                                        type="category" 
-                                                        width={150}
-                                                        tick={{ fontSize: 12, fill: '#64748b' }}
-                                                        axisLine={{ stroke: '#e2e8f0' }}
-                                                        tickLine={{ stroke: '#e2e8f0' }}
-                                                    />
-                                                    <Tooltip
-                                                        contentStyle={{
-                                                            backgroundColor: "#ffffff",
-                                                            border: "1px solid #e2e8f0",
-                                                            fontSize: "13px",
-                                                            borderRadius: '8px',
-                                                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                                                        }}
-                                                        labelStyle={{ 
-                                                            fontWeight: 600,
-                                                            color: '#1e293b'
-                                                        }}
-                                                        formatter={(value, name) => {
-                                                            if (name === "time") {
-                                                                return [`${value} hours`, "Total Time"];
-                                                            } else if (name === "count") {
-                                                                return [`${value} cards`, "Card Count"];
-                                                            } else {
-                                                                return [value, name];
-                                                            }
-                                                        }}
-                                                    />
-                                                    <Legend 
-                                                        wrapperStyle={{ 
-                                                            fontSize: 14,
-                                                            color: '#64748b'
-                                                        }}
-                                                        formatter={(value) => {
-                                                            if (value === 'time') return 'Total Time';
-                                                            if (value === 'count') return 'Card Count';
-                                                            return value;
-                                                        }}
-                                                    />
-                                                    <Bar 
-                                                        dataKey="time" 
-                                                        fill="#3b82f6" 
-                                                        name="Total Time"
-                                                        radius={[0, 4, 4, 0]}
-                                                        label={({ value, payload }) => {
-                                                            const total = data.reduce((sum, item) => sum + item.time, 0);
-                                                            const percentage = ((value / total) * 100).toFixed(1);
-                                                            return [
-                                                                `${value}h`,
-                                                                `${percentage}%`
-                                                            ].join('\n');
-                                                        }}
-                                                        labelStyle={{
-                                                            fill: '#64748b',
-                                                            fontSize: '12px',
-                                                            fontWeight: 500,
-                                                            textAnchor: 'start'
-                                                        }}
-                                                    />
-                                                    <Bar 
-                                                        dataKey="count" 
-                                                        fill="#10b981" 
-                                                        name="Card Count"
-                                                        radius={[0, 4, 4, 0]}
-                                                        label={({ value, payload }) => {
-                                                            const total = data.reduce((sum, item) => sum + item.count, 0);
-                                                            const percentage = ((value / total) * 100).toFixed(1);
-                                                            return [
-                                                                `${value}`,
-                                                                `${percentage}%`
-                                                            ].join('\n');
-                                                        }}
-                                                        labelStyle={{
-                                                            fill: '#64748b',
-                                                            fontSize: '12px',
-                                                            fontWeight: 500,
-                                                            textAnchor: 'start'
-                                                        }}
-                                                    />
-                                                </BarChart>
-                                            </ResponsiveContainer>
-                                        </Box>
-                                    </Paper>
-                                </Grid>
-                            ))
-                        )}
+                                        {CHART_TITLES[key]} by TS Member
+                                    </Typography>
+                                    <Box sx={{ height: 400 }}>
+                                        <ResponsiveContainer>
+                                            <BarChart
+                                                layout="vertical"
+                                                data={data.sort((a, b) => b.time - a.time)}
+                                                margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
+                                                barCategoryGap="20%"
+                                                barGap={4}
+                                            >
+                                                <XAxis 
+                                                    type="number"
+                                                    tick={{ fontSize: 12, fill: '#64748b' }}
+                                                    axisLine={{ stroke: '#e2e8f0' }}
+                                                    tickLine={{ stroke: '#e2e8f0' }}
+                                                />
+                                                <YAxis 
+                                                    dataKey="name" 
+                                                    type="category" 
+                                                    width={150}
+                                                    tick={{ fontSize: 12, fill: '#64748b' }}
+                                                    axisLine={{ stroke: '#e2e8f0' }}
+                                                    tickLine={{ stroke: '#e2e8f0' }}
+                                                />
+                                                <Tooltip
+                                                    contentStyle={{
+                                                        backgroundColor: "#ffffff",
+                                                        border: "1px solid #e2e8f0",
+                                                        fontSize: "13px",
+                                                        borderRadius: '8px',
+                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                                    }}
+                                                    labelStyle={{ 
+                                                        fontWeight: 600,
+                                                        color: '#1e293b'
+                                                    }}
+                                                    formatter={(value, name) => {
+                                                        if (name === "time") {
+                                                            return [`${value} hours`, "Total Time"];
+                                                        } else if (name === "count") {
+                                                            return [`${value} cards`, "Card Count"];
+                                                        } else {
+                                                            return [value, name];
+                                                        }
+                                                    }}
+                                                />
+                                                <Legend 
+                                                    wrapperStyle={{ 
+                                                        fontSize: 14,
+                                                        color: '#64748b'
+                                                    }}
+                                                    formatter={(value) => {
+                                                        if (value === 'time') return 'Total Time';
+                                                        if (value === 'count') return 'Card Count';
+                                                        return value;
+                                                    }}
+                                                />
+                                                <Bar 
+                                                    dataKey="time" 
+                                                    fill="#3b82f6" 
+                                                    name="Total Time"
+                                                    radius={[0, 4, 4, 0]}
+                                                    label={({ value, payload }) => {
+                                                        const total = data.reduce((sum, item) => sum + item.time, 0);
+                                                        const percentage = ((value / total) * 100).toFixed(1);
+                                                        return [
+                                                            `${value}h`,
+                                                            `${percentage}%`
+                                                        ].join('\n');
+                                                    }}
+                                                    labelStyle={{
+                                                        fill: '#64748b',
+                                                        fontSize: '12px',
+                                                        fontWeight: 500,
+                                                        textAnchor: 'start'
+                                                    }}
+                                                />
+                                                <Bar 
+                                                    dataKey="count" 
+                                                    fill="#10b981" 
+                                                    name="Card Count"
+                                                    radius={[0, 4, 4, 0]}
+                                                    label={({ value, payload }) => {
+                                                        const total = data.reduce((sum, item) => sum + item.count, 0);
+                                                        const percentage = ((value / total) * 100).toFixed(1);
+                                                        return [
+                                                            `${value}`,
+                                                            `${percentage}%`
+                                                        ].join('\n');
+                                                    }}
+                                                    labelStyle={{
+                                                        fill: '#64748b',
+                                                        fontSize: '12px',
+                                                        fontWeight: 500,
+                                                        textAnchor: 'start'
+                                                    }}
+                                                />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </Box>
+                                </Paper>
+                            </Grid>
+                        ))}
+                    </Grid>
+
+                    {/* App Analysis */}
+                    <Typography 
+                        variant="h6" 
+                        sx={{ 
+                            mb: 3,
+                            color: '#1e293b',
+                            fontWeight: 600
+                        }}
+                    >
+                        App Analysis
+                    </Typography>
+                    <Grid container spacing={3} sx={{ mb: 4 }}>
+                        {Object.entries(timeAndCountData.app).map(([key, data]) => (
+                            <Grid item xs={12} md={6} key={`app-chart-${key}`}>
+                                <Paper
+                                    sx={{
+                                        p: 4,
+                                        height: '100%',
+                                        background: 'rgba(255, 255, 255, 0.8)',
+                                        backdropFilter: 'blur(8px)',
+                                        borderRadius: 3,
+                                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                                        transition: 'all 0.3s ease',
+                                        '&:hover': {
+                                            transform: 'translateY(-4px)',
+                                            boxShadow: '0 12px 24px rgba(0,0,0,0.1)'
+                                        }
+                                    }}
+                                >
+                                    <Typography 
+                                        variant="h6" 
+                                        sx={{ 
+                                            mb: 4,
+                                            color: '#1e293b',
+                                            fontWeight: 600
+                                        }}
+                                    >
+                                        {CHART_TITLES[key]} by App
+                                    </Typography>
+                                    <Box sx={{ height: 400 }}>
+                                        <ResponsiveContainer>
+                                            <BarChart
+                                                layout="vertical"
+                                                data={data.sort((a, b) => b.time - a.time)}
+                                                margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
+                                                barCategoryGap="20%"
+                                                barGap={4}
+                                            >
+                                                <XAxis 
+                                                    type="number"
+                                                    tick={{ fontSize: 12, fill: '#64748b' }}
+                                                    axisLine={{ stroke: '#e2e8f0' }}
+                                                    tickLine={{ stroke: '#e2e8f0' }}
+                                                />
+                                                <YAxis 
+                                                    dataKey="name" 
+                                                    type="category" 
+                                                    width={150}
+                                                    tick={{ fontSize: 12, fill: '#64748b' }}
+                                                    axisLine={{ stroke: '#e2e8f0' }}
+                                                    tickLine={{ stroke: '#e2e8f0' }}
+                                                />
+                                                <Tooltip
+                                                    contentStyle={{
+                                                        backgroundColor: "#ffffff",
+                                                        border: "1px solid #e2e8f0",
+                                                        fontSize: "13px",
+                                                        borderRadius: '8px',
+                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                                    }}
+                                                    labelStyle={{ 
+                                                        fontWeight: 600,
+                                                        color: '#1e293b'
+                                                    }}
+                                                    formatter={(value, name) => {
+                                                        if (name === "time") {
+                                                            return [`${value} hours`, "Total Time"];
+                                                        } else if (name === "count") {
+                                                            return [`${value} cards`, "Card Count"];
+                                                        } else {
+                                                            return [value, name];
+                                                        }
+                                                    }}
+                                                />
+                                                <Legend 
+                                                    wrapperStyle={{ 
+                                                        fontSize: 14,
+                                                        color: '#64748b'
+                                                    }}
+                                                    formatter={(value) => {
+                                                        if (value === 'time') return 'Total Time';
+                                                        if (value === 'count') return 'Card Count';
+                                                        return value;
+                                                    }}
+                                                />
+                                                <Bar 
+                                                    dataKey="time" 
+                                                    fill="#3b82f6" 
+                                                    name="Total Time"
+                                                    radius={[0, 4, 4, 0]}
+                                                    label={({ value, payload }) => {
+                                                        const total = data.reduce((sum, item) => sum + item.time, 0);
+                                                        const percentage = ((value / total) * 100).toFixed(1);
+                                                        return [
+                                                            `${value}h`,
+                                                            `${percentage}%`
+                                                        ].join('\n');
+                                                    }}
+                                                    labelStyle={{
+                                                        fill: '#64748b',
+                                                        fontSize: '12px',
+                                                        fontWeight: 500,
+                                                        textAnchor: 'start'
+                                                    }}
+                                                />
+                                                <Bar 
+                                                    dataKey="count" 
+                                                    fill="#10b981" 
+                                                    name="Card Count"
+                                                    radius={[0, 4, 4, 0]}
+                                                    label={({ value, payload }) => {
+                                                        const total = data.reduce((sum, item) => sum + item.count, 0);
+                                                        const percentage = ((value / total) * 100).toFixed(1);
+                                                        return [
+                                                            `${value}`,
+                                                            `${percentage}%`
+                                                        ].join('\n');
+                                                    }}
+                                                    labelStyle={{
+                                                        fill: '#64748b',
+                                                        fontSize: '12px',
+                                                        fontWeight: 500,
+                                                        textAnchor: 'start'
+                                                    }}
+                                                />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </Box>
+                                </Paper>
+                            </Grid>
+                        ))}
                     </Grid>
                 </>
             )}
@@ -1277,6 +1496,26 @@ const ResolutionTimeList = () => {
 const AgentLeaderboard = ({ data }) => {
     const leaderboard = calculateAgentLeaderboard(data);
 
+    if (leaderboard.length === 0) {
+        return (
+            <Paper
+                sx={{
+                    p: 4,
+                    mb: 4,
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    backdropFilter: 'blur(8px)',
+                    borderRadius: 3,
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    textAlign: 'center'
+                }}
+            >
+                <Typography variant="h6" color="text.secondary">
+                    No data available for TS Team Leaderboard
+                </Typography>
+            </Paper>
+        );
+    }
+
     return (
         <Paper
             sx={{
@@ -1301,15 +1540,17 @@ const AgentLeaderboard = ({ data }) => {
                     fontWeight: 700
                 }}
             >
-                Agent Leaderboard
+                TS Team Leaderboard
             </Typography>
             <Table>
                 <TableHead>
                     <TableRow>
                         <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Rank</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Agent</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Average Resolution Time</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Member</TableCell>
                         <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Total Cards</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Avg Resolution Time</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Avg First Action Time</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Avg TS Done Time</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
@@ -1326,10 +1567,16 @@ const AgentLeaderboard = ({ data }) => {
                                 />
                             </TableCell>
                             <TableCell sx={{ fontWeight: 500, color: '#1e293b' }}>{agent.name}</TableCell>
-                            <TableCell sx={{ fontWeight: 500, color: '#1e293b' }}>
-                                {formatMinutes(agent.averageTime)}
-                            </TableCell>
                             <TableCell sx={{ color: '#64748b' }}>{agent.cardCount}</TableCell>
+                            <TableCell sx={{ fontWeight: 500, color: '#1e293b' }}>
+                                {formatMinutes(agent.avgResolutionTime)}
+                            </TableCell>
+                            <TableCell sx={{ fontWeight: 500, color: '#1e293b' }}>
+                                {formatMinutes(agent.avgFirstActionTime)}
+                            </TableCell>
+                            <TableCell sx={{ fontWeight: 500, color: '#1e293b' }}>
+                                {formatMinutes(agent.avgResolutionTimeTS)}
+                            </TableCell>
                         </TableRow>
                     ))}
                 </TableBody>

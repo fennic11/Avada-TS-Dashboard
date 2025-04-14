@@ -331,3 +331,144 @@ export async function getMembers() {
         throw error;
     }
 }
+
+export async function addAttachmentToCard(cardId, file) {
+    const url = `${API_URL}/cards/${cardId}/attachments?key=${key}&token=${token}`;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: file
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to upload attachment: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('Attachment uploaded successfully:', data);
+        return data;
+    } catch (error) {
+        console.error('Error uploading attachment:', error);
+        throw error;
+    }
+}
+
+export async function getCardAttachments(cardId) {
+    const url = `${API_URL}/cards/${cardId}/attachments?key=${key}&token=${token}`;
+    
+    try {
+        const response = await fetch(url, {
+            headers: {
+                Accept: 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to get attachments: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error getting attachments:', error);
+        throw error;
+    }
+}
+
+export async function deleteAttachment(cardId, attachmentId) {
+    const url = `${API_URL}/cards/${cardId}/attachments/${attachmentId}?key=${key}&token=${token}`;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+                Accept: 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to delete attachment: ${response.status} ${response.statusText}`);
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error deleting attachment:', error);
+        throw error;
+    }
+}
+
+export async function updateCardDescription(cardId, description) {
+    const url = `${API_URL}/cards/${cardId}?key=${key}&token=${token}`;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json'
+            },
+            body: JSON.stringify({ desc: description })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to update description: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error updating description:', error);
+        throw error;
+    }
+}
+
+export async function updateCardName(cardId, name) {
+    const url = `${API_URL}/cards/${cardId}?key=${key}&token=${token}`;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json'
+            },
+            body: JSON.stringify({ name })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to update card name: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error updating card name:', error);
+        throw error;
+    }
+}
+
+export async function updateCardDueDate(cardId, dueDate) {
+    const url = `${API_URL}/cards/${cardId}?key=${key}&token=${token}`;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json'
+            },
+            body: JSON.stringify({ due: dueDate })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to update due date: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error updating due date:', error);
+        throw error;
+    }
+}

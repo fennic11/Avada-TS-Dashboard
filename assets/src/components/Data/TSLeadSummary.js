@@ -20,12 +20,11 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF4560'
 const TSLeadSummary = () => {
     const theme = useTheme();
     const [cards, setCards] = useState([]);
-    const [filter, setFilter] = useState({ type: null, value: null });
     const [selectedCard, setSelectedCard] = useState(null);
     const [sortByDueAsc, setSortByDueAsc] = useState(true);
     const [selectedTab, setSelectedTab] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [selectedTSMember, setSelectedTSMember] = useState('');
+    const [lastUpdateTime, setLastUpdateTime] = useState(Date.now());
 
     const tabLabels = [
         { 
@@ -34,7 +33,7 @@ const TSLeadSummary = () => {
         },
         { 
             label: 'Speed up', 
-            listNames: ['Speed up'] 
+            listNames: ['New Speed up (SLA: 2d)', 'CuongTT-Speed up'] 
         },
         { 
             label: 'Waiting Confirmation', 
@@ -45,20 +44,38 @@ const TSLeadSummary = () => {
             listNames: ['Update workflow required or Waiting for access (SLA: 2 days)'] 
         },
         { 
+            label: 'Dev Fixing', 
+            listNames: ['Fix done from dev', 'Waiting to fix (from dev)']
+        },
+        { 
             label: 'Done', 
             listNames: ['Done'] 
         }
     ];
+    
+    // State for filters per tab
+    const [tabFilters, setTabFilters] = useState(
+        tabLabels.reduce((acc, tab) => ({
+            ...acc,
+            [tab.label]: {
+                tsMember: '',
+                status: '',
+                type: null,
+                value: null
+            }
+        }), {})
+    );
 
-    const handleTabChange = async (event, newValue) => {
-        setSelectedTab(newValue);
-        await fetchTabData(newValue);
-    };
+    const statusOptions = [
+        { value: 'waiting', label: 'Waiting' },
+        { value: 'in_progress', label: 'In Progress' },
+        { value: 'done', label: 'Done' },
+        { value: 'pending', label: 'Pending' }
+    ];
 
     const fetchTabData = useCallback(async (tabIndex) => {
+        setLoading(true);
         try {
-            setLoading(true);
-            
             // Get lists for this tab
             const tabLists = listsId.filter(list => 
                 tabLabels[tabIndex].listNames.includes(list.name)
@@ -69,7 +86,8 @@ const TSLeadSummary = () => {
                 getCardsByList(list.id).then(cardsInList => 
                     cardsInList.map(card => ({
                         ...card,
-                        listName: list.name
+                        listName: list.name,
+                        listId: list.id
                     }))
                 )
             );
@@ -77,8 +95,21 @@ const TSLeadSummary = () => {
             const results = await Promise.all(fetchPromises);
             const tabCards = results.flat();
 
+            // Log for debugging
+            console.log('Fetched cards:', tabCards);
+            console.log('Tab lists:', tabLists);
+            console.log('Tab index:', tabIndex);
+
             setCards(tabCards);
-            setFilter({ type: null, value: null });
+            setTabFilters(prev => ({
+                ...prev,
+                [tabLabels[tabIndex].label]: {
+                    tsMember: '',
+                    status: '',
+                    type: null,
+                    value: null
+                }
+            }));
         } catch (error) {
             console.error('Error fetching tab data:', error);
         } finally {
@@ -86,35 +117,163 @@ const TSLeadSummary = () => {
         }
     }, []);
 
-    // Fetch initial tab data
+    // Fetch data for Doing tab by default
     useEffect(() => {
-        fetchTabData(0);
+        fetchTabData(0); // 0 is the index of the Doing tab
     }, [fetchTabData]);
+
+    const handleTabChange = async (event, newValue) => {
+        setSelectedTab(newValue);
+        await fetchTabData(newValue);
+    };
+
+    // Update filter for current tab
+    const updateTabFilter = (filterType, value) => {
+        setTabFilters(prev => ({
+            ...prev,
+            [tabLabels[selectedTab].label]: {
+                ...prev[tabLabels[selectedTab].label],
+                [filterType]: value
+            }
+        }));
+    };
+
+    // Get current tab's filters
+    const currentFilters = useMemo(() => {
+        return tabFilters[tabLabels[selectedTab].label];
+    }, [tabFilters, selectedTab]);
 
     // Get TS members
     const tsMembers = useMemo(() => {
         return members.filter(member => member.role === 'TS');
     }, []);
 
-    // Memoize filtered cards
+    const getAppLabel = (labels) => {
+        const appLabel = labels.find(label => label.name?.startsWith('App:'));
+        return appLabel ? appLabel.name.replace('App:', '').trim() : 'Unknown';
+    };
+
+    const getAgentName = (idMembers) => {
+        if (!idMembers || idMembers.length === 0) return '—';
+        const memberNames = idMembers
+            .map(id => {
+                const member = members.find(m => m.id === id);
+                return member ? member.fullName : null;
+            })
+            .filter(name => name !== null);
+        return memberNames.length > 0 ? memberNames.join(', ') : '—';
+    };
+
+    const getOverdueColor = (daysOverdue, dueComplete) => {
+        if (dueComplete) return theme.palette.background.paper;
+        if (!daysOverdue) return theme.palette.background.paper;
+        const alpha = Math.min(0.2 + daysOverdue * 0.1, 1);
+        return `rgba(255, 0, 0, ${alpha})`;
+    };
+
+    const getTextColor = (backgroundColor) => {
+        if (backgroundColor === theme.palette.background.paper) return theme.palette.text.primary;
+        const rgb = backgroundColor.match(/\d+/g);
+        if (!rgb) return theme.palette.text.primary;
+        const [r, g, b] = rgb;
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness > 128 ? theme.palette.text.primary : theme.palette.common.white;
+    };
+
+    const getOverdueDays = (dueDate) => {
+        if (!dueDate) return null;
+        const diff = differenceInDays(new Date(), parseISO(dueDate));
+        return diff > 0 ? diff : null;
+    };
+
+    const getCardStatus = (card) => {
+        if (card.dueComplete) {
+            return {
+                label: "Done",
+                color: "success"
+            };
+        }
+        
+        // Check for Dev Fixing tab
+        if (tabLabels[selectedTab].label === 'Dev Fixing') {
+            if (card.listName === 'Fix done from dev') {
+                return {
+                    label: "Done",
+                    color: "success"
+                };
+            }
+            return {
+                label: "Pending",
+                color: "warning"
+            };
+        }
+        
+        // Check for New Issues list
+        if (card.listName && card.listName.trim() === "New Issues") {
+            return {
+                label: "Waiting",
+                color: "info"
+            };
+        }
+        
+        return {
+            label: "In Progress",
+            color: "warning"
+        };
+    };
+
+    const handleTaskClick = (card) => {
+        setSelectedCard(card);
+    };
+
+    const handlePieChartClick = (entry) => {
+        if (entry && entry.name) {
+            const member = tsMembers.find(m => m.fullName === entry.name);
+            if (member) {
+                updateTabFilter('tsMember', member.id);
+            }
+        }
+    };
+
+    const handleBarChartClick = (entry) => {
+        if (entry && entry.name) {
+            const member = tsMembers.find(m => m.fullName === entry.name);
+            if (member) {
+                updateTabFilter('tsMember', member.id);
+            }
+        }
+    };
+
     const filteredCards = useMemo(() => {
         return cards
             .filter(card => {
                 let pass = true;
+                const filters = currentFilters;
 
                 // Filter by TS member if selected
-                if (selectedTSMember) {
-                    pass = card.idMembers.some(id => id === selectedTSMember);
+                if (filters.tsMember) {
+                    pass = card.idMembers.some(id => id === filters.tsMember);
                 }
 
-                if (filter.type === 'app') {
-                    pass = pass && getAppLabel(card.labels || []) === filter.value;
-                } else if (filter.type === 'member') {
+                // Filter by status if selected
+                if (filters.status) {
+                    const status = getCardStatus(card);
+                    // Special handling for Dev Fixing tab
+                    if (tabLabels[selectedTab].label === 'Dev Fixing') {
+                        pass = pass && status.label.toLowerCase() === filters.status;
+                    } else {
+                        pass = pass && status.label.toLowerCase().replace(' ', '_') === filters.status;
+                    }
+                }
+
+                if (filters.type === 'app') {
+                    pass = pass && getAppLabel(card.labels || []) === filters.value;
+                } else if (filters.type === 'member') {
                     pass = pass && card.idMembers.some(id => {
                         const member = members.find(m => m.id === id);
-                        return member?.name === filter.value;
+                        return member?.name === filters.value;
                     });
-                } else if (filter.type === 'overdue') {
+                } else if (filters.type === 'overdue') {
                     const days = getOverdueDays(card.due);
                     pass = pass && !!days;
                 }
@@ -131,7 +290,7 @@ const TSLeadSummary = () => {
 
                 return sortByDueAsc ? dateA - dateB : dateB - dateA;
             });
-    }, [cards, filter, sortByDueAsc, selectedTSMember]);
+    }, [cards, currentFilters, sortByDueAsc, selectedTab]);
 
     // Memoized data for charts
     const chartsData = useMemo(() => {
@@ -190,62 +349,45 @@ const TSLeadSummary = () => {
         };
     }, [cards, tsMembers]);
 
-    const getAppLabel = (labels) => {
-        const appLabel = labels.find(label => label.name?.startsWith('App:'));
-        return appLabel ? appLabel.name.replace('App:', '').trim() : 'Unknown';
-    };
+    // Function to check for updates
+    const checkForUpdates = useCallback(async () => {
+        try {
+            const currentTab = tabLabels[selectedTab];
+            const tabLists = listsId.filter(list => 
+                currentTab.listNames.includes(list.name)
+            );
 
-    const getAgentName = (idMembers) => {
-        if (!idMembers || idMembers.length === 0) return '—';
-        const memberNames = idMembers
-            .map(id => {
-                const member = members.find(m => m.id === id);
-                return member ? member.fullName : null;
-            })
-            .filter(name => name !== null);
-        return memberNames.length > 0 ? memberNames.join(', ') : '—';
-    };
+            const fetchPromises = tabLists.map(list => 
+                getCardsByList(list.id).then(cardsInList => 
+                    cardsInList.map(card => ({
+                        ...card,
+                        listName: list.name,
+                        listId: list.id
+                    }))
+                )
+            );
 
-    const getOverdueColor = (daysOverdue) => {
-        if (!daysOverdue) return 'inherit';
-        const alpha = Math.min(0.2 + daysOverdue * 0.1, 1);
-        return `rgba(255, 0, 0, ${alpha})`;
-    };
+            const results = await Promise.all(fetchPromises);
+            const newCards = results.flat();
 
-    const getOverdueDays = (dueDate) => {
-        if (!dueDate) return null;
-        const diff = differenceInDays(new Date(), parseISO(dueDate));
-        return diff > 0 ? diff : null;
-    };
-
-    const handleTaskClick = (card) => {
-        setSelectedCard(card);
-    };
-
-    const getCardStatus = (card) => {
-        console.log('Card List Name:', card.listName);
-        console.log('Due Complete:', card.dueComplete);
-        
-        if (card.dueComplete) {
-            return {
-                label: "Done",
-                color: "success"
-            };
+            // Check if there are any changes
+            const hasChanges = JSON.stringify(newCards) !== JSON.stringify(cards);
+            
+            if (hasChanges) {
+                setCards(newCards);
+                setLastUpdateTime(Date.now());
+            }
+        } catch (error) {
+            console.error('Error checking for updates:', error);
         }
+    }, [cards, selectedTab]);
+
+    // Set up polling
+    useEffect(() => {
+        const interval = setInterval(checkForUpdates, 5000); // Check every 5 seconds
         
-        // Check for New Issues list
-        if (card.listName && card.listName.trim() === "New Issues") {
-            return {
-                label: "Waiting",
-                color: "info"
-            };
-        }
-        
-        return {
-            label: "In Progress",
-            color: "warning"
-        };
-    };
+        return () => clearInterval(interval);
+    }, [checkForUpdates]);
 
     return (
         <Box sx={{ 
@@ -278,12 +420,14 @@ const TSLeadSummary = () => {
                 }}>
                     🎯 TS Lead Workspace
                 </Typography>
-                <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        Last updated: {new Date(lastUpdateTime).toLocaleTimeString()}
+                    </Typography>
                     <Button 
                         variant="outlined" 
-                        onClick={() => fetchTabData(selectedTab)} 
+                        onClick={() => handleTabChange(null, selectedTab)} 
                         sx={{ 
-                            mr: 1,
                             borderRadius: 2,
                             textTransform: 'none',
                             fontWeight: 500,
@@ -294,10 +438,10 @@ const TSLeadSummary = () => {
                     >
                         Reset Data
                     </Button>
-                    {filter.type && (
+                    {currentFilters.type && (
                         <Button 
                             variant="contained" 
-                            onClick={() => setFilter({ type: null, value: null })}
+                            onClick={() => updateTabFilter('type', null)}
                             sx={{
                                 borderRadius: 2,
                                 textTransform: 'none',
@@ -333,7 +477,24 @@ const TSLeadSummary = () => {
                     {tabLabels.map((tab, index) => (
                         <Tab 
                             key={index} 
-                            label={tab.label} 
+                            label={
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    {tab.label}
+                                    <Chip 
+                                        label={cards.filter(card => 
+                                            tab.listNames.includes(card.listName)
+                                        ).length}
+                                        size="small"
+                                        sx={{ 
+                                            height: '20px',
+                                            '& .MuiChip-label': {
+                                                px: 1,
+                                                fontSize: '0.75rem'
+                                            }
+                                        }}
+                                    />
+                                </Box>
+                            }
                             sx={{
                                 '&.Mui-selected': {
                                     color: 'primary.main',
@@ -352,8 +513,8 @@ const TSLeadSummary = () => {
                         <InputLabel id="ts-member-label">🎯 TS Member</InputLabel>
                         <Select
                             labelId="ts-member-label"
-                            value={selectedTSMember}
-                            onChange={(e) => setSelectedTSMember(e.target.value)}
+                            value={currentFilters.tsMember}
+                            onChange={(e) => updateTabFilter('tsMember', e.target.value)}
                             label="🎯 TS Member"
                             sx={{
                                 borderRadius: 2,
@@ -381,15 +542,51 @@ const TSLeadSummary = () => {
                         </Select>
                     </FormControl>
                 </Grid>
+
+                {/* Status Filter */}
+                <Grid item xs={12} md={4}>
+                    <FormControl fullWidth>
+                        <InputLabel id="status-label">📊 Status</InputLabel>
+                        <Select
+                            labelId="status-label"
+                            value={currentFilters.status}
+                            onChange={(e) => updateTabFilter('status', e.target.value)}
+                            label="📊 Status"
+                            sx={{
+                                borderRadius: 2,
+                                background: 'white',
+                                boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'rgba(0, 0, 0, 0.12)',
+                                },
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'primary.main',
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'primary.main',
+                                }
+                            }}
+                        >
+                            <MenuItem value="">
+                                <em>All Statuses</em>
+                            </MenuItem>
+                            {statusOptions.map((status) => (
+                                <MenuItem key={status.value} value={status.value}>
+                                    {status.label}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </Grid>
             </Grid>
 
             {/* Active Filters Display */}
-            {(selectedTSMember || filter.type) && (
+            {(currentFilters.tsMember || currentFilters.status || currentFilters.type) && (
                 <Box sx={{ mb: 2 }}>
-                    {selectedTSMember && (
+                    {currentFilters.tsMember && (
                         <Chip
-                            label={`TS Member: ${tsMembers.find(m => m.id === selectedTSMember)?.fullName}`}
-                            onDelete={() => setSelectedTSMember('')}
+                            label={`TS Member: ${tsMembers.find(m => m.id === currentFilters.tsMember)?.fullName}`}
+                            onDelete={() => updateTabFilter('tsMember', '')}
                             color="primary"
                             variant="outlined"
                             sx={{
@@ -404,10 +601,28 @@ const TSLeadSummary = () => {
                             }}
                         />
                     )}
-                    {filter.type && (
+                    {currentFilters.status && (
                         <Chip
-                            label={`Filtered by ${filter.type === 'app' ? 'App' : 'Member'}: ${filter.value}`}
-                            onDelete={() => setFilter({ type: null, value: null })}
+                            label={`Status: ${statusOptions.find(s => s.value === currentFilters.status)?.label}`}
+                            onDelete={() => updateTabFilter('status', '')}
+                            color="primary"
+                            variant="outlined"
+                            sx={{
+                                m: 0.5,
+                                borderRadius: 2,
+                                '& .MuiChip-deleteIcon': {
+                                    color: 'primary.main',
+                                    '&:hover': {
+                                        color: 'error.main',
+                                    }
+                                }
+                            }}
+                        />
+                    )}
+                    {currentFilters.type && (
+                        <Chip
+                            label={`Filtered by ${currentFilters.type === 'app' ? 'App' : 'Member'}: ${currentFilters.value}`}
+                            onDelete={() => updateTabFilter('type', null)}
                             color="primary"
                             variant="outlined"
                             sx={{
@@ -454,9 +669,14 @@ const TSLeadSummary = () => {
                                     outerRadius={120}
                                     fill="#8884d8"
                                     label={(entry) => `${entry.name}: ${entry.value}`}
+                                    onClick={handlePieChartClick}
                                 >
                                     {chartsData.pieData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        <Cell 
+                                            key={`cell-${index}`} 
+                                            fill={COLORS[index % COLORS.length]}
+                                            style={{ cursor: 'pointer' }}
+                                        />
                                     ))}
                                 </Pie>
                                 <Tooltip />
@@ -477,7 +697,10 @@ const TSLeadSummary = () => {
                             Cards per TS Member per List
                         </Typography>
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartsData.barData}>
+                            <BarChart 
+                                data={chartsData.barData}
+                                onClick={handleBarChartClick}
+                            >
                                 <Legend 
                                     verticalAlign="top" 
                                     align="center"
@@ -491,18 +714,21 @@ const TSLeadSummary = () => {
                                     dataKey="Total Issues" 
                                     fill="#8884d8"
                                     name="Total Issues"
+                                    style={{ cursor: 'pointer' }}
                                 />
                                 <Bar 
                                     dataKey="Done Issues" 
                                     fill="#82ca9d"
                                     name="Done Issues"
+                                    style={{ cursor: 'pointer' }}
                                 />
                                 {chartsData.uniqueLists.map((list, index) => (
                                     <Bar 
                                         key={list} 
                                         dataKey={list} 
                                         stackId="a" 
-                                        fill={COLORS[index % COLORS.length]} 
+                                        fill={COLORS[index % COLORS.length]}
+                                        style={{ cursor: 'pointer' }}
                                     />
                                 ))}
                             </BarChart>
@@ -511,6 +737,7 @@ const TSLeadSummary = () => {
                 </Grid>
             </Grid>
 
+            {/* Table */}
             <TableContainer 
                 component={Paper} 
                 sx={{ 
@@ -556,37 +783,65 @@ const TSLeadSummary = () => {
                     <TableBody>
                         {filteredCards.map((card, index) => {
                             const dueDate = card.due ? new Date(card.due) : null;
-                            const dueColor = getOverdueColor(getOverdueDays(card.due));
+                            const dueColor = getOverdueColor(getOverdueDays(card.due), card.dueComplete);
                             const status = getCardStatus(card);
 
                             return (
                                 <TableRow 
                                     key={card.id} 
                                     hover 
+                                    onClick={() => handleTaskClick(card)}
                                     sx={{ 
-                                        backgroundColor: dueColor,
+                                        backgroundColor: getOverdueColor(getOverdueDays(card.due), card.dueComplete),
                                         transition: 'all 0.2s ease',
+                                        cursor: 'pointer',
                                         '&:hover': {
                                             transform: 'scale(1.01)',
+                                            backgroundColor: alpha(getOverdueColor(getOverdueDays(card.due), card.dueComplete), 0.8),
+                                            '& .MuiTableCell-root': {
+                                                color: getTextColor(getOverdueColor(getOverdueDays(card.due), card.dueComplete)),
+                                                fontWeight: 600,
+                                            },
+                                            '& .MuiChip-root': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.2),
+                                                color: getTextColor(getOverdueColor(getOverdueDays(card.due), card.dueComplete)),
+                                                '&:hover': {
+                                                    backgroundColor: alpha(theme.palette.primary.main, 0.3),
+                                                }
+                                            },
+                                            '& .MuiTab-root': {
+                                                color: getTextColor(getOverdueColor(getOverdueDays(card.due), card.dueComplete)),
+                                                fontWeight: 600,
+                                            }
+                                        },
+                                        '& .MuiTableCell-root': {
+                                            color: getTextColor(getOverdueColor(getOverdueDays(card.due), card.dueComplete)),
+                                            fontWeight: 500,
+                                        },
+                                        '& .MuiChip-root': {
+                                            backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                            color: getTextColor(getOverdueColor(getOverdueDays(card.due), card.dueComplete)),
+                                            '&:hover': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.2),
+                                            }
+                                        },
+                                        '& .MuiTab-root': {
+                                            color: getTextColor(getOverdueColor(getOverdueDays(card.due), card.dueComplete)),
+                                            fontWeight: 500,
                                         }
                                     }}
                                 >
                                     <TableCell>{index + 1}</TableCell>
                                     <TableCell>
-                                        <Link
-                                            component="button"
-                                            onClick={() => handleTaskClick(card)}
+                                        <Box
                                             sx={{
                                                 color: 'inherit',
                                                 textDecoration: 'none',
                                                 fontWeight: 500,
-                                                '&:hover': {
-                                                    textDecoration: 'underline',
-                                                }
                                             }}
                                         >
                                             {card.name}
-                                        </Link>
+                                        </Box>
                                     </TableCell>
                                     <TableCell>
                                         <Box sx={{ 

@@ -25,83 +25,116 @@ const CardActivityHistory = ({ actions }) => {
     const renderContent = (action) => {
         switch (action.type) {
             case "commentCard":
-                const imageUrl = extractImageUrl(action.data.text);
+                // Tách nội dung thành các phần để xử lý link
+                const text = action.data.text;
+                const urlRegex = /(https?:\/\/[^\s]+)/g;
+                const parts = text.split(urlRegex);
+                
                 return (
                     <Stack spacing={1}>
                         <Typography variant="body2" sx={{ whiteSpace: "pre-line" }}>
-                            {action.data.text.replace(/\[image\.png\]\(.*\)/, "")}
+                            {parts.map((part, index) => {
+                                if (urlRegex.test(part)) {
+                                    return (
+                                        <Link
+                                            key={index}
+                                            href={part}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            sx={{
+                                                color: 'primary.main',
+                                                textDecoration: 'none',
+                                                '&:hover': {
+                                                    textDecoration: 'underline'
+                                                }
+                                            }}
+                                        >
+                                            {part}
+                                        </Link>
+                                    );
+                                }
+                                return part;
+                            })}
                         </Typography>
-                        {imageUrl && (
-                            <Box
-                                sx={{
-                                    position: "relative",
-                                    "&:hover .image-overlay": {
-                                        opacity: 1
-                                    }
-                                }}
-                            >
-                                <Paper
-                                    variant="outlined"
-                                    sx={{
-                                        p: 1,
-                                        borderRadius: 1,
-                                        borderColor: "rgba(0, 0, 0, 0.12)",
-                                        overflow: "hidden"
-                                    }}
-                                >
+                        {action.data.attachments && action.data.attachments.map((attachment, index) => {
+                            // Check if it's an image attachment
+                            if (attachment.mimeType?.startsWith('image/') || 
+                                attachment.name?.match(/\.(jpg|jpeg|png|gif)$/i)) {
+                                return (
                                     <Box
-                                        component="img"
-                                        src={imageUrl}
-                                        alt="Comment attachment"
+                                        key={index}
                                         sx={{
-                                            width: "100%",
-                                            height: "auto",
-                                            maxHeight: 300,
-                                            objectFit: "contain",
-                                            borderRadius: 0.5,
-                                            cursor: "pointer"
-                                        }}
-                                        onClick={() => window.open(imageUrl, "_blank")}
-                                    />
-                                </Paper>
-                                <Box
-                                    className="image-overlay"
-                                    sx={{
-                                        position: "absolute",
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        bottom: 0,
-                                        bgcolor: "rgba(0, 0, 0, 0.5)",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        opacity: 0,
-                                        transition: "opacity 0.2s",
-                                        borderRadius: 1,
-                                        cursor: "pointer"
-                                    }}
-                                    onClick={() => window.open(imageUrl, "_blank")}
-                                >
-                                    <Typography
-                                        variant="button"
-                                        sx={{
-                                            color: "white",
-                                            bgcolor: "rgba(0, 0, 0, 0.7)",
-                                            px: 2,
-                                            py: 1,
-                                            borderRadius: 1,
-                                            cursor: "pointer",
-                                            "&:hover": {
-                                                bgcolor: "rgba(0, 0, 0, 0.8)"
+                                            position: "relative",
+                                            "&:hover .image-overlay": {
+                                                opacity: 1
                                             }
                                         }}
                                     >
-                                        View Full Size
-                                    </Typography>
-                                </Box>
-                            </Box>
-                        )}
+                                        <Paper
+                                            variant="outlined"
+                                            sx={{
+                                                p: 1,
+                                                borderRadius: 1,
+                                                borderColor: "rgba(0, 0, 0, 0.12)",
+                                                overflow: "hidden"
+                                            }}
+                                        >
+                                            <Box
+                                                component="img"
+                                                src={attachment.url || attachment.previewUrl}
+                                                alt={attachment.name || "Comment attachment"}
+                                                sx={{
+                                                    width: "100%",
+                                                    height: "auto",
+                                                    maxHeight: 300,
+                                                    objectFit: "contain",
+                                                    borderRadius: 0.5,
+                                                    cursor: "pointer"
+                                                }}
+                                                onClick={() => window.open(attachment.url || attachment.previewUrl, "_blank")}
+                                            />
+                                        </Paper>
+                                        <Box
+                                            className="image-overlay"
+                                            sx={{
+                                                position: "absolute",
+                                                top: 0,
+                                                left: 0,
+                                                right: 0,
+                                                bottom: 0,
+                                                bgcolor: "rgba(0, 0, 0, 0.5)",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                opacity: 0,
+                                                transition: "opacity 0.2s",
+                                                borderRadius: 1,
+                                                cursor: "pointer"
+                                            }}
+                                            onClick={() => window.open(attachment.url || attachment.previewUrl, "_blank")}
+                                        >
+                                            <Typography
+                                                variant="button"
+                                                sx={{
+                                                    color: "white",
+                                                    bgcolor: "rgba(0, 0, 0, 0.7)",
+                                                    px: 2,
+                                                    py: 1,
+                                                    borderRadius: 1,
+                                                    cursor: "pointer",
+                                                    "&:hover": {
+                                                        bgcolor: "rgba(0, 0, 0, 0.8)"
+                                                    }
+                                                }}
+                                            >
+                                                View Full Size
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                );
+                            }
+                            return null;
+                        })}
                     </Stack>
                 );
 
@@ -172,9 +205,84 @@ const CardActivityHistory = ({ actions }) => {
                 );
 
             case "addAttachmentToCard":
+                const attachment = action.data.attachment;
+                if (attachment && (attachment.mimeType?.startsWith('image/') || 
+                    attachment.name?.match(/\.(jpg|jpeg|png|gif)$/i))) {
+                    return (
+                        <Box
+                            sx={{
+                                position: "relative",
+                                "&:hover .image-overlay": {
+                                    opacity: 1
+                                }
+                            }}
+                        >
+                            <Paper
+                                variant="outlined"
+                                sx={{
+                                    p: 1,
+                                    borderRadius: 1,
+                                    borderColor: "rgba(0, 0, 0, 0.12)",
+                                    overflow: "hidden"
+                                }}
+                            >
+                                <Box
+                                    component="img"
+                                    src={attachment.url || attachment.previewUrl}
+                                    alt={attachment.name || "Attachment"}
+                                    sx={{
+                                        width: "100%",
+                                        height: "auto",
+                                        maxHeight: 300,
+                                        objectFit: "contain",
+                                        borderRadius: 0.5,
+                                        cursor: "pointer"
+                                    }}
+                                    onClick={() => window.open(attachment.url || attachment.previewUrl, "_blank")}
+                                />
+                            </Paper>
+                            <Box
+                                className="image-overlay"
+                                sx={{
+                                    position: "absolute",
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    bgcolor: "rgba(0, 0, 0, 0.5)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    opacity: 0,
+                                    transition: "opacity 0.2s",
+                                    borderRadius: 1,
+                                    cursor: "pointer"
+                                }}
+                                onClick={() => window.open(attachment.url || attachment.previewUrl, "_blank")}
+                            >
+                                <Typography
+                                    variant="button"
+                                    sx={{
+                                        color: "white",
+                                        bgcolor: "rgba(0, 0, 0, 0.7)",
+                                        px: 2,
+                                        py: 1,
+                                        borderRadius: 1,
+                                        cursor: "pointer",
+                                        "&:hover": {
+                                            bgcolor: "rgba(0, 0, 0, 0.8)"
+                                        }
+                                    }}
+                                >
+                                    View Full Size
+                                </Typography>
+                            </Box>
+                        </Box>
+                    );
+                }
                 return (
                     <Typography variant="body2" color="text.secondary">
-                        Added <strong>{action.data.attachment?.name}</strong>
+                        Added <strong>{attachment?.name}</strong>
                     </Typography>
                 );
 
