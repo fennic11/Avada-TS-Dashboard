@@ -1,16 +1,12 @@
 import React from "react";
 import {
     Avatar,
-    Card,
-    CardHeader,
-    CardContent,
     Typography,
     Box,
     Stack,
     Link,
     Paper,
-    Chip,
-    Divider
+    Chip
 } from "@mui/material";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -27,34 +23,98 @@ const CardActivityHistory = ({ actions }) => {
             case "commentCard":
                 // Tách nội dung thành các phần để xử lý link
                 const text = action.data.text;
-                const urlRegex = /(https?:\/\/[^\s]+)/g;
-                const parts = text.split(urlRegex);
+                const slackLinkRegex = /\[([^\]]+)\]\((https:\/\/avadaio\.slack\.com\/archives\/[^)\s]+)/;
+                const slackMatch = text.match(slackLinkRegex);
+                const loomRegex = /(https:\/\/www\.loom\.com\/share\/[^\s]+)/;
+                const loomMatch = text.match(loomRegex);
                 
                 return (
                     <Stack spacing={1}>
-                        <Typography variant="body2" sx={{ whiteSpace: "pre-line" }}>
-                            {parts.map((part, index) => {
-                                if (urlRegex.test(part)) {
-                                    return (
-                                        <Link
-                                            key={index}
-                                            href={part}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            sx={{
-                                                color: 'primary.main',
-                                                textDecoration: 'none',
-                                                '&:hover': {
-                                                    textDecoration: 'underline'
-                                                }
-                                            }}
-                                        >
-                                            {part}
-                                        </Link>
-                                    );
+                        {slackMatch && (
+                            <Chip
+                                label="View Slack Message"
+                                component="a"
+                                href={slackMatch[2].trim()}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                clickable
+                                sx={{
+                                    bgcolor: '#4A154B',
+                                    color: 'white',
+                                    '&:hover': {
+                                        bgcolor: '#5c1b5d'
+                                    },
+                                    '& .MuiChip-label': {
+                                        fontSize: '0.875rem'
+                                    }
+                                }}
+                                icon={
+                                    <Box
+                                        component="img"
+                                        src="https://a.slack-edge.com/80588/marketing/img/icons/icon_slack_hash_colored.png"
+                                        alt="Slack"
+                                        sx={{
+                                            width: 16,
+                                            height: 16,
+                                            ml: 0.5
+                                        }}
+                                    />
                                 }
-                                return part;
-                            })}
+                            />
+                        )}
+                        <Typography variant="body2" sx={{ whiteSpace: "pre-line" }}>
+                            {slackMatch ? (
+                                text.split(slackLinkRegex)[0]
+                            ) : loomMatch ? (
+                                <Box
+                                    sx={{
+                                        position: 'relative',
+                                        paddingBottom: '56.25%', // 16:9 aspect ratio
+                                        height: 0,
+                                        overflow: 'hidden',
+                                        maxWidth: '100%',
+                                        background: '#000',
+                                        borderRadius: 1,
+                                        mt: 1
+                                    }}
+                                >
+                                    <iframe
+                                        src={`${loomMatch[1].replace('/share/', '/embed/')}`}
+                                        frameBorder="0"
+                                        allowFullScreen
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            width: '100%',
+                                            height: '100%'
+                                        }}
+                                    />
+                                </Box>
+                            ) : (
+                                text.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
+                                    if (part.match(/^https?:\/\//)) {
+                                        return (
+                                            <Link
+                                                key={index}
+                                                href={part}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                sx={{
+                                                    color: 'primary.main',
+                                                    textDecoration: 'none',
+                                                    '&:hover': {
+                                                        textDecoration: 'underline'
+                                                    }
+                                                }}
+                                            >
+                                                {part}
+                                            </Link>
+                                        );
+                                    }
+                                    return part;
+                                })
+                            )}
                         </Typography>
                         {action.data.attachments && action.data.attachments.map((attachment, index) => {
                             // Check if it's an image attachment
@@ -318,89 +378,216 @@ const CardActivityHistory = ({ actions }) => {
 
     return (
         <Stack spacing={2}>
-            {actions.map((action, index) => (
-                <Box
-                    key={action.id}
-                    sx={{
-                        display: "flex",
-                        gap: 2,
-                        p: 2,
-                        borderRadius: 1,
-                        bgcolor: "background.paper",
-                        position: "relative",
-                        transition: "all 0.2s ease-in-out",
-                        "&:hover": {
-                            bgcolor: "action.hover",
-                            transform: "translateX(4px)",
-                            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-                        },
-                        "&::before": {
-                            content: '""',
-                            position: "absolute",
-                            left: 0,
-                            top: 0,
-                            bottom: 0,
-                            width: "4px",
-                            bgcolor: getActionColor(action.type),
-                            borderTopLeftRadius: "4px",
-                            borderBottomLeftRadius: "4px"
-                        }
-                    }}
-                >
-                    <Avatar
-                        src={action.memberCreator?.avatarUrl}
-                        alt={action.memberCreator?.fullName}
-                        sx={{ 
-                            width: 32, 
-                            height: 32,
-                            border: "2px solid white",
-                            boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-                        }}
-                    />
-                    <Box sx={{ flex: 1 }}>
-                        <Box sx={{ 
-                            display: "flex", 
-                            alignItems: "center", 
-                            gap: 1, 
-                            mb: 0.5,
-                            flexWrap: "wrap"
-                        }}>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                                {action.memberCreator?.fullName}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ 
-                                bgcolor: "rgba(0,0,0,0.05)",
-                                px: 1,
-                                py: 0.5,
-                                borderRadius: 1
-                            }}>
-                                {formatDistanceToNow(new Date(action.date), { addSuffix: true })}
-                            </Typography>
-                            {action.appCreator && (
+            {actions.map((action, index) => {
+                // Check if this is the first action and has Slack link
+                if (index === 0 && action.type === "commentCard") {
+                    const text = action.data.text;
+                    const slackLinkRegex = /\[([^\]]+)\]\((https:\/\/avadaio\.slack\.com\/archives\/[^)\s]+)/;
+                    const slackMatch = text.match(slackLinkRegex);
+                    
+                    if (slackMatch) {
+                        return (
+                            <Box key={action.id}>
                                 <Chip
-                                    size="small"
-                                    label={action.appCreator.name}
-                                    sx={{ 
-                                        ml: 1,
-                                        bgcolor: "rgba(0,0,0,0.05)",
-                                        "& .MuiChip-label": {
-                                            fontSize: "0.75rem"
+                                    label="View Slack Message"
+                                    component="a"
+                                    href={slackMatch[2].trim()}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    clickable
+                                    sx={{
+                                        bgcolor: '#4A154B',
+                                        color: 'white',
+                                        '&:hover': {
+                                            bgcolor: '#5c1b5d'
+                                        },
+                                        '& .MuiChip-label': {
+                                            fontSize: '0.875rem'
+                                        },
+                                        mb: 2
+                                    }}
+                                    icon={
+                                        <Box
+                                            component="img"
+                                            src="https://a.slack-edge.com/80588/marketing/img/icons/icon_slack_hash_colored.png"
+                                            alt="Slack"
+                                            sx={{
+                                                width: 16,
+                                                height: 16,
+                                                ml: 0.5
+                                            }}
+                                        />
+                                    }
+                                />
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        gap: 2,
+                                        p: 2,
+                                        borderRadius: 1,
+                                        bgcolor: "background.paper",
+                                        position: "relative",
+                                        transition: "all 0.2s ease-in-out",
+                                        "&:hover": {
+                                            bgcolor: "action.hover",
+                                            transform: "translateX(4px)",
+                                            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+                                        },
+                                        "&::before": {
+                                            content: '""',
+                                            position: "absolute",
+                                            left: 0,
+                                            top: 0,
+                                            bottom: 0,
+                                            width: "4px",
+                                            bgcolor: getActionColor(action.type),
+                                            borderTopLeftRadius: "4px",
+                                            borderBottomLeftRadius: "4px"
                                         }
                                     }}
-                                />
-                            )}
-                        </Box>
-                        <Box sx={{ 
-                            mt: 1,
-                            "& strong": {
-                                color: "primary.main"
+                                >
+                                    <Avatar
+                                        src={action.memberCreator?.avatarUrl}
+                                        alt={action.memberCreator?.fullName}
+                                        sx={{ 
+                                            width: 32, 
+                                            height: 32,
+                                            border: "2px solid white",
+                                            boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                                        }}
+                                    />
+                                    <Box sx={{ flex: 1 }}>
+                                        <Box sx={{ 
+                                            display: "flex", 
+                                            alignItems: "center", 
+                                            gap: 1, 
+                                            mb: 0.5,
+                                            flexWrap: "wrap"
+                                        }}>
+                                            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                                                {action.memberCreator?.fullName}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{ 
+                                                bgcolor: "rgba(0,0,0,0.05)",
+                                                px: 1,
+                                                py: 0.5,
+                                                borderRadius: 1
+                                            }}>
+                                                {formatDistanceToNow(new Date(action.date), { addSuffix: true })}
+                                            </Typography>
+                                            {action.appCreator && (
+                                                <Chip
+                                                    size="small"
+                                                    label={action.appCreator.name}
+                                                    sx={{ 
+                                                        ml: 1,
+                                                        bgcolor: "rgba(0,0,0,0.05)",
+                                                        "& .MuiChip-label": {
+                                                            fontSize: "0.75rem"
+                                                        }
+                                                    }}
+                                                />
+                                            )}
+                                        </Box>
+                                        <Box sx={{ 
+                                            mt: 1,
+                                            "& strong": {
+                                                color: "primary.main"
+                                            }
+                                        }}>
+                                            {text.split(slackLinkRegex)[0]}
+                                        </Box>
+                                    </Box>
+                                </Box>
+                            </Box>
+                        );
+                    }
+                }
+                
+                return (
+                    <Box
+                        key={action.id}
+                        sx={{
+                            display: "flex",
+                            gap: 2,
+                            p: 2,
+                            borderRadius: 1,
+                            bgcolor: "background.paper",
+                            position: "relative",
+                            transition: "all 0.2s ease-in-out",
+                            "&:hover": {
+                                bgcolor: "action.hover",
+                                transform: "translateX(4px)",
+                                boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+                            },
+                            "&::before": {
+                                content: '""',
+                                position: "absolute",
+                                left: 0,
+                                top: 0,
+                                bottom: 0,
+                                width: "4px",
+                                bgcolor: getActionColor(action.type),
+                                borderTopLeftRadius: "4px",
+                                borderBottomLeftRadius: "4px"
                             }
-                        }}>
-                            {renderContent(action)}
+                        }}
+                    >
+                        <Avatar
+                            src={action.memberCreator?.avatarUrl}
+                            alt={action.memberCreator?.fullName}
+                            sx={{ 
+                                width: 32, 
+                                height: 32,
+                                border: "2px solid white",
+                                boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                            }}
+                        />
+                        <Box sx={{ flex: 1 }}>
+                            <Box sx={{ 
+                                display: "flex", 
+                                alignItems: "center", 
+                                gap: 1, 
+                                mb: 0.5,
+                                flexWrap: "wrap"
+                            }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                                    {action.memberCreator?.fullName}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ 
+                                    bgcolor: "rgba(0,0,0,0.05)",
+                                    px: 1,
+                                    py: 0.5,
+                                    borderRadius: 1
+                                }}>
+                                    {formatDistanceToNow(new Date(action.date), { addSuffix: true })}
+                                </Typography>
+                                {action.appCreator && (
+                                    <Chip
+                                        size="small"
+                                        label={action.appCreator.name}
+                                        sx={{ 
+                                            ml: 1,
+                                            bgcolor: "rgba(0,0,0,0.05)",
+                                            "& .MuiChip-label": {
+                                                fontSize: "0.75rem"
+                                            }
+                                        }}
+                                    />
+                                )}
+                            </Box>
+                            <Box sx={{ 
+                                mt: 1,
+                                "& strong": {
+                                    color: "primary.main"
+                                }
+                            }}>
+                                {renderContent(action)}
+                            </Box>
                         </Box>
                     </Box>
-                </Box>
-            ))}
+                );
+            })}
         </Stack>
     );
 };

@@ -472,3 +472,104 @@ export async function updateCardDueDate(cardId, dueDate) {
         throw error;
     }
 }
+
+export async function getCardById(cardId) {
+    try {
+        const resp = await fetch(`${API_URL}/cards/${cardId}?key=${key}&token=${token}`, {
+            headers: {
+                Accept: "application/json"
+            }
+        });
+
+        if (!resp.ok) {
+            throw new Error(`Failed to fetch card ${cardId}: ${resp.statusText}`);
+        }
+
+        return await resp.json();
+    } catch (error) {
+        console.error(`Error getting card ${cardId}:`, error);
+        return null;
+    }
+}
+
+export async function getMemberNotifications() {
+    try {
+        const user = localStorage.getItem('user');
+        const trelloId = JSON.parse(user).user.trelloId;
+        console.log(JSON.parse(user));
+        if (!trelloId) {
+            throw new Error('Trello ID not found in localStorage');
+        }
+
+        const resp = await fetch(`${API_URL}/members/${trelloId}/notifications?key=${key}&token=${token}&filter=all`, {
+            headers: {
+                Accept: "application/json"
+            }
+        });
+
+        if (!resp.ok) {
+            throw new Error(`Failed to fetch notifications: ${resp.statusText}`);
+        }
+
+        const notifications = await resp.json();
+        console.log(notifications);
+        return notifications;
+    } catch (error) {
+        console.error('Error fetching member notifications:', error);
+        return null;
+    }
+}
+
+export async function markAllNotificationsAsRead() {
+    try {
+        const user = localStorage.getItem('user');
+        const trelloId = JSON.parse(user).user.trelloId;
+        if (!trelloId) {
+            throw new Error('Trello ID not found in localStorage');
+        }
+
+        const resp = await fetch(`${API_URL}/notifications/all/read?key=${key}&token=${token}`, {
+            method: 'POST',
+            headers: {
+                Accept: "application/json"
+            }
+        });
+
+        if (!resp.ok) {
+            throw new Error(`Failed to mark notifications as read: ${resp.statusText}`);
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error marking notifications as read:', error);
+        return false;
+    }
+}
+
+export async function updateNotificationStatus(notificationId) {
+  try {
+    const user = localStorage.getItem('user');
+    const trelloId = JSON.parse(user).user.trelloId;
+    if (!trelloId) {
+      throw new Error('Trello ID not found in localStorage');
+    }
+
+    const resp = await fetch(`${API_URL}/notifications/${notificationId}?key=${key}&token=${token}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: "application/json"
+      }
+    });
+
+    if (!resp.ok) {
+      throw new Error(`Failed to update notification status: ${resp.statusText}`);
+    }
+
+    return await resp.json();
+  } catch (error) {
+    console.error('Error updating notification status:', error);
+    return null;
+  }
+}
+

@@ -4,12 +4,13 @@ import { getResolutionTimes } from "../../api/cardsApi";
 import members from "../../data/members.json";
 import {
     Table, TableHead, TableBody, TableRow, TableCell,
-    Typography, Paper, CircularProgress, Box, Grid, TextField, MenuItem, Button, Chip
+    Typography, Paper, CircularProgress, Box, Grid, TextField, MenuItem, Button, Chip, Link
 } from "@mui/material";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, LabelList } from "recharts";
 import { format } from "date-fns";
 import ClearIcon from '@mui/icons-material/Clear';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import CardDetailModal from '../CardDetailModal';
 
 
 const memberMap = members.reduce((acc, m) => {
@@ -247,6 +248,8 @@ const ResolutionTimeList = () => {
     const [filteredData, setFilteredData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const [selectedCard, setSelectedCard] = useState(null);
+    const [modalOpen, setModalOpen] = useState(false);
 
     const [selectedApp, setSelectedApp] = useState("");
     const [selectedMember, setSelectedMember] = useState("");
@@ -376,6 +379,15 @@ const ResolutionTimeList = () => {
         resolutionTimeTS: "TS Done Issues Time"
     };
 
+    const handleRowClick = (card) => {
+        setSelectedCard(card.cardId);
+        setModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setModalOpen(false);
+        setSelectedCard(null);
+    };
 
     return (
         <Paper 
@@ -1420,75 +1432,39 @@ const ResolutionTimeList = () => {
                         {sortedData.map((card) => (
                             <TableRow
                                 key={card.cardUrl}
+                                onClick={() => handleRowClick(card)}
                                 sx={{
                                     transition: "all 0.2s ease",
                                     "&:hover": {
                                         backgroundColor: "#f8fafc",
+                                        cursor: "pointer"
                                     }
                                 }}
                             >
-                                <TableCell sx={{ 
-                                    color: '#1e293b',
-                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                    py: { xs: 1, sm: 2 }
-                                }}>{card.cardName}</TableCell>
+                                <TableCell>{card.cardName}</TableCell>
                                 <TableCell>
-                                    <a
-                                        href={card.cardUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{ 
-                                            color: "#3b82f6", 
-                                            textDecoration: "none", 
-                                            fontWeight: 500,
-                                            fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                            '&:hover': {
-                                                color: '#2563eb',
-                                                textDecoration: 'underline'
-                                            }
-                                        }}
-                                    >
+                                    <Link href={card.cardUrl} target="_blank" rel="noopener noreferrer">
                                         Trello
-                                    </a>
+                                    </Link>
                                 </TableCell>
-                                <TableCell sx={{ 
-                                    color: '#64748b',
-                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                    py: { xs: 1, sm: 2 }
-                                }}>{card.labels?.filter(l => l.startsWith("App:")).join(", ")}</TableCell>
-                                <TableCell sx={{ 
-                                    color: '#64748b',
-                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                    py: { xs: 1, sm: 2 }
-                                }}>{card.members?.map(id => memberMap[id]).filter(Boolean).join(", ")}</TableCell>
-                                <TableCell sx={{ 
-                                    color: '#1e293b', 
-                                    fontWeight: 500,
-                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                    py: { xs: 1, sm: 2 }
-                                }}>{formatMinutes(card.resolutionTime)}</TableCell>
-                                <TableCell sx={{ 
-                                    color: '#1e293b', 
-                                    fontWeight: 500,
-                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                    py: { xs: 1, sm: 2 }
-                                }}>{formatMinutes(card.firstActionTime)}</TableCell>
-                                <TableCell sx={{ 
-                                    color: '#1e293b', 
-                                    fontWeight: 500,
-                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                    py: { xs: 1, sm: 2 }
-                                }}>{formatMinutes(card.resolutionTimeTS)}</TableCell>
-                                <TableCell sx={{ 
-                                    color: '#64748b',
-                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                    py: { xs: 1, sm: 2 }
-                                }}>{safeFormatDate(card.createdAt)}</TableCell>
+                                <TableCell>{card.labels?.filter(l => l.startsWith("App:")).join(", ")}</TableCell>
+                                <TableCell>{card.members?.map(id => memberMap[id]).filter(Boolean).join(", ")}</TableCell>
+                                <TableCell>{formatMinutes(card.resolutionTime)}</TableCell>
+                                <TableCell>{formatMinutes(card.firstActionTime)}</TableCell>
+                                <TableCell>{formatMinutes(card.resolutionTimeTS)}</TableCell>
+                                <TableCell>{safeFormatDate(card.createdAt)}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
             </Box>
+
+            {/* Card Detail Modal */}
+            <CardDetailModal
+                open={modalOpen}
+                onClose={handleCloseModal}
+                cardId={selectedCard}
+            />
         </Paper>
     );
 };

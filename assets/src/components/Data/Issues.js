@@ -105,7 +105,7 @@ const IssueSummary = () => {
   };
 
   const handleCardClick = (card) => {
-    setSelectedCard(card);
+    setSelectedCard(card.id);
     setIsModalOpen(true);
   };
 
@@ -645,10 +645,10 @@ const IssueSummary = () => {
 
       {/* Card Detail Modal */}
       {selectedCard && (
-        <CardDetailModal 
+        <CardDetailModal
           open={isModalOpen}
           onClose={handleCloseModal}
-          card={selectedCard}
+          cardId={selectedCard}
         />
       )}
     </Box>

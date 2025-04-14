@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
     Modal, Box, Typography, CircularProgress, Chip,
-    Link, Stack, IconButton, Tooltip,
+    Link, Stack, IconButton,
     MenuItem, Select, Dialog, DialogTitle, DialogContent,
     DialogContentText, DialogActions, Button, Paper,
-    TextField, List, ListItem, ListItemText, Avatar,
+    TextField, List, ListItem, Avatar,
     Divider, Tabs, Tab, Snackbar, Alert
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
@@ -17,6 +17,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import ImageIcon from '@mui/icons-material/Image';
 import ChatIcon from '@mui/icons-material/Chat';
 import SendIcon from '@mui/icons-material/Send';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import {
     getActionsByCard,
     removeMemberByID,
@@ -25,18 +26,16 @@ import {
     removeLabelByID,
     addLabelByID,
     addCommentToCard,
-    addAttachmentToCard
+    addAttachmentToCard,
+    getCardById
 } from '../api/trelloApi';
 import members from '../data/members.json';
 import lists from '../data/listsId.json';
 import labels from '../data/labels.json';
 import CardActivityHistory from './CardActivityHistory';
-import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
-import { db } from '../firebase/firebase';
 import { calculateResolutionTime } from '../utils/resolutionTime';
 import { searchArticles } from '../api/notionApi';
-import { storage } from '../firebase/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { postCards } from '../api/cardsApi';
 
 // Label color mapping
 const LABEL_COLORS = {
@@ -79,7 +78,7 @@ const getLabelColor = (labelName) => {
     return partialMatch ? LABEL_COLORS[partialMatch] : LABEL_COLORS.default;
 };
 
-const CardDetailModal = ({ open, onClose, card }) => {
+const CardDetailModal = ({ open, onClose, cardId }) => {
     const [activeTab, setActiveTab] = useState(0);
     const [actions, setActions] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -107,6 +106,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
     });
     const [lastUpdateTime, setLastUpdateTime] = useState(null);
     const [lastActionId, setLastActionId] = useState(null);
+    const [card, setCard] = useState(null);
 
     const safeCard = useMemo(() => {
         if (!card) return null;
@@ -122,6 +122,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
             badges: card.badges || {},
             dateLastActivity: card.dateLastActivity || new Date().toISOString(),
             section: card.section || { id: '', name: 'Unknown' },
+            attachments: card.attachments || [],
             ...card
         };
     }, [card]);
@@ -162,57 +163,62 @@ const CardDetailModal = ({ open, onClose, card }) => {
     }, [notionQuery]);
 
     useEffect(() => {
-        if (!open || !card) return;
+        if (!open || !cardId) return;
 
-        const fetchActions = async () => {
+        const fetchCardDetails = async () => {
             setLoading(true);
             try {
-                const result = await getActionsByCard(card.id);
-                const timing = calculateResolutionTime(result);
-                
-                // Update timing data state
-                setTimingData(timing || {
-                    resolutionTime: null,
-                    TSResolutionTime: null,
-                    firstActionTime: null
-                });
-                
-                setActions(result);
-            } catch (err) {
-                console.error('Error fetching actions:', err);
-                setTimingData({
-                    resolutionTime: null,
-                    TSResolutionTime: null,
-                    firstActionTime: null
+                // Fetch card details
+                const cardData = await getCardById(cardId);
+                if (cardData) {
+                    setCard(cardData);
+                    
+                    // Update agents with new information
+                    const assigned = cardData.idMembers.map(id => {
+                        const member = members.find(m => m.id === id);
+                        if (!member) return null;
+                        
+                        const avatarUrl = member.avatarUrl || member.avatarHash ? 
+                            `https://trello-members.s3.amazonaws.com/${member.id}/${member.avatarHash}/170.png` : 
+                            null;
+                        
+                        return {
+                            id: member.id,
+                            fullName: member.fullName,
+                            initials: member.initials,
+                            avatarUrl: avatarUrl
+                        };
+                    }).filter(Boolean);
+                    
+                    setAgents(assigned);
+                    setCurrentListId(cardData.idList);
+
+                    // Fetch actions
+                    const result = await getActionsByCard(cardId);
+                    const timing = calculateResolutionTime(result);
+                    
+                    setTimingData(timing || {
+                        resolutionTime: null,
+                        TSResolutionTime: null,
+                        firstActionTime: null
+                    });
+                    
+                    setActions(result);
+                }
+            } catch (error) {
+                console.error('Error fetching card details:', error);
+                setSnackbar({
+                    open: true,
+                    message: 'Error loading card details',
+                    severity: 'error'
                 });
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchActions();
-        
-        // Update agents with full member data
-        const assigned = card.idMembers.map(id => {
-            const member = members.find(m => m.id === id);
-            if (!member) return null;
-            
-            // Ensure we have the correct avatar URL
-            const avatarUrl = member.avatarUrl || member.avatarHash ? 
-                `https://trello-members.s3.amazonaws.com/${member.id}/${member.avatarHash}/170.png` : 
-                null;
-            
-            return {
-                id: member.id,
-                fullName: member.fullName,
-                initials: member.initials,
-                avatarUrl: avatarUrl
-            };
-        }).filter(Boolean);
-        
-        setAgents(assigned);
-        setCurrentListId(card.idList);
-    }, [open, card]);
+        fetchCardDetails();
+    }, [open, cardId]);
 
     const availableAgents = members.filter(m => !agents.some(a => a.id === m.id));
     const availableLabels = card?.labels
@@ -259,30 +265,32 @@ const CardDetailModal = ({ open, onClose, card }) => {
         const firstAction = actions[actions.length - 1];
         const createdAt = new Date(firstAction.date);
 
-        const labelNames = card.labels?.map(l => l.name).join(', ') || 'No label';
-
         const dataToSave = {
             cardId: card.id,
-            cardName: card.name,
-            label: labelNames,
+            cardName: card.name || "",
+            cardUrl: card.shortUrl || `https://trello.com/c/${card.idShort}`,
+            labels: card.labels?.map(l => l.name) || [],
             resolutionTime: timingData.resolutionTime,
-            TSResolutionTime: timingData.TSResolutionTime,
+            resolutionTimeTS: timingData.TSResolutionTime,
             firstActionTime: timingData.firstActionTime,
-            createdAt
+            members: card.idMembers || [],
+            createdAt: createdAt
         };
 
-        console.log("📝 Saving to Firebase:", dataToSave);
-
         try {
-            const q = query(collection(db, "resolutionTimes"), where("cardId", "==", card.id));
-            const snapshot = await getDocs(q);
-            if (!snapshot.empty) {
-                return;
-            }
-
-            await addDoc(collection(db, "resolutionTimes"), dataToSave);
+            await postCards(dataToSave);
+            setSnackbar({
+                open: true,
+                message: 'Card marked as reviewed successfully',
+                severity: 'success'
+            });
         } catch (err) {
-            console.error("❌ Firebase save error:", err);
+            console.error("❌ Error saving card:", err);
+            setSnackbar({
+                open: true,
+                message: 'Failed to mark card as reviewed',
+                severity: 'error'
+            });
         }
     };
 
@@ -454,6 +462,15 @@ const CardDetailModal = ({ open, onClose, card }) => {
             };
         }
     }, [open, card?.id]);
+
+    const handleCopyLink = (url, type = 'link') => {
+        navigator.clipboard.writeText(url);
+        setSnackbar({
+            open: true,
+            message: `${type} copied to clipboard`,
+            severity: 'success'
+        });
+    };
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -811,7 +828,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
         }
     };
 
-    if (!safeCard) {
+    if (!card) {
         return null;
     }
 
@@ -946,8 +963,8 @@ const CardDetailModal = ({ open, onClose, card }) => {
                     }}
                 >
                     {/* Header */}
-                    <Box sx={{ 
-                        p: 2, 
+                    <Box sx={{
+                        p: 2,
                         borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
                         background: 'linear-gradient(135deg, #f6f8fa 0%, #f1f4f7 100%)',
                         display: 'flex',
@@ -1035,7 +1052,13 @@ const CardDetailModal = ({ open, onClose, card }) => {
                             p: 3,
                             borderRight: '1px solid rgba(0, 0, 0, 0.08)'
                         }}>
-                            {renderTabContent()}
+                            {loading ? (
+                                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                                    <CircularProgress />
+                                </Box>
+                            ) : (
+                                renderTabContent()
+                            )}
                         </Box>
 
                         {/* Right Column - Sidebar */}
@@ -1047,91 +1070,173 @@ const CardDetailModal = ({ open, onClose, card }) => {
                         }}>
                             <Stack spacing={2.5} divider={<Divider sx={{ borderColor: 'rgba(0, 0, 0, 0.08)' }} />}>
                                 {/* Quick Links */}
-                                {(shopUrl || crispUrl) && (
+                                {(shopUrl || crispUrl || safeCard.shortUrl) && (
                                     <Box>
                                         <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
                                             Quick Links
                                         </Typography>
                                         <Stack spacing={1}>
                                             {shopUrl && (
-                                                <Link
-                                                    href={shopUrl}
-                                                    target="_blank"
-                                                    sx={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: 1,
-                                                        color: 'primary.main',
-                                                        textDecoration: 'none',
-                                                        p: 1,
-                                                        borderRadius: 1,
-                                                        bgcolor: 'rgba(25, 118, 210, 0.08)',
-                                                        transition: 'all 0.2s',
-                                                        '&:hover': {
-                                                            bgcolor: 'rgba(25, 118, 210, 0.12)',
-                                                            transform: 'translateY(-1px)'
-                                                        }
-                                                    }}
-                                                >
-                                                    <Box component="span" sx={{ 
-                                                        width: 24,
-                                                        height: 24,
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        borderRadius: '50%',
-                                                        bgcolor: 'primary.main',
-                                                        color: 'white',
-                                                        fontSize: '16px'
-                                                    }}>
-                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                                            <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 3c0 .55.45 1 1 1h1l3.6 7.59-1.35 2.44C4.52 15.37 5.48 17 7 17h11c.55 0 1-.45 1-1s-.45-1-1-1H7l1.1-2h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A.996.996 0 0020.01 4H5.21l-.67-1.43a.993.993 0 00-.9-.57H2c-.55 0-1 .45-1 1zm16 15c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
-                                                        </svg>
-                                                    </Box>
-                                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                                        View Shop
-                                                    </Typography>
-                                                </Link>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <Link
+                                                        href={shopUrl}
+                                                        target="_blank"
+                                                        sx={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 1,
+                                                            color: 'primary.main',
+                                                            textDecoration: 'none',
+                                                            p: 1,
+                                                            borderRadius: 1,
+                                                            bgcolor: 'rgba(25, 118, 210, 0.08)',
+                                                            transition: 'all 0.2s',
+                                                            '&:hover': {
+                                                                bgcolor: 'rgba(25, 118, 210, 0.12)',
+                                                                transform: 'translateY(-1px)'
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Box component="span" sx={{ 
+                                                            width: 24,
+                                                            height: 24,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            borderRadius: '50%',
+                                                            bgcolor: 'primary.main',
+                                                            color: 'white',
+                                                            fontSize: '16px'
+                                                        }}>
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                                                <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 3c0 .55.45 1 1 1h1l3.6 7.59-1.35 2.44C4.52 15.37 5.48 17 7 17h11c.55 0 1-.45 1-1s-.45-1-1-1H7l1.1-2h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A.996.996 0 0020.01 4H5.21l-.67-1.43a.993.993 0 00-.9-.57H2c-.55 0-1 .45-1 1zm16 15c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
+                                                            </svg>
+                                                        </Box>
+                                                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                                            View Shop
+                                                        </Typography>
+                                                    </Link>
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handleCopyLink(shopUrl, 'Shop URL')}
+                                                        sx={{
+                                                            color: 'text.secondary',
+                                                            '&:hover': {
+                                                                color: 'primary.main'
+                                                            }
+                                                        }}
+                                                    >
+                                                        <ContentCopyIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Box>
                                             )}
                                             {crispUrl && (
-                                                <Link
-                                                    href={crispUrl}
-                                                    target="_blank"
-                                                    sx={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: 1,
-                                                        color: '#00B884',
-                                                        textDecoration: 'none',
-                                                        p: 1,
-                                                        borderRadius: 1,
-                                                        bgcolor: 'rgba(0, 184, 132, 0.08)',
-                                                        transition: 'all 0.2s',
-                                                        '&:hover': {
-                                                            bgcolor: 'rgba(0, 184, 132, 0.12)',
-                                                            transform: 'translateY(-1px)'
-                                                        }
-                                                    }}
-                                                >
-                                                    <Box component="span" sx={{ 
-                                                        width: 24,
-                                                        height: 24,
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        borderRadius: '50%',
-                                                        bgcolor: '#00B884',
-                                                        color: 'white',
-                                                        fontSize: '16px'
-                                                    }}>
-                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                                            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12zM7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/>
-                                                        </svg>
-                                                    </Box>
-                                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                                        View Chat
-                                                    </Typography>
-                                                </Link>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <Link
+                                                        href={crispUrl}
+                                                        target="_blank"
+                                                        sx={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 1,
+                                                            color: '#00B884',
+                                                            textDecoration: 'none',
+                                                            p: 1,
+                                                            borderRadius: 1,
+                                                            bgcolor: 'rgba(0, 184, 132, 0.08)',
+                                                            transition: 'all 0.2s',
+                                                            '&:hover': {
+                                                                bgcolor: 'rgba(0, 184, 132, 0.12)',
+                                                                transform: 'translateY(-1px)'
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Box component="span" sx={{ 
+                                                            width: 24,
+                                                            height: 24,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            borderRadius: '50%',
+                                                            bgcolor: '#00B884',
+                                                            color: 'white',
+                                                            fontSize: '16px'
+                                                        }}>
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                                                <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12zM7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/>
+                                                            </svg>
+                                                        </Box>
+                                                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                                            View Chat
+                                                        </Typography>
+                                                    </Link>
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handleCopyLink(crispUrl, 'Chat URL')}
+                                                        sx={{
+                                                            color: 'text.secondary',
+                                                            '&:hover': {
+                                                                color: 'primary.main'
+                                                            }
+                                                        }}
+                                                    >
+                                                        <ContentCopyIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Box>
+                                            )}
+                                            {safeCard.shortUrl && (
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <Link
+                                                        href={safeCard.shortUrl}
+                                                        target="_blank"
+                                                        sx={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 1,
+                                                            color: '#0079BF',
+                                                            textDecoration: 'none',
+                                                            p: 1,
+                                                            borderRadius: 1,
+                                                            bgcolor: 'rgba(0, 121, 191, 0.08)',
+                                                            transition: 'all 0.2s',
+                                                            '&:hover': {
+                                                                bgcolor: 'rgba(0, 121, 191, 0.12)',
+                                                                transform: 'translateY(-1px)'
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Box component="span" sx={{ 
+                                                            width: 24,
+                                                            height: 24,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            borderRadius: '50%',
+                                                            bgcolor: '#0079BF',
+                                                            color: 'white',
+                                                            fontSize: '16px'
+                                                        }}>
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                                                <path d="M19.5 3h-15A1.5 1.5 0 003 4.5v15A1.5 1.5 0 004.5 21h15a1.5 1.5 0 001.5-1.5v-15A1.5 1.5 0 0019.5 3zm-15 1.5h15v15h-15v-15zM6 6h12v2H6V6zm0 4h12v2H6v-2zm0 4h12v2H6v-2z"/>
+                                                            </svg>
+                                                        </Box>
+                                                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                                            View Trello
+                                                        </Typography>
+                                                    </Link>
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handleCopyLink(safeCard.shortUrl, 'Trello URL')}
+                                                        sx={{
+                                                            color: 'text.secondary',
+                                                            '&:hover': {
+                                                                color: 'primary.main'
+                                                            }
+                                                        }}
+                                                    >
+                                                        <ContentCopyIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Box>
                                             )}
                                         </Stack>
                                     </Box>
@@ -1202,7 +1307,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
                                                             fontSize: '0.95rem',
                                                             lineHeight: 1.2
                                                         },
-                                                        '& .MuiChip-deleteIcon': {
+                                                        '& .MuiChip-deleteIcon': { 
                                                             color: '#1976d2',
                                                             width: '16px',
                                                             height: '16px',
@@ -1238,7 +1343,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
                                                     }}
                                                     displayEmpty
                                                     variant="standard"
-                                                    sx={{
+                                                    sx={{ 
                                                         '& .MuiSelect-select': {
                                                             py: 0,
                                                             px: 0,
@@ -1278,7 +1383,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
                                                             <MenuItem 
                                                                 key={agent.id} 
                                                                 value={agent.id}
-                                                                sx={{
+                                                                sx={{ 
                                                                     display: 'flex',
                                                                     alignItems: 'center',
                                                                     gap: 1,
@@ -1329,14 +1434,14 @@ const CardDetailModal = ({ open, onClose, card }) => {
                                                     label={label.name}
                                                     size="small"
                                                     onDelete={() => handleRemoveLabel(label)}
-                                                    sx={{
+                                                    sx={{ 
                                                         bgcolor: label.color,
                                                         color: 'white',
                                                         fontWeight: 500,
                                                         fontSize: '0.75rem',
                                                         height: '24px',
                                                         boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                                                        '& .MuiChip-deleteIcon': {
+                                                        '& .MuiChip-deleteIcon': { 
                                                             color: 'rgba(255, 255, 255, 0.8)',
                                                             width: '16px',
                                                             height: '16px',
@@ -1376,7 +1481,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
                                                     }}
                                                     displayEmpty
                                                     variant="standard"
-                                                    sx={{
+                                                    sx={{ 
                                                         '& .MuiSelect-select': {
                                                             py: 1,
                                                             px: 1.5,
@@ -1405,7 +1510,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
                                                             <MenuItem 
                                                                 key={label.id} 
                                                                 value={label.id}
-                                                                sx={{
+                                                                sx={{ 
                                                                     display: 'flex',
                                                                     alignItems: 'center',
                                                                     gap: 1,
@@ -1413,7 +1518,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
                                                                 }}
                                                             >
                                                                 <Box
-                                                                    sx={{
+                                                                    sx={{ 
                                                                         width: 32,
                                                                         height: 4,
                                                                         borderRadius: 2,
@@ -1443,7 +1548,7 @@ const CardDetailModal = ({ open, onClose, card }) => {
                 open={confirmOpen} 
                 onClose={() => setConfirmOpen(false)}
                 PaperProps={{
-                    sx: { 
+                    sx: {
                         borderRadius: 2,
                         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
                     }

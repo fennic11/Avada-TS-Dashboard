@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-    Typography, Link, Grid, Button, Box, Chip, TextField,
-    FormControl, InputLabel, Select, MenuItem, Checkbox, ListItemText,
+    Typography, Grid, Button, Box, Chip,
+    FormControl, InputLabel, Select, MenuItem,
     useTheme, alpha, Tabs, Tab, CircularProgress, Backdrop
 } from '@mui/material';
 import {
@@ -13,9 +13,21 @@ import { getCardsByList } from '../../api/trelloApi';
 import members from '../../data/members.json';
 import listsId from '../../data/listsId.json';
 import CardDetailModal from '../CardDetailModal';
-import { parseISO, differenceInDays, subDays, isBefore, isAfter } from 'date-fns';
+import { parseISO, differenceInDays } from 'date-fns';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF4560', '#2E93fA'];
+
+// Fixed colors for TS members
+const TS_MEMBER_COLORS = {
+    '66557fb36a637c6c5535b081': '#FF6B6B', // Nguyễn Văn Hoài An
+    '63b3a60ff51ce601421b0dd3': '#4ECDC4', // Nguyễn Ngọc Anh
+    '65f7bdde58e8e0a6ba703027': '#45B7D1', // Cuong TT
+    '652379ca67556a7b753dd6d3': '#96CEB4', // Maison
+    '67a1b61b94a1eddf291107f3': '#FFEEAD', // Carter
+    '66385f83fe51bce2bd707ff6': '#D4A5A5', // Trần Thị Bích Phương
+    '63b3a589a05c1801101fd5d2': '#9B59B6', // William
+    '65dc1670ae5414d1dd11a26d': '#3498DB'  // Đỗ Minh Quân
+};
 
 const TSLeadSummary = () => {
     const theme = useTheme();
@@ -165,19 +177,16 @@ const TSLeadSummary = () => {
     };
 
     const getOverdueColor = (daysOverdue, dueComplete) => {
-        if (dueComplete) return theme.palette.background.paper;
-        if (!daysOverdue) return theme.palette.background.paper;
+        if (dueComplete) return '#E8F5E9'; // Light green for done
+        if (!daysOverdue) return '#FFFFFF'; // White for normal
         const alpha = Math.min(0.2 + daysOverdue * 0.1, 1);
-        return `rgba(255, 0, 0, ${alpha})`;
+        return `rgba(255, 0, 0, ${alpha})`; // Red for overdue
     };
 
     const getTextColor = (backgroundColor) => {
-        if (backgroundColor === theme.palette.background.paper) return theme.palette.text.primary;
-        const rgb = backgroundColor.match(/\d+/g);
-        if (!rgb) return theme.palette.text.primary;
-        const [r, g, b] = rgb;
-        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-        return brightness > 128 ? theme.palette.text.primary : theme.palette.common.white;
+        if (backgroundColor === '#FFFFFF') return theme.palette.text.primary;
+        if (backgroundColor === '#E8F5E9') return '#2E7D32'; // Dark green text for done
+        return '#FFFFFF'; // White text for other cases
     };
 
     const getOverdueDays = (dueDate) => {
@@ -218,12 +227,12 @@ const TSLeadSummary = () => {
         
         return {
             label: "In Progress",
-            color: "warning"
+            color: "primary"
         };
     };
 
     const handleTaskClick = (card) => {
-        setSelectedCard(card);
+        setSelectedCard(card.id);
     };
 
     const handlePieChartClick = (entry) => {
@@ -324,7 +333,8 @@ const TSLeadSummary = () => {
         // Format data for pie chart
         const pieData = Object.entries(memberTotals).map(([name, value]) => ({
             name,
-            value
+            value,
+            color: TS_MEMBER_COLORS[tsMembers.find(m => m.fullName === name)?.id] || COLORS[0]
         }));
 
         // Format data for bar chart
@@ -339,7 +349,8 @@ const TSLeadSummary = () => {
             ...uniqueLists.reduce((acc, listName) => ({
                 ...acc,
                 [listName]: memberListTotals[name]?.[listName] || 0
-            }), {})
+            }), {}),
+            color: TS_MEMBER_COLORS[tsMembers.find(m => m.fullName === name)?.id] || COLORS[0]
         }));
 
         return {
@@ -388,6 +399,7 @@ const TSLeadSummary = () => {
         
         return () => clearInterval(interval);
     }, [checkForUpdates]);
+
 
     return (
         <Box sx={{ 
@@ -674,7 +686,7 @@ const TSLeadSummary = () => {
                                     {chartsData.pieData.map((entry, index) => (
                                         <Cell 
                                             key={`cell-${index}`} 
-                                            fill={COLORS[index % COLORS.length]}
+                                            fill={entry.color}
                                             style={{ cursor: 'pointer' }}
                                         />
                                     ))}
@@ -727,7 +739,7 @@ const TSLeadSummary = () => {
                                         key={list} 
                                         dataKey={list} 
                                         stackId="a" 
-                                        fill={COLORS[index % COLORS.length]}
+                                        fill={chartsData.barData[index]?.color || COLORS[index % COLORS.length]}
                                         style={{ cursor: 'pointer' }}
                                     />
                                 ))}
@@ -808,10 +820,6 @@ const TSLeadSummary = () => {
                                                 '&:hover': {
                                                     backgroundColor: alpha(theme.palette.primary.main, 0.3),
                                                 }
-                                            },
-                                            '& .MuiTab-root': {
-                                                color: getTextColor(getOverdueColor(getOverdueDays(card.due), card.dueComplete)),
-                                                fontWeight: 600,
                                             }
                                         },
                                         '& .MuiTableCell-root': {
@@ -824,10 +832,6 @@ const TSLeadSummary = () => {
                                             '&:hover': {
                                                 backgroundColor: alpha(theme.palette.primary.main, 0.2),
                                             }
-                                        },
-                                        '& .MuiTab-root': {
-                                            color: getTextColor(getOverdueColor(getOverdueDays(card.due), card.dueComplete)),
-                                            fontWeight: 500,
                                         }
                                     }}
                                 >
@@ -891,7 +895,18 @@ const TSLeadSummary = () => {
                                             color={status.color}
                                             sx={{
                                                 fontWeight: 500,
-                                                minWidth: '100px'
+                                                minWidth: '100px',
+                                                backgroundColor: status.color === 'success' ? '#4CAF50' :
+                                                               status.color === 'warning' ? '#FFA000' :
+                                                               status.color === 'info' ? '#2196F3' :
+                                                               status.color === 'primary' ? '#3F51B5' : '',
+                                                color: '#FFFFFF',
+                                                '&:hover': {
+                                                    backgroundColor: status.color === 'success' ? '#388E3C' :
+                                                                   status.color === 'warning' ? '#F57C00' :
+                                                                   status.color === 'info' ? '#1976D2' :
+                                                                   status.color === 'primary' ? '#303F9F' : '',
+                                                }
                                             }}
                                         />
                                     </TableCell>
@@ -931,7 +946,7 @@ const TSLeadSummary = () => {
             <CardDetailModal
                 open={!!selectedCard}
                 onClose={() => setSelectedCard(null)}
-                card={selectedCard}
+                cardId={selectedCard}
             />
         </Box>
     );
