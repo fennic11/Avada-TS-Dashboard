@@ -175,27 +175,29 @@ export async function removeLabelByID(cardId, idLabel) {
 }
 
 
-export async function addMemberByID(cardId, idMember) {
-    console.log(idMember);
-    try {
-        const resp = await fetch(`${API_URL}/cards/${cardId}/idMembers?key=${key}&token=${token}&value=${idMember}`, {
-            method: "POST",
-            headers: {
-                Accept: "application/json"
-            },
-            body: JSON.stringify({ value: idMember }) // Trello API có thể yêu cầu gửi ID dưới dạng body
-        });
+export const addMemberByID = async (cardId, memberId) => {
+  try {
+    const response = await fetch(`${API_URL}/cards/${cardId}/idMembers?key=${key}&token=${token}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        value: memberId
+      })
+    });
 
-        if (!resp.ok) {
-            throw new Error(`Failed to add member: ${resp.status} ${resp.statusText}`);
-        }
-
-        return await resp.json();
-    } catch (error) {
-        console.error("Error adding member to card:", error);
-        throw error;
+    if (!response.ok) {
+      throw new Error('Failed to add member to card');
     }
-}
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error adding member:', error);
+    throw error;
+  }
+};
 
 export async function addLabelByID(cardId, idLabel) {
     try {
@@ -546,30 +548,28 @@ export async function markAllNotificationsAsRead() {
     }
 }
 
-export async function updateNotificationStatus(notificationId) {
+export const updateNotificationStatus = async (notificationId, isRead) => {
   try {
-    const user = localStorage.getItem('user');
-    const trelloId = JSON.parse(user).user.trelloId;
-    if (!trelloId) {
-      throw new Error('Trello ID not found in localStorage');
-    }
 
-    const resp = await fetch(`${API_URL}/notifications/${notificationId}?key=${key}&token=${token}`, {
+    const response = await fetch(`${API_URL}/notifications/${notificationId}?key=${key}&token=${token}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        Accept: "application/json"
-      }
+      },
+      body: JSON.stringify({
+        unread: !isRead
+      })
     });
 
-    if (!resp.ok) {
-      throw new Error(`Failed to update notification status: ${resp.statusText}`);
+    if (!response.ok) {
+      throw new Error('Failed to update notification status');
     }
 
-    return await resp.json();
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error('Error updating notification status:', error);
     return null;
   }
-}
+};
 

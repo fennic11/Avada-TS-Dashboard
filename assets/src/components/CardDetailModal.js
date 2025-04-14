@@ -246,17 +246,117 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
         setConfirmOpen(true);
     };
 
-    const handleAddMember = () => {
+    const handleAddMember = async () => {
+        if (!newAgentId || !card?.id) {
+            console.log('Missing required data:', { newAgentId, cardId: card?.id });
+            return;
+        }
+        
         const member = members.find(m => m.id === newAgentId);
-        setConfirmAction({
-            message: `Thêm agent "${member.fullName}" vào card?`,
-            onConfirm: async () => {
-                await addMemberByID(card.id, newAgentId);
-                setAgents(prev => [...prev, member]);
-                setNewAgentId('');
+        if (!member) {
+            console.log('Member not found:', newAgentId);
+            setSnackbar({
+                open: true,
+                message: 'Member not found',
+                severity: 'error'
+            });
+            return;
+        }
+
+        console.log('Found member:', member);
+
+        try {
+            const result = await addMemberByID(card.id, newAgentId);
+            console.log('Add member result:', result);
+            
+            const avatarUrl = member.avatarUrl || member.avatarHash ? 
+                `https://trello-members.s3.amazonaws.com/${member.id}/${member.avatarHash}/170.png` : 
+                null;
+                
+            const newMember = {
+                id: member.id,
+                fullName: member.fullName,
+                initials: member.initials,
+                avatarUrl: avatarUrl
+            };
+
+            console.log('Adding new member to state:', newMember);
+            setAgents(prev => [...prev, newMember]);
+            setNewAgentId('');
+
+            // Refresh card data to get updated members
+            const updatedCard = await getCardById(card.id);
+            if (updatedCard) {
+                setCard(updatedCard);
             }
-        });
-        setConfirmOpen(true);
+
+            setSnackbar({
+                open: true,
+                message: 'Member added successfully',
+                severity: 'success'
+            });
+        } catch (error) {
+            console.error('Error adding member:', error);
+            setSnackbar({
+                open: true,
+                message: 'Failed to add member: ' + error.message,
+                severity: 'error'
+            });
+        }
+    };
+
+    // Update the Select component's onChange handler
+    const handleAgentSelect = async (event) => {
+        const selectedId = event.target.value;
+        if (!selectedId) return;
+        
+        const member = members.find(m => m.id === selectedId);
+        if (!member) {
+            setSnackbar({
+                open: true,
+                message: 'Member not found',
+                severity: 'error'
+            });
+            return;
+        }
+
+        try {
+            console.log('Adding member:', { selectedId, cardId: card?.id });
+            const result = await addMemberByID(card.id, selectedId);
+            console.log('Add member result:', result);
+            
+            const avatarUrl = member.avatarUrl || member.avatarHash ? 
+                `https://trello-members.s3.amazonaws.com/${member.id}/${member.avatarHash}/170.png` : 
+                null;
+                
+            const newMember = {
+                id: member.id,
+                fullName: member.fullName,
+                initials: member.initials,
+                avatarUrl: avatarUrl
+            };
+
+            setAgents(prev => [...prev, newMember]);
+            
+            // Refresh card data to get updated members
+            const updatedCard = await getCardById(card.id);
+            if (updatedCard) {
+                setCard(updatedCard);
+            }
+
+            setSnackbar({
+                open: true,
+                message: 'Member added successfully',
+                severity: 'success'
+            });
+        } catch (error) {
+            console.error('Error adding member:', error);
+            setSnackbar({
+                open: true,
+                message: 'Failed to add member: ' + error.message,
+                severity: 'error'
+            });
+        }
     };
 
     const handleReviewed = async () => {
@@ -1334,13 +1434,8 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                             >
                                                 <Select
                                                     size="small"
-                                                    value={newAgentId}
-                                                    onChange={(e) => {
-                                                        setNewAgentId(e.target.value);
-                                                        if (e.target.value) {
-                                                            handleAddMember();
-                                                        }
-                                                    }}
+                                                    value=""
+                                                    onChange={handleAgentSelect}
                                                     displayEmpty
                                                     variant="standard"
                                                     sx={{ 

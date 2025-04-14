@@ -154,10 +154,9 @@ function ResponsiveAppBar() {
   const handleNotificationClick = async (cardId, notificationId, isUnread) => {
     if (isUnread) {
       try {
-        const updatedNotification = await updateNotificationStatus(notificationId);
-        console.log(updatedNotification);
+        console.log(notificationId);
+        const updatedNotification = await updateNotificationStatus(notificationId, true);
         if (updatedNotification) {
-          // Update local notifications state
           setNotifications(prevNotifications => 
             prevNotifications.map(notification => 
               notification.id === notificationId 
@@ -165,7 +164,6 @@ function ResponsiveAppBar() {
                 : notification
             )
           );
-          // Update unread count
           setPreviousUnreadCount(prev => prev - 1);
         }
       } catch (error) {
@@ -557,18 +555,16 @@ function ResponsiveAppBar() {
                             </ListItemAvatar>
                             <ListItemText
                               primary={
-                                <Box component="div">
-                                  <Typography
-                                    component="div"
-                                    variant="body2"
-                                    sx={{ 
-                                      fontWeight: 500,
-                                      color: notification.unread ? 'primary.main' : 'text.primary',
-                                      mb: 0.5
-                                    }}
-                                  >
-                                    {notificationText.title}
-                                  </Typography>
+                                <Typography
+                                  component="div"
+                                  variant="body2"
+                                  sx={{ 
+                                    fontWeight: 500,
+                                    color: notification.unread ? 'primary.main' : 'text.primary',
+                                    mb: 0.5
+                                  }}
+                                >
+                                  {notificationText.title}
                                   {notificationText.content && (
                                     <Typography
                                       component="div"
@@ -576,30 +572,34 @@ function ResponsiveAppBar() {
                                       sx={{ 
                                         color: 'text.secondary',
                                         fontSize: '0.875rem',
-                                        lineHeight: 1.4
+                                        lineHeight: 1.4,
+                                        mt: 0.5
                                       }}
                                     >
                                       {notificationText.content}
                                     </Typography>
                                   )}
-                                </Box>
+                                </Typography>
                               }
                               secondary={
-                                <Box component="div" sx={{ 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  gap: 1, 
-                                  mt: 1,
-                                  color: 'text.secondary',
-                                  fontSize: '0.75rem'
-                                }}>
-                                  <Typography component="span" variant="caption">
+                                <Typography
+                                  component="div"
+                                  variant="caption"
+                                  sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 1, 
+                                    mt: 1,
+                                    color: 'text.secondary',
+                                    fontSize: '0.75rem'
+                                  }}
+                                >
+                                  <span>
                                     {formatDistanceToNow(new Date(notification.date), { addSuffix: true })}
-                                  </Typography>
-                                  <Typography component="span" variant="caption">
-                                    • {notificationText.board}
-                                  </Typography>
-                                </Box>
+                                  </span>
+                                  <span>•</span>
+                                  <span>{notificationText.board}</span>
+                                </Typography>
                               }
                             />
                           </ListItem>
@@ -675,7 +675,10 @@ function ResponsiveAppBar() {
         autoHideDuration={6000}
         onClose={() => setShowNotification(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-        sx={{ mt: '60px' }}
+        sx={{ 
+          mt: '60px',
+          zIndex: 9999
+        }}
       >
         <Alert 
           onClose={() => setShowNotification(false)} 
