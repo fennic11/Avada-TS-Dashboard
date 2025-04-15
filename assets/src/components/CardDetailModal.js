@@ -10,7 +10,6 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
-import DescriptionIcon from '@mui/icons-material/Description';
 import PersonIcon from '@mui/icons-material/Person';
 import LabelIcon from '@mui/icons-material/Label';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -588,46 +587,38 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                 return (
                     <Stack spacing={3}>
                         {/* Description */}
-                        <Box>
-                            <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <DescriptionIcon fontSize="small" />
+                        <Box sx={{
+                            bgcolor: '#ffffff',
+                            p: 2,
+                            borderRadius: '4px'
+                        }}>
+                            <Typography variant="subtitle1" gutterBottom sx={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 1,
+                                color: '#666666',
+                                fontSize: '1.2rem',
+                                fontWeight: 500
+                            }}>
                                 Description
                             </Typography>
-                            <Paper variant="outlined" sx={{ 
-                                p: 2.5,
-                                borderRadius: 1.5,
-                                borderColor: 'rgba(0, 0, 0, 0.12)',
-                                bgcolor: '#ffffff',
-                                '&:hover': {
-                                    borderColor: 'primary.main',
-                                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
-                                }
+                            <Box sx={{
+                                p: 2,
+                                borderRadius: '4px',
+                                bgcolor: '#f5f5f5'
                             }}>
-                                <TextField
-                                    fullWidth
-                                    multiline
-                                    rows={10}
-                                    value={card.desc || ''}
-                                    onChange={(e) => {
-                                        // Handle content change
-                                    }}
-                                    onPaste={handlePaste}
-                                    variant="outlined"
+                                <Typography
+                                    variant="body2"
                                     sx={{
-                                        '& .MuiOutlinedInput-root': {
-                                            '& fieldset': {
-                                                borderColor: 'rgba(0, 0, 0, 0.12)',
-                                            },
-                                            '&:hover fieldset': {
-                                                borderColor: 'primary.main',
-                                            },
-                                            '&.Mui-focused fieldset': {
-                                                borderColor: 'primary.main',
-                                            },
-                                        },
+                                        color: '#333333',
+                                        fontSize: '0.875rem',
+                                        lineHeight: 1.6,
+                                        whiteSpace: 'pre-wrap'
                                     }}
-                                />
-                            </Paper>
+                                >
+                                    {card.desc || ''}
+                                </Typography>
+                            </Box>
                         </Box>
 
                         {/* Attachments Section */}
@@ -710,13 +701,16 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                         )}
 
                         {/* Comments Section */}
-                        <Box>
+                        <Box sx={{
+                            bgcolor: '#ffffff',
+                            p: 2,
+                            borderRadius: '4px'
+                        }}>
                             <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <ChatIcon fontSize="small" />
                                 Comments
                             </Typography>
                             <Stack spacing={2}>
-                                <Paper variant="outlined" sx={{ 
+                                <Paper sx={{ 
                                     p: 2.5,
                                     borderRadius: 1.5,
                                     borderColor: 'rgba(0, 0, 0, 0.12)',
@@ -734,7 +728,6 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                         onChange={(e) => setCommentContent(e.target.value)}
                                         onPaste={handlePaste}
                                         placeholder="Add a comment..."
-                                        variant="outlined"
                                         sx={{
                                             '& .MuiOutlinedInput-root': {
                                                 '& fieldset': {
@@ -942,11 +935,10 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
         return null;
     }
 
-    const renderSidebarField = (icon, label, content) => (
+    const renderSidebarField = (label, content) => (
         <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ py: 1 }}>
-            <Box sx={{ color: 'text.secondary', pt: 0.5 }}>{icon}</Box>
-            <Box sx={{ flex: 1 }}>
-                <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+            <Box sx={{ flex: 1, backgroundColor: '#ffffff', p: 1, borderRadius: '4px', width: '100%' }}>
+                <Typography variant="caption" color="text.secondary" display="block" gutterBottom sx={{ fontWeight: 600, fontSize: '1rem' }}>
                     {label}
                 </Typography>
                 {content}
@@ -1068,7 +1060,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                         overflow: 'hidden',
                         display: 'flex',
                         flexDirection: 'column',
-                        bgcolor: '#ffffff',
+                        bgcolor: '#f5f5f5',
                         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
                     }}
                 >
@@ -1076,113 +1068,71 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                     <Box sx={{
                         p: 2,
                         borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
-                        background: 'linear-gradient(135deg, #f6f8fa 0%, #f1f4f7 100%)',
                         display: 'flex',
-                        alignItems: 'center',
-                        gap: 2
+                        flexDirection: 'column',
+                        gap: 1,
+                        bgcolor: '#ffffff',
                     }}>
-                        <Typography variant="subtitle2" sx={{ 
-                            color: 'primary.main',
-                            fontWeight: 500,
+                        <Box sx={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 1
+                            justifyContent: 'space-between'
                         }}>
-                            {safeCard.section?.name || 'Unknown Section'} 
-                            <span style={{ color: '#94a3b8' }}>/</span> 
-                            {lists.find(l => l.id === currentListId)?.name}
-                        </Typography>
-                        <IconButton 
-                            size="small" 
-                            onClick={onClose}
-                            sx={{
-                                ml: 'auto',
-                                color: 'text.secondary',
-                                '&:hover': {
-                                    bgcolor: 'rgba(0, 0, 0, 0.04)',
-                                    color: 'primary.main'
-                                }
-                            }}
-                        >
-                            <CloseIcon fontSize="small" />
-                        </IconButton>
-                    </Box>
-
-                    {/* Title & Tabs */}
-                    <Box sx={{ 
-                        background: 'linear-gradient(135deg, #f6f8fa 0%, #f1f4f7 100%)',
-                        borderBottom: '1px solid rgba(0, 0, 0, 0.08)'
-                    }}>
-                        <Box sx={{ px: 3, pt: 2 }}>
-                            <Typography variant="h5" gutterBottom sx={{ 
+                            <Typography variant="h5" sx={{ 
                                 color: '#1e293b',
                                 fontWeight: 600,
                                 letterSpacing: '-0.01em'
                             }}>
                                 {safeCard.name}
                             </Typography>
-                            <Typography variant="body2" sx={{ 
-                                color: 'text.secondary',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1,
-                                mb: 2
-                            }}>
-                                <AccessTimeIcon fontSize="small" />
-                                Created {createDate ? format(createDate, 'MMM d, yyyy HH:mm') : 'N/A'}
-                                {createDate && (
-                                    <Typography 
-                                        component="span" 
-                                        variant="caption" 
-                                        sx={{ 
-                                            color: 'text.secondary',
-                                            ml: 1
-                                        }}
-                                    >
-                                        ({formatDistanceToNow(createDate, { addSuffix: true })})
-                                    </Typography>
-                                )}
-                            </Typography>
-                        </Box>
-                        <Tabs 
-                            value={activeTab} 
-                            onChange={(_, newValue) => setActiveTab(newValue)}
-                            sx={{ 
-                                px: 3,
-                                '& .MuiTabs-indicator': {
-                                    height: 3,
-                                    borderRadius: '3px 3px 0 0',
-                                    bgcolor: 'primary.main'
-                                },
-                                '& .MuiTab-root': {
-                                    textTransform: 'none',
-                                    fontWeight: 500,
-                                    fontSize: '0.95rem',
-                                    minHeight: 48,
-                                    '&.Mui-selected': {
+                            <IconButton 
+                                size="small" 
+                                onClick={onClose}
+                                sx={{
+                                    color: 'text.secondary',
+                                    '&:hover': {
+                                        bgcolor: 'rgba(0, 0, 0, 0.04)',
                                         color: 'primary.main'
                                     }
-                                }
-                            }}
-                        >
-                            <Tab label="Details" />
-                            <Tab label="Documentation" />
-                        </Tabs>
+                                }}
+                            >
+                                <CloseIcon fontSize="small" />
+                            </IconButton>
+                        </Box>
+                        <Typography variant="body2" sx={{ 
+                            color: 'text.secondary',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1
+                        }}>
+                            <AccessTimeIcon fontSize="small" />
+                            Created {createDate ? format(createDate, 'MMM d, yyyy HH:mm') : 'N/A'}
+                            {createDate && (
+                                <Typography 
+                                    component="span" 
+                                    variant="caption" 
+                                    sx={{ color: 'text.secondary' }}
+                                >
+                                    ({formatDistanceToNow(createDate, { addSuffix: true })})
+                                </Typography>
+                            )}
+                        </Typography>
                     </Box>
 
-                    {/* Main Content */}
+                    {/* Content */}
                     <Box sx={{ 
                         display: 'flex', 
                         flex: 1,
                         overflow: 'hidden',
-                        bgcolor: '#ffffff'
+                        bgcolor: '#f5f5f5'
                     }}>
                         {/* Left Column */}
                         <Box sx={{ 
                             flex: 1,
                             overflowY: 'auto',
                             p: 3,
-                            borderRight: '1px solid rgba(0, 0, 0, 0.08)'
+                            borderRight: '1px solid rgba(0, 0, 0, 0.08)',
+                            bgcolor: '#f5f5f5'
                         }}>
                             {loading ? (
                                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
@@ -1195,56 +1145,59 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
 
                         {/* Right Column - Sidebar */}
                         <Box sx={{ 
-                            width: 300,
+                            width: 370,
                             overflowY: 'auto',
                             p: 2.5,
-                            bgcolor: '#f8fafc'
+                            bgcolor: '#f5f5f5',
+                            borderRadius: '4px'
                         }}>
                             <Stack spacing={2.5} divider={<Divider sx={{ borderColor: 'rgba(0, 0, 0, 0.08)' }} />}>
                                 {/* Quick Links */}
                                 {(shopUrl || crispUrl || safeCard.shortUrl) && (
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-                                            Quick Links
+                                    <Box sx={{
+                                        bgcolor: '#ffffff',
+                                        p: 2,
+                                        borderRadius: '4px'
+                                    }}>
+                                        <Typography variant="subtitle1" gutterBottom sx={{ 
+                                            color: '#666666',
+                                            fontSize: '1rem',
+                                            fontWeight: 600
+                                        }}>
+                                            Informations
                                         </Typography>
-                                        <Stack spacing={1}>
+                                        <Stack direction="row" spacing={2} alignItems="center"> 
                                             {shopUrl && (
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                                                     <Link
                                                         href={shopUrl}
                                                         target="_blank"
                                                         sx={{
                                                             display: 'flex',
+                                                            flexDirection: 'column',
                                                             alignItems: 'center',
-                                                            gap: 1,
-                                                            color: 'primary.main',
+                                                            color: '#666666',
                                                             textDecoration: 'none',
-                                                            p: 1,
-                                                            borderRadius: 1,
-                                                            bgcolor: 'rgba(25, 118, 210, 0.08)',
-                                                            transition: 'all 0.2s',
-                                                            '&:hover': {
-                                                                bgcolor: 'rgba(25, 118, 210, 0.12)',
-                                                                transform: 'translateY(-1px)'
-                                                            }
+                                                            gap: 0.5,
+                                                            border: '1px solid rgba(0, 0, 0, 0.12)',
+                                                            borderRadius: '4px',
+                                                            p: 1
                                                         }}
                                                     >
-                                                        <Box component="span" sx={{ 
-                                                            width: 24,
-                                                            height: 24,
+                                                        <Box sx={{ 
+                                                            width: 40,
+                                                            height: 40,
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
-                                                            borderRadius: '50%',
-                                                            bgcolor: 'primary.main',
-                                                            color: 'white',
-                                                            fontSize: '16px'
+                                                            borderRadius: '4px',
+                                                            bgcolor: '#f5f5f5'
                                                         }}>
-                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                                                                 <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 3c0 .55.45 1 1 1h1l3.6 7.59-1.35 2.44C4.52 15.37 5.48 17 7 17h11c.55 0 1-.45 1-1s-.45-1-1-1H7l1.1-2h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A.996.996 0 0020.01 4H5.21l-.67-1.43a.993.993 0 00-.9-.57H2c-.55 0-1 .45-1 1zm16 15c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
                                                             </svg>
                                                         </Box>
-                                                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                                        <Typography variant="caption" sx={{ fontSize: '0.75rem', textAlign: 'center' }}>
                                                             View Shop
                                                         </Typography>
                                                     </Link>
@@ -1252,53 +1205,48 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                         size="small"
                                                         onClick={() => handleCopyLink(shopUrl, 'Shop URL')}
                                                         sx={{
-                                                            color: 'text.secondary',
+                                                            color: '#666666',
+                                                            p: 0.5,
                                                             '&:hover': {
                                                                 color: 'primary.main'
                                                             }
                                                         }}
                                                     >
-                                                        <ContentCopyIcon fontSize="small" />
+                                                        <ContentCopyIcon sx={{ fontSize: 16 }} />
                                                     </IconButton>
                                                 </Box>
                                             )}
                                             {crispUrl && (
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                                                     <Link
                                                         href={crispUrl}
                                                         target="_blank"
                                                         sx={{
                                                             display: 'flex',
+                                                            flexDirection: 'column',
                                                             alignItems: 'center',
-                                                            gap: 1,
-                                                            color: '#00B884',
+                                                            color: '#666666',
                                                             textDecoration: 'none',
-                                                            p: 1,
-                                                            borderRadius: 1,
-                                                            bgcolor: 'rgba(0, 184, 132, 0.08)',
-                                                            transition: 'all 0.2s',
-                                                            '&:hover': {
-                                                                bgcolor: 'rgba(0, 184, 132, 0.12)',
-                                                                transform: 'translateY(-1px)'
-                                                            }
+                                                            gap: 0.5,
+                                                            border: '1px solid rgba(0, 0, 0, 0.12)',
+                                                            borderRadius: '4px',
+                                                            p: 1
                                                         }}
                                                     >
-                                                        <Box component="span" sx={{ 
-                                                            width: 24,
-                                                            height: 24,
+                                                        <Box sx={{ 
+                                                            width: 40,
+                                                            height: 40,
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
-                                                            borderRadius: '50%',
-                                                            bgcolor: '#00B884',
-                                                            color: 'white',
-                                                            fontSize: '16px'
+                                                            borderRadius: '4px',
+                                                            bgcolor: '#f5f5f5'
                                                         }}>
-                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                                                                 <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12zM7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/>
                                                             </svg>
                                                         </Box>
-                                                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                                        <Typography variant="caption" sx={{ fontSize: '0.75rem', textAlign: 'center' }}>
                                                             View Chat
                                                         </Typography>
                                                     </Link>
@@ -1306,53 +1254,48 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                         size="small"
                                                         onClick={() => handleCopyLink(crispUrl, 'Chat URL')}
                                                         sx={{
-                                                            color: 'text.secondary',
+                                                            color: '#666666',
+                                                            p: 0.5,
                                                             '&:hover': {
                                                                 color: 'primary.main'
                                                             }
                                                         }}
                                                     >
-                                                        <ContentCopyIcon fontSize="small" />
+                                                        <ContentCopyIcon sx={{ fontSize: 16 }} />
                                                     </IconButton>
                                                 </Box>
                                             )}
                                             {safeCard.shortUrl && (
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                                                     <Link
                                                         href={safeCard.shortUrl}
                                                         target="_blank"
                                                         sx={{
                                                             display: 'flex',
+                                                            flexDirection: 'column',
                                                             alignItems: 'center',
-                                                            gap: 1,
-                                                            color: '#0079BF',
+                                                            color: '#666666',
                                                             textDecoration: 'none',
-                                                            p: 1,
-                                                            borderRadius: 1,
-                                                            bgcolor: 'rgba(0, 121, 191, 0.08)',
-                                                            transition: 'all 0.2s',
-                                                            '&:hover': {
-                                                                bgcolor: 'rgba(0, 121, 191, 0.12)',
-                                                                transform: 'translateY(-1px)'
-                                                            }
+                                                            gap: 0.5,
+                                                            border: '1px solid rgba(0, 0, 0, 0.12)',
+                                                            borderRadius: '4px',
+                                                            p: 1
                                                         }}
                                                     >
-                                                        <Box component="span" sx={{ 
-                                                            width: 24,
-                                                            height: 24,
+                                                        <Box sx={{ 
+                                                            width: 40,
+                                                            height: 40,
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
-                                                            borderRadius: '50%',
-                                                            bgcolor: '#0079BF',
-                                                            color: 'white',
-                                                            fontSize: '16px'
+                                                            borderRadius: '4px',
+                                                            bgcolor: '#f5f5f5'
                                                         }}>
-                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                                                                 <path d="M19.5 3h-15A1.5 1.5 0 003 4.5v15A1.5 1.5 0 004.5 21h15a1.5 1.5 0 001.5-1.5v-15A1.5 1.5 0 0019.5 3zm-15 1.5h15v15h-15v-15zM6 6h12v2H6V6zm0 4h12v2H6v-2zm0 4h12v2H6v-2z"/>
                                                             </svg>
                                                         </Box>
-                                                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                                        <Typography variant="caption" sx={{ fontSize: '0.75rem', textAlign: 'center' }}>
                                                             View Trello
                                                         </Typography>
                                                     </Link>
@@ -1360,13 +1303,14 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                         size="small"
                                                         onClick={() => handleCopyLink(safeCard.shortUrl, 'Trello URL')}
                                                         sx={{
-                                                            color: 'text.secondary',
+                                                            color: '#666666',
+                                                            p: 0.5,
                                                             '&:hover': {
                                                                 color: 'primary.main'
                                                             }
                                                         }}
                                                     >
-                                                        <ContentCopyIcon fontSize="small" />
+                                                        <ContentCopyIcon sx={{ fontSize: 16 }} />
                                                     </IconButton>
                                                 </Box>
                                             )}
@@ -1375,9 +1319,18 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                 )}
 
                                 {/* Status */}
-                                {renderSidebarField(
-                                    <AccessTimeIcon fontSize="small" />,
-                                    'Status',
+                                <Box sx={{
+                                    bgcolor: '#ffffff',
+                                    p: 2,
+                                    borderRadius: '4px'
+                                }}>
+                                    <Typography variant="subtitle1" gutterBottom sx={{ 
+                                        color: '#666666',
+                                        fontSize: '1rem',
+                                        fontWeight: 600
+                                    }}>
+                                        List
+                                    </Typography>
                                     <Select
                                         size="small"
                                         fullWidth
@@ -1392,18 +1345,18 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                             },
                                             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                                                 borderColor: 'primary.main'
-                                            }
+                                            },
+                                            backgroundColor: '#f5f5f5'
                                         }}
                                     >
                                         {lists.map(list => (
                                             <MenuItem key={list.id} value={list.id}>{list.name}</MenuItem>
                                         ))}
                                     </Select>
-                                )}
+                                </Box>
 
                                 {/* Assignees */}
                                 {renderSidebarField(
-                                    <PersonIcon fontSize="small" />,
                                     'Assignees',
                                     <Stack spacing={1}>
                                         <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
