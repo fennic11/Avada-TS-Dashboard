@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, FormControl, InputLabel, MenuItem, Select,
+  Paper,
   Card, CardContent, Typography, Grid, LinearProgress, Box,
-  Tabs, Tab, CircularProgress, Stack, useTheme, alpha,
-  TableSortLabel, Avatar
+  Tabs, Tab, CircularProgress, useTheme, alpha,
+  TableSortLabel
 } from '@mui/material';
 import { getCardsByList } from '../../api/trelloApi';
-import memberList from '../../data/members.json';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
@@ -56,9 +55,6 @@ export default function DevFixingDashboard() {
 
     fetchData();
   }, []);
-
-  const memberMap = Object.fromEntries(memberList.map(m => [m.id, m.name]));
-  const allMembers = ['Tất cả', ...new Set(memberList.map(m => m.name))];
 
   const filterCards = (cards) =>
     cards.filter(card => {

@@ -36,6 +36,7 @@ import CardActivityHistory from './CardActivityHistory';
 import { calculateResolutionTime } from '../utils/resolutionTime';
 import { searchArticles } from '../api/notionApi';
 import { postCards } from '../api/cardsApi';
+import { format, formatDistanceToNow } from 'date-fns';
 
 // Label color mapping
 const LABEL_COLORS = {
@@ -107,6 +108,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
     const [lastUpdateTime, setLastUpdateTime] = useState(null);
     const [lastActionId, setLastActionId] = useState(null);
     const [card, setCard] = useState(null);
+    const [createDate, setCreateDate] = useState(null);
 
     const safeCard = useMemo(() => {
         if (!card) return null;
@@ -170,6 +172,8 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
             try {
                 // Fetch card details
                 const cardData = await getCardById(cardId);
+                console.log('cardData', cardData);
+                
                 if (cardData) {
                     setCard(cardData);
                     
@@ -204,6 +208,12 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                     });
                     
                     setActions(result);
+
+                    // Find createCard action to get creation date
+                    const createCardAction = result.find(action => action.type === 'createCard');
+                    if (createCardAction) {
+                        setCreateDate(new Date(createCardAction.date));
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching card details:', error);
@@ -1110,6 +1120,28 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                 letterSpacing: '-0.01em'
                             }}>
                                 {safeCard.name}
+                            </Typography>
+                            <Typography variant="body2" sx={{ 
+                                color: 'text.secondary',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                mb: 2
+                            }}>
+                                <AccessTimeIcon fontSize="small" />
+                                Created {createDate ? format(createDate, 'MMM d, yyyy HH:mm') : 'N/A'}
+                                {createDate && (
+                                    <Typography 
+                                        component="span" 
+                                        variant="caption" 
+                                        sx={{ 
+                                            color: 'text.secondary',
+                                            ml: 1
+                                        }}
+                                    >
+                                        ({formatDistanceToNow(createDate, { addSuffix: true })})
+                                    </Typography>
+                                )}
                             </Typography>
                         </Box>
                         <Tabs 

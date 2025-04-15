@@ -3,17 +3,18 @@ import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
     Typography, Grid, Button, Box, Chip,
     FormControl, InputLabel, Select, MenuItem,
-    useTheme, alpha, Tabs, Tab, CircularProgress, Backdrop
+    useTheme, alpha, Tabs, Tab, CircularProgress, Backdrop, Avatar
 } from '@mui/material';
 import {
     PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
     BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from 'recharts';
-import { getCardsByList } from '../../api/trelloApi';
+import { getCardsByList, getActionsByCard } from '../../api/trelloApi';
 import members from '../../data/members.json';
 import listsId from '../../data/listsId.json';
 import CardDetailModal from '../CardDetailModal';
 import { parseISO, differenceInDays } from 'date-fns';
+import { calculateResolutionTime } from '../../utils/resolutionTime';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF4560', '#2E93fA'];
 
@@ -37,6 +38,8 @@ const TSLeadSummary = () => {
     const [selectedTab, setSelectedTab] = useState(0);
     const [loading, setLoading] = useState(false);
     const [lastUpdateTime, setLastUpdateTime] = useState(Date.now());
+    const [calculatingMember, setCalculatingMember] = useState(null);
+    const [memberResults, setMemberResults] = useState({});
 
     const tabLabels = [
         { 
@@ -88,12 +91,10 @@ const TSLeadSummary = () => {
     const fetchTabData = useCallback(async (tabIndex) => {
         setLoading(true);
         try {
-            // Get lists for this tab
             const tabLists = listsId.filter(list => 
                 tabLabels[tabIndex].listNames.includes(list.name)
             );
 
-            // Fetch cards for these lists
             const fetchPromises = tabLists.map(list => 
                 getCardsByList(list.id).then(cardsInList => 
                     cardsInList.map(card => ({
@@ -105,14 +106,9 @@ const TSLeadSummary = () => {
             );
 
             const results = await Promise.all(fetchPromises);
-            const tabCards = results.flat();
-
-            // Log for debugging
-            console.log('Fetched cards:', tabCards);
-            console.log('Tab lists:', tabLists);
-            console.log('Tab index:', tabIndex);
-
+            let tabCards = results.flat();
             setCards(tabCards);
+            
             setTabFilters(prev => ({
                 ...prev,
                 [tabLabels[tabIndex].label]: {
@@ -400,6 +396,73 @@ const TSLeadSummary = () => {
         return () => clearInterval(interval);
     }, [checkForUpdates]);
 
+    const calculateMemberResolutionTime = async (memberId) => {
+        setCalculatingMember(memberId);
+        
+        const memberCards = cards.filter(card => 
+            card.idMembers.includes(memberId) && card.dueComplete
+        );
+        
+        if (memberCards.length === 0) {
+            setMemberResults(prev => ({
+                ...prev,
+                [memberId]: { error: 'No completed cards found' }
+            }));
+            setCalculatingMember(null);
+            return;
+        }
+
+        try {
+            const results = [];
+            let totalResolutionTime = 0;
+            let totalTSResolutionTime = 0;
+            let totalFirstActionTime = 0;
+            
+            for (const card of memberCards) {
+                const actions = await getActionsByCard(card.id);
+                const timing = calculateResolutionTime(actions);
+                
+                if (timing) {
+                    const result = {
+                        cardName: card.name,
+                        resolutionTime: timing.resolutionTime || 0,
+                        tsResolutionTime: timing.tsResolutionTime || 0,
+                        firstActionTime: timing.firstActionTime || 0,
+                        isOverTime: (timing.resolutionTime || 0) > 120
+                    };
+                    
+                    totalResolutionTime += result.resolutionTime;
+                    totalTSResolutionTime += result.tsResolutionTime;
+                    totalFirstActionTime += result.firstActionTime;
+                    
+                    results.push(result);
+                }
+            }
+            
+            const averageResolutionTime = results.length > 0 ? Math.round(totalResolutionTime / results.length) : 0;
+            const averageTSResolutionTime = results.length > 0 ? Math.round(totalTSResolutionTime / results.length) : 0;
+            const averageFirstActionTime = results.length > 0 ? Math.round(totalFirstActionTime / results.length) : 0;
+            
+            setMemberResults(prev => ({
+                ...prev,
+                [memberId]: { 
+                    results,
+                    averageResolutionTime,
+                    averageTSResolutionTime,
+                    averageFirstActionTime,
+                    isAverageOverTime: averageResolutionTime > 120
+                }
+            }));
+        } catch (error) {
+            console.error('Error calculating resolution time:', error);
+            setMemberResults(prev => ({
+                ...prev,
+                [memberId]: { error: 'Error calculating resolution time' }
+            }));
+        } finally {
+            setCalculatingMember(null);
+        }
+    };
 
     return (
         <Box sx={{ 
@@ -748,6 +811,419 @@ const TSLeadSummary = () => {
                     </Paper>
                 </Grid>
             </Grid>
+
+            {/* Resolution Time Statistics */}
+            {selectedTab === 0 && (
+                <Paper sx={{ 
+                    p: 3, 
+                    mb: 4,
+                    borderRadius: 2,
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                    background: 'white'
+                }}>
+                    <Typography variant="h6" gutterBottom sx={{ 
+                        mb: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        color: 'primary.main',
+                        borderBottom: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                        pb: 2
+                    }}>
+                        📊 Resolution Time Statistics
+                    </Typography>
+                    <Grid container spacing={4} sx={{ px: 2 }}>
+                        {tsMembers
+                            .filter(member => cards.some(card => card.idMembers.includes(member.id)))
+                            .map(member => {
+                                const memberCards = cards.filter(card => card.idMembers.includes(member.id));
+                                const totalCards = memberCards.length;
+                                const completedCards = memberCards.filter(card => card.dueComplete).length;
+                                const doingCards = memberCards.filter(card => 
+                                    card.listName === "Doing (Inshift)" && !card.dueComplete
+                                ).length;
+                                const waitingCards = memberCards.filter(card => 
+                                    card.listName === "New Issues" && !card.dueComplete
+                                ).length;
+
+                                return (
+                                    <Grid item xs={12} md={6} key={member.id}>
+                                        <Paper sx={{ 
+                                            p: 3,
+                                            borderRadius: 2,
+                                            border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                                            background: alpha(theme.palette.primary.main, 0.02),
+                                            height: '100%',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            '&:hover': {
+                                                background: alpha(theme.palette.primary.main, 0.05),
+                                                transform: 'translateY(-2px)',
+                                                transition: 'all 0.2s ease'
+                                            }
+                                        }}>
+                                            {/* Header with Avatar and Name */}
+                                            <Box sx={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                gap: 2, 
+                                                mb: 3,
+                                                pb: 2,
+                                                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+                                            }}>
+                                                <Avatar
+                                                    src={member.avatarUrl}
+                                                    alt={member.fullName}
+                                                    sx={{ 
+                                                        width: 56, 
+                                                        height: 56,
+                                                        bgcolor: TS_MEMBER_COLORS[member.id] || 'primary.main',
+                                                        fontSize: '1.5rem',
+                                                        fontWeight: 600
+                                                    }}
+                                                >
+                                                    {member.initials}
+                                                </Avatar>
+                                                <Box>
+                                                    <Typography variant="h6" sx={{ 
+                                                        fontWeight: 600,
+                                                        color: 'primary.main'
+                                                    }}>
+                                                        {member.fullName}
+                                                    </Typography>
+                                                    <Typography variant="subtitle2" color="text.secondary">
+                                                        {member.role}
+                                                    </Typography>
+                                                </Box>
+                                            </Box>
+
+                                            {/* Card Statistics */}
+                                            <Box sx={{ mb: 3, display: 'flex', gap: 2 }}>
+                                                <Paper sx={{ 
+                                                    flex: 1, 
+                                                    p: 2, 
+                                                    textAlign: 'center',
+                                                    background: alpha(theme.palette.background.default, 0.6)
+                                                }}>
+                                                    <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                                                        {totalCards}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        Total Cards
+                                                    </Typography>
+                                                </Paper>
+                                            </Box>
+
+                                            {/* Status Breakdown */}
+                                            <Box sx={{ 
+                                                display: 'flex', 
+                                                gap: 2, 
+                                                mb: 3,
+                                                justifyContent: 'space-between'
+                                            }}>
+                                                <Paper sx={{ 
+                                                    flex: 1, 
+                                                    p: 2, 
+                                                    textAlign: 'center',
+                                                    background: alpha(theme.palette.success.main, 0.1)
+                                                }}>
+                                                    <Typography variant="h5" sx={{ 
+                                                        fontWeight: 600,
+                                                        color: 'success.main'
+                                                    }}>
+                                                        {completedCards}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="success.main">
+                                                        Completed
+                                                    </Typography>
+                                                </Paper>
+                                                <Paper sx={{ 
+                                                    flex: 1, 
+                                                    p: 2, 
+                                                    textAlign: 'center',
+                                                    background: alpha(theme.palette.primary.main, 0.1)
+                                                }}>
+                                                    <Typography variant="h5" sx={{ 
+                                                        fontWeight: 600,
+                                                        color: 'primary.main'
+                                                    }}>
+                                                        {doingCards}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="primary.main">
+                                                        Doing
+                                                    </Typography>
+                                                </Paper>
+                                                <Paper sx={{ 
+                                                    flex: 1, 
+                                                    p: 2, 
+                                                    textAlign: 'center',
+                                                    background: alpha(theme.palette.info.main, 0.1)
+                                                }}>
+                                                    <Typography variant="h5" sx={{ 
+                                                        fontWeight: 600,
+                                                        color: 'info.main'
+                                                    }}>
+                                                        {waitingCards}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="info.main">
+                                                        Waiting
+                                                    </Typography>
+                                                </Paper>
+                                            </Box>
+
+                                            {/* Resolution Time Section */}
+                                            <Box sx={{ 
+                                                mt: 'auto',
+                                                pt: 2,
+                                                borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+                                            }}>
+                                                <Box sx={{ 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    justifyContent: 'space-between'
+                                                }}>
+                                                    <Typography variant="subtitle1" color="text.secondary">
+                                                        Resolution Time
+                                                    </Typography>
+                                                </Box>
+                                                {!memberResults[member.id] ? (
+                                                    <Button
+                                                        variant="outlined"
+                                                        fullWidth
+                                                        onClick={() => calculateMemberResolutionTime(member.id)}
+                                                        disabled={calculatingMember === member.id}
+                                                        sx={{ 
+                                                            mt: 1,
+                                                            py: 1
+                                                        }}
+                                                    >
+                                                        {calculatingMember === member.id ? 'Calculating...' : 'Calculate Resolution Time'}
+                                                    </Button>
+                                                ) : memberResults[member.id].error ? (
+                                                    <Box sx={{ mt: 1 }}>
+                                                        <Typography color="error" variant="body2">
+                                                            {memberResults[member.id].error}
+                                                        </Typography>
+                                                        <Button
+                                                            size="small"
+                                                            onClick={() => {
+                                                                setMemberResults(prev => {
+                                                                    const newResults = {...prev};
+                                                                    delete newResults[member.id];
+                                                                    return newResults;
+                                                                });
+                                                            }}
+                                                            sx={{ mt: 1 }}
+                                                        >
+                                                            Try Again
+                                                        </Button>
+                                                    </Box>
+                                                ) : (
+                                                    <Box sx={{ mt: 1 }}>
+                                                        {/* Average Times Display */}
+                                                        <Box sx={{ mb: 2 }}>
+                                                            <Paper sx={{ 
+                                                                p: 2, 
+                                                                mb: 2, 
+                                                                backgroundColor: alpha(theme.palette.background.paper, 0.8),
+                                                                backdropFilter: 'blur(10px)',
+                                                                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                                                                boxShadow: '0 4px 20px rgba(0,0,0,0.05)'
+                                                            }}>
+                                                                <Grid container spacing={2}>
+                                                                    {/* Total Resolution Time */}
+                                                                    <Grid item xs={12} md={4}>
+                                                                        <Box sx={{ 
+                                                                            p: 2, 
+                                                                            textAlign: 'center',
+                                                                            borderRight: { md: `1px solid ${alpha(theme.palette.divider, 0.1)}` },
+                                                                            borderBottom: { xs: `1px solid ${alpha(theme.palette.divider, 0.1)}`, md: 'none' }
+                                                                        }}>
+                                                                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                                                                Total Resolution Time
+                                                                            </Typography>
+                                                                            <Typography 
+                                                                                variant="h4" 
+                                                                                sx={{ 
+                                                                                    fontWeight: 700,
+                                                                                    color: memberResults[member.id].isAverageOverTime ? 
+                                                                                        'error.main' : 'success.main'
+                                                                                }}
+                                                                            >
+                                                                                {Math.floor(memberResults[member.id].averageResolutionTime / 60)}h {memberResults[member.id].averageResolutionTime % 60}m
+                                                                            </Typography>
+                                                                            <Typography 
+                                                                                variant="caption" 
+                                                                                color={memberResults[member.id].isAverageOverTime ? 'error.main' : 'success.main'}
+                                                                            >
+                                                                                {memberResults[member.id].isAverageOverTime ? 'Over SLA (120m)' : 'Within SLA (120m)'}
+                                                                            </Typography>
+                                                                        </Box>
+                                                                    </Grid>
+
+                                                                    {/* TS Resolution Time */}
+                                                                    <Grid item xs={12} md={4}>
+                                                                        <Box sx={{ 
+                                                                            p: 2, 
+                                                                            textAlign: 'center',
+                                                                            borderRight: { md: `1px solid ${alpha(theme.palette.divider, 0.1)}` },
+                                                                            borderBottom: { xs: `1px solid ${alpha(theme.palette.divider, 0.1)}`, md: 'none' }
+                                                                        }}>
+                                                                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                                                                TS Resolution Time
+                                                                            </Typography>
+                                                                            <Typography 
+                                                                                variant="h4" 
+                                                                                sx={{ 
+                                                                                    fontWeight: 700,
+                                                                                    color: memberResults[member.id].averageTSResolutionTime > 120 ? 
+                                                                                        'error.main' : 'success.main'
+                                                                                }}
+                                                                            >
+                                                                                {Math.floor(memberResults[member.id].averageTSResolutionTime / 60)}h {memberResults[member.id].averageTSResolutionTime % 60}m
+                                                                            </Typography>
+                                                                            <Typography 
+                                                                                variant="caption" 
+                                                                                color={memberResults[member.id].averageTSResolutionTime > 120 ? 'error.main' : 'success.main'}
+                                                                            >
+                                                                                {memberResults[member.id].averageTSResolutionTime > 120 ? 'Over SLA (120m)' : 'Within SLA (120m)'}
+                                                                            </Typography>
+                                                                        </Box>
+                                                                    </Grid>
+
+                                                                    {/* First Action Time */}
+                                                                    <Grid item xs={12} md={4}>
+                                                                        <Box sx={{ p: 2, textAlign: 'center' }}>
+                                                                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                                                                First Action Time
+                                                                            </Typography>
+                                                                            <Typography 
+                                                                                variant="h4" 
+                                                                                sx={{ 
+                                                                                    fontWeight: 700,
+                                                                                    color: memberResults[member.id].averageFirstActionTime > 30 ? 
+                                                                                        'error.main' : 'success.main'
+                                                                                }}
+                                                                            >
+                                                                                {Math.floor(memberResults[member.id].averageFirstActionTime / 60)}h {memberResults[member.id].averageFirstActionTime % 60}m
+                                                                            </Typography>
+                                                                            <Typography 
+                                                                                variant="caption" 
+                                                                                color={memberResults[member.id].averageFirstActionTime > 30 ? 'error.main' : 'success.main'}
+                                                                            >
+                                                                                {memberResults[member.id].averageFirstActionTime > 30 ? 'Over SLA (30m)' : 'Within SLA (30m)'}
+                                                                            </Typography>
+                                                                        </Box>
+                                                                    </Grid>
+                                                                </Grid>
+                                                            </Paper>
+                                                        </Box>
+
+                                                        {/* Individual Results */}
+                                                        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                                                            Individual Cards
+                                                        </Typography>
+                                                        <Box sx={{ 
+                                                            maxHeight: '200px', 
+                                                            overflowY: 'auto',
+                                                            mb: 2,
+                                                            '&::-webkit-scrollbar': {
+                                                                width: '8px'
+                                                            },
+                                                            '&::-webkit-scrollbar-track': {
+                                                                background: '#f1f1f1',
+                                                                borderRadius: '4px'
+                                                            },
+                                                            '&::-webkit-scrollbar-thumb': {
+                                                                background: '#888',
+                                                                borderRadius: '4px',
+                                                                '&:hover': {
+                                                                    background: '#555'
+                                                                }
+                                                            }
+                                                        }}>
+                                                            {memberResults[member.id].results.map((result, idx) => (
+                                                                <Box 
+                                                                    key={idx} 
+                                                                    sx={{ 
+                                                                        p: 2, 
+                                                                        mb: 1,
+                                                                        borderRadius: 1,
+                                                                        backgroundColor: alpha(theme.palette.background.paper, 0.8),
+                                                                        backdropFilter: 'blur(10px)',
+                                                                        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                                                                    }}
+                                                                >
+                                                                    <Typography variant="subtitle2" sx={{ 
+                                                                        fontWeight: 600,
+                                                                        mb: 1
+                                                                    }}>
+                                                                        {result.cardName}
+                                                                    </Typography>
+                                                                    <Grid container spacing={2}>
+                                                                        <Grid item xs={12} md={4}>
+                                                                            <Typography variant="caption" color="text.secondary" display="block">
+                                                                                Total Resolution Time
+                                                                            </Typography>
+                                                                            <Typography variant="body2" sx={{ 
+                                                                                color: result.isOverTime ? 'error.main' : 'success.main',
+                                                                                fontWeight: 600
+                                                                            }}>
+                                                                                {Math.floor(result.resolutionTime / 60)}h {result.resolutionTime % 60}m
+                                                                            </Typography>
+                                                                        </Grid>
+                                                                        <Grid item xs={12} md={4}>
+                                                                            <Typography variant="caption" color="text.secondary" display="block">
+                                                                                TS Resolution Time
+                                                                            </Typography>
+                                                                            <Typography variant="body2" sx={{ 
+                                                                                color: result.tsResolutionTime > 120 ? 'error.main' : 'success.main',
+                                                                                fontWeight: 600
+                                                                            }}>
+                                                                                {Math.floor(result.tsResolutionTime / 60)}h {result.tsResolutionTime % 60}m
+                                                                            </Typography>
+                                                                        </Grid>
+                                                                        <Grid item xs={12} md={4}>
+                                                                            <Typography variant="caption" color="text.secondary" display="block">
+                                                                                First Action Time
+                                                                            </Typography>
+                                                                            <Typography variant="body2" sx={{ 
+                                                                                color: result.firstActionTime > 30 ? 'error.main' : 'success.main',
+                                                                                fontWeight: 600
+                                                                            }}>
+                                                                                {Math.floor(result.firstActionTime / 60)}h {result.firstActionTime % 60}m
+                                                                            </Typography>
+                                                                        </Grid>
+                                                                    </Grid>
+                                                                </Box>
+                                                            ))}
+                                                        </Box>
+
+                                                        <Button
+                                                            size="small"
+                                                            fullWidth
+                                                            variant="outlined"
+                                                            onClick={() => {
+                                                                setMemberResults(prev => {
+                                                                    const newResults = {...prev};
+                                                                    delete newResults[member.id];
+                                                                    return newResults;
+                                                                });
+                                                            }}
+                                                        >
+                                                            Calculate Again
+                                                        </Button>
+                                                    </Box>
+                                                )}
+                                            </Box>
+                                        </Paper>
+                                    </Grid>
+                                );
+                            })}
+                    </Grid>
+                </Paper>
+            )}
 
             {/* Table */}
             <TableContainer 

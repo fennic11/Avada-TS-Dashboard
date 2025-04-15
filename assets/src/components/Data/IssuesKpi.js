@@ -4,7 +4,7 @@ import {
     Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, CircularProgress, Accordion,
     AccordionSummary, AccordionDetails, Card, CardContent, Link,
-    useTheme, alpha, Tabs, Tab, Chip, Fade, Select, MenuItem, FormControl, InputLabel
+    useTheme, alpha, Tabs, Tab, Chip, Fade, Select, MenuItem, FormControl, InputLabel, Avatar
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import GroupIcon from '@mui/icons-material/Group';
@@ -154,7 +154,22 @@ const IssuesKpiSummary = () => {
 
     const getMemberName = (id) => {
         const mem = members.find((m) => m.id === id);
-        return mem ? mem.name : id;
+        return mem ? mem.fullName : id;
+    };
+
+    const getMemberAvatar = (id) => {
+        const mem = members.find((m) => m.id === id);
+        return mem?.avatarUrl || null;
+    };
+
+    const getMemberRole = (id) => {
+        const mem = members.find((m) => m.id === id);
+        return mem?.role || null;
+    };
+
+    const getMemberInitials = (id) => {
+        const mem = members.find((m) => m.id === id);
+        return mem?.initials || id.substring(0, 2).toUpperCase();
     };
 
     const handleTabChange = (event, newValue) => {
@@ -454,62 +469,54 @@ const IssuesKpiSummary = () => {
                                                         }
                                                     }}
                                                 >
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                                        <Box sx={{ 
-                                                            width: 32, 
-                                                            height: 32, 
-                                                            borderRadius: '50%',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            background: index < 3 
-                                                                ? alpha(theme.palette.primary.main, 0.1)
-                                                                : alpha(theme.palette.divider, 0.1),
-                                                            color: index < 3 ? 'primary.main' : 'text.secondary',
-                                                            fontWeight: 600
-                                                        }}>
-                                                            {index + 1}
-                                                        </Box>
-                                                        <Box sx={{ flex: 1 }}>
+                                                    <Box sx={{ 
+                                                        display: 'flex', 
+                                                        alignItems: 'center', 
+                                                        gap: 2 
+                                                    }}>
+                                                        <Avatar
+                                                            src={getMemberAvatar(member.memberId)}
+                                                            alt={getMemberName(member.memberId)}
+                                                            sx={{ 
+                                                                width: 40, 
+                                                                height: 40,
+                                                                bgcolor: 'primary.main',
+                                                                color: 'white',
+                                                                fontSize: '1rem',
+                                                                fontWeight: 600
+                                                            }}
+                                                        >
+                                                            {getMemberInitials(member.memberId)}
+                                                        </Avatar>
+                                                        <Box>
                                                             <Typography 
                                                                 variant="subtitle1" 
                                                                 sx={{ 
                                                                     fontWeight: 600,
-                                                                    color: index < 3 ? 'primary.main' : 'text.primary'
-                                                                }}
-                                                            >
-                                                                {member.name}
-                                                            </Typography>
-                                                            <Typography 
-                                                                variant="body2" 
-                                                                sx={{ 
-                                                                    color: 'text.secondary',
                                                                     display: 'flex',
                                                                     alignItems: 'center',
                                                                     gap: 1
                                                                 }}
                                                             >
-                                                                <BarChartIcon sx={{ fontSize: 16 }} />
-                                                                {member.points} điểm
+                                                                {getMemberName(member.memberId)}
+                                                                {getMemberRole(member.memberId) === 'TS' && (
+                                                                    <Chip
+                                                                        label="TS"
+                                                                        size="small"
+                                                                        sx={{
+                                                                            bgcolor: 'primary.main',
+                                                                            color: 'white',
+                                                                            fontSize: '0.75rem',
+                                                                            height: 20,
+                                                                            '& .MuiChip-label': {
+                                                                                px: 1
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                )}
                                                             </Typography>
-                                                        </Box>
-                                                        <Box sx={{ textAlign: 'right' }}>
-                                                            <Typography 
-                                                                variant="h6" 
-                                                                sx={{ 
-                                                                    color: 'primary.main',
-                                                                    fontWeight: 700
-                                                                }}
-                                                            >
-                                                                {member.cards}
-                                                            </Typography>
-                                                            <Typography 
-                                                                variant="caption" 
-                                                                sx={{ 
-                                                                    color: 'text.secondary'
-                                                                }}
-                                                            >
-                                                                cards
+                                                            <Typography variant="body2" color="text.secondary">
+                                                                {member.cards} cards • {member.points} points
                                                             </Typography>
                                                         </Box>
                                                     </Box>

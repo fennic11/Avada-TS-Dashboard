@@ -11,12 +11,6 @@ import {
 import { format, formatDistanceToNow } from "date-fns";
 
 const CardActivityHistory = ({ actions }) => {
-    const extractImageUrl = (text) => {
-        // Match Trello image attachment pattern
-        const imagePattern = /\[image\.png\]\((https:\/\/trello\.com\/1\/cards\/[^)]+)\)/;
-        const match = text.match(imagePattern);
-        return match ? match[1] : null;
-    };
 
     const renderContent = (action) => {
         switch (action.type) {
@@ -467,12 +461,32 @@ const CardActivityHistory = ({ actions }) => {
                                             <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                                                 {action.memberCreator?.fullName}
                                             </Typography>
-                                            <Typography variant="caption" color="text.secondary" sx={{ 
-                                                bgcolor: "rgba(0,0,0,0.05)",
-                                                px: 1,
-                                                py: 0.5,
-                                                borderRadius: 1
-                                            }}>
+                                            <Typography 
+                                                variant="caption" 
+                                                color="text.secondary" 
+                                                sx={{ 
+                                                    bgcolor: "rgba(0,0,0,0.05)",
+                                                    px: 1,
+                                                    py: 0.5,
+                                                    borderRadius: 1,
+                                                    position: 'relative',
+                                                    '&:hover::after': {
+                                                        content: `"${format(new Date(action.date), 'MMM d, yyyy HH:mm:ss')}"`,
+                                                        position: 'absolute',
+                                                        bottom: '100%',
+                                                        left: '50%',
+                                                        transform: 'translateX(-50%)',
+                                                        bgcolor: 'rgba(0,0,0,0.8)',
+                                                        color: 'white',
+                                                        padding: '4px 8px',
+                                                        borderRadius: '4px',
+                                                        fontSize: '12px',
+                                                        whiteSpace: 'nowrap',
+                                                        zIndex: 1,
+                                                        mb: 1
+                                                    }
+                                                }}
+                                            >
                                                 {formatDistanceToNow(new Date(action.date), { addSuffix: true })}
                                             </Typography>
                                             {action.appCreator && (
@@ -554,12 +568,32 @@ const CardActivityHistory = ({ actions }) => {
                                 <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                                     {action.memberCreator?.fullName}
                                 </Typography>
-                                <Typography variant="caption" color="text.secondary" sx={{ 
-                                    bgcolor: "rgba(0,0,0,0.05)",
-                                    px: 1,
-                                    py: 0.5,
-                                    borderRadius: 1
-                                }}>
+                                <Typography 
+                                    variant="caption" 
+                                    color="text.secondary" 
+                                    sx={{ 
+                                        bgcolor: "rgba(0,0,0,0.05)",
+                                        px: 1,
+                                        py: 0.5,
+                                        borderRadius: 1,
+                                        position: 'relative',
+                                        '&:hover::after': {
+                                            content: `"${format(new Date(action.date), 'MMM d, yyyy HH:mm:ss')}"`,
+                                            position: 'absolute',
+                                            bottom: '100%',
+                                            left: '50%',
+                                            transform: 'translateX(-50%)',
+                                            bgcolor: 'rgba(0,0,0,0.8)',
+                                            color: 'white',
+                                            padding: '4px 8px',
+                                            borderRadius: '4px',
+                                            fontSize: '12px',
+                                            whiteSpace: 'nowrap',
+                                            zIndex: 1,
+                                            mb: 1
+                                        }
+                                    }}
+                                >
                                     {formatDistanceToNow(new Date(action.date), { addSuffix: true })}
                                 </Typography>
                                 {action.appCreator && (
