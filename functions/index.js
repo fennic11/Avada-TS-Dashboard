@@ -17,7 +17,7 @@ const corsOptions = {
     origin: [
         'http://localhost:3000',
         'https://avada-ts-dashboard.vercel.app',
-        'https://avada-ts-dashboard-1.onrender.com'
+        'avada-ts-dashboard-production.up.railway.app'
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
