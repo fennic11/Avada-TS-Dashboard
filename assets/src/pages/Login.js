@@ -2,22 +2,19 @@ import React, { useState } from 'react';
 import { 
     Box, 
     Paper, 
-    TextField, 
-    Button, 
     Typography, 
     Alert,
     Snackbar
 } from '@mui/material';
-import { login } from '../api/usersApi';
 import { useNavigate } from 'react-router-dom';
 import logo from '../Logo có nền/Logo có nền/Avada_Brandmark_PhienBanMauChinhTrenNenSang.jpg';
+import { GoogleLogin } from '@react-oauth/google';
+import { jwtDecode } from 'jwt-decode';
+import { login } from '../api/usersApi';
+import members from '../data/members.json';
 
 const Login = () => {
     const navigate = useNavigate();
-    const [loginData, setLoginData] = useState({
-        email: '',
-        password: ''
-    });
     const [isLoading, setIsLoading] = useState(false);
     const [snackbar, setSnackbar] = useState({
         open: false,
@@ -25,21 +22,24 @@ const Login = () => {
         severity: 'error'
     });
 
-    const handleLogin = async (e) => {
-        e.preventDefault();
+    const handleGoogleLogin = async (credentialResponse) => {
         try {
             setIsLoading(true);
-            const response = await login(loginData.email, loginData.password);
+            const decoded = jwtDecode(credentialResponse.credential);
+            console.log(decoded);
             
-            // Lưu thông tin user và token
-            localStorage.setItem('user', JSON.stringify(response.data));
+            // Kiểm tra email có trong members.json không
+            const member = members.find(m => m.email === decoded.email);
+            if (!member) {
+                throw new Error('Email không có quyền truy cập');
+            }
             
             // Chuyển hướng về trang chủ
             navigate('/bugs');
         } catch (error) {
             setSnackbar({
                 open: true,
-                message: error.message || 'Đăng nhập thất bại',
+                message: error.message || 'Đăng nhập bằng Google thất bại',
                 severity: 'error'
             });
         } finally {
@@ -116,89 +116,49 @@ const Login = () => {
                     Đăng nhập
                 </Typography>
 
-                <Box 
-                    component="form" 
-                    onSubmit={handleLogin} 
-                    sx={{ 
-                        mt: 1,
-                        width: '100%'
-                    }}
-                >
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        id="email"
-                        label="Email"
-                        name="email"
-                        autoComplete="email"
-                        autoFocus
-                        value={loginData.email}
-                        onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                        sx={{ 
-                            mb: 2,
-                            '& .MuiOutlinedInput-root': {
-                                '& fieldset': {
-                                    borderColor: 'rgba(0, 0, 0, 0.23)',
-                                },
-                                '&:hover fieldset': {
-                                    borderColor: '#06038D',
-                                },
-                                '&.Mui-focused fieldset': {
-                                    borderColor: '#06038D',
-                                },
-                            },
+                <Box sx={{ 
+                    width: '100%', 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    mb: 2,
+                    '& .google-login-button': {
+                        backgroundColor: '#ffffff',
+                        color: '#06038D',
+                        border: '1px solid #06038D',
+                        borderRadius: '8px',
+                        padding: '10px 24px',
+                        fontSize: '16px',
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                            backgroundColor: '#f5f5f5',
+                            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)',
+                            transform: 'translateY(-1px)'
+                        },
+                        '&:active': {
+                            transform: 'translateY(0)',
+                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                        }
+                    }
+                }}>
+                    <GoogleLogin
+                        onSuccess={handleGoogleLogin}
+                        onError={() => {
+                            setSnackbar({
+                                open: true,
+                                message: 'Đăng nhập bằng Google thất bại',
+                                severity: 'error'
+                            });
                         }}
+                        useOneTap
+                        theme="outline"
+                        size="large"
+                        shape="rectangular"
+                        width="100%"
+                        className="google-login-button"
                     />
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        name="password"
-                        label="Mật khẩu"
-                        type="password"
-                        id="password"
-                        autoComplete="current-password"
-                        value={loginData.password}
-                        onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                        sx={{ 
-                            mb: 3,
-                            '& .MuiOutlinedInput-root': {
-                                '& fieldset': {
-                                    borderColor: 'rgba(0, 0, 0, 0.23)',
-                                },
-                                '&:hover fieldset': {
-                                    borderColor: '#06038D',
-                                },
-                                '&.Mui-focused fieldset': {
-                                    borderColor: '#06038D',
-                                },
-                            },
-                        }}
-                    />
-                    <Button
-                        type="submit"
-                        fullWidth
-                        variant="contained"
-                        disabled={isLoading}
-                        sx={{
-                            mt: 3,
-                            mb: 2,
-                            py: 1.5,
-                            borderRadius: 2,
-                            textTransform: 'none',
-                            fontWeight: 'bold',
-                            fontSize: '1rem',
-                            background: 'linear-gradient(135deg, #06038D 0%, #1B263B 100%)',
-                            boxShadow: '0 4px 12px rgba(6, 3, 141, 0.2)',
-                            '&:hover': {
-                                background: 'linear-gradient(135deg, #06038D 20%, #1B263B 100%)',
-                                boxShadow: '0 6px 16px rgba(6, 3, 141, 0.3)',
-                            }
-                        }}
-                    >
-                        {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
-                    </Button>
                 </Box>
             </Paper>
 
