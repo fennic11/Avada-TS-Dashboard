@@ -22,6 +22,7 @@
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "firebase": "^11.5.0",
+    "notistack": "^3.0.2",
     "process": "^0.11.10",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -62,5 +63,8 @@
   "main": "index.js",
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "dotenv-webpack": "^8.1.0"
+  }
 }

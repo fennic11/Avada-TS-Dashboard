@@ -97,6 +97,9 @@ const CardActivityHistory = ({ actions }) => {
                                                 sx={{
                                                     color: 'primary.main',
                                                     textDecoration: 'none',
+                                                    wordBreak: 'break-all',
+                                                    display: 'inline-block',
+                                                    maxWidth: '100%',
                                                     '&:hover': {
                                                         textDecoration: 'underline'
                                                     }

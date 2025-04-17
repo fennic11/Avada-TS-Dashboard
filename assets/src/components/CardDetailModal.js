@@ -5,16 +5,13 @@ import {
     MenuItem, Select, Dialog, DialogTitle, DialogContent,
     DialogContentText, DialogActions, Button, Paper,
     TextField, List, ListItem, Avatar,
-    Divider, Tabs, Tab, Snackbar, Alert
+    Divider, Tabs, Tab, Snackbar, Alert, Menu
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
-import PersonIcon from '@mui/icons-material/Person';
-import LabelIcon from '@mui/icons-material/Label';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import ImageIcon from '@mui/icons-material/Image';
-import ChatIcon from '@mui/icons-material/Chat';
 import SendIcon from '@mui/icons-material/Send';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import {
@@ -106,8 +103,14 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
     });
     const [lastUpdateTime, setLastUpdateTime] = useState(null);
     const [lastActionId, setLastActionId] = useState(null);
+    const [lastCheckTime, setLastCheckTime] = useState(Date.now());
     const [card, setCard] = useState(null);
     const [createDate, setCreateDate] = useState(null);
+    const [labelMenuAnchorEl, setLabelMenuAnchorEl] = useState(null);
+    const [assigneeMenuAnchorEl, setAssigneeMenuAnchorEl] = useState(null);
+    const [labelMenuOpen, setLabelMenuOpen] = useState(false);
+    const [assigneeMenuOpen, setAssigneeMenuOpen] = useState(false);
+    const [assigneeSearch, setAssigneeSearch] = useState('');
 
     const safeCard = useMemo(() => {
         if (!card) return null;
@@ -187,6 +190,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                         
                         return {
                             id: member.id,
+                            username: member.username,
                             fullName: member.fullName,
                             initials: member.initials,
                             avatarUrl: avatarUrl
@@ -284,6 +288,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                 
             const newMember = {
                 id: member.id,
+                username: member.username,
                 fullName: member.fullName,
                 initials: member.initials,
                 avatarUrl: avatarUrl
@@ -340,6 +345,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                 
             const newMember = {
                 id: member.id,
+                username: member.username,
                 fullName: member.fullName,
                 initials: member.initials,
                 avatarUrl: avatarUrl
@@ -525,20 +531,27 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
 
         try {
             const currentActions = await getActionsByCard(card.id);
+            const currentTime = Date.now();
             
-            // Nếu có action mới
-            if (currentActions.length > 0 && currentActions[0].id !== lastActionId) {
+            // Nếu có action mới và là comment card
+            if (currentActions.length > 0 && 
+                currentActions[0].id !== lastActionId && 
+                currentActions[0].type === 'commentCard' &&
+                new Date(currentActions[0].date).getTime() > lastCheckTime) {
+                
                 setActions(currentActions);
                 setLastActionId(currentActions[0].id);
+                setLastCheckTime(currentTime);
                 
-                // Chỉ hiển thị thông báo nếu action mới là comment
-                if (currentActions[0].type === 'commentCard') {
-                    setSnackbar({
-                        open: true,
-                        message: 'Có comment mới',
-                        severity: 'info'
-                    });
-                }
+                setSnackbar({
+                    open: true,
+                    message: 'Có comment mới',
+                    severity: 'info'
+                });
+            } else if (currentActions.length > 0 && currentActions[0].id !== lastActionId) {
+                // Cập nhật actions nhưng không hiển thị thông báo nếu không phải comment mới
+                setActions(currentActions);
+                setLastActionId(currentActions[0].id);
             }
         } catch (error) {
             console.error('Error checking for new comments:', error);
@@ -555,6 +568,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                     setActions(initialActions);
                     if (initialActions.length > 0) {
                         setLastActionId(initialActions[0].id);
+                        setLastCheckTime(Date.now());
                     }
                 } catch (error) {
                     console.error('Error fetching initial actions:', error);
@@ -564,10 +578,12 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
             fetchInitialActions();
             
             // Bắt đầu polling
-            const interval = setInterval(checkForNewComments, 2000); // Kiểm tra mỗi 2 giây
+            const interval = setInterval(checkForNewComments, 5000); // Kiểm tra mỗi 5 giây
             
             return () => {
                 clearInterval(interval);
+                setLastActionId(null);
+                setLastCheckTime(Date.now());
             };
         }
     }, [open, card?.id]);
@@ -581,6 +597,14 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
         });
     };
 
+    const filteredAgents = useMemo(() => {
+        if (!assigneeSearch) return availableAgents;
+        return availableAgents.filter(agent => 
+            agent.username?.toLowerCase().includes(assigneeSearch.toLowerCase()) ||
+            agent.fullName?.toLowerCase().includes(assigneeSearch.toLowerCase())
+        );
+    }, [availableAgents, assigneeSearch]);
+
     const renderTabContent = () => {
         switch (activeTab) {
             case 0: // Details & Comments
@@ -593,12 +617,13 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                             borderRadius: '4px'
                         }}>
                             <Typography variant="subtitle1" gutterBottom sx={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: 1,
-                                color: '#666666',
-                                fontSize: '1.2rem',
-                                fontWeight: 500
+                                color: '#1e293b',
+                                fontWeight: 600,
+                                fontSize: '1rem',
+                                mb: 2,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1
                             }}>
                                 Description
                             </Typography>
@@ -706,7 +731,15 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                             p: 2,
                             borderRadius: '4px'
                         }}>
-                            <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="subtitle1" gutterBottom sx={{                     
+                                color: '#1e293b',
+                                fontWeight: 600,
+                                fontSize: '1rem',
+                                mb: 2,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1 
+                            }}>
                                 Comments
                             </Typography>
                             <Stack spacing={2}>
@@ -937,8 +970,16 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
 
     const renderSidebarField = (label, content) => (
         <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ py: 1 }}>
-            <Box sx={{ flex: 1, backgroundColor: '#ffffff', p: 1, borderRadius: '4px', width: '100%' }}>
-                <Typography variant="caption" color="text.secondary" display="block" gutterBottom sx={{ fontWeight: 600, fontSize: '1rem' }}>
+            <Box sx={{ flex: 1, backgroundColor: '#ffffff', p: 2, borderRadius: '4px', width: '100%' }}>
+                <Typography variant="subtitle1" gutterBottom sx={{ 
+                    color: '#1e293b',
+                    fontWeight: 600,
+                    fontSize: '1rem',
+                    mb: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                }}>
                     {label}
                 </Typography>
                 {content}
@@ -947,81 +988,135 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
     );
 
     const renderResolutionTimes = () => (
-        <Box>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <AccessTimeIcon fontSize="small" />
+        <Box sx={{
+            backgroundColor: '#ffffff',
+            p: 2.5,
+            borderRadius: '8px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+            border: '1px solid rgba(0, 0, 0, 0.08)'
+        }}>
+            <Typography 
+                variant="subtitle1" 
+                gutterBottom 
+                sx={{ 
+                    color: '#1e293b',
+                    fontWeight: 600,
+                    fontSize: '1rem',
+                    mb: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                }}
+            >
                 Resolution Times
             </Typography>
-            <Stack spacing={2}>
-                <Paper variant="outlined" sx={{ 
-                    p: 2,
-                    borderRadius: 1.5,
-                    bgcolor: '#ffffff',
-                    borderColor: 'rgba(0, 0, 0, 0.12)',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
-                }}>
-                    <Stack spacing={1.5}>
-                        {/* Total Resolution Time */}
-                        <Box>
-                            <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-                                Total Resolution Time
-                            </Typography>
-                            <Typography 
-                                variant="subtitle1" 
-                                fontWeight="medium" 
-                                color={timingData.resolutionTime > 120 ? 'error.main' : 'success.main'}
-                                sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
-                            >
-                                {timingData.resolutionTime != null ? (
-                                    <>
-                                        <AccessTimeIcon fontSize="small" />
-                                        {Math.floor(timingData.resolutionTime / 60)}h {timingData.resolutionTime % 60}m
-                                    </>
-                                ) : 'N/A'}
-                            </Typography>
-                        </Box>
+            <Stack spacing={2.5}>
+                <Stack spacing={2}>
+                    {/* Total Resolution Time */}
+                    <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        gap: 2
+                    }}>
+                        <Typography 
+                            variant="caption" 
+                            sx={{ 
+                                color: '#64748b',
+                                fontWeight: 500,
+                                fontSize: '0.9rem'
+                            }}
+                        >
+                            Total Resolution Time
+                        </Typography>
+                        <Typography 
+                            variant="subtitle1" 
+                            sx={{ 
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                color: timingData.resolutionTime > 120 ? '#ef4444' : '#22c55e',
+                                fontWeight: 600,
+                                fontSize: '0.95rem'
+                            }}
+                        >
+                            <AccessTimeIcon fontSize="small" />
+                            {timingData.resolutionTime != null ? (
+                                `${Math.floor(timingData.resolutionTime / 60)}h ${timingData.resolutionTime % 60}m`
+                            ) : 'N/A'}
+                        </Typography>
+                    </Box>
 
-                        {/* TS Resolution Time */}
-                        <Box>
-                            <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-                                TS Resolution Time
-                            </Typography>
-                            <Typography 
-                                variant="subtitle1" 
-                                fontWeight="medium" 
-                                color={timingData.TSResolutionTime > 60 ? 'error.main' : 'success.main'}
-                                sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
-                            >
-                                {timingData.TSResolutionTime != null ? (
-                                    <>
-                                        <AccessTimeIcon fontSize="small" />
-                                        {Math.floor(timingData.TSResolutionTime / 60)}h {timingData.TSResolutionTime % 60}m
-                                    </>
-                                ) : 'N/A'}
-                            </Typography>
-                        </Box>
+                    {/* TS Resolution Time */}
+                    <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        gap: 2
+                    }}>
+                        <Typography 
+                            variant="caption" 
+                            sx={{ 
+                                color: '#64748b',
+                                fontWeight: 500,
+                                fontSize: '0.9rem'
+                            }}
+                        >
+                            TS Resolution Time
+                        </Typography>
+                        <Typography 
+                            variant="subtitle1" 
+                            sx={{ 
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                color: timingData.TSResolutionTime > 60 ? '#ef4444' : '#22c55e',
+                                fontWeight: 600,
+                                fontSize: '0.95rem'
+                            }}
+                        >
+                            <AccessTimeIcon fontSize="small" />
+                            {timingData.TSResolutionTime != null ? (
+                                `${Math.floor(timingData.TSResolutionTime / 60)}h ${timingData.TSResolutionTime % 60}m`
+                            ) : 'N/A'}
+                        </Typography>
+                    </Box>
 
-                        {/* First Action Time */}
-                        <Box>
-                            <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-                                First Action Time
-                            </Typography>
-                            <Typography 
-                                variant="subtitle1" 
-                                fontWeight="medium" 
-                                color={timingData.firstActionTime > 30 ? 'error.main' : 'success.main'}
-                                sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
-                            >
-                                {timingData.firstActionTime != null ? (
-                                    <>
-                                        <AccessTimeIcon fontSize="small" />
-                                        {Math.floor(timingData.firstActionTime / 60)}h {timingData.firstActionTime % 60}m
-                                    </>
-                                ) : 'N/A'}
-                            </Typography>
-                        </Box>
-                    </Stack>
-                </Paper>
+                    {/* First Action Time */}
+                    <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        gap: 2
+                    }}>
+                        <Typography 
+                            variant="caption" 
+                            sx={{ 
+                                color: '#64748b',
+                                fontWeight: 500,
+                                fontSize: '0.9rem'
+                            }}
+                        >
+                            First Action Time
+                        </Typography>
+                        <Typography 
+                            variant="subtitle1" 
+                            sx={{ 
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                color: timingData.firstActionTime > 30 ? '#ef4444' : '#22c55e',
+                                fontWeight: 600,
+                                fontSize: '0.95rem'
+                            }}
+                        >
+                            <AccessTimeIcon fontSize="small" />
+                            {timingData.firstActionTime != null ? (
+                                `${Math.floor(timingData.firstActionTime / 60)}h ${timingData.firstActionTime % 60}m`
+                            ) : 'N/A'}
+                        </Typography>
+                    </Box>
+                </Stack>
 
                 {/* Review Button */}
                 {!loading && timingData.resolutionTime != null && (
@@ -1031,6 +1126,17 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                         onClick={handleReviewed}
                         fullWidth
                         startIcon={<span>✅</span>}
+                        sx={{
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            fontSize: '0.95rem',
+                            py: 1,
+                            borderRadius: '6px',
+                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                            '&:hover': {
+                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.15)'
+                            }
+                        }}
                     >
                         Mark as Reviewed
                     </Button>
@@ -1078,13 +1184,152 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                             alignItems: 'center',
                             justifyContent: 'space-between'
                         }}>
-                            <Typography variant="h5" sx={{ 
-                                color: '#1e293b',
-                                fontWeight: 600,
-                                letterSpacing: '-0.01em'
+                            <Box sx={{ 
+                                display: 'flex', 
+                                alignItems: 'center',
+                                gap: 2,
+                                flex: 1,
+                                overflow: 'hidden'
                             }}>
-                                {safeCard.name}
-                            </Typography>
+                                <Typography variant="h5" sx={{ 
+                                    color: '#1e293b',
+                                    fontWeight: 600,
+                                    letterSpacing: '-0.01em',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis'
+                                }}>
+                                    {safeCard.name}
+                                </Typography>
+                                <Box sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center',
+                                    gap: 1,
+                                    flex: 1
+                                }}>
+                                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                        {enhancedLabels.map(label => (
+                                            <Chip
+                                                key={label.id}
+                                                label={label.name}
+                                                size="small"
+                                                onDelete={() => handleRemoveLabel(label)}
+                                                sx={{ 
+                                                    bgcolor: label.color,
+                                                    color: 'white',
+                                                    fontWeight: 500,
+                                                    fontSize: '0.75rem',
+                                                    height: '24px',
+                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                                                    '& .MuiChip-deleteIcon': { 
+                                                        color: 'rgba(255, 255, 255, 0.8)',
+                                                        width: '16px',
+                                                        height: '16px',
+                                                        margin: '0 4px 0 -6px',
+                                                        '&:hover': {
+                                                            color: 'white'
+                                                        }
+                                                    },
+                                                    '&:hover': {
+                                                        bgcolor: label.color,
+                                                        filter: 'brightness(90%)',
+                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
+                                                    }
+                                                }}
+                                            />
+                                        ))}
+                                    </Stack>
+                                    {availableLabels.length > 0 && (
+                                        <>
+                                            <Button
+                                                onClick={(event) => {
+                                                    setLabelMenuAnchorEl(event.currentTarget);
+                                                    setLabelMenuOpen(true);
+                                                }}
+                                                startIcon={<AddIcon />}
+                                                size="small"
+                                                sx={{ 
+                                                    color: '#1976d2',
+                                                    backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                                                    textTransform: 'none',
+                                                    fontWeight: 500,
+                                                    fontSize: '0.75rem',
+                                                    minWidth: 'auto',
+                                                    p: '4px 8px',
+                                                    borderRadius: '4px',
+                                                    '&:hover': {
+                                                        backgroundColor: 'rgba(25, 118, 210, 0.12)'
+                                                    }
+                                                }}
+                                            >
+                                                Add Label
+                                            </Button>
+                                            <Menu
+                                                anchorEl={labelMenuAnchorEl}
+                                                open={labelMenuOpen}
+                                                onClose={() => setLabelMenuOpen(false)}
+                                                anchorOrigin={{
+                                                    vertical: 'bottom',
+                                                    horizontal: 'left',
+                                                }}
+                                                transformOrigin={{
+                                                    vertical: 'top',
+                                                    horizontal: 'left',
+                                                }}
+                                                PaperProps={{
+                                                    sx: {
+                                                        mt: 0.5,
+                                                        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                                                        borderRadius: '8px',
+                                                        minWidth: '250px',
+                                                        maxHeight: '400px'
+                                                    }
+                                                }}
+                                            >
+                                                {availableLabels.map(label => {
+                                                    const labelColor = getLabelColor(label.name);
+                                                    return (
+                                                        <MenuItem 
+                                                            key={label.id} 
+                                                            onClick={() => {
+                                                                setNewLabelId(label.id);
+                                                                handleAddLabel();
+                                                                setLabelMenuOpen(false);
+                                                            }}
+                                                            sx={{ 
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: 1,
+                                                                py: 1,
+                                                                px: 2,
+                                                                '&:hover': {
+                                                                    backgroundColor: 'rgba(25, 118, 210, 0.08)'
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Box
+                                                                sx={{ 
+                                                                    width: 32,
+                                                                    height: 4,
+                                                                    borderRadius: 2,
+                                                                    bgcolor: labelColor,
+                                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                                                }}
+                                                            />
+                                                            <Typography variant="body2" sx={{
+                                                                fontSize: '0.875rem',
+                                                                fontWeight: 500
+                                                            }}>
+                                                                {label.name}
+                                                            </Typography>
+                                                        </MenuItem>
+                                                    );
+                                                })}
+                                            </Menu>
+                                        </>
+                                    )}
+                                </Box>
+                            </Box>
                             <IconButton 
                                 size="small" 
                                 onClick={onClose}
@@ -1145,7 +1390,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
 
                         {/* Right Column - Sidebar */}
                         <Box sx={{ 
-                            width: 370,
+                            width: 380,
                             overflowY: 'auto',
                             p: 2.5,
                             bgcolor: '#f5f5f5',
@@ -1160,9 +1405,13 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                         borderRadius: '4px'
                                     }}>
                                         <Typography variant="subtitle1" gutterBottom sx={{ 
-                                            color: '#666666',
+                                            color: '#1e293b',
+                                            fontWeight: 600,
                                             fontSize: '1rem',
-                                            fontWeight: 600
+                                            mb: 2,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1
                                         }}>
                                             Informations
                                         </Typography>
@@ -1181,7 +1430,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                             gap: 0.5,
                                                             border: '1px solid rgba(0, 0, 0, 0.12)',
                                                             borderRadius: '4px',
-                                                            p: 1
+                                                            p: 2
                                                         }}
                                                     >
                                                         <Box sx={{ 
@@ -1230,7 +1479,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                             gap: 0.5,
                                                             border: '1px solid rgba(0, 0, 0, 0.12)',
                                                             borderRadius: '4px',
-                                                            p: 1
+                                                            p: 2
                                                         }}
                                                     >
                                                         <Box sx={{ 
@@ -1279,7 +1528,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                             gap: 0.5,
                                                             border: '1px solid rgba(0, 0, 0, 0.12)',
                                                             borderRadius: '4px',
-                                                            p: 1
+                                                            p: 2
                                                         }}
                                                     >
                                                         <Box sx={{ 
@@ -1325,9 +1574,13 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                     borderRadius: '4px'
                                 }}>
                                     <Typography variant="subtitle1" gutterBottom sx={{ 
-                                        color: '#666666',
-                                        fontSize: '1rem',
-                                        fontWeight: 600
+                                            color: '#1e293b',
+                                            fontWeight: 600,
+                                            fontSize: '1rem',
+                                            mb: 2,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1
                                     }}>
                                         List
                                     </Typography>
@@ -1363,7 +1616,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                             {agents.map(agent => (
                                                 <Chip
                                                     key={agent.id}
-                                                    label={agent.fullName}
+                                                    label={agent.username || agent.fullName}
                                                     size="small"
                                                     onDelete={() => handleRemoveMember(agent.id)}
                                                     avatar={
@@ -1409,214 +1662,177 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                             ))}
                                         </Stack>
                                         {availableAgents.length > 0 && (
-                                            <Box
-                                                sx={{
-                                                    display: 'inline-flex',
-                                                    position: 'relative',
-                                                    height: '28px',
-                                                    mt: -0.5
-                                                }}
-                                            >
-                                                <Select
-                                                    size="small"
-                                                    value=""
-                                                    onChange={handleAgentSelect}
-                                                    displayEmpty
-                                                    variant="standard"
-                                                    sx={{ 
-                                                        '& .MuiSelect-select': {
-                                                            py: 0,
-                                                            px: 0,
-                                                            width: '28px',
-                                                            height: '28px',
-                                                            minHeight: '28px',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            border: '1px solid rgba(0, 0, 0, 0.12)',
-                                                            borderRadius: '14px',
-                                                            bgcolor: '#ffffff',
-                                                            '&:hover': {
-                                                                bgcolor: 'rgba(0, 0, 0, 0.04)',
-                                                                borderColor: '#1976d2'
-                                                            }
-                                                        },
-                                                        '&:before, &:after': { display: 'none' }
+                                            <>
+                                                <Button
+                                                    onClick={(event) => {
+                                                        setAssigneeMenuAnchorEl(event.currentTarget);
+                                                        setAssigneeMenuOpen(true);
                                                     }}
-                                                    renderValue={() => (
-                                                        <Typography sx={{ 
-                                                            fontSize: '1.25rem',
-                                                            lineHeight: 1,
-                                                            color: 'rgba(0, 0, 0, 0.54)',
-                                                            fontWeight: 400
-                                                        }}>
-                                                            +
-                                                        </Typography>
-                                                    )}
+                                                    startIcon={<AddIcon />}
+                                                    sx={{ 
+                                                        color: '#1976d2',
+                                                        backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                                                        textTransform: 'none',
+                                                        fontWeight: 500,
+                                                        fontSize: '0.875rem',
+                                                        py: 0.75,
+                                                        px: 1.5,
+                                                        borderRadius: '6px',
+                                                        '&:hover': {
+                                                            backgroundColor: 'rgba(25, 118, 210, 0.12)'
+                                                        },
+                                                        width: 'fit-content'
+                                                    }}
                                                 >
-                                                    {availableAgents.map(agent => {
-                                                        const avatarUrl = agent.avatarUrl || agent.avatarHash ? 
-                                                            `https://trello-members.s3.amazonaws.com/${agent.id}/${agent.avatarHash}/170.png` : 
-                                                            null;
-                                                        
-                                                        return (
-                                                            <MenuItem 
-                                                                key={agent.id} 
-                                                                value={agent.id}
+                                                    Add Assignee
+                                                </Button>
+                                                <Menu
+                                                    anchorEl={assigneeMenuAnchorEl}
+                                                    open={assigneeMenuOpen}
+                                                    onClose={() => {
+                                                        setAssigneeMenuOpen(false);
+                                                        setAssigneeSearch(''); // Reset search when closing
+                                                    }}
+                                                    anchorOrigin={{
+                                                        vertical: 'bottom',
+                                                        horizontal: 'left',
+                                                    }}
+                                                    transformOrigin={{
+                                                        vertical: 'top',
+                                                        horizontal: 'left',
+                                                    }}
+                                                    PaperProps={{
+                                                        sx: {
+                                                            mt: 0.5,
+                                                            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                                                            borderRadius: '8px',
+                                                            minWidth: '250px',
+                                                            maxHeight: '400px'
+                                                        }
+                                                    }}
+                                                >
+                                                    <Box sx={{ p: 1, borderBottom: '1px solid rgba(0, 0, 0, 0.08)' }}>
+                                                        <TextField
+                                                            size="small"
+                                                            fullWidth
+                                                            placeholder="Search members..."
+                                                            value={assigneeSearch}
+                                                            onChange={(e) => setAssigneeSearch(e.target.value)}
+                                                            InputProps={{
+                                                                startAdornment: (
+                                                                    <SearchIcon 
+                                                                        fontSize="small" 
+                                                                        sx={{ 
+                                                                            color: 'action.active',
+                                                                            mr: 1
+                                                                        }} 
+                                                                    />
+                                                                ),
+                                                                sx: {
+                                                                    fontSize: '0.875rem',
+                                                                    '& .MuiOutlinedInput-notchedOutline': {
+                                                                        borderColor: 'rgba(0, 0, 0, 0.08)'
+                                                                    },
+                                                                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                                        borderColor: 'rgba(0, 0, 0, 0.15)'
+                                                                    },
+                                                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                                        borderColor: '#1976d2'
+                                                                    }
+                                                                }
+                                                            }}
+                                                        />
+                                                    </Box>
+                                                    <Box sx={{ 
+                                                        maxHeight: 300,
+                                                        overflow: 'auto',
+                                                        ...(filteredAgents.length === 0 && {
+                                                            display: 'flex',
+                                                            justifyContent: 'center',
+                                                            alignItems: 'center',
+                                                            py: 2
+                                                        })
+                                                    }}>
+                                                        {filteredAgents.length > 0 ? (
+                                                            filteredAgents.map(agent => {
+                                                                const avatarUrl = agent.avatarUrl || agent.avatarHash ? 
+                                                                    `https://trello-members.s3.amazonaws.com/${agent.id}/${agent.avatarHash}/170.png` : 
+                                                                    null;
+                                                                
+                                                                return (
+                                                                    <MenuItem 
+                                                                        key={agent.id} 
+                                                                        onClick={() => {
+                                                                            handleAgentSelect({ target: { value: agent.id }});
+                                                                            setAssigneeMenuOpen(false);
+                                                                            setAssigneeSearch('');
+                                                                        }}
+                                                                        sx={{ 
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            gap: 1,
+                                                                            py: 1,
+                                                                            px: 2,
+                                                                            '&:hover': {
+                                                                                backgroundColor: 'rgba(25, 118, 210, 0.08)'
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        <Avatar
+                                                                            src={avatarUrl}
+                                                                            alt={agent.initials}
+                                                                            sx={{ 
+                                                                                width: 24, 
+                                                                                height: 24,
+                                                                                bgcolor: '#1976d2',
+                                                                                fontSize: '0.75rem',
+                                                                                fontWeight: 500
+                                                                            }}
+                                                                        >
+                                                                            {agent.initials}
+                                                                        </Avatar>
+                                                                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                                                            <Typography variant="body2" sx={{ 
+                                                                                fontSize: '0.875rem', 
+                                                                                fontWeight: 500,
+                                                                                color: 'text.primary',
+                                                                                lineHeight: 1.2
+                                                                            }}>
+                                                                                {agent.username || agent.fullName}
+                                                                            </Typography>
+                                                                            {agent.username && agent.fullName && agent.username !== agent.fullName && (
+                                                                                <Typography variant="caption" sx={{ 
+                                                                                    color: 'text.secondary',
+                                                                                    fontSize: '0.75rem',
+                                                                                    lineHeight: 1.2
+                                                                                }}>
+                                                                                    {agent.fullName}
+                                                                                </Typography>
+                                                                            )}
+                                                                        </Box>
+                                                                    </MenuItem>
+                                                                );
+                                                            })
+                                                        ) : (
+                                                            <Typography 
+                                                                variant="body2" 
                                                                 sx={{ 
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    gap: 1,
-                                                                    py: 1
+                                                                    color: 'text.secondary',
+                                                                    fontStyle: 'italic'
                                                                 }}
                                                             >
-                                                                <Avatar
-                                                                    src={avatarUrl}
-                                                                    alt={agent.initials}
-                                                                    sx={{ 
-                                                                        width: 24, 
-                                                                        height: 24,
-                                                                        bgcolor: '#1976d2',
-                                                                        fontSize: '0.75rem',
-                                                                        fontWeight: 500
-                                                                    }}
-                                                                >
-                                                                    {agent.initials}
-                                                                </Avatar>
-                                                                <Typography variant="body2" sx={{ 
-                                                                    fontSize: '0.95rem', 
-                                                                    fontWeight: 500,
-                                                                    color: 'text.primary'
-                                                                }}>
-                                                                    {agent.fullName}
-                                                                </Typography>
-                                                            </MenuItem>
-                                                        );
-                                                    })}
-                                                </Select>
-                                            </Box>
+                                                                No members found
+                                                            </Typography>
+                                                        )}
+                                                    </Box>
+                                                </Menu>
+                                            </>
                                         )}
                                     </Stack>
                                 )}
 
                                 {/* Resolution Times */}
                                 {renderResolutionTimes()}
-
-                                {/* Labels */}
-                                {renderSidebarField(
-                                    <LabelIcon fontSize="small" />,
-                                    'Labels',
-                                    <Stack spacing={1.5}>
-                                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                                            {enhancedLabels.map(label => (
-                                                <Chip
-                                                    key={label.id}
-                                                    label={label.name}
-                                                    size="small"
-                                                    onDelete={() => handleRemoveLabel(label)}
-                                                    sx={{ 
-                                                        bgcolor: label.color,
-                                                        color: 'white',
-                                                        fontWeight: 500,
-                                                        fontSize: '0.75rem',
-                                                        height: '24px',
-                                                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                                                        '& .MuiChip-deleteIcon': { 
-                                                            color: 'rgba(255, 255, 255, 0.8)',
-                                                            width: '16px',
-                                                            height: '16px',
-                                                            margin: '0 4px 0 -6px',
-                                                            '&:hover': {
-                                                                color: 'white'
-                                                            }
-                                                        },
-                                                        '&:hover': {
-                                                            bgcolor: label.color,
-                                                            filter: 'brightness(90%)',
-                                                            boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
-                                                        }
-                                                    }}
-                                                />
-                                            ))}
-                                        </Stack>
-                                        {availableLabels.length > 0 && (
-                                            <Paper variant="outlined" sx={{ 
-                                                bgcolor: '#ffffff',
-                                                borderColor: 'rgba(0, 0, 0, 0.12)',
-                                                borderStyle: 'dashed',
-                                                '&:hover': {
-                                                    borderColor: '#1976d2',
-                                                    bgcolor: 'rgba(0, 0, 0, 0.04)'
-                                                }
-                                            }}>
-                                                <Select
-                                                    size="small"
-                                                    fullWidth
-                                                    value={newLabelId}
-                                                    onChange={(e) => {
-                                                        setNewLabelId(e.target.value);
-                                                        if (e.target.value) {
-                                                            handleAddLabel();
-                                                        }
-                                                    }}
-                                                    displayEmpty
-                                                    variant="standard"
-                                                    sx={{ 
-                                                        '& .MuiSelect-select': {
-                                                            py: 1,
-                                                            px: 1.5,
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: 1
-                                                        },
-                                                        '&:before, &:after': { display: 'none' }
-                                                    }}
-                                                    renderValue={(value) => (
-                                                        <Box sx={{ 
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: 1,
-                                                            color: value ? '#1976d2' : 'rgba(0, 0, 0, 0.6)',
-                                                            fontSize: '0.875rem'
-                                                        }}>
-                                                            <AddIcon fontSize="small" />
-                                                            {value ? labels.find(l => l.id === value)?.name : 'Add a label'}
-                                                        </Box>
-                                                    )}
-                                                >
-                                                    {availableLabels.map(label => {
-                                                        const labelColor = getLabelColor(label.name);
-                                                        return (
-                                                            <MenuItem 
-                                                                key={label.id} 
-                                                                value={label.id}
-                                                                sx={{ 
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    gap: 1,
-                                                                    py: 1
-                                                                }}
-                                                            >
-                                                                <Box
-                                                                    sx={{ 
-                                                                        width: 32,
-                                                                        height: 4,
-                                                                        borderRadius: 2,
-                                                                        bgcolor: labelColor,
-                                                                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                                                                    }}
-                                                                />
-                                                                <Typography variant="body2">
-                                                                    {label.name}
-                                                                </Typography>
-                                                            </MenuItem>
-                                                        );
-                                                    })}
-                                                </Select>
-                                            </Paper>
-                                        )}
-                                    </Stack>
-                                )}
                             </Stack>
                         </Box>
                     </Box>

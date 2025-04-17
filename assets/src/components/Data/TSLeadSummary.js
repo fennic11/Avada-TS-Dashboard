@@ -3,7 +3,7 @@ import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
     Typography, Grid, Button, Box, Chip,
     FormControl, InputLabel, Select, MenuItem,
-    useTheme, alpha, Tabs, Tab, CircularProgress, Backdrop, Avatar
+    useTheme, alpha, Tabs, Tab, CircularProgress, Backdrop, Avatar, Alert
 } from '@mui/material';
 import {
     PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
@@ -15,6 +15,7 @@ import listsId from '../../data/listsId.json';
 import CardDetailModal from '../CardDetailModal';
 import { parseISO, differenceInDays } from 'date-fns';
 import { calculateResolutionTime } from '../../utils/resolutionTime';
+import { useSnackbar } from 'notistack';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF4560', '#2E93fA'];
 
@@ -32,6 +33,7 @@ const TS_MEMBER_COLORS = {
 
 const TSLeadSummary = () => {
     const theme = useTheme();
+    const { enqueueSnackbar } = useSnackbar();
     const [cards, setCards] = useState([]);
     const [selectedCard, setSelectedCard] = useState(null);
     const [sortByDueAsc, setSortByDueAsc] = useState(true);
@@ -40,6 +42,7 @@ const TSLeadSummary = () => {
     const [lastUpdateTime, setLastUpdateTime] = useState(Date.now());
     const [calculatingMember, setCalculatingMember] = useState(null);
     const [memberResults, setMemberResults] = useState({});
+    const [notifiedMembers, setNotifiedMembers] = useState(new Set());
 
     const tabLabels = [
         { 
@@ -159,17 +162,6 @@ const TSLeadSummary = () => {
     const getAppLabel = (labels) => {
         const appLabel = labels.find(label => label.name?.startsWith('App:'));
         return appLabel ? appLabel.name.replace('App:', '').trim() : 'Unknown';
-    };
-
-    const getAgentName = (idMembers) => {
-        if (!idMembers || idMembers.length === 0) return '—';
-        const memberNames = idMembers
-            .map(id => {
-                const member = members.find(m => m.id === id);
-                return member ? member.username : null;
-            })
-            .filter(name => name !== null);
-        return memberNames.length > 0 ? memberNames.join(', ') : '—';
     };
 
     const getOverdueColor = (daysOverdue, dueComplete) => {
@@ -301,58 +293,52 @@ const TSLeadSummary = () => {
     const chartsData = useMemo(() => {
         // Count total cards per TS member
         const memberTotals = {};
-        const memberListTotals = {};
-        const memberCompletedTotals = {};
+        const memberStats = {};
 
         cards.forEach(card => {
             card.idMembers.forEach(memberId => {
                 const member = tsMembers.find(m => m.id === memberId);
                 if (!member) return; // Skip if not a TS member
 
-                // Update total cards per member
-                memberTotals[member.username] = (memberTotals[member.username] || 0) + 1;
+                // Initialize member stats if not exists
+                if (!memberStats[member.username]) {
+                    memberStats[member.username] = {
+                        name: member.username,
+                        'Total Issues': 0,
+                        'Done': 0,
+                        'Doing': 0,
+                        'Wait': 0,
+                        color: TS_MEMBER_COLORS[member.id] || COLORS[0]
+                    };
+                }
 
-                // Update completed cards count
+                // Update total cards
+                memberStats[member.username]['Total Issues']++;
+
+                // Update status counts
                 if (card.dueComplete) {
-                    memberCompletedTotals[member.username] = (memberCompletedTotals[member.username] || 0) + 1;
+                    memberStats[member.username]['Done']++;
+                } else if (card.listName === "Doing (Inshift)") {
+                    memberStats[member.username]['Doing']++;
+                } else if (card.listName === "New Issues") {
+                    memberStats[member.username]['Wait']++;
                 }
-
-                // Update cards per member per list
-                if (!memberListTotals[member.username]) {
-                    memberListTotals[member.username] = {};
-                }
-                const listName = listsId.find(l => l.id === card.idList)?.name || 'Unknown';
-                memberListTotals[member.username][listName] = (memberListTotals[member.username][listName] || 0) + 1;
             });
         });
 
         // Format data for pie chart
-        const pieData = Object.entries(memberTotals).map(([name, value]) => ({
-            name,
-            value,
-            color: TS_MEMBER_COLORS[tsMembers.find(m => m.username === name)?.id] || COLORS[0]
+        const pieData = Object.values(memberStats).map(stats => ({
+            name: stats.name,
+            value: stats['Total Issues'],
+            color: stats.color
         }));
 
-        // Format data for bar chart
-        const uniqueLists = [...new Set(cards.map(card => 
-            listsId.find(l => l.id === card.idList)?.name || 'Unknown'
-        ))];
-
-        const barData = Object.entries(memberTotals).map(([name]) => ({
-            name,
-            'Total Issues': memberTotals[name] || 0,
-            'Done Issues': memberCompletedTotals[name] || 0,
-            ...uniqueLists.reduce((acc, listName) => ({
-                ...acc,
-                [listName]: memberListTotals[name]?.[listName] || 0
-            }), {}),
-            color: TS_MEMBER_COLORS[tsMembers.find(m => m.username === name)?.id] || COLORS[0]
-        }));
+        // Format data for bar chart - use memberStats directly
+        const barData = Object.values(memberStats);
 
         return {
             pieData,
-            barData,
-            uniqueLists
+            barData
         };
     }, [cards, tsMembers]);
 
@@ -463,6 +449,59 @@ const TSLeadSummary = () => {
             setCalculatingMember(null);
         }
     };
+
+    // Check for high waiting ratio
+    useEffect(() => {
+        const checkHighWaitingRatio = () => {
+            tsMembers.forEach(member => {
+                const memberCards = cards.filter(card => card.idMembers.includes(member.id));
+                const totalCards = memberCards.length;
+                const waitingCards = memberCards.filter(card => 
+                    card.listName === "New Issues" && !card.dueComplete
+                ).length;
+                
+                const waitingRatio = totalCards > 0 ? waitingCards / totalCards : 0;
+                console.log('=== TS Member Stats ===');
+                console.log('Member:', member.username);
+                console.log('Total Cards:', totalCards);
+                console.log('Waiting Cards:', waitingCards);
+                console.log('Waiting Ratio:', waitingRatio);
+                console.log('=====================');
+
+                if (totalCards > 0 && waitingRatio > 0.4 && !notifiedMembers.has(member.id)) {
+                    enqueueSnackbar(`${member.username} has high waiting ratio: ${Math.round(waitingRatio * 100)}%`, {
+                        variant: 'warning',
+                        anchorOrigin: {
+                            vertical: 'bottom',
+                            horizontal: 'right',
+                        },
+                        autoHideDuration: 6000,
+                        preventDuplicate: true,
+                        style: {
+                            marginTop: '60px', // Add margin to avoid overlapping with avatar
+                        },
+                        action: (key) => (
+                            <Button 
+                                onClick={() => {
+                                    setNotifiedMembers(prev => {
+                                        const newSet = new Set(prev);
+                                        newSet.add(member.id);
+                                        return newSet;
+                                    });
+                                }}
+                                color="inherit"
+                                size="small"
+                            >
+                                Dismiss
+                            </Button>
+                        ),
+                    });
+                }
+            });
+        };
+
+        checkHighWaitingRatio();
+    }, [cards, tsMembers, enqueueSnackbar, notifiedMembers]);
 
     return (
         <Box sx={{ 
@@ -769,7 +808,7 @@ const TSLeadSummary = () => {
                         height: '400px'
                     }}>
                         <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-                            Cards per TS Member per List
+                            Cards per TS Member Status
                         </Typography>
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart 
@@ -787,25 +826,48 @@ const TSLeadSummary = () => {
                                 <Tooltip />
                                 <Bar 
                                     dataKey="Total Issues" 
-                                    fill="#8884d8"
+                                    fill="#9575cd"
                                     name="Total Issues"
                                     style={{ cursor: 'pointer' }}
+                                    label={{ 
+                                        position: 'top',
+                                        fill: theme.palette.text.primary,
+                                        fontSize: 12
+                                    }}
                                 />
                                 <Bar 
-                                    dataKey="Done Issues" 
-                                    fill="#82ca9d"
-                                    name="Done Issues"
+                                    dataKey="Done" 
+                                    fill="#4caf50"
+                                    name="Done"
                                     style={{ cursor: 'pointer' }}
+                                    label={{ 
+                                        position: 'top',
+                                        fill: theme.palette.text.primary,
+                                        fontSize: 12
+                                    }}
                                 />
-                                {chartsData.uniqueLists.map((list, index) => (
-                                    <Bar 
-                                        key={list} 
-                                        dataKey={list} 
-                                        stackId="a" 
-                                        fill={chartsData.barData[index]?.color || COLORS[index % COLORS.length]}
-                                        style={{ cursor: 'pointer' }}
-                                    />
-                                ))}
+                                <Bar 
+                                    dataKey="Doing" 
+                                    fill="#2196f3"
+                                    name="Doing"
+                                    style={{ cursor: 'pointer' }}
+                                    label={{ 
+                                        position: 'top',
+                                        fill: theme.palette.text.primary,
+                                        fontSize: 12
+                                    }}
+                                />
+                                <Bar 
+                                    dataKey="Wait" 
+                                    fill="#f44336"
+                                    name="Wait"
+                                    style={{ cursor: 'pointer' }}
+                                    label={{ 
+                                        position: 'top',
+                                        fill: theme.palette.text.primary,
+                                        fontSize: 12
+                                    }}
+                                />
                             </BarChart>
                         </ResponsiveContainer>
                     </Paper>
@@ -850,18 +912,56 @@ const TSLeadSummary = () => {
                                     <Grid item xs={12} md={6} key={member.id}>
                                         <Paper sx={{ 
                                             p: 2,
+                                            pt: 5, // Add padding top to make space for the alert
                                             borderRadius: 2,
                                             border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
                                             background: alpha(theme.palette.primary.main, 0.02),
                                             height: '100%',
                                             display: 'flex',
                                             flexDirection: 'column',
+                                            position: 'relative',
                                             '&:hover': {
                                                 background: alpha(theme.palette.primary.main, 0.05),
                                                 transform: 'translateY(-2px)',
                                                 transition: 'all 0.2s ease'
                                             }
                                         }}>
+                                            {/* Warning for high waiting ratio */}
+                                            {(() => {
+                                                const waitingRatio = totalCards > 0 ? waitingCards / totalCards : 0;
+                                                console.log('=== TS Member Stats ===');
+                                                console.log('Member:', member.username);
+                                                console.log('Total Cards:', totalCards);
+                                                console.log('Waiting Cards:', waitingCards);
+                                                console.log('Waiting Ratio:', waitingRatio);
+                                                console.log('Should Show Alert:', waitingRatio > 0.4);
+                                                console.log('=====================');
+                                                
+                                                return totalCards > 0 && waitingRatio > 0.4 && (
+                                                    <Alert 
+                                                        severity="warning" 
+                                                        sx={{ 
+                                                            position: 'absolute',
+                                                            top: 0,
+                                                            left: 0,
+                                                            right: 0,
+                                                            borderRadius: '8px 8px 0 0',
+                                                            zIndex: 1,
+                                                            py: 0.5,
+                                                            '& .MuiAlert-icon': {
+                                                                fontSize: '1.2rem'
+                                                            },
+                                                            '& .MuiAlert-message': {
+                                                                fontSize: '0.85rem',
+                                                                py: 0
+                                                            }
+                                                        }}
+                                                    >
+                                                        High waiting ratio: {Math.round(waitingRatio * 100)}%
+                                                    </Alert>
+                                                );
+                                            })()}
+
                                             {/* Header with Avatar and Name */}
                                             <Box sx={{ 
                                                 display: 'flex', 

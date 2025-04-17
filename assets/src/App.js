@@ -8,6 +8,7 @@ import Login from './pages/Login';
 import DevZone from './components/DevZone';
 import { isAuthenticated } from './api/usersApi';
 import Header from './components/Header';
+import { SnackbarProvider } from 'notistack';
 
 import Bugs from './pages/Dashboard';
 import Issues from './pages/Issues'; // ví dụ thêm trang khác
@@ -44,84 +45,86 @@ const Layout = ({ children }) => {
 
 function App() {
     return (
-        <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <Router>
-                <Routes>
-                    <Route path="/login" element={<Login />} />
-                    <Route
-                        path="/dev-zone"
-                        element={
-                            <PrivateRoute>
-                                <Layout>
-                                    <DevZone />
-                                </Layout>
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/bugs"
-                        element={
-                            <PrivateRoute>
-                                <Layout>
-                                    <Bugs />
-                                </Layout>
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/issues"
-                        element={
-                            <PrivateRoute>
-                                <Layout>
-                                    <Issues />
-                                </Layout>
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/resolution-time"
-                        element={
-                            <PrivateRoute>
-                                <Layout>
-                                    <RevolutionTime />
-                                </Layout>
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/data-kpi"
-                        element={
-                            <PrivateRoute>
-                                <Layout>
-                                    <Kpis />
-                                </Layout>
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/TS-lead-workspace"
-                        element={
-                            <PrivateRoute>
-                                <Layout>
-                                    <TSLead />
-                                </Layout>
-                            </PrivateRoute>
-                        }
-                    />  
-                    <Route
-                        path="/TS-workspace"
-                        element={
-                            <PrivateRoute>
-                                <Layout>
-                                    <TSWorkspace />
-                                </Layout>
-                            </PrivateRoute>
-                        }
-                    />
-                </Routes>
-            </Router>
-        </ThemeProvider>
+        <SnackbarProvider maxSnack={3}>
+            <ThemeProvider theme={theme}>
+                <CssBaseline />
+                <Router>
+                    <Routes>
+                        <Route path="/login" element={<Login />} />
+                        <Route
+                            path="/dev-zone"
+                            element={
+                                <PrivateRoute>
+                                    <Layout>
+                                        <DevZone />
+                                    </Layout>
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/bugs"
+                            element={
+                                <PrivateRoute>
+                                    <Layout>
+                                        <Bugs />
+                                    </Layout>
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/issues"
+                            element={
+                                <PrivateRoute>
+                                    <Layout>
+                                        <Issues />
+                                    </Layout>
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/resolution-time"
+                            element={
+                                <PrivateRoute>
+                                    <Layout>
+                                        <RevolutionTime />
+                                    </Layout>
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/data-kpi"
+                            element={
+                                <PrivateRoute>
+                                    <Layout>
+                                        <Kpis />
+                                    </Layout>
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/TS-lead-workspace"
+                            element={
+                                <PrivateRoute>
+                                    <Layout>
+                                        <TSLead />
+                                    </Layout>
+                                </PrivateRoute>
+                            }
+                        />  
+                        <Route
+                            path="/TS-workspace"
+                            element={
+                                <PrivateRoute>
+                                    <Layout>
+                                        <TSWorkspace />
+                                    </Layout>
+                                </PrivateRoute>
+                            }
+                        />
+                    </Routes>
+                </Router>
+            </ThemeProvider>
+        </SnackbarProvider>
     );
 }
 

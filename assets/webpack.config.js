@@ -1,4 +1,6 @@
 const path = require('path');
+const webpack = require('webpack');
+const Dotenv = require('dotenv-webpack');
 
 module.exports = {
   // ... existing config ...
@@ -14,6 +16,11 @@ module.exports = {
     new webpack.ProvidePlugin({
       process: 'process/browser',
       Buffer: ['buffer', 'Buffer']
+    }),
+    new Dotenv({
+      path: process.env.NODE_ENV === 'production' 
+        ? './.env.production'
+        : './.env.development'
     })
   ]
 }; 
