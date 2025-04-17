@@ -1179,17 +1179,17 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                         gap: 1,
                         bgcolor: '#ffffff',
                     }}>
-                        <Box sx={{
+                        <Box sx={{ 
                             display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between'
+                            flexDirection: 'column',
+                            gap: 2,
+                            flex: 1
                         }}>
                             <Box sx={{ 
-                                display: 'flex', 
+                                display: 'flex',
+                                justifyContent: 'space-between',
                                 alignItems: 'center',
-                                gap: 2,
-                                flex: 1,
-                                overflow: 'hidden'
+                                width: '100%'
                             }}>
                                 <Typography variant="h5" sx={{ 
                                     color: '#1e293b',
@@ -1197,152 +1197,158 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                     letterSpacing: '-0.01em',
                                     whiteSpace: 'nowrap',
                                     overflow: 'hidden',
-                                    textOverflow: 'ellipsis'
+                                    textOverflow: 'ellipsis',
+                                    flex: 1
                                 }}>
                                     {safeCard.name}
                                 </Typography>
-                                <Box sx={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center',
-                                    gap: 1,
-                                    flex: 1
-                                }}>
-                                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                                        {enhancedLabels.map(label => (
-                                            <Chip
-                                                key={label.id}
-                                                label={label.name}
-                                                size="small"
-                                                onDelete={() => handleRemoveLabel(label)}
-                                                sx={{ 
-                                                    bgcolor: label.color,
-                                                    color: 'white',
-                                                    fontWeight: 500,
-                                                    fontSize: '0.75rem',
-                                                    height: '24px',
-                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                                                    '& .MuiChip-deleteIcon': { 
-                                                        color: 'rgba(255, 255, 255, 0.8)',
-                                                        width: '16px',
-                                                        height: '16px',
-                                                        margin: '0 4px 0 -6px',
-                                                        '&:hover': {
-                                                            color: 'white'
-                                                        }
-                                                    },
-                                                    '&:hover': {
-                                                        bgcolor: label.color,
-                                                        filter: 'brightness(90%)',
-                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
-                                                    }
-                                                }}
-                                            />
-                                        ))}
-                                    </Stack>
-                                    {availableLabels.length > 0 && (
-                                        <>
-                                            <Button
-                                                onClick={(event) => {
-                                                    setLabelMenuAnchorEl(event.currentTarget);
-                                                    setLabelMenuOpen(true);
-                                                }}
-                                                startIcon={<AddIcon />}
-                                                size="small"
-                                                sx={{ 
-                                                    color: '#1976d2',
-                                                    backgroundColor: 'rgba(25, 118, 210, 0.08)',
-                                                    textTransform: 'none',
-                                                    fontWeight: 500,
-                                                    fontSize: '0.75rem',
-                                                    minWidth: 'auto',
-                                                    p: '4px 8px',
-                                                    borderRadius: '4px',
-                                                    '&:hover': {
-                                                        backgroundColor: 'rgba(25, 118, 210, 0.12)'
-                                                    }
-                                                }}
-                                            >
-                                                Add Label
-                                            </Button>
-                                            <Menu
-                                                anchorEl={labelMenuAnchorEl}
-                                                open={labelMenuOpen}
-                                                onClose={() => setLabelMenuOpen(false)}
-                                                anchorOrigin={{
-                                                    vertical: 'bottom',
-                                                    horizontal: 'left',
-                                                }}
-                                                transformOrigin={{
-                                                    vertical: 'top',
-                                                    horizontal: 'left',
-                                                }}
-                                                PaperProps={{
-                                                    sx: {
-                                                        mt: 0.5,
-                                                        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                                                        borderRadius: '8px',
-                                                        minWidth: '250px',
-                                                        maxHeight: '400px'
-                                                    }
-                                                }}
-                                            >
-                                                {availableLabels.map(label => {
-                                                    const labelColor = getLabelColor(label.name);
-                                                    return (
-                                                        <MenuItem 
-                                                            key={label.id} 
-                                                            onClick={() => {
-                                                                setNewLabelId(label.id);
-                                                                handleAddLabel();
-                                                                setLabelMenuOpen(false);
-                                                            }}
-                                                            sx={{ 
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: 1,
-                                                                py: 1,
-                                                                px: 2,
-                                                                '&:hover': {
-                                                                    backgroundColor: 'rgba(25, 118, 210, 0.08)'
-                                                                }
-                                                            }}
-                                                        >
-                                                            <Box
-                                                                sx={{ 
-                                                                    width: 32,
-                                                                    height: 4,
-                                                                    borderRadius: 2,
-                                                                    bgcolor: labelColor,
-                                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                                                                }}
-                                                            />
-                                                            <Typography variant="body2" sx={{
-                                                                fontSize: '0.875rem',
-                                                                fontWeight: 500
-                                                            }}>
-                                                                {label.name}
-                                                            </Typography>
-                                                        </MenuItem>
-                                                    );
-                                                })}
-                                            </Menu>
-                                        </>
-                                    )}
-                                </Box>
+                                <IconButton 
+                                    size="small" 
+                                    onClick={onClose}
+                                    sx={{
+                                        color: 'text.secondary',
+                                        ml: 2,
+                                        '&:hover': {
+                                            bgcolor: 'rgba(0, 0, 0, 0.04)',
+                                            color: 'primary.main'
+                                        }
+                                    }}
+                                >
+                                    <CloseIcon fontSize="small" />
+                                </IconButton>
                             </Box>
-                            <IconButton 
-                                size="small" 
-                                onClick={onClose}
-                                sx={{
-                                    color: 'text.secondary',
-                                    '&:hover': {
-                                        bgcolor: 'rgba(0, 0, 0, 0.04)',
-                                        color: 'primary.main'
-                                    }
+                            <Stack 
+                                direction="row" 
+                                spacing={0.5} 
+                                alignItems="center"
+                                useFlexGap 
+                                sx={{ 
+                                    flex: 1,
+                                    flexWrap: 'wrap',
+                                    gap: 0.5
                                 }}
                             >
-                                <CloseIcon fontSize="small" />
-                            </IconButton>
+                                {enhancedLabels.map(label => (
+                                    <Chip
+                                        key={label.id}
+                                        label={label.name}
+                                        size="small"
+                                        onDelete={() => handleRemoveLabel(label)}
+                                        sx={{ 
+                                            bgcolor: label.color,
+                                            color: 'white',
+                                            fontWeight: 500,
+                                            fontSize: '0.75rem',
+                                            height: '24px',
+                                            boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                                            '& .MuiChip-deleteIcon': { 
+                                                color: 'rgba(255, 255, 255, 0.8)',
+                                                width: '16px',
+                                                height: '16px',
+                                                margin: '0 4px 0 -6px',
+                                                '&:hover': {
+                                                    color: 'white'
+                                                }
+                                            },
+                                            '&:hover': {
+                                                bgcolor: label.color,
+                                                filter: 'brightness(90%)',
+                                                boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
+                                            }
+                                        }}
+                                    />
+                                ))}
+                                {availableLabels.length > 0 && (
+                                    <Button
+                                        onClick={(event) => {
+                                            setLabelMenuAnchorEl(event.currentTarget);
+                                            setLabelMenuOpen(true);
+                                        }}
+                                        startIcon={<AddIcon />}
+                                        size="small"
+                                        sx={{ 
+                                            color: '#1976d2',
+                                            backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                                            textTransform: 'none',
+                                            fontWeight: 500,
+                                            fontSize: '0.75rem',
+                                            height: '24px',
+                                            minWidth: 'auto',
+                                            p: '4px 8px',
+                                            borderRadius: '4px',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(25, 118, 210, 0.12)'
+                                            }
+                                        }}
+                                    >
+                                        Add Label
+                                    </Button>
+                                )}
+                            </Stack>
+                            {availableLabels.length > 0 && (
+                                <Menu
+                                    anchorEl={labelMenuAnchorEl}
+                                    open={labelMenuOpen}
+                                    onClose={() => setLabelMenuOpen(false)}
+                                    anchorOrigin={{
+                                        vertical: 'bottom',
+                                        horizontal: 'left',
+                                    }}
+                                    transformOrigin={{
+                                        vertical: 'top',
+                                        horizontal: 'left',
+                                    }}
+                                    PaperProps={{
+                                        sx: {
+                                            mt: 0.5,
+                                            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                                            borderRadius: '8px',
+                                            minWidth: '250px',
+                                            maxHeight: '400px'
+                                        }
+                                    }}
+                                >
+                                    {availableLabels.map(label => {
+                                        const labelColor = getLabelColor(label.name);
+                                        return (
+                                            <MenuItem 
+                                                key={label.id} 
+                                                onClick={() => {
+                                                    setNewLabelId(label.id);
+                                                    handleAddLabel();
+                                                    setLabelMenuOpen(false);
+                                                }}
+                                                sx={{ 
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 1,
+                                                    py: 1,
+                                                    px: 2,
+                                                    '&:hover': {
+                                                        backgroundColor: 'rgba(25, 118, 210, 0.08)'
+                                                    }
+                                                }}
+                                            >
+                                                <Box
+                                                    sx={{ 
+                                                        width: 32,
+                                                        height: 4,
+                                                        borderRadius: 2,
+                                                        bgcolor: labelColor,
+                                                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                                    }}
+                                                />
+                                                <Typography variant="body2" sx={{
+                                                    fontSize: '0.875rem',
+                                                    fontWeight: 500
+                                                }}>
+                                                    {label.name}
+                                                </Typography>
+                                            </MenuItem>
+                                        );
+                                    })}
+                                </Menu>
+                            )}
                         </Box>
                         <Typography variant="body2" sx={{ 
                             color: 'text.secondary',
