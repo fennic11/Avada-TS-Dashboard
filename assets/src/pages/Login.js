@@ -33,6 +33,11 @@ const Login = () => {
             if (!member) {
                 throw new Error('Email không có quyền truy cập');
             }
+
+            // Gửi thông tin Google đến server
+
+            // Lưu thông tin user và token
+            localStorage.setItem('user' , JSON.stringify({...decoded, trelloId: member.id}));
             
             // Chuyển hướng về trang chủ
             navigate('/bugs');

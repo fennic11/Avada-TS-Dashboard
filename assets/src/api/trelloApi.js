@@ -497,7 +497,8 @@ export async function getCardById(cardId) {
 export async function getMemberNotifications() {
     try {
         const user = localStorage.getItem('user');
-        const trelloId = JSON.parse(user).user.trelloId;
+        console.log(JSON.parse(user));
+        const trelloId = JSON.parse(user).trelloId;
         console.log(JSON.parse(user));
         if (!trelloId) {
             throw new Error('Trello ID not found in localStorage');
@@ -525,7 +526,8 @@ export async function getMemberNotifications() {
 export async function markAllNotificationsAsRead() {
     try {
         const user = localStorage.getItem('user');
-        const trelloId = JSON.parse(user).user.trelloId;
+        console.log(JSON.parse(user));
+        const trelloId = JSON.parse(user).trelloId;
         if (!trelloId) {
             throw new Error('Trello ID not found in localStorage');
         }
