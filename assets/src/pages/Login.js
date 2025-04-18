@@ -10,7 +10,6 @@ import { useNavigate } from 'react-router-dom';
 import logo from '../Logo có nền/Logo có nền/Avada_Brandmark_PhienBanMauChinhTrenNenSang.jpg';
 import { GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
-import { login } from '../api/usersApi';
 import members from '../data/members.json';
 
 const Login = () => {

@@ -23,7 +23,8 @@ import {
     addLabelByID,
     addCommentToCard,
     addAttachmentToCard,
-    getCardById
+    getCardById,
+    updateCardDueComplete
 } from '../api/trelloApi';
 import members from '../data/members.json';
 import lists from '../data/listsId.json';
@@ -604,6 +605,25 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
             agent.fullName?.toLowerCase().includes(assigneeSearch.toLowerCase())
         );
     }, [availableAgents, assigneeSearch]);
+
+    const handleToggleComplete = async () => {
+        try {
+            const updatedCard = await updateCardDueComplete(card.id, !card.dueComplete);
+            setCard(updatedCard);
+            setSnackbar({
+                open: true,
+                message: `Card marked as ${updatedCard.dueComplete ? 'completed' : 'incomplete'}`,
+                severity: 'success'
+            });
+        } catch (error) {
+            console.error('Error updating card status:', error);
+            setSnackbar({
+                open: true,
+                message: 'Failed to update card status',
+                severity: 'error'
+            });
+        }
+    };
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -1191,17 +1211,67 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                 alignItems: 'center',
                                 width: '100%'
                             }}>
-                                <Typography variant="h5" sx={{ 
-                                    color: '#1e293b',
-                                    fontWeight: 600,
-                                    letterSpacing: '-0.01em',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
+                                <Box sx={{ 
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 2,
                                     flex: 1
                                 }}>
-                                    {safeCard.name}
-                                </Typography>
+                                    <IconButton
+                                        onClick={handleToggleComplete}
+                                        sx={{
+                                            width: 32,
+                                            height: 32,
+                                            borderRadius: '50%',
+                                            border: '1.5px solid',
+                                            borderColor: card?.dueComplete ? 'success.main' : 'rgba(0, 0, 0, 0.3)',
+                                            backgroundColor: card?.dueComplete ? 'rgba(76, 175, 80, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                                            color: card?.dueComplete ? 'success.main' : 'rgba(0, 0, 0, 0.6)',
+                                            transition: 'all 0.2s ease-in-out',
+                                            '&:hover': {
+                                                backgroundColor: card?.dueComplete ? 'rgba(76, 175, 80, 0.2)' : 'rgba(0, 0, 0, 0.08)',
+                                                transform: 'scale(1.05)',
+                                                borderColor: card?.dueComplete ? 'success.main' : 'primary.main',
+                                                color: card?.dueComplete ? 'success.main' : 'primary.main',
+                                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                                            },
+                                            '&:active': {
+                                                transform: 'scale(0.95)',
+                                                boxShadow: 'none'
+                                            }
+                                        }}
+                                    >
+                                        {card?.dueComplete ? (
+                                            <span style={{ 
+                                                fontSize: '1rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontWeight: 'bold'
+                                            }}>✓</span>
+                                        ) : (
+                                            <span style={{ 
+                                                fontSize: '1rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                color: 'rgba(0, 0, 0, 0.6)',
+                                                fontWeight: '400'
+                                            }}>○</span>
+                                        )}
+                                    </IconButton>
+                                    <Typography variant="h5" sx={{ 
+                                        color: '#1e293b',
+                                        fontWeight: 600,
+                                        letterSpacing: '-0.01em',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        flex: 1
+                                    }}>
+                                        {safeCard.name}
+                                    </Typography>
+                                </Box>
                                 <IconButton 
                                     size="small" 
                                     onClick={onClose}

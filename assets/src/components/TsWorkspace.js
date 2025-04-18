@@ -43,6 +43,12 @@ const TsWorkspace = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [sections, setSections] = useState([
         {
+            id: 3,
+            title: 'Need to follow up',
+            color: '#E91E63',
+            tasks: []
+        },
+        {
             id: 1,
             title: 'Waiting to do',
             color: '#FF9800',
@@ -52,12 +58,6 @@ const TsWorkspace = () => {
             id: 2,
             title: 'Doing',
             color: '#2196F3',
-            tasks: []
-        },
-        {
-            id: 3,
-            title: 'Need to follow up',
-            color: '#E91E63',
             tasks: []
         },
         {
@@ -96,12 +96,13 @@ const TsWorkspace = () => {
             try {
                 setLoading(true);
                 const userData = localStorage.getItem('user');
+                console.log('User data:', userData);
                 if (!userData) {
                     throw new Error('User data not found');
                 }
 
                 const user = JSON.parse(userData);
-                if (!user.user || !user.user.trelloId) {
+                if (!user || !user.trelloId) {
                     throw new Error('User Trello ID not found');
                 }
 
@@ -112,10 +113,10 @@ const TsWorkspace = () => {
 
                 console.log('Fetching cards for:', {
                     listId: newIssuesListId.id,
-                    trelloId: user.user.trelloId
+                    trelloId: user.trelloId
                 });
 
-                const cards = await getCardsByListandMember(newIssuesListId.id, user.user.trelloId);
+                const cards = await getCardsByListandMember(newIssuesListId.id, user.trelloId);
                 console.log('Fetched cards:', cards);
 
                 if (!cards) {
@@ -205,61 +206,7 @@ const TsWorkspace = () => {
     };
 
     const handleTaskClick = (task) => {
-        console.log('Original task:', task);
-        
-        // Transform task data to match CardDetailModal's expected format
-        const cardData = {
-            ...task, // Spread the original task data
-            id: task.id || '',
-            name: task.title || '', // Changed from task.name to task.title
-            desc: task.desc || '',
-            idMembers: task.idMembers || [],
-            idList: task.idList || '',
-            labels: task.labels || [],
-            due: task.due,
-            shortUrl: task.shortUrl || '',
-            badges: task.badges || {},
-            dateLastActivity: task.dateLastActivity || new Date().toISOString(),
-            idBoard: task.idBoard || '',
-            idShort: task.idShort || '',
-            url: task.url || '',
-            // Add customer info from description
-            customer: task.desc?.split('\n')[0] || '',
-            // Add ticket ID from shortUrl
-            ticketId: task.shortUrl?.split('/').pop() || '',
-            // Add priority from labels
-            priority: task.labels?.find(label => label.name?.includes('level'))?.name || 'No priority',
-            // Add completion status
-            completed: task.dueComplete || false,
-            // Add section info
-            section: {
-                id: task.idList || '',
-                name: task.listName || 'Unknown'
-            },
-            // Add agent assignments using members from members.json
-            agents: (task.idMembers || []).map(memberId => {
-                const member = members.find(m => m.id === memberId);
-                console.log('Looking for member:', memberId, 'Found:', member);
-                return member ? {
-                    id: member.id,
-                    name: member.name,
-                    username: member.username
-                } : null;
-            }).filter(Boolean),
-            // Add comments count
-            comments: task.badges?.comments || 0,
-            // Add activity logs
-            activityLogs: [], // Will be populated by CardDetailModal
-            // Add Notion search results
-            notionResults: [], // Will be populated by CardDetailModal
-            // Add timing metrics
-            resolutionTime: null, // Will be calculated by CardDetailModal
-            TSResolutionTime: null, // Will be calculated by CardDetailModal
-            firstActionTime: null // Will be calculated by CardDetailModal
-        };
-        
-        console.log('Transformed card data:', cardData);
-        setSelectedTask(cardData);
+        setSelectedTask(task.id);
         setIsModalOpen(true);
     };
 
@@ -666,9 +613,10 @@ const TsWorkspace = () => {
                                                             flexDirection: 'column',
                                                             gap: 1
                                                         }}
+                                                        disablePadding
                                                     >
-                                                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                                                            <ListItemIcon sx={{ minWidth: 'auto', mt: 0.5 }}>
+                                                        <Box sx={{ display: 'flex', alignItems: 'flex-start', width: '100%', gap: 1 }}>
+                                                            <Box sx={{ minWidth: 'auto', mt: 0.5 }}>
                                                                 <Checkbox
                                                                     edge="start"
                                                                     checked={task.completed}
@@ -682,29 +630,34 @@ const TsWorkspace = () => {
                                                                         }
                                                                     }}
                                                                 />
-                                                            </ListItemIcon>
-                                                            <ListItemText
-                                                                primary={
-                                                                    <Typography
-                                                                        component="div"
-                                                                        sx={{
-                                                                            textDecoration: task.completed ? 'line-through' : 'none',
-                                                                            color: task.completed ? 'text.secondary' : 'text.primary',
-                                                                            fontWeight: 'medium',
-                                                                            fontSize: '0.95rem',
-                                                                            lineHeight: 1.4
-                                                                        }}
-                                                                    >
-                                                                        {task.title}
-                                                                    </Typography>
-                                                                }
-                                                                secondary={renderTaskSecondary(task)}
-                                                                sx={{ m: 0 }}
-                                                            />
-                                                            <ListItemSecondaryAction sx={{ top: 8, right: 8 }}>
+                                                            </Box>
+                                                            <Box sx={{ flex: 1, mr: 6 }}>
+                                                                <Typography
+                                                                    sx={{
+                                                                        textDecoration: task.completed ? 'line-through' : 'none',
+                                                                        color: task.completed ? 'text.secondary' : 'text.primary',
+                                                                        fontWeight: 'medium',
+                                                                        fontSize: '0.95rem',
+                                                                        lineHeight: 1.4,
+                                                                        mb: 1
+                                                                    }}
+                                                                >
+                                                                    {task.title}
+                                                                </Typography>
+                                                                {renderTaskSecondary(task)}
+                                                            </Box>
+                                                            <Box sx={{ 
+                                                                position: 'absolute',
+                                                                top: 8,
+                                                                right: 8,
+                                                                display: 'flex'
+                                                            }}>
                                                                 <IconButton 
                                                                     edge="end" 
-                                                                    onClick={() => handleEditTask(section.id, task.id)}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleEditTask(section.id, task.id);
+                                                                    }}
                                                                     sx={{ 
                                                                         mr: 1,
                                                                         color: 'text.secondary',
@@ -718,7 +671,10 @@ const TsWorkspace = () => {
                                                                 </IconButton>
                                                                 <IconButton 
                                                                     edge="end" 
-                                                                    onClick={() => handleDeleteTask(section.id, task.id)}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDeleteTask(section.id, task.id);
+                                                                    }}
                                                                     sx={{ 
                                                                         color: 'text.secondary',
                                                                         '&:hover': {
@@ -729,7 +685,7 @@ const TsWorkspace = () => {
                                                                 >
                                                                     <DeleteIcon fontSize="small" />
                                                                 </IconButton>
-                                                            </ListItemSecondaryAction>
+                                                            </Box>
                                                         </Box>
                                                     </ListItem>
                                                 )}
@@ -779,7 +735,7 @@ const TsWorkspace = () => {
                     <CardDetailModal 
                         open={isModalOpen}
                         onClose={handleCloseModal}
-                        card={selectedTask}
+                        cardId={selectedTask}
                     />
                 )}
 

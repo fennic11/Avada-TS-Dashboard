@@ -19,7 +19,8 @@ const pages = [
   { label: 'Issues', path: '/issues' },
   { label: 'Resolution Time', path: '/resolution-time' },
   { label: 'KPI', path: '/data-kpi' },
-  { label: 'TS Lead workspace', path: '/TS-lead-workspace'}
+  { label: 'TS Lead workspace', path: '/TS-lead-workspace'},
+  { label: 'TS workspace', path: '/TS-workspace'},
 ];
 
 function ResponsiveAppBar() {

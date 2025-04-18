@@ -575,3 +575,28 @@ export const updateNotificationStatus = async (notificationId, isRead) => {
   }
 };
 
+export async function updateCardDueComplete(cardId, dueComplete) {
+    const url = `${API_URL}/cards/${cardId}?key=${key}&token=${token}`;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json'
+            },
+            body: JSON.stringify({ dueComplete })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to update dueComplete status: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error updating dueComplete status:', error);
+        throw error;
+    }
+}
+

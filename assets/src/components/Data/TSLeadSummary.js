@@ -31,6 +31,7 @@ const TS_MEMBER_COLORS = {
     '65dc1670ae5414d1dd11a26d': '#3498DB'  // Đỗ Minh Quân
 };
 
+
 const TSLeadSummary = () => {
     const theme = useTheme();
     const { enqueueSnackbar } = useSnackbar();
@@ -241,6 +242,24 @@ const TSLeadSummary = () => {
         }
     };
 
+    const handleAppPieChartClick = (entry) => {
+        if (entry && entry.name) {
+            const currentAppFilter = currentFilters.app;
+            // If clicking the same app again, clear the filter
+            if (currentAppFilter === entry.name) {
+                updateTabFilter('app', '');
+            } else {
+                updateTabFilter('app', entry.name);
+            }
+        }
+    };
+
+    const handleStatusBarChartClick = (entry) => {
+        if (entry && entry.name) {
+            updateTabFilter('status', entry.name.toLowerCase().replace(' ', '_'));
+        }
+    };
+
     const filteredCards = useMemo(() => {
         return cards
             .filter(card => {
@@ -263,16 +282,10 @@ const TSLeadSummary = () => {
                     }
                 }
 
-                if (filters.type === 'app') {
-                    pass = pass && getAppLabel(card.labels || []) === filters.value;
-                } else if (filters.type === 'member') {
-                    pass = pass && card.idMembers.some(id => {
-                        const member = members.find(m => m.id === id);
-                        return member?.username === filters.value;
-                    });
-                } else if (filters.type === 'overdue') {
-                    const days = getOverdueDays(card.due);
-                    pass = pass && !!days;
+                // Filter by app if selected
+                if (filters.app) {
+                    const appLabel = card.labels?.find(label => label.name?.startsWith('App:'))?.name?.replace('App:', '').trim() || 'Unknown';
+                    pass = pass && appLabel === filters.app;
                 }
 
                 return pass;
@@ -294,8 +307,33 @@ const TSLeadSummary = () => {
         // Count total cards per TS member
         const memberTotals = {};
         const memberStats = {};
+        const appStats = {};
+        const uniqueApps = new Set();
+
+        // First pass to collect unique apps
+        cards.forEach(card => {
+            const appLabel = card.labels?.find(label => label.name?.startsWith('App:'))?.name?.replace('App:', '').trim() || 'Unknown';
+            uniqueApps.add(appLabel);
+        });
+
+        // Create color mapping for apps
+        const appColorMap = {};
+        Array.from(uniqueApps).forEach((app, index) => {
+            appColorMap[app] = COLORS[index % COLORS.length];
+        });
 
         cards.forEach(card => {
+            // Count cards per app
+            const appLabel = card.labels?.find(label => label.name?.startsWith('App:'))?.name?.replace('App:', '').trim() || 'Unknown';
+            if (!appStats[appLabel]) {
+                appStats[appLabel] = {
+                    name: appLabel,
+                    value: 0,
+                    color: appColorMap[appLabel]
+                };
+            }
+            appStats[appLabel].value++;
+
             card.idMembers.forEach(memberId => {
                 const member = tsMembers.find(m => m.id === memberId);
                 if (!member) return; // Skip if not a TS member
@@ -326,19 +364,22 @@ const TSLeadSummary = () => {
             });
         });
 
-        // Format data for pie chart
+        // Format data for pie charts
         const pieData = Object.values(memberStats).map(stats => ({
             name: stats.name,
             value: stats['Total Issues'],
             color: stats.color
         }));
 
+        const appPieData = Object.values(appStats).sort((a, b) => b.value - a.value);
+
         // Format data for bar chart - use memberStats directly
         const barData = Object.values(memberStats);
 
         return {
             pieData,
-            barData
+            barData,
+            appPieData
         };
     }, [cards, tsMembers]);
 
@@ -695,7 +736,7 @@ const TSLeadSummary = () => {
             </Grid>
 
             {/* Active Filters Display */}
-            {(currentFilters.tsMember || currentFilters.status || currentFilters.type) && (
+            {(currentFilters.tsMember || currentFilters.status || currentFilters.app) && (
                 <Box sx={{ mb: 2 }}>
                     {currentFilters.tsMember && (
                         <Chip
@@ -733,10 +774,10 @@ const TSLeadSummary = () => {
                             }}
                         />
                     )}
-                    {currentFilters.type && (
+                    {currentFilters.app && (
                         <Chip
-                            label={`Filtered by ${currentFilters.type === 'app' ? 'App' : 'Member'}: ${currentFilters.value}`}
-                            onDelete={() => updateTabFilter('type', null)}
+                            label={`App: ${currentFilters.app}`}
+                            onDelete={() => updateTabFilter('app', '')}
                             color="primary"
                             variant="outlined"
                             sx={{
@@ -756,16 +797,16 @@ const TSLeadSummary = () => {
 
             {/* Charts Section */}
             <Grid container spacing={3} sx={{ mb: 4 }}>
-                {/* Pie Chart */}
-                <Grid item xs={12} md={6}>
+                {/* Member Distribution Pie Chart */}
+                <Grid item xs={12} md={4}>
                     <Paper sx={{ 
-                        p: 3, 
+                        p: 2, 
                         borderRadius: 2,
                         boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                        height: '400px'
+                        height: '300px'
                     }}>
                         <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-                            Total Cards per TS Member
+                            Cards per TS Member
                         </Typography>
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -780,7 +821,7 @@ const TSLeadSummary = () => {
                                     nameKey="name"
                                     cx="50%"
                                     cy="50%"
-                                    outerRadius={120}
+                                    outerRadius={80}
                                     fill="#8884d8"
                                     label={(entry) => `${entry.name}: ${entry.value}`}
                                     onClick={handlePieChartClick}
@@ -789,7 +830,10 @@ const TSLeadSummary = () => {
                                         <Cell 
                                             key={`cell-${index}`} 
                                             fill={entry.color}
-                                            style={{ cursor: 'pointer' }}
+                                            style={{ 
+                                                cursor: 'pointer',
+                                                filter: currentFilters.tsMember === entry.name ? 'brightness(1.2)' : 'none'
+                                            }}
                                         />
                                     ))}
                                 </Pie>
@@ -799,21 +843,67 @@ const TSLeadSummary = () => {
                     </Paper>
                 </Grid>
 
-                {/* Bar Chart */}
-                <Grid item xs={12} md={6}>
+                {/* App Distribution Pie Chart */}
+                <Grid item xs={12} md={4}>
                     <Paper sx={{ 
-                        p: 3, 
+                        p: 2, 
                         borderRadius: 2,
                         boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                        height: '400px'
+                        height: '300px'
                     }}>
                         <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-                            Cards per TS Member Status
+                            Cards per App
+                        </Typography>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Legend 
+                                    verticalAlign="top" 
+                                    align="center"
+                                    height={36}
+                                />
+                                <Pie
+                                    data={chartsData.appPieData}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    cx="50%"
+                                    cy="50%"
+                                    outerRadius={80}
+                                    fill="#8884d8"
+                                    label={(entry) => `${entry.name}: ${entry.value}`}
+                                    onClick={handleAppPieChartClick}
+                                >
+                                    {chartsData.appPieData.map((entry, index) => (
+                                        <Cell 
+                                            key={`cell-${entry.name}`} 
+                                            fill={entry.color}
+                                            style={{ 
+                                                cursor: 'pointer',
+                                                filter: currentFilters.app === entry.name ? 'brightness(1.2)' : 'none'
+                                            }}
+                                        />
+                                    ))}
+                                </Pie>
+                                <Tooltip />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </Paper>
+                </Grid>
+
+                {/* Member Status Bar Chart */}
+                <Grid item xs={12} md={4}>
+                    <Paper sx={{ 
+                        p: 2, 
+                        borderRadius: 2,
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                        height: '300px'
+                    }}>
+                        <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+                            Cards per Status
                         </Typography>
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart 
                                 data={chartsData.barData}
-                                onClick={handleBarChartClick}
+                                onClick={handleStatusBarChartClick}
                             >
                                 <Legend 
                                     verticalAlign="top" 
@@ -877,24 +967,25 @@ const TSLeadSummary = () => {
             {/* Resolution Time Statistics */}
             {selectedTab === 0 && (
                 <Paper sx={{ 
-                    p: 3, 
-                    mb: 4,
+                    p: 2, 
+                    mb: 3,
                     borderRadius: 2,
                     boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
                     background: 'white'
                 }}>
                     <Typography variant="h6" gutterBottom sx={{ 
-                        mb: 3,
+                        mb: 2,
                         display: 'flex',
                         alignItems: 'center',
                         gap: 1,
                         color: 'primary.main',
+                        fontSize: '1rem',
                         borderBottom: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                        pb: 2
+                        pb: 1
                     }}>
                         📊 Resolution Time Statistics
                     </Typography>
-                    <Grid container spacing={2} sx={{ px: 2 }}>
+                    <Grid container spacing={1} sx={{ px: 1 }}>
                         {tsMembers
                             .filter(member => cards.some(card => card.idMembers.includes(member.id)))
                             .map(member => {
@@ -909,10 +1000,10 @@ const TSLeadSummary = () => {
                                 ).length;
 
                                 return (
-                                    <Grid item xs={12} md={6} key={member.id}>
+                                    <Grid item xs={12} sm={6} md={3} key={member.id}>
                                         <Paper sx={{ 
-                                            p: 2,
-                                            pt: 5, // Add padding top to make space for the alert
+                                            p: 1.5,
+                                            pt: 4,
                                             borderRadius: 2,
                                             border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
                                             background: alpha(theme.palette.primary.main, 0.02),
@@ -929,37 +1020,32 @@ const TSLeadSummary = () => {
                                             {/* Warning for high waiting ratio */}
                                             {(() => {
                                                 const waitingRatio = totalCards > 0 ? waitingCards / totalCards : 0;
-                                                console.log('=== TS Member Stats ===');
-                                                console.log('Member:', member.username);
-                                                console.log('Total Cards:', totalCards);
-                                                console.log('Waiting Cards:', waitingCards);
-                                                console.log('Waiting Ratio:', waitingRatio);
-                                                console.log('Should Show Alert:', waitingRatio > 0.4);
-                                                console.log('=====================');
-                                                
-                                                return totalCards > 0 && waitingRatio > 0.4 && (
-                                                    <Alert 
-                                                        severity="warning" 
-                                                        sx={{ 
-                                                            position: 'absolute',
-                                                            top: 0,
-                                                            left: 0,
-                                                            right: 0,
-                                                            borderRadius: '8px 8px 0 0',
-                                                            zIndex: 1,
-                                                            py: 0.5,
-                                                            '& .MuiAlert-icon': {
-                                                                fontSize: '1.2rem'
-                                                            },
-                                                            '& .MuiAlert-message': {
-                                                                fontSize: '0.85rem',
-                                                                py: 0
-                                                            }
-                                                        }}
-                                                    >
-                                                        High waiting ratio: {Math.round(waitingRatio * 100)}%
-                                                    </Alert>
-                                                );
+                                                if (totalCards > 0 && waitingRatio > 0.4) {
+                                                    return (
+                                                        <Alert 
+                                                            severity="warning" 
+                                                            sx={{ 
+                                                                position: 'absolute',
+                                                                top: 0,
+                                                                left: 0,
+                                                                right: 0,
+                                                                borderRadius: '8px 8px 0 0',
+                                                                zIndex: 1,
+                                                                py: 0.5,
+                                                                '& .MuiAlert-icon': {
+                                                                    fontSize: '1rem'
+                                                                },
+                                                                '& .MuiAlert-message': {
+                                                                    fontSize: '0.75rem',
+                                                                    py: 0
+                                                                }
+                                                            }}
+                                                        >
+                                                            High waiting ratio: {Math.round(waitingRatio * 100)}%
+                                                        </Alert>
+                                                    );
+                                                }
+                                                return null;
                                             })()}
 
                                             {/* Header with Avatar and Name */}
@@ -967,7 +1053,7 @@ const TSLeadSummary = () => {
                                                 display: 'flex', 
                                                 alignItems: 'center', 
                                                 gap: 1, 
-                                                mb: 2,
+                                                mb: 1.5,
                                                 pb: 1,
                                                 borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
                                             }}>
@@ -975,10 +1061,10 @@ const TSLeadSummary = () => {
                                                     src={member.avatarUrl}
                                                     alt={member.username}
                                                     sx={{ 
-                                                        width: 40, 
-                                                        height: 40,
+                                                        width: 32, 
+                                                        height: 32,
                                                         bgcolor: TS_MEMBER_COLORS[member.id] || 'primary.main',
-                                                        fontSize: '1rem',
+                                                        fontSize: '0.9rem',
                                                         fontWeight: 600
                                                     }}
                                                 >
@@ -988,11 +1074,11 @@ const TSLeadSummary = () => {
                                                     <Typography variant="subtitle1" sx={{ 
                                                         fontWeight: 600,
                                                         color: 'primary.main',
-                                                        fontSize: '0.9rem'
+                                                        fontSize: '0.85rem'
                                                     }}>
                                                         {member.username}
                                                     </Typography>
-                                                    <Typography variant="caption" color="text.secondary">
+                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                                                         {member.role}
                                                     </Typography>
                                                 </Box>
@@ -1001,75 +1087,75 @@ const TSLeadSummary = () => {
                                             {/* Card Statistics */}
                                             <Box sx={{ 
                                                 display: 'flex', 
-                                                gap: 1, 
-                                                mb: 2,
+                                                gap: 0.5, 
+                                                mb: 1.5,
                                                 flexWrap: 'wrap'
                                             }}>
                                                 <Paper sx={{ 
-                                                    p: 1, 
+                                                    p: 0.5, 
                                                     flex: '1 1 auto',
-                                                    minWidth: '70px',
+                                                    minWidth: '60px',
                                                     textAlign: 'center',
                                                     background: alpha(theme.palette.background.default, 0.6)
                                                 }}>
-                                                    <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
+                                                    <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '0.9rem' }}>
                                                         {totalCards}
                                                     </Typography>
-                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
                                                         Total
                                                     </Typography>
                                                 </Paper>
                                                 <Paper sx={{ 
-                                                    p: 1, 
+                                                    p: 0.5, 
                                                     flex: '1 1 auto',
-                                                    minWidth: '70px',
+                                                    minWidth: '60px',
                                                     textAlign: 'center',
                                                     background: alpha(theme.palette.success.main, 0.1)
                                                 }}>
                                                     <Typography variant="h6" sx={{ 
                                                         fontWeight: 600,
                                                         color: 'success.main',
-                                                        fontSize: '1.1rem'
+                                                        fontSize: '0.9rem'
                                                     }}>
                                                         {completedCards}
                                                     </Typography>
-                                                    <Typography variant="caption" color="success.main" sx={{ fontSize: '0.7rem' }}>
+                                                    <Typography variant="caption" color="success.main" sx={{ fontSize: '0.65rem' }}>
                                                         Done
                                                     </Typography>
                                                 </Paper>
                                                 <Paper sx={{ 
-                                                    p: 1, 
+                                                    p: 0.5, 
                                                     flex: '1 1 auto',
-                                                    minWidth: '70px',
+                                                    minWidth: '60px',
                                                     textAlign: 'center',
                                                     background: alpha(theme.palette.primary.main, 0.1)
                                                 }}>
                                                     <Typography variant="h6" sx={{ 
                                                         fontWeight: 600,
                                                         color: 'primary.main',
-                                                        fontSize: '1.1rem'
+                                                        fontSize: '0.9rem'
                                                     }}>
                                                         {doingCards}
                                                     </Typography>
-                                                    <Typography variant="caption" color="primary.main" sx={{ fontSize: '0.7rem' }}>
+                                                    <Typography variant="caption" color="primary.main" sx={{ fontSize: '0.65rem' }}>
                                                         Doing
                                                     </Typography>
                                                 </Paper>
                                                 <Paper sx={{ 
-                                                    p: 1, 
+                                                    p: 0.5, 
                                                     flex: '1 1 auto',
-                                                    minWidth: '70px',
+                                                    minWidth: '60px',
                                                     textAlign: 'center',
                                                     background: alpha(theme.palette.info.main, 0.1)
                                                 }}>
                                                     <Typography variant="h6" sx={{ 
                                                         fontWeight: 600,
                                                         color: 'info.main',
-                                                        fontSize: '1.1rem'
+                                                        fontSize: '0.9rem'
                                                     }}>
                                                         {waitingCards}
                                                     </Typography>
-                                                    <Typography variant="caption" color="info.main" sx={{ fontSize: '0.7rem' }}>
+                                                    <Typography variant="caption" color="info.main" sx={{ fontSize: '0.65rem' }}>
                                                         Wait
                                                     </Typography>
                                                 </Paper>
@@ -1086,14 +1172,14 @@ const TSLeadSummary = () => {
                                                         disabled={calculatingMember === member.id}
                                                         sx={{ 
                                                             py: 0.5,
-                                                            fontSize: '0.8rem'
+                                                            fontSize: '0.75rem'
                                                         }}
                                                     >
                                                         {calculatingMember === member.id ? 'Calculating...' : 'Calculate Resolution Time'}
                                                     </Button>
                                                 ) : memberResults[member.id].error ? (
                                                     <Box sx={{ mt: 1 }}>
-                                                        <Typography color="error" variant="caption">
+                                                        <Typography color="error" variant="caption" sx={{ fontSize: '0.7rem' }}>
                                                             {memberResults[member.id].error}
                                                         </Typography>
                                                         <Button
@@ -1105,27 +1191,27 @@ const TSLeadSummary = () => {
                                                                     return newResults;
                                                                 });
                                                             }}
-                                                            sx={{ mt: 0.5, fontSize: '0.8rem' }}
+                                                            sx={{ mt: 0.5, fontSize: '0.7rem' }}
                                                         >
                                                             Try Again
                                                         </Button>
                                                     </Box>
                                                 ) : (
                                                     <Box sx={{ mt: 1 }}>
-                                                        <Grid container spacing={1}>
+                                                        <Grid container spacing={0.5}>
                                                             <Grid item xs={4}>
                                                                 <Paper sx={{ 
-                                                                    p: 1, 
+                                                                    p: 0.5, 
                                                                     textAlign: 'center',
                                                                     background: alpha(theme.palette.background.paper, 0.8)
                                                                 }}>
-                                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
                                                                         Total Time
                                                                     </Typography>
                                                                     <Typography variant="body1" sx={{ 
                                                                         fontWeight: 600,
                                                                         color: memberResults[member.id].averageResolutionTime > 120 ? 'error.main' : 'success.main',
-                                                                        fontSize: '0.9rem'
+                                                                        fontSize: '0.8rem'
                                                                     }}>
                                                                         {Math.floor(memberResults[member.id].averageResolutionTime / 60)}h {memberResults[member.id].averageResolutionTime % 60}m
                                                                     </Typography>
@@ -1133,17 +1219,17 @@ const TSLeadSummary = () => {
                                                             </Grid>
                                                             <Grid item xs={4}>
                                                                 <Paper sx={{ 
-                                                                    p: 1, 
+                                                                    p: 0.5, 
                                                                     textAlign: 'center',
                                                                     background: alpha(theme.palette.background.paper, 0.8)
                                                                 }}>
-                                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
                                                                         TS Time
                                                                     </Typography>
                                                                     <Typography variant="body1" sx={{ 
                                                                         fontWeight: 600,
                                                                         color: memberResults[member.id].averageTSResolutionTime > 120 ? 'error.main' : 'success.main',
-                                                                        fontSize: '0.9rem'
+                                                                        fontSize: '0.8rem'
                                                                     }}>
                                                                         {Math.floor(memberResults[member.id].averageTSResolutionTime / 60)}h {memberResults[member.id].averageTSResolutionTime % 60}m
                                                                     </Typography>
@@ -1151,17 +1237,17 @@ const TSLeadSummary = () => {
                                                             </Grid>
                                                             <Grid item xs={4}>
                                                                 <Paper sx={{ 
-                                                                    p: 1, 
+                                                                    p: 0.5, 
                                                                     textAlign: 'center',
                                                                     background: alpha(theme.palette.background.paper, 0.8)
                                                                 }}>
-                                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
                                                                         First Action
                                                                     </Typography>
                                                                     <Typography variant="body1" sx={{ 
                                                                         fontWeight: 600,
                                                                         color: memberResults[member.id].averageFirstActionTime > 30 ? 'error.main' : 'success.main',
-                                                                        fontSize: '0.9rem'
+                                                                        fontSize: '0.8rem'
                                                                     }}>
                                                                         {Math.floor(memberResults[member.id].averageFirstActionTime / 60)}h {memberResults[member.id].averageFirstActionTime % 60}m
                                                                     </Typography>
@@ -1181,8 +1267,8 @@ const TSLeadSummary = () => {
                                                                 });
                                                             }}
                                                             sx={{ 
-                                                                mt: 1, 
-                                                                fontSize: '0.75rem',
+                                                                mt: 0.5, 
+                                                                fontSize: '0.7rem',
                                                                 py: 0.5
                                                             }}
                                                         >
