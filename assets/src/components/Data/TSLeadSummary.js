@@ -3,7 +3,7 @@ import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
     Typography, Grid, Button, Box, Chip,
     FormControl, InputLabel, Select, MenuItem,
-    useTheme, alpha, Tabs, Tab, CircularProgress, Backdrop, Avatar, Alert
+    useTheme, alpha, Tabs, Tab, CircularProgress, Backdrop, Avatar, Alert, Divider
 } from '@mui/material';
 import {
     PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
@@ -188,7 +188,7 @@ const TSLeadSummary = () => {
         if (card.dueComplete) {
             return {
                 label: "Done",
-                color: "success"
+                color: "#4CAF50" // Green color for Done
             };
         }
         
@@ -197,12 +197,12 @@ const TSLeadSummary = () => {
             if (card.listName === 'Fix done from dev') {
                 return {
                     label: "Done",
-                    color: "success"
+                    color: "#4CAF50" // Green color for Done
                 };
             }
             return {
                 label: "Pending",
-                color: "warning"
+                color: "#FF9800" // Orange color for Pending
             };
         }
         
@@ -210,13 +210,13 @@ const TSLeadSummary = () => {
         if (card.listName && card.listName.trim() === "New Issues") {
             return {
                 label: "Waiting",
-                color: "info"
+                color: "#F44336" // Red color for Waiting
             };
         }
         
         return {
             label: "In Progress",
-            color: "primary"
+            color: "#2196F3" // Blue color for In Progress
         };
     };
 
@@ -573,7 +573,7 @@ const TSLeadSummary = () => {
                     gap: 1,
                     textShadow: '0 2px 4px rgba(0,0,0,0.1)',
                 }}>
-                    🎯 TS Lead Workspace
+                    TS Lead Workspace
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
@@ -665,12 +665,12 @@ const TSLeadSummary = () => {
                 {/* TS Member Filter */}
                 <Grid item xs={12} md={4}>
                     <FormControl fullWidth>
-                        <InputLabel id="ts-member-label">🎯 TS Member</InputLabel>
+                        <InputLabel id="ts-member-label">TS Member</InputLabel>
                         <Select
                             labelId="ts-member-label"
                             value={currentFilters.tsMember}
                             onChange={(e) => updateTabFilter('tsMember', e.target.value)}
-                            label="🎯 TS Member"
+                            label="TS Member"
                             sx={{
                                 borderRadius: 2,
                                 background: 'white',
@@ -701,12 +701,12 @@ const TSLeadSummary = () => {
                 {/* Status Filter */}
                 <Grid item xs={12} md={4}>
                     <FormControl fullWidth>
-                        <InputLabel id="status-label">📊 Status</InputLabel>
+                        <InputLabel id="status-label">Status</InputLabel>
                         <Select
                             labelId="status-label"
                             value={currentFilters.status}
                             onChange={(e) => updateTabFilter('status', e.target.value)}
-                            label="📊 Status"
+                            label="Status"
                             sx={{
                                 borderRadius: 2,
                                 background: 'white',
@@ -803,11 +803,12 @@ const TSLeadSummary = () => {
                         p: 2, 
                         borderRadius: 2,
                         boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                        height: '300px'
+                        height: '400px'
                     }}>
                         <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-                            Cards per TS Member
+                            Cards by TS Member
                         </Typography>
+                        <Divider />
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Legend 
@@ -849,11 +850,12 @@ const TSLeadSummary = () => {
                         p: 2, 
                         borderRadius: 2,
                         boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                        height: '300px'
+                        height: '400px'
                     }}>
                         <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-                            Cards per App
+                            Cards by App
                         </Typography>
+                        <Divider />
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Legend 
@@ -869,7 +871,7 @@ const TSLeadSummary = () => {
                                     cy="50%"
                                     outerRadius={80}
                                     fill="#8884d8"
-                                    label={(entry) => `${entry.name}: ${entry.value}`}
+                                    label={(entry) => `${entry.value}`}
                                     onClick={handleAppPieChartClick}
                                 >
                                     {chartsData.appPieData.map((entry, index) => (
@@ -895,15 +897,22 @@ const TSLeadSummary = () => {
                         p: 2, 
                         borderRadius: 2,
                         boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                        height: '300px'
+                        height: '400px'
                     }}>
                         <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-                            Cards per Status
+                            Cards by Status
                         </Typography>
+                        <Divider />
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart 
                                 data={chartsData.barData}
                                 onClick={handleStatusBarChartClick}
+                                margin={{
+                                    top: 20,
+                                    right: 30,
+                                    left: 20,
+                                    bottom: 70
+                                }}
                             >
                                 <Legend 
                                     verticalAlign="top" 
@@ -911,7 +920,18 @@ const TSLeadSummary = () => {
                                     height={36}
                                 />
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} />
+                                <XAxis 
+                                    dataKey="name" 
+                                    angle={-45} 
+                                    textAnchor="end" 
+                                    height={80}
+                                    interval={0}
+                                    tick={{
+                                        fontSize: 12,
+                                        dx: -8,
+                                        dy: 8
+                                    }}
+                                />
                                 <YAxis />
                                 <Tooltip />
                                 <Bar 
@@ -1331,7 +1351,6 @@ const TSLeadSummary = () => {
                     <TableBody>
                         {filteredCards.map((card, index) => {
                             const dueDate = card.due ? new Date(card.due) : null;
-                            const dueColor = getOverdueColor(getOverdueDays(card.due), card.dueComplete);
                             const status = getCardStatus(card);
 
                             return (
@@ -1340,34 +1359,15 @@ const TSLeadSummary = () => {
                                     hover 
                                     onClick={() => handleTaskClick(card)}
                                     sx={{ 
-                                        backgroundColor: getOverdueColor(getOverdueDays(card.due), card.dueComplete),
+                                        backgroundColor: '#FFFFFF',
                                         transition: 'all 0.2s ease',
                                         cursor: 'pointer',
                                         '&:hover': {
-                                            transform: 'scale(1.01)',
-                                            backgroundColor: alpha(getOverdueColor(getOverdueDays(card.due), card.dueComplete), 0.8),
-                                            '& .MuiTableCell-root': {
-                                                color: getTextColor(getOverdueColor(getOverdueDays(card.due), card.dueComplete)),
-                                                fontWeight: 600,
-                                            },
-                                            '& .MuiChip-root': {
-                                                backgroundColor: alpha(theme.palette.primary.main, 0.2),
-                                                color: getTextColor(getOverdueColor(getOverdueDays(card.due), card.dueComplete)),
-                                                '&:hover': {
-                                                    backgroundColor: alpha(theme.palette.primary.main, 0.3),
-                                                }
-                                            }
+                                            backgroundColor: alpha('#000', 0.02),
                                         },
                                         '& .MuiTableCell-root': {
-                                            color: getTextColor(getOverdueColor(getOverdueDays(card.due), card.dueComplete)),
+                                            color: theme.palette.text.primary,
                                             fontWeight: 500,
-                                        },
-                                        '& .MuiChip-root': {
-                                            backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                            color: getTextColor(getOverdueColor(getOverdueDays(card.due), card.dueComplete)),
-                                            '&:hover': {
-                                                backgroundColor: alpha(theme.palette.primary.main, 0.2),
-                                            }
                                         }
                                     }}
                                 >
@@ -1378,6 +1378,10 @@ const TSLeadSummary = () => {
                                                 color: 'inherit',
                                                 textDecoration: 'none',
                                                 fontWeight: 500,
+                                                maxWidth: '250px',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap'
                                             }}
                                         >
                                             {card.name}
@@ -1388,7 +1392,7 @@ const TSLeadSummary = () => {
                                             display: 'flex', 
                                             flexWrap: 'nowrap', 
                                             gap: 0.5,
-                                            maxWidth: '200px',
+                                            maxWidth: '300px',
                                             overflowX: 'auto',
                                             '&::-webkit-scrollbar': {
                                                 height: '4px'
@@ -1449,21 +1453,48 @@ const TSLeadSummary = () => {
                                     <TableCell>
                                         <Chip
                                             label={status.label}
-                                            size="small"
-                                            color={status.color}
+                                            size="medium"
                                             sx={{
                                                 fontWeight: 500,
-                                                minWidth: '100px',
-                                                backgroundColor: status.color === 'success' ? '#4CAF50' :
-                                                               status.color === 'warning' ? '#FFA000' :
-                                                               status.color === 'info' ? '#2196F3' :
-                                                               status.color === 'primary' ? '#3F51B5' : '',
-                                                color: '#FFFFFF',
+                                                px: 2,
+                                                backgroundColor: (() => {
+                                                    switch (status.label) {
+                                                        case 'Done':
+                                                            return alpha('#4CAF50', 0.1);
+                                                        case 'In Progress':
+                                                            return alpha('#2196F3', 0.1);
+                                                        case 'Waiting':
+                                                            return alpha('#F44336', 0.1);
+                                                        default:
+                                                            return alpha('#F5F5F5', 1);
+                                                    }
+                                                })(),
+                                                color: (() => {
+                                                    switch (status.label) {
+                                                        case 'Done':
+                                                            return '#4CAF50';
+                                                        case 'In Progress':
+                                                            return '#2196F3';
+                                                        case 'Waiting':
+                                                            return '#F44336';
+                                                        default:
+                                                            return '#666666';
+                                                    }
+                                                })(),
+                                                borderRadius: '16px',
                                                 '&:hover': {
-                                                    backgroundColor: status.color === 'success' ? '#388E3C' :
-                                                                   status.color === 'warning' ? '#F57C00' :
-                                                                   status.color === 'info' ? '#1976D2' :
-                                                                   status.color === 'primary' ? '#303F9F' : '',
+                                                    backgroundColor: (() => {
+                                                        switch (status.label) {
+                                                            case 'Done':
+                                                                return alpha('#4CAF50', 0.2);
+                                                            case 'In Progress':
+                                                                return alpha('#2196F3', 0.2);
+                                                            case 'Waiting':
+                                                                return alpha('#F44336', 0.2);
+                                                            default:
+                                                                return alpha('#F5F5F5', 0.8);
+                                                        }
+                                                    })()
                                                 }
                                             }}
                                         />

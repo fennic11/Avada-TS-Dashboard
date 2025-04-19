@@ -610,6 +610,37 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
         try {
             const updatedCard = await updateCardDueComplete(card.id, !card.dueComplete);
             setCard(updatedCard);
+
+            // Nếu đánh dấu là complete, tính resolution time
+            if (!card.dueComplete) {  // Kiểm tra trạng thái trước khi thay đổi
+                const currentActions = await getActionsByCard(card.id);
+                const timing = calculateResolutionTime(currentActions);
+                
+                setTimingData(timing || {
+                    resolutionTime: null,
+                    TSResolutionTime: null,
+                    firstActionTime: null
+                });
+
+                // Tự động lưu card review khi mark complete
+                const firstAction = currentActions[currentActions.length - 1];
+                const createdAt = new Date(firstAction.date);
+
+                const dataToSave = {
+                    cardId: card.id,
+                    cardName: card.name || "",
+                    cardUrl: card.shortUrl || `https://trello.com/c/${card.idShort}`,
+                    labels: card.labels?.map(l => l.name) || [],
+                    resolutionTime: timing?.resolutionTime || null,
+                    resolutionTimeTS: timing?.TSResolutionTime || null,
+                    firstActionTime: timing?.firstActionTime || null,
+                    members: card.idMembers || [],
+                    createdAt: createdAt
+                };
+
+                await postCards(dataToSave);
+            }
+
             setSnackbar({
                 open: true,
                 message: `Card marked as ${updatedCard.dueComplete ? 'completed' : 'incomplete'}`,
@@ -1217,49 +1248,46 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                     gap: 2,
                                     flex: 1
                                 }}>
-                                    <IconButton
+                                    <Box
                                         onClick={handleToggleComplete}
                                         sx={{
-                                            width: 32,
-                                            height: 32,
-                                            borderRadius: '50%',
-                                            border: '1.5px solid',
-                                            borderColor: card?.dueComplete ? 'success.main' : 'rgba(0, 0, 0, 0.3)',
-                                            backgroundColor: card?.dueComplete ? 'rgba(76, 175, 80, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                                            color: card?.dueComplete ? 'success.main' : 'rgba(0, 0, 0, 0.6)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1,
+                                            cursor: 'pointer',
+                                            padding: '6px 12px',
+                                            borderRadius: '20px',
+                                            backgroundColor: card?.dueComplete ? 'rgba(76, 175, 80, 0.1)' : 'rgba(0, 0, 0, 0.04)',
+                                            color: card?.dueComplete ? '#2E7D32' : '#666666',
+                                            border: '1px solid',
+                                            borderColor: card?.dueComplete ? '#4CAF50' : 'transparent',
                                             transition: 'all 0.2s ease-in-out',
                                             '&:hover': {
-                                                backgroundColor: card?.dueComplete ? 'rgba(76, 175, 80, 0.2)' : 'rgba(0, 0, 0, 0.08)',
-                                                transform: 'scale(1.05)',
-                                                borderColor: card?.dueComplete ? 'success.main' : 'primary.main',
-                                                color: card?.dueComplete ? 'success.main' : 'primary.main',
-                                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-                                            },
-                                            '&:active': {
-                                                transform: 'scale(0.95)',
-                                                boxShadow: 'none'
+                                                backgroundColor: card?.dueComplete ? 'rgba(76, 175, 80, 0.15)' : 'rgba(0, 0, 0, 0.08)',
+                                                transform: 'translateY(-1px)'
                                             }
                                         }}
                                     >
-                                        {card?.dueComplete ? (
-                                            <span style={{ 
-                                                fontSize: '1rem',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                fontWeight: 'bold'
-                                            }}>✓</span>
-                                        ) : (
-                                            <span style={{ 
-                                                fontSize: '1rem',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                color: 'rgba(0, 0, 0, 0.6)',
-                                                fontWeight: '400'
-                                            }}>○</span>
-                                        )}
-                                    </IconButton>
+                                        <Box sx={{
+                                            width: 16,
+                                            height: 16,
+                                            borderRadius: '50%',
+                                            backgroundColor: card?.dueComplete ? '#4CAF50' : 'transparent',
+                                            border: '2px solid',
+                                            borderColor: card?.dueComplete ? '#4CAF50' : '#666666',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: '#fff',
+                                            fontSize: '12px',
+                                            transition: 'all 0.2s ease-in-out'
+                                        }}>
+                                            {card?.dueComplete && '✓'}
+                                        </Box>
+                                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                            {card?.dueComplete ? 'Completed' : 'Mark Complete'}
+                                        </Typography>
+                                    </Box>
                                     <Typography variant="h5" sx={{ 
                                         color: '#1e293b',
                                         fontWeight: 600,
@@ -1420,24 +1448,37 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                 </Menu>
                             )}
                         </Box>
-                        <Typography variant="body2" sx={{ 
-                            color: 'text.secondary',
+                        <Box sx={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 1
+                            width: '30%',
+                            gap: 1,
+                            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                            borderRadius: '7px',
+                            p: 1
                         }}>
-                            <AccessTimeIcon fontSize="small" />
-                            Created {createDate ? format(createDate, 'MMM d, yyyy HH:mm') : 'N/A'}
-                            {createDate && (
-                                <Typography 
-                                    component="span" 
-                                    variant="caption" 
-                                    sx={{ color: 'text.secondary' }}
-                                >
-                                    ({formatDistanceToNow(createDate, { addSuffix: true })})
-                                </Typography>
-                            )}
-                        </Typography>
+                            <Typography variant="body2" sx={{ 
+                                color: 'text.secondary',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1
+                            }}>
+                                Create Date: {createDate ? (
+                                    <Box component="span" sx={{ fontWeight: 700 }}>
+                                        {format(createDate, 'MMM d, yyyy HH:mm')}
+                                    </Box>
+                                ) : 'N/A'}
+                                {createDate && (
+                                    <Typography 
+                                        component="span" 
+                                        variant="caption" 
+                                        sx={{ color: 'text.secondary' }}
+                                    >
+                                        ({formatDistanceToNow(createDate, { addSuffix: true })})
+                                    </Typography>
+                                )}
+                            </Typography>
+                        </Box>
                     </Box>
 
                     {/* Content */}
