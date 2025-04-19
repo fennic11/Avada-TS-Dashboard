@@ -106,7 +106,8 @@
       "username": "daisy_avada",
       "email": "daisy@avada.io",
       "avatarUrl": "https://trello-members.s3.amazonaws.com/61a886478176518087f3e853/b1991650a1ea66228c8ed9329dd63ce7",
-      "initials": "DV"
+      "initials": "DV",
+      "role": "admin"
     },
     {
       "id": "6694a44b659155fbe4ed9aef",
@@ -376,7 +377,8 @@
       "username": "imsamthomas",
       "email": "sam@avada.io",
       "avatarUrl": "https://trello-members.s3.amazonaws.com/54db5532684901854786f6ba/50d3d3a2aaffbf4dd942682b018357e0",
-      "initials": "SN"
+      "initials": "SN",
+      "role": "admin"
     },
     {
       "id": "652ca9a07cc43484496a6e68",
@@ -805,7 +807,7 @@
       "email": "quandm@avadagroup.com",
       "avatarUrl": "https://trello-members.s3.amazonaws.com/65dc1670ae5414d1dd11a26d/040127be60bf273f2c5b577c428ff508",
       "initials": "ĐQ",
-      "role": "TS"
+      "role": "ts-lead"
     },
     {
       "id": "6642c90302ccc5b0b88171e1",

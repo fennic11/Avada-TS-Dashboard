@@ -13,31 +13,17 @@ import { getCurrentUser, logout } from '../api/usersApi';
 import { getMemberNotifications, markAllNotificationsAsRead, updateNotificationStatus } from '../api/trelloApi';
 import { formatDistanceToNow } from 'date-fns';
 import CardDetailModal from './CardDetailModal';
-import { TABS, ROLES, hasTabAccess, getAccessibleTabs } from '../utils/roles';
+import { TABS, ROLES, ROLE_PERMISSIONS, hasTabAccess, getAccessibleTabs } from '../utils/roles';
 
-const MENU_ITEMS = {
-  [ROLES.ADMIN]: [
-    { label: 'Bugs', path: '/bugs' },
-    { label: 'Issues', path: '/issues' },
-    { label: 'Resolution Time', path: '/resolution-time' },
-    { label: 'KPI', path: '/data-kpi' },
-    { label: 'TS Lead workspace', path: '/TS-lead-workspace'},
-    { label: 'TS workspace', path: '/TS-workspace'},
-    { label: 'BA Page', path: '/ba-page'},
-    { label: 'Dev Zone', path: '/dev-zone'}
-  ],
-  [ROLES.TS]: [
-    { label: 'Bugs', path: '/bugs' },
-    { label: 'Issues', path: '/issues' },
-    { label: 'Resolution Time', path: '/resolution-time' },
-    { label: 'TS workspace', path: '/TS-workspace'},
-    { label: 'TS Lead workspace', path: '/TS-lead-workspace'}
-  ],
-  [ROLES.BA]: [
-    { label: 'Bugs', path: '/bugs' },
-    { label: 'Issues', path: '/issues' },
-    { label: 'BA Page', path: '/ba-page'},
-  ]
+// Convert TABS to menu items format
+const getMenuItems = (role) => {
+  const rolePermissions = ROLE_PERMISSIONS[role];
+  if (!rolePermissions) return [];
+
+  return rolePermissions.allowedTabs.map(tab => ({
+    label: tab.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+    path: `/${tab}`
+  }));
 };
 
 function ResponsiveAppBar() {
@@ -62,7 +48,7 @@ function ResponsiveAppBar() {
   const accessibleTabs = getAccessibleTabs(userRole);
 
   // Filter menu items based on accessible tabs
-  const currentMenuItems = MENU_ITEMS[userRole] || [];
+  const currentMenuItems = getMenuItems(userRole);
 
   React.useEffect(() => {
     if (currentUser) {

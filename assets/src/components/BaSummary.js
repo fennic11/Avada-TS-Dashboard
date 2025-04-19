@@ -95,13 +95,26 @@ const BaSummary = () => {
                 const fetchedLists = await getListsByBoardId();
                 if (fetchedLists) {
                     setLists(fetchedLists);
-                    // Find and set the "Done" list as default
-                    const doneList = fetchedLists.find(list => list.name.toLowerCase() === 'done');
+
+                    // Find and set the first "Done" list as default
+                    const doneList = fetchedLists.find(list => 
+                        list.name.toLowerCase().includes('done')
+                    );
+                    
                     if (doneList) {
                         setSelectedList(doneList.id);
                         // Fetch cards for the Done list
                         try {
                             const fetchedCards = await getCardsByList(doneList.id);
+                            setCards(fetchedCards);
+                        } catch (err) {
+                            console.error('Error fetching initial cards:', err);
+                        }
+                    } else if (fetchedLists.length > 0) {
+                        // If no Done list found, use the first list
+                        setSelectedList(fetchedLists[0].id);
+                        try {
+                            const fetchedCards = await getCardsByList(fetchedLists[0].id);
                             setCards(fetchedCards);
                         } catch (err) {
                             console.error('Error fetching initial cards:', err);
@@ -188,10 +201,34 @@ const BaSummary = () => {
                     display: 'flex', 
                     gap: 2, 
                     mb: 4,
-                    flexWrap: 'wrap'
+                    flexWrap: 'wrap',
+                    '& .MuiFormControl-root': {
+                        minWidth: 200,
+                        '& .MuiOutlinedInput-root': {
+                            borderRadius: 2,
+                            backgroundColor: 'white',
+                            boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                                borderColor: 'primary.main',
+                            },
+                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                borderColor: 'primary.main',
+                                borderWidth: 1
+                            }
+                        },
+                        '& .MuiSelect-select': {
+                            py: 1.2
+                        },
+                        '& .MuiInputLabel-root': {
+                            color: 'text.secondary',
+                            '&.Mui-focused': {
+                                color: 'primary.main'
+                            }
+                        }
+                    }
                 }}>
                     {/* List Selection */}
-                    <FormControl sx={{ minWidth: 200 }}>
+                    <FormControl>
                         <InputLabel id="list-select-label">Select List</InputLabel>
                         <Select
                             labelId="list-select-label"
@@ -199,20 +236,18 @@ const BaSummary = () => {
                             value={selectedList}
                             label="Select List"
                             onChange={handleListChange}
-                            sx={{
-                                '& .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: 'rgba(0, 0, 0, 0.12)'
-                                },
-                                '&:hover .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: 'rgba(0, 0, 0, 0.24)'
-                                }
-                            }}
                         >
-                            <MenuItem value="">
-                                <em>None</em>
-                            </MenuItem>
                             {lists.map(list => (
-                                <MenuItem key={list.id} value={list.id}>
+                                <MenuItem 
+                                    key={list.id} 
+                                    value={list.id}
+                                    sx={{
+                                        py: 1,
+                                        '&:hover': {
+                                            backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                                        }
+                                    }}
+                                >
                                     {list.name}
                                 </MenuItem>
                             ))}
@@ -220,7 +255,7 @@ const BaSummary = () => {
                     </FormControl>
 
                     {/* App Selection */}
-                    <FormControl sx={{ minWidth: 200 }}>
+                    <FormControl>
                         <InputLabel id="app-select-label">Select App</InputLabel>
                         <Select
                             labelId="app-select-label"
@@ -228,20 +263,21 @@ const BaSummary = () => {
                             value={selectedApp}
                             label="Select App"
                             onChange={handleAppChange}
-                            sx={{
-                                '& .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: 'rgba(0, 0, 0, 0.12)'
-                                },
-                                '&:hover .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: 'rgba(0, 0, 0, 0.24)'
-                                }
-                            }}
                         >
                             <MenuItem value="">
                                 <em>All Apps</em>
                             </MenuItem>
                             {getAppLabels().map(appLabel => (
-                                <MenuItem key={appLabel} value={appLabel}>
+                                <MenuItem 
+                                    key={appLabel} 
+                                    value={appLabel}
+                                    sx={{
+                                        py: 1,
+                                        '&:hover': {
+                                            backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                                        }
+                                    }}
+                                >
                                     {appLabel}
                                 </MenuItem>
                             ))}
@@ -264,38 +300,50 @@ const BaSummary = () => {
                         {error}
                     </Alert>
                 ) : filteredCards.length > 0 ? (
-                    <TableContainer component={Paper} elevation={0}>
-                        <Table sx={{ minWidth: 650 }}>
+                    <TableContainer 
+                        component={Paper} 
+                        elevation={0}
+                        sx={{ 
+                            borderRadius: 2,
+                            border: '1px solid rgba(0, 0, 0, 0.12)',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                            '& .MuiTable-root': {
+                                minWidth: 650
+                            },
+                            '& .MuiTableHead-root': {
+                                '& .MuiTableRow-root': {
+                                    backgroundColor: '#f8fafc',
+                                    '& .MuiTableCell-root': {
+                                        color: '#475569',
+                                        fontWeight: 600,
+                                        fontSize: '0.875rem',
+                                        py: 2,
+                                        borderBottom: '2px solid rgba(0, 0, 0, 0.12)'
+                                    }
+                                }
+                            },
+                            '& .MuiTableBody-root': {
+                                '& .MuiTableRow-root': {
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(0, 0, 0, 0.02)'
+                                    },
+                                    '& .MuiTableCell-root': {
+                                        py: 2,
+                                        color: '#1e293b',
+                                        fontWeight: 500,
+                                        fontSize: '0.875rem',
+                                        borderBottom: '1px solid rgba(0, 0, 0, 0.08)'
+                                    }
+                                }
+                            }
+                        }}
+                    >
+                        <Table>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell 
-                                        sx={{ 
-                                            width: '80px',
-                                            fontWeight: 600,
-                                            backgroundColor: '#f8fafc',
-                                            color: '#475569'
-                                        }}
-                                    >
-                                        STT
-                                    </TableCell>
-                                    <TableCell 
-                                        sx={{ 
-                                            fontWeight: 600,
-                                            backgroundColor: '#f8fafc',
-                                            color: '#475569'
-                                        }}
-                                    >
-                                        Card Name
-                                    </TableCell>
-                                    <TableCell 
-                                        sx={{ 
-                                            fontWeight: 600,
-                                            backgroundColor: '#f8fafc',
-                                            color: '#475569'
-                                        }}
-                                    >
-                                        App Label
-                                    </TableCell>
+                                    <TableCell sx={{ width: '80px' }}>STT</TableCell>
+                                    <TableCell>Card Name</TableCell>
+                                    <TableCell>App Label</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -305,29 +353,15 @@ const BaSummary = () => {
                                         onClick={() => handleRowClick(card.id)}
                                         sx={{
                                             cursor: 'pointer',
+                                            transition: 'all 0.2s ease',
                                             '&:hover': {
-                                                backgroundColor: 'rgba(0, 0, 0, 0.02)'
+                                                backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                                                transform: 'translateY(-1px)'
                                             }
                                         }}
                                     >
-                                        <TableCell 
-                                            sx={{ 
-                                                color: '#64748b',
-                                                fontWeight: 500
-                                            }}
-                                        >
-                                            {index + 1}
-                                        </TableCell>
-                                        <TableCell 
-                                            component="th" 
-                                            scope="row"
-                                            sx={{ 
-                                                color: '#1e293b',
-                                                fontWeight: 500
-                                            }}
-                                        >
-                                            {card.name}
-                                        </TableCell>
+                                        <TableCell>{index + 1}</TableCell>
+                                        <TableCell>{card.name}</TableCell>
                                         <TableCell>
                                             <Stack direction="row" spacing={1}>
                                                 {card.labels

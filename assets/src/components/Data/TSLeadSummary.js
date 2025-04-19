@@ -157,12 +157,38 @@ const TSLeadSummary = () => {
 
     // Get TS members
     const tsMembers = useMemo(() => {
-        return members.filter(member => member.role === 'TS');
+        return members.filter(member => member.role === 'TS' || member.role === 'ts-lead');
     }, []);
 
     const getAppLabel = (labels) => {
         const appLabel = labels.find(label => label.name?.startsWith('App:'));
         return appLabel ? appLabel.name.replace('App:', '').trim() : 'Unknown';
+    };
+
+    const getAppColor = (appName) => {
+        const colors = [
+            '#2563eb', // Blue
+            '#16a34a', // Green
+            '#dc2626', // Red
+            '#9333ea', // Purple
+            '#ea580c', // Orange
+            '#0891b2', // Cyan
+            '#4f46e5', // Indigo
+            '#db2777', // Pink
+            '#059669', // Emerald
+            '#7c3aed', // Violet
+            '#ca8a04', // Yellow
+            '#be123c', // Rose
+            '#0d9488', // Teal
+        ];
+        
+        // Get a consistent index for the same string
+        let hash = 0;
+        for (let i = 0; i < appName.length; i++) {
+            hash = appName.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        
+        return colors[Math.abs(hash) % colors.length];
     };
 
     const getOverdueColor = (daysOverdue, dueComplete) => {
@@ -519,7 +545,7 @@ const TSLeadSummary = () => {
                         autoHideDuration: 6000,
                         preventDuplicate: true,
                         style: {
-                            marginTop: '60px', // Add margin to avoid overlapping with avatar
+                            marginTop: '60px',
                         },
                         action: (key) => (
                             <Button 
@@ -1437,7 +1463,20 @@ const TSLeadSummary = () => {
                                             })}
                                         </Box>
                                     </TableCell>
-                                    <TableCell>{getAppLabel(card.labels || [])}</TableCell>
+                                    <TableCell>
+                                        <Chip
+                                            label={getAppLabel(card.labels || [])}
+                                            size="small"
+                                            sx={{
+                                                backgroundColor: alpha(getAppColor(getAppLabel(card.labels || [])), 0.1),
+                                                color: getAppColor(getAppLabel(card.labels || [])),
+                                                fontWeight: 500,
+                                                '&:hover': {
+                                                    backgroundColor: alpha(getAppColor(getAppLabel(card.labels || [])), 0.2),
+                                                }
+                                            }}
+                                        />
+                                    </TableCell>
                                     <TableCell>
                                         <Chip
                                             label={card.listName}
