@@ -473,8 +473,10 @@
       "id": "67b2aff1ba80e817fe8149eb",
       "fullName": "Phạm Hồng Phúc",
       "username": "phmhngphuc8",
+      "email": "phucph@avadagroup.com",
       "avatarUrl": "https://trello-members.s3.amazonaws.com/67b2aff1ba80e817fe8149eb/1a8a94ac0c2bbd70448d1ba6fdfe09c8",
-      "initials": "PP"
+      "initials": "PP",
+      "role": "ba"
     },
     {
       "id": "66c2c2ff617470cbaccaa87a",
@@ -496,7 +498,8 @@
       "username": "fennic_avada",
       "email": "quangnq@avada.io",
       "avatarUrl": "https://trello-members.s3.amazonaws.com/6308e9353f075502098ff04b/fc2c08d439e460b7a2a446f794eec21e",
-      "initials": "QN"
+      "initials": "QN",
+      "role": "admin"
     },
     {
       "id": "629d618f2801948704ab5abb",

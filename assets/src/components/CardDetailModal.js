@@ -1061,113 +1061,138 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
             >
                 Resolution Times
             </Typography>
-            <Stack spacing={2.5}>
-                <Stack spacing={2}>
-                    {/* Total Resolution Time */}
-                    <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
+            <Stack spacing={2}>
+                {/* Total Resolution Time */}
+                <Box sx={{ 
+                    display: 'flex',
+                    flexDirection: 'column',
+                    p: 1.5,
+                    borderRadius: '6px',
+                    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                    border: '1px solid rgba(0, 0, 0, 0.06)'
+                }}>
+                    <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
                         justifyContent: 'space-between',
                         gap: 2
                     }}>
-                        <Typography 
-                            variant="caption" 
-                            sx={{ 
-                                color: '#64748b',
-                                fontWeight: 500,
-                                fontSize: '0.9rem'
-                            }}
-                        >
+                        <Typography variant="body2" sx={{ 
+                            color: '#64748b', 
+                            fontWeight: 500,
+                            fontSize: '0.85rem',
+                            whiteSpace: 'nowrap',
+                            flex: '0 0 auto'
+                        }}>
                             Total Resolution Time
                         </Typography>
-                        <Typography 
-                            variant="subtitle1" 
-                            sx={{ 
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1,
-                                color: timingData.resolutionTime > 120 ? '#ef4444' : '#22c55e',
-                                fontWeight: 600,
-                                fontSize: '0.95rem'
-                            }}
-                        >
-                            <AccessTimeIcon fontSize="small" />
+                        <Box sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            backgroundColor: timingData.resolutionTime > 120 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                            color: timingData.resolutionTime > 120 ? '#ef4444' : '#22c55e',
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: '16px',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            whiteSpace: 'nowrap',
+                            flex: '0 0 auto'
+                        }}>
                             {timingData.resolutionTime != null ? (
                                 `${Math.floor(timingData.resolutionTime / 60)}h ${timingData.resolutionTime % 60}m`
                             ) : 'N/A'}
-                        </Typography>
+                        </Box>
                     </Box>
+                </Box>
 
-                    {/* TS Resolution Time */}
-                    <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
+                {/* TS Resolution Time */}
+                <Box sx={{ 
+                    display: 'flex',
+                    flexDirection: 'column',
+                    p: 1.5,
+                    borderRadius: '6px',
+                    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                    border: '1px solid rgba(0, 0, 0, 0.06)'
+                }}>
+                    <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
                         justifyContent: 'space-between',
                         gap: 2
                     }}>
-                        <Typography 
-                            variant="caption" 
-                            sx={{ 
-                                color: '#64748b',
-                                fontWeight: 500,
-                                fontSize: '0.9rem'
-                            }}
-                        >
+                        <Typography variant="body2" sx={{ 
+                            color: '#64748b', 
+                            fontWeight: 500,
+                            fontSize: '0.85rem',
+                            whiteSpace: 'nowrap',
+                            flex: '0 0 auto'
+                        }}>
                             TS Resolution Time
                         </Typography>
-                        <Typography 
-                            variant="subtitle1" 
-                            sx={{ 
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1,
-                                color: timingData.TSResolutionTime > 60 ? '#ef4444' : '#22c55e',
-                                fontWeight: 600,
-                                fontSize: '0.95rem'
-                            }}
-                        >
-                            <AccessTimeIcon fontSize="small" />
+                        <Box sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            backgroundColor: timingData.TSResolutionTime > 60 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                            color: timingData.TSResolutionTime > 60 ? '#ef4444' : '#22c55e',
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: '16px',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            whiteSpace: 'nowrap',
+                            flex: '0 0 auto'
+                        }}>
                             {timingData.TSResolutionTime != null ? (
                                 `${Math.floor(timingData.TSResolutionTime / 60)}h ${timingData.TSResolutionTime % 60}m`
                             ) : 'N/A'}
-                        </Typography>
+                        </Box>
                     </Box>
+                </Box>
 
-                    {/* First Action Time */}
-                    <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
+                {/* First Action Time */}
+                <Box sx={{ 
+                    display: 'flex',
+                    flexDirection: 'column',
+                    p: 1.5,
+                    borderRadius: '6px',
+                    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                    border: '1px solid rgba(0, 0, 0, 0.06)'
+                }}>
+                    <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
                         justifyContent: 'space-between',
                         gap: 2
                     }}>
-                        <Typography 
-                            variant="caption" 
-                            sx={{ 
-                                color: '#64748b',
-                                fontWeight: 500,
-                                fontSize: '0.9rem'
-                            }}
-                        >
+                        <Typography variant="body2" sx={{ 
+                            color: '#64748b', 
+                            fontWeight: 500,
+                            fontSize: '0.85rem',
+                            whiteSpace: 'nowrap',
+                            flex: '0 0 auto'
+                        }}>
                             First Action Time
                         </Typography>
-                        <Typography 
-                            variant="subtitle1" 
-                            sx={{ 
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1,
-                                color: timingData.firstActionTime > 30 ? '#ef4444' : '#22c55e',
-                                fontWeight: 600,
-                                fontSize: '0.95rem'
-                            }}
-                        >
-                            <AccessTimeIcon fontSize="small" />
+                        <Box sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            backgroundColor: timingData.firstActionTime > 30 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                            color: timingData.firstActionTime > 30 ? '#ef4444' : '#22c55e',
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: '16px',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            whiteSpace: 'nowrap',
+                            flex: '0 0 auto'
+                        }}>
                             {timingData.firstActionTime != null ? (
                                 `${Math.floor(timingData.firstActionTime / 60)}h ${timingData.firstActionTime % 60}m`
                             ) : 'N/A'}
-                        </Typography>
+                        </Box>
                     </Box>
-                </Stack>
+                </Box>
 
                 {/* Review Button */}
                 {!loading && timingData.resolutionTime != null && (
@@ -1176,16 +1201,18 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                         color="success"
                         onClick={handleReviewed}
                         fullWidth
-                        startIcon={<span>✅</span>}
+                        startIcon={<span>✓</span>}
                         sx={{
+                            mt: 1,
+                            py: 1,
+                            backgroundColor: '#22c55e',
+                            color: '#ffffff',
                             textTransform: 'none',
                             fontWeight: 600,
-                            fontSize: '0.95rem',
-                            py: 1,
+                            fontSize: '0.875rem',
                             borderRadius: '6px',
-                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
                             '&:hover': {
-                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.15)'
+                                backgroundColor: '#16a34a'
                             }
                         }}
                     >
@@ -1507,7 +1534,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
 
                         {/* Right Column - Sidebar */}
                         <Box sx={{ 
-                            width: 380,
+                            width: 330,
                             overflowY: 'auto',
                             p: 2.5,
                             bgcolor: '#f5f5f5',
@@ -1532,9 +1559,9 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                         }}>
                                             Informations
                                         </Typography>
-                                        <Stack direction="row" spacing={2} alignItems="center"> 
+                                        <Stack direction="row" spacing={2} sx={{ width: '100%' }}> 
                                             {shopUrl && (
-                                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                                                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                                                     <Link
                                                         href={shopUrl}
                                                         target="_blank"
@@ -1542,12 +1569,17 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                             display: 'flex',
                                                             flexDirection: 'column',
                                                             alignItems: 'center',
-                                                            color: '#666666',
+                                                            color: '#1976d2',
                                                             textDecoration: 'none',
-                                                            gap: 0.5,
+                                                            gap: 1.5,
                                                             border: '1px solid rgba(0, 0, 0, 0.12)',
                                                             borderRadius: '4px',
-                                                            p: 2
+                                                            p: 2,
+                                                            position: 'relative',
+                                                            width: '100%',
+                                                            '&:hover': {
+                                                                backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                                                            }
                                                         }}
                                                     >
                                                         <Box sx={{ 
@@ -1560,30 +1592,36 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                             bgcolor: '#f5f5f5'
                                                         }}>
                                                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                                                <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 3c0 .55.45 1 1 1h1l3.6 7.59-1.35 2.44C4.52 15.37 5.48 17 7 17h11c.55 0 1-.45 1-1s-.45-1-1-1H7l1.1-2h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A.996.996 0 0020.01 4H5.21l-.67-1.43a.993.993 0 00-.9-.57H2c-.55 0-1 .45-1 1zm16 15c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
+                                                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
                                                             </svg>
                                                         </Box>
-                                                        <Typography variant="caption" sx={{ fontSize: '0.75rem', textAlign: 'center' }}>
+                                                        <Typography variant="caption" sx={{ fontSize: '0.85rem', textAlign: 'center', color: '#1976d2' }}>
                                                             View Shop
                                                         </Typography>
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                handleCopyLink(shopUrl, 'Shop URL');
+                                                            }}
+                                                            sx={{
+                                                                position: 'absolute',
+                                                                top: 4,
+                                                                right: 4,
+                                                                color: '#1976d2',
+                                                                p: 0.5,
+                                                                '&:hover': {
+                                                                    color: '#1565c0'
+                                                                }
+                                                            }}
+                                                        >
+                                                            <ContentCopyIcon sx={{ fontSize: 16 }} />
+                                                        </IconButton>
                                                     </Link>
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={() => handleCopyLink(shopUrl, 'Shop URL')}
-                                                        sx={{
-                                                            color: '#666666',
-                                                            p: 0.5,
-                                                            '&:hover': {
-                                                                color: 'primary.main'
-                                                            }
-                                                        }}
-                                                    >
-                                                        <ContentCopyIcon sx={{ fontSize: 16 }} />
-                                                    </IconButton>
                                                 </Box>
                                             )}
                                             {crispUrl && (
-                                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                                                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                                                     <Link
                                                         href={crispUrl}
                                                         target="_blank"
@@ -1591,12 +1629,17 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                             display: 'flex',
                                                             flexDirection: 'column',
                                                             alignItems: 'center',
-                                                            color: '#666666',
+                                                            color: '#1976d2',
                                                             textDecoration: 'none',
-                                                            gap: 0.5,
+                                                            gap: 1.5,
                                                             border: '1px solid rgba(0, 0, 0, 0.12)',
                                                             borderRadius: '4px',
-                                                            p: 2
+                                                            p: 2,
+                                                            position: 'relative',
+                                                            width: '100%',
+                                                            '&:hover': {
+                                                                backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                                                            }
                                                         }}
                                                     >
                                                         <Box sx={{ 
@@ -1612,75 +1655,92 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                                 <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12zM7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/>
                                                             </svg>
                                                         </Box>
-                                                        <Typography variant="caption" sx={{ fontSize: '0.75rem', textAlign: 'center' }}>
+                                                        <Typography variant="caption" sx={{ fontSize: '0.85rem', textAlign: 'center', color: '#1976d2' }}>
                                                             View Chat
                                                         </Typography>
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                handleCopyLink(crispUrl, 'Chat URL');
+                                                            }}
+                                                            sx={{
+                                                                position: 'absolute',
+                                                                top: 4,
+                                                                right: 4,
+                                                                color: '#1976d2',
+                                                                p: 0.5,
+                                                                '&:hover': {
+                                                                    color: '#1565c0'
+                                                                }
+                                                            }}
+                                                        >
+                                                            <ContentCopyIcon sx={{ fontSize: 16 }} />
+                                                        </IconButton>
                                                     </Link>
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={() => handleCopyLink(crispUrl, 'Chat URL')}
-                                                        sx={{
-                                                            color: '#666666',
-                                                            p: 0.5,
-                                                            '&:hover': {
-                                                                color: 'primary.main'
-                                                            }
-                                                        }}
-                                                    >
-                                                        <ContentCopyIcon sx={{ fontSize: 16 }} />
-                                                    </IconButton>
-                                                </Box>
-                                            )}
-                                            {safeCard.shortUrl && (
-                                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                                                    <Link
-                                                        href={safeCard.shortUrl}
-                                                        target="_blank"
-                                                        sx={{
-                                                            display: 'flex',
-                                                            flexDirection: 'column',
-                                                            alignItems: 'center',
-                                                            color: '#666666',
-                                                            textDecoration: 'none',
-                                                            gap: 0.5,
-                                                            border: '1px solid rgba(0, 0, 0, 0.12)',
-                                                            borderRadius: '4px',
-                                                            p: 2
-                                                        }}
-                                                    >
-                                                        <Box sx={{ 
-                                                            width: 40,
-                                                            height: 40,
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            borderRadius: '4px',
-                                                            bgcolor: '#f5f5f5'
-                                                        }}>
-                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                                                <path d="M19.5 3h-15A1.5 1.5 0 003 4.5v15A1.5 1.5 0 004.5 21h15a1.5 1.5 0 001.5-1.5v-15A1.5 1.5 0 0019.5 3zm-15 1.5h15v15h-15v-15zM6 6h12v2H6V6zm0 4h12v2H6v-2zm0 4h12v2H6v-2z"/>
-                                                            </svg>
-                                                        </Box>
-                                                        <Typography variant="caption" sx={{ fontSize: '0.75rem', textAlign: 'center' }}>
-                                                            View Trello
-                                                        </Typography>
-                                                    </Link>
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={() => handleCopyLink(safeCard.shortUrl, 'Trello URL')}
-                                                        sx={{
-                                                            color: '#666666',
-                                                            p: 0.5,
-                                                            '&:hover': {
-                                                                color: 'primary.main'
-                                                            }
-                                                        }}
-                                                    >
-                                                        <ContentCopyIcon sx={{ fontSize: 16 }} />
-                                                    </IconButton>
                                                 </Box>
                                             )}
                                         </Stack>
+                                        {safeCard.shortUrl && (
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, mt: 2, width: '100%' }}>
+                                                <Link
+                                                    href={safeCard.shortUrl}
+                                                    target="_blank"
+                                                    sx={{
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        alignItems: 'center',
+                                                        color: '#1976d2',
+                                                        textDecoration: 'none',
+                                                        gap: 1.5,
+                                                        border: '1px solid rgba(0, 0, 0, 0.12)',
+                                                        borderRadius: '4px',
+                                                        p: 2,
+                                                        position: 'relative',
+                                                        width: '100%',
+                                                        '&:hover': {
+                                                            backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                                                        }
+                                                    }}
+                                                >
+                                                    <Box sx={{ 
+                                                        width: 40,
+                                                        height: 40,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        borderRadius: '4px',
+                                                        bgcolor: '#f5f5f5'
+                                                    }}>
+                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                                            <path d="M19.5 3h-15A1.5 1.5 0 003 4.5v15A1.5 1.5 0 004.5 21h15a1.5 1.5 0 001.5-1.5v-15A1.5 1.5 0 0019.5 3zm-15 1.5h15v15h-15v-15zM6 6h12v2H6V6zm0 4h12v2H6v-2zm0 4h12v2H6v-2z"/>
+                                                        </svg>
+                                                    </Box>
+                                                    <Typography variant="caption" sx={{ fontSize: '0.85rem', textAlign: 'center', color: '#1976d2' }}>
+                                                        View Trello
+                                                    </Typography>
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            handleCopyLink(safeCard.shortUrl, 'Trello URL');
+                                                        }}
+                                                        sx={{
+                                                            position: 'absolute',
+                                                            top: 4,
+                                                            right: 4,
+                                                            color: '#1976d2',
+                                                            p: 0.5,
+                                                            '&:hover': {
+                                                                color: '#1565c0'
+                                                            }
+                                                        }}
+                                                    >
+                                                        <ContentCopyIcon sx={{ fontSize: 16 }} />
+                                                    </IconButton>
+                                                </Link>
+                                            </Box>
+                                        )}
                                     </Box>
                                 )}
 

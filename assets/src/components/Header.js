@@ -13,15 +13,32 @@ import { getCurrentUser, logout } from '../api/usersApi';
 import { getMemberNotifications, markAllNotificationsAsRead, updateNotificationStatus } from '../api/trelloApi';
 import { formatDistanceToNow } from 'date-fns';
 import CardDetailModal from './CardDetailModal';
+import { TABS, ROLES, hasTabAccess, getAccessibleTabs } from '../utils/roles';
 
-const pages = [
-  { label: 'Bugs', path: '/bugs' },
-  { label: 'Issues', path: '/issues' },
-  { label: 'Resolution Time', path: '/resolution-time' },
-  { label: 'KPI', path: '/data-kpi' },
-  { label: 'TS Lead workspace', path: '/TS-lead-workspace'},
-  { label: 'TS workspace', path: '/TS-workspace'},
-];
+const MENU_ITEMS = {
+  [ROLES.ADMIN]: [
+    { label: 'Bugs', path: '/bugs' },
+    { label: 'Issues', path: '/issues' },
+    { label: 'Resolution Time', path: '/resolution-time' },
+    { label: 'KPI', path: '/data-kpi' },
+    { label: 'TS Lead workspace', path: '/TS-lead-workspace'},
+    { label: 'TS workspace', path: '/TS-workspace'},
+    { label: 'BA Page', path: '/ba-page'},
+    { label: 'Dev Zone', path: '/dev-zone'}
+  ],
+  [ROLES.TS]: [
+    { label: 'Bugs', path: '/bugs' },
+    { label: 'Issues', path: '/issues' },
+    { label: 'Resolution Time', path: '/resolution-time' },
+    { label: 'TS workspace', path: '/TS-workspace'},
+    { label: 'TS Lead workspace', path: '/TS-lead-workspace'}
+  ],
+  [ROLES.BA]: [
+    { label: 'Bugs', path: '/bugs' },
+    { label: 'Issues', path: '/issues' },
+    { label: 'BA Page', path: '/ba-page'},
+  ]
+};
 
 function ResponsiveAppBar() {
   const [anchorElNav, setAnchorElNav] = React.useState(null);
@@ -37,8 +54,17 @@ function ResponsiveAppBar() {
   const [filter, setFilter] = React.useState('unread'); // 'unread', 'read'
   const location = useLocation();
 
+  // Get user role from localStorage
+  const currentUser = getCurrentUser();
+  const userRole = currentUser?.role || ROLES.BA;
+
+  // Get accessible tabs based on user role
+  const accessibleTabs = getAccessibleTabs(userRole);
+
+  // Filter menu items based on accessible tabs
+  const currentMenuItems = MENU_ITEMS[userRole] || [];
+
   React.useEffect(() => {
-    const currentUser = getCurrentUser();
     if (currentUser) {
       setUser(currentUser);
     }
@@ -278,26 +304,15 @@ function ResponsiveAppBar() {
                   }
                 }}
               >
-                {pages.map((page) => (
+                {currentMenuItems.map((item) => (
                   <MenuItem 
-                    key={page.label} 
+                    key={item.path} 
                     onClick={handleCloseNavMenu}
-                    selected={location.pathname === page.path}
-                    sx={{
-                      borderRadius: 1,
-                      mx: 1,
-                      '&.Mui-selected': {
-                        backgroundColor: '#f0f4ff',
-                        color: '#06038D',
-                        '&:hover': {
-                          backgroundColor: '#e5e9ff'
-                        }
-                      }
-                    }}
+                    component={Link}
+                    to={item.path}
+                    selected={location.pathname === item.path}
                   >
-                    <Link to={page.path} style={{ textDecoration: 'none', color: 'inherit' }}>
-                      <Typography>{page.label}</Typography>
-                    </Link>
+                    <Typography textAlign="center">{item.label}</Typography>
                   </MenuItem>
                 ))}
               </Menu>
@@ -323,11 +338,11 @@ function ResponsiveAppBar() {
                 gap: 1
               }}
             >
-              {pages.map((page) => (
+              {currentMenuItems.map((item) => (
                 <Button
-                  key={page.label}
+                  key={item.path}
                   component={Link}
-                  to={page.path}
+                  to={item.path}
                   onClick={handleCloseNavMenu}
                   sx={{
                     px: 2,
@@ -342,7 +357,7 @@ function ResponsiveAppBar() {
                       position: 'absolute',
                       bottom: 6,
                       left: '50%',
-                      width: location.pathname === page.path ? '30%' : '0%',
+                      width: location.pathname === item.path ? '30%' : '0%',
                       height: '2px',
                       backgroundColor: 'white',
                       transition: 'all 0.3s',
@@ -354,12 +369,12 @@ function ResponsiveAppBar() {
                         width: '30%'
                       }
                     },
-                    ...(location.pathname === page.path && {
+                    ...(location.pathname === item.path && {
                       backgroundColor: 'rgba(255,255,255,0.1)',
                     })
                   }}
                 >
-                  {page.label}
+                  {item.label}
                 </Button>
               ))}
             </Box>

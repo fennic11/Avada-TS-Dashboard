@@ -1,22 +1,25 @@
 // src/App.js
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Box, Container } from '@mui/material';
 import Login from './pages/Login';
 import DevZone from './components/DevZone';
-import { isAuthenticated } from './api/usersApi';
+import { isAuthenticated, getCurrentUser } from './api/usersApi';
 import Header from './components/Header';
 import { SnackbarProvider } from 'notistack';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { TABS, ROLES, hasTabAccess, getAccessibleTabs } from './utils/roles';
 
+// Import existing pages
 import Bugs from './pages/Dashboard';
-import Issues from './pages/Issues'; // ví dụ thêm trang khác
+import Issues from './pages/Issues';
 import RevolutionTime from './pages/RevolutionTime';
 import Kpis from './pages/Kpi';
 import TSLead from './pages/TSLeadPage';
 import TSWorkspace from './pages/TSWorkspace';
+import BaPage from './pages/BaPage';
 
 const theme = createTheme({
     palette: {
@@ -30,7 +33,41 @@ const theme = createTheme({
 });
 
 const PrivateRoute = ({ children }) => {
-    return isAuthenticated() ? children : <Navigate to="/login" />;
+    const location = useLocation();
+    const currentPath = location.pathname.substring(1); // Remove leading slash
+    
+    // First check authentication
+    if (!isAuthenticated()) {
+        return <Navigate to="/login" />;
+    }
+
+    const user = getCurrentUser();
+    console.log(user);
+    const userRole = user?.role;
+    const accessibleTabs = getAccessibleTabs(userRole);
+    console.log(accessibleTabs);
+
+    // If no accessible tabs, something is wrong
+    if (!accessibleTabs.length) {
+        console.error('No accessible tabs for role:', userRole);
+        return <Navigate to="/login" />;
+    }
+
+    // For root path or empty path, redirect to first accessible tab
+    if (!currentPath || currentPath === '') {
+        return <Navigate to={`/${accessibleTabs[0]}`} replace />;
+    }
+
+    // Check if current path is accessible
+    const hasAccess = hasTabAccess(userRole, currentPath);
+    console.log('Access check:', { currentPath, userRole, hasAccess, accessibleTabs });
+
+    if (!hasAccess) {
+        // Redirect to first accessible tab
+        return <Navigate to={`/${accessibleTabs[0]}`} replace />;
+    }
+
+    return children;
 };
 
 const Layout = ({ children }) => {
@@ -123,7 +160,18 @@ const App = () => {
                                     </PrivateRoute>
                                 }
                             />
+                            <Route
+                                path="/ba-page"
+                                element={
+                                    <PrivateRoute>
+                                        <Layout>
+                                            <BaPage />
+                                        </Layout>
+                                    </PrivateRoute>
+                                }
+                            />
                             <Route path="/" element={<Navigate to="/bugs" replace />} />
+                            <Route path="*" element={<Navigate to="/" replace />} />
                         </Routes>
                     </Router>
                 </ThemeProvider>

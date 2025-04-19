@@ -53,26 +53,26 @@ export async function getCardsByListandMember(listId, idMember) {
     }
 }
 
-export async function getListsByBoardId(boardId) {
+export async function getListsByBoardId() {
     try {
-        const openListsRes = await fetch(`${API_URL}/boards/${boardId}/lists?key=${key}&token=${token}`, {
+        const openListsRes = await fetch(`${API_URL}/boards/${BOARD_ID}/lists?key=${key}&token=${token}`, {
             headers: {
                 Accept: "application/json"
             }
         });
 
-        const closedListsRes = await fetch(`${API_URL}/boards/${boardId}/lists?key=${key}&token=${token}&filter=closed`, {
+        const closedListsRes = await fetch(`${API_URL}/boards/${BOARD_ID}/lists?key=${key}&token=${token}&filter=closed`, {
             headers: {
                 Accept: "application/json"
             }
         });
 
         if (!openListsRes.ok) {
-            throw new Error(`Failed to fetch open lists for board ${boardId}: ${openListsRes.statusText}`);
+            throw new Error(`Failed to fetch open lists for board ${BOARD_ID}: ${openListsRes.statusText}`);
         }
 
         if (!closedListsRes.ok) {
-            throw new Error(`Failed to fetch closed lists for board ${boardId}: ${closedListsRes.statusText}`);
+            throw new Error(`Failed to fetch closed lists for board ${BOARD_ID}: ${closedListsRes.statusText}`);
         }
 
         const openLists = await openListsRes.json();
@@ -80,7 +80,7 @@ export async function getListsByBoardId(boardId) {
 
         return [...openLists, ...closedLists];
     } catch (error) {
-        console.error(`Error getting lists for board ${boardId}:`, error);
+        console.error(`Error getting lists for board ${BOARD_ID}:`, error);
         return null;
     }
 }
