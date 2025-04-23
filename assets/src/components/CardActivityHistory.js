@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
     Avatar,
     Typography,
@@ -6,11 +6,50 @@ import {
     Stack,
     Link,
     Paper,
-    Chip
+    Chip,
+    ToggleButtonGroup,
+    ToggleButton
 } from "@mui/material";
 import { format, formatDistanceToNow } from "date-fns";
+import { useTheme } from "@mui/material/styles";
+
+const getActionBackgroundColor = (type, theme) => {
+    switch (type) {
+        case "commentCard":
+            return `${theme.palette.success.light}15`; // Light green with 15% opacity
+        case "updateCard":
+            return `${theme.palette.info.light}15`; // Light blue with 15% opacity
+        case "addMemberToCard":
+            return `${theme.palette.secondary.light}15`; // Light secondary color with 15% opacity
+        case "removeMemberFromCard":
+            return `${theme.palette.error.light}15`; // Light red with 15% opacity
+        case "addAttachmentToCard":
+            return `${theme.palette.warning.light}15`; // Light orange with 15% opacity
+        case "deleteAttachmentFromCard":
+            return `${theme.palette.error.light}15`; // Light red with 15% opacity
+        case "addChecklistToCard":
+            return `${theme.palette.info.light}15`; // Light cyan with 15% opacity
+        case "createCard":
+            return `${theme.palette.success.light}15`; // Light green with 15% opacity
+        default:
+            return `${theme.palette.grey[300]}15`; // Light grey with 15% opacity
+    }
+};
 
 const CardActivityHistory = ({ actions }) => {
+    const theme = useTheme();
+    const [filter, setFilter] = useState('all'); // 'all' or 'comments'
+
+    const handleFilterChange = (event, newFilter) => {
+        if (newFilter !== null) {
+            setFilter(newFilter);
+        }
+    };
+
+    const filteredActions = actions.filter(action => {
+        if (filter === 'all') return true;
+        return action.type === 'commentCard';
+    });
 
     const renderContent = (action) => {
         switch (action.type) {
@@ -241,23 +280,20 @@ const CardActivityHistory = ({ actions }) => {
                     );
                 }
 
-                return (
-                    <Typography variant="body2" color="text.secondary">
-                        Updated card
-                    </Typography>
-                );
+                // Return null for empty updates
+                return null;
 
             case "addMemberToCard":
                 return (
                     <Typography variant="body2" color="text.secondary">
-                        Added <strong>{action.member?.fullName}</strong>
+                        Added <strong>{action.member?.username || action.member?.fullName}</strong>
                     </Typography>
                 );
 
             case "removeMemberFromCard":
                 return (
                     <Typography variant="body2" color="text.secondary">
-                        Removed <strong>{action.member?.fullName}</strong>
+                        Removed <strong>{action.member?.username || action.member?.fullName}</strong>
                     </Typography>
                 );
 
@@ -375,7 +411,57 @@ const CardActivityHistory = ({ actions }) => {
 
     return (
         <Stack spacing={2}>
-            {actions.map((action, index) => {
+            <Box sx={{ 
+                display: 'flex',
+                justifyContent: 'flex-end',
+                mb: 2
+            }}>
+                <ToggleButtonGroup
+                    value={filter}
+                    exclusive
+                    onChange={handleFilterChange}
+                    size="small"
+                    sx={{
+                        '& .MuiToggleButton-root': {
+                            textTransform: 'none',
+                            px: 2,
+                            py: 0.5,
+                            color: '#64748b',
+                            borderColor: 'rgba(0, 0, 0, 0.08)',
+                            '&.Mui-selected': {
+                                bgcolor: 'primary.main',
+                                color: 'white',
+                                '&:hover': {
+                                    bgcolor: 'primary.dark',
+                                }
+                            },
+                            '&:hover': {
+                                bgcolor: 'rgba(0, 0, 0, 0.04)',
+                            }
+                        }
+                    }}
+                >
+                    <ToggleButton 
+                        value="all"
+                        sx={{ 
+                            borderTopLeftRadius: '6px !important',
+                            borderBottomLeftRadius: '6px !important',
+                        }}
+                    >
+                        All Activities
+                    </ToggleButton>
+                    <ToggleButton 
+                        value="comments"
+                        sx={{ 
+                            borderTopRightRadius: '6px !important',
+                            borderBottomRightRadius: '6px !important',
+                        }}
+                    >
+                        Comments Only
+                    </ToggleButton>
+                </ToggleButtonGroup>
+            </Box>
+            {filteredActions.map((action, index) => {
                 // Check if this is the first action and has Slack link
                 if (index === 0 && action.type === "commentCard") {
                     const text = action.data.text;
@@ -462,7 +548,7 @@ const CardActivityHistory = ({ actions }) => {
                                             flexWrap: "wrap"
                                         }}>
                                             <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                                                {action.memberCreator?.fullName}
+                                                {action.memberCreator?.username || action.memberCreator?.fullName}
                                             </Typography>
                                             <Typography 
                                                 variant="caption" 
@@ -521,6 +607,11 @@ const CardActivityHistory = ({ actions }) => {
                     }
                 }
                 
+                // Get the content first
+                const content = renderContent(action);
+                // Skip if content is null
+                if (content === null) return null;
+                
                 return (
                     <Box
                         key={action.id}
@@ -529,13 +620,13 @@ const CardActivityHistory = ({ actions }) => {
                             gap: 2,
                             p: 2,
                             borderRadius: 1,
-                            bgcolor: "background.paper",
+                            bgcolor: getActionBackgroundColor(action.type, theme),
                             position: "relative",
                             transition: "all 0.2s ease-in-out",
                             "&:hover": {
-                                bgcolor: "action.hover",
                                 transform: "translateX(4px)",
-                                boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+                                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                                bgcolor: (theme) => `${getActionBackgroundColor(action.type, theme).slice(0, -2)}25`,
                             },
                             "&::before": {
                                 content: '""',
@@ -547,79 +638,125 @@ const CardActivityHistory = ({ actions }) => {
                                 bgcolor: getActionColor(action.type),
                                 borderTopLeftRadius: "4px",
                                 borderBottomLeftRadius: "4px"
-                            }
+                            },
+                            borderLeft: `1px solid ${theme.palette.divider}`,
+                            borderRight: `1px solid ${theme.palette.divider}`,
+                            borderTop: `1px solid ${theme.palette.divider}`,
+                            borderBottom: `1px solid ${theme.palette.divider}`,
                         }}
                     >
-                        <Avatar
-                            src={action.memberCreator?.avatarUrl}
-                            alt={action.memberCreator?.fullName}
-                            sx={{ 
-                                width: 32, 
-                                height: 32,
-                                border: "2px solid white",
-                                boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-                            }}
-                        />
-                        <Box sx={{ flex: 1 }}>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'center',
+                            gap: 1 
+                        }}>
+                            <Avatar
+                                src={action.memberCreator?.avatarUrl}
+                                alt={action.memberCreator?.fullName}
+                                sx={{ 
+                                    width: 40, 
+                                    height: 40,
+                                    border: "2px solid white",
+                                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                                }}
+                            />
+                            <Typography 
+                                variant="caption" 
+                                color="text.secondary"
+                                sx={{
+                                    fontSize: '0.7rem',
+                                    textAlign: 'center',
+                                    maxWidth: '80px',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                }}
+                            >
+                                {action.memberCreator?.username || action.memberCreator?.fullName}
+                            </Typography>
+                        </Box>
+
+                        <Box sx={{ 
+                            flex: 1,
+                            borderLeft: `1px dashed ${theme.palette.divider}`,
+                            pl: 2,
+                            ml: 1
+                        }}>
                             <Box sx={{ 
                                 display: "flex", 
                                 alignItems: "center", 
                                 gap: 1, 
-                                mb: 0.5,
-                                flexWrap: "wrap"
+                                mb: 1.5,
+                                pb: 1.5,
+                                borderBottom: `1px solid ${theme.palette.divider}`,
+                                flexWrap: "wrap",
+                                justifyContent: 'space-between'
                             }}>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                                    {action.memberCreator?.fullName}
-                                </Typography>
-                                <Typography 
-                                    variant="caption" 
-                                    color="text.secondary" 
-                                    sx={{ 
-                                        bgcolor: "rgba(0,0,0,0.05)",
-                                        px: 1,
-                                        py: 0.5,
-                                        borderRadius: 1,
-                                        position: 'relative',
-                                        '&:hover::after': {
-                                            content: `"${format(new Date(action.date), 'MMM d, yyyy HH:mm:ss')}"`,
-                                            position: 'absolute',
-                                            bottom: '100%',
-                                            left: '50%',
-                                            transform: 'translateX(-50%)',
-                                            bgcolor: 'rgba(0,0,0,0.8)',
-                                            color: 'white',
-                                            padding: '4px 8px',
-                                            borderRadius: '4px',
-                                            fontSize: '12px',
-                                            whiteSpace: 'nowrap',
-                                            zIndex: 1,
-                                            mb: 1
-                                        }
-                                    }}
-                                >
-                                    {formatDistanceToNow(new Date(action.date), { addSuffix: true })}
-                                </Typography>
-                                {action.appCreator && (
-                                    <Chip
-                                        size="small"
-                                        label={action.appCreator.name}
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography 
+                                        variant="caption" 
                                         sx={{ 
-                                            ml: 1,
-                                            bgcolor: "rgba(0,0,0,0.05)",
-                                            "& .MuiChip-label": {
-                                                fontSize: "0.75rem"
+                                            bgcolor: "rgba(255,255,255,0.5)",
+                                            px: 1.5,
+                                            py: 0.5,
+                                            borderRadius: 1,
+                                            position: 'relative',
+                                            fontWeight: 500,
+                                            '&:hover::after': {
+                                                content: `"${format(new Date(action.date), 'MMM d, yyyy HH:mm:ss')}"`,
+                                                position: 'absolute',
+                                                bottom: '100%',
+                                                left: '50%',
+                                                transform: 'translateX(-50%)',
+                                                bgcolor: 'rgba(0,0,0,0.8)',
+                                                color: 'white',
+                                                padding: '4px 8px',
+                                                borderRadius: '4px',
+                                                fontSize: '12px',
+                                                whiteSpace: 'nowrap',
+                                                zIndex: 1,
+                                                mb: 1
                                             }
                                         }}
-                                    />
-                                )}
+                                    >
+                                        {formatDistanceToNow(new Date(action.date), { addSuffix: true })}
+                                    </Typography>
+                                    {action.appCreator && (
+                                        <Chip
+                                            size="small"
+                                            label={action.appCreator.name}
+                                            sx={{ 
+                                                bgcolor: "rgba(255,255,255,0.5)",
+                                                "& .MuiChip-label": {
+                                                    fontSize: "0.75rem"
+                                                }
+                                            }}
+                                        />
+                                    )}
+                                </Box>
+                                <Chip
+                                    size="small"
+                                    label={action.type.replace(/([A-Z])/g, ' $1').trim()}
+                                    sx={{ 
+                                        bgcolor: "rgba(255,255,255,0.5)",
+                                        color: getActionColor(action.type),
+                                        borderColor: getActionColor(action.type),
+                                        border: '1px solid',
+                                        "& .MuiChip-label": {
+                                            fontSize: "0.75rem",
+                                            textTransform: 'capitalize'
+                                        }
+                                    }}
+                                />
                             </Box>
                             <Box sx={{ 
-                                mt: 1,
                                 "& strong": {
-                                    color: "primary.main"
+                                    color: "primary.main",
+                                    fontWeight: 600
                                 }
                             }}>
-                                {renderContent(action)}
+                                {content}
                             </Box>
                         </Box>
                     </Box>

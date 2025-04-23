@@ -132,6 +132,9 @@ export default function DevFixingDashboard() {
     const totalCards = cardList.length;
     const top3Apps = Object.entries(appStats).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([app]) => app);
 
+    // Calculate total cards for percentage (use all cards if in pending tab, all done cards if in done tab)
+    const totalCardsForPercentage = tab === 0 ? cards.length : doneCards.length;
+
     return (
       <Box sx={{ 
         mb: 4,
@@ -139,6 +142,7 @@ export default function DevFixingDashboard() {
         borderRadius: 3,
         p: 3,
         boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
       }}>
         <Box sx={{
           display: 'flex',
@@ -155,9 +159,10 @@ export default function DevFixingDashboard() {
               color: 'primary.main',
               fontWeight: 600,
               textShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              fontSize: '1.1rem'
             }}
           >
-            <PhoneAndroidIcon /> {title}
+            {title}
           </Typography>
           <Box sx={{
             display: 'flex',
@@ -175,10 +180,11 @@ export default function DevFixingDashboard() {
                 backgroundColor: alpha(theme.palette.primary.main, 0.1),
                 px: 2,
                 py: 1,
-                borderRadius: 2
+                borderRadius: 2,
+                fontSize: '0.85rem'
               }}
             >
-              📊 Tổng số: <span style={{ color: theme.palette.primary.main, fontWeight: 600 }}>{totalCards}</span>
+              Tổng số: <span style={{ color: theme.palette.primary.main, fontWeight: 600 }}>{totalCardsForPercentage}</span>
             </Typography>
           </Box>
         </Box>
@@ -186,7 +192,7 @@ export default function DevFixingDashboard() {
           {Object.entries(appStats)
             .sort(([, a], [, b]) => b - a)
             .map(([app, count]) => {
-              const percent = totalCards > 0 ? (count / totalCards) * 100 : 0;
+              const percent = totalCardsForPercentage > 0 ? (count / totalCardsForPercentage) * 100 : 0;
               const isTopApp = top3Apps.includes(app);
               const isSelected = selectedApp === app;
               return (
@@ -200,7 +206,7 @@ export default function DevFixingDashboard() {
                       p: 2,
                       borderColor: isTopApp ? 'error.main' : 'grey.200',
                       backgroundColor: isTopApp ? alpha(theme.palette.error.main, 0.05) : 'white',
-                      transition: 'all 0.3s ease',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                       cursor: 'pointer',
                       border: isSelected ? `2px solid ${theme.palette.primary.main}` : undefined,
                       transform: isSelected ? 'translateY(-4px)' : 'none',
@@ -219,17 +225,18 @@ export default function DevFixingDashboard() {
                           mb: 1,
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 1
+                          gap: 1,
+                          fontSize: '0.9rem'
                         }}
                       >
-                        📱 {app}
+                        {app}
                         {isSelected && (
                           <Typography
                             component="span"
                             sx={{
                               ml: 1,
                               color: 'primary.main',
-                              fontSize: '0.8rem',
+                              fontSize: '0.7rem',
                               fontWeight: 500,
                               backgroundColor: alpha(theme.palette.primary.main, 0.1),
                               px: 1,
@@ -244,7 +251,10 @@ export default function DevFixingDashboard() {
                       <Typography 
                         variant="body1" 
                         color="text.secondary"
-                        sx={{ mb: 2 }}
+                        sx={{ 
+                          mb: 2,
+                          fontSize: '0.8rem'
+                        }}
                       >
                         {count} cards ({percent.toFixed(1)}%)
                       </Typography>
@@ -252,13 +262,14 @@ export default function DevFixingDashboard() {
                         variant="determinate"
                         value={percent}
                         sx={{
-                          height: 8,
+                          height: 6,
                           borderRadius: 5,
                           backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                           '& .MuiLinearProgress-bar': {
                             backgroundColor: isTopApp ? 'error.main' : 'primary.main',
                             borderRadius: 5,
-                            transition: 'all 0.3s ease',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                           }
                         }}
                       />
@@ -286,9 +297,24 @@ export default function DevFixingDashboard() {
           boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
           overflow: 'hidden',
           background: 'white',
+          transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+          animation: 'tableFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+          '@keyframes tableFadeIn': {
+            '0%': { 
+              opacity: 0,
+              transform: 'translateY(20px)',
+              filter: 'blur(5px)'
+            },
+            '100%': { 
+              opacity: 1,
+              transform: 'translateY(0)',
+              filter: 'blur(0)'
+            }
+          },
           '& .MuiTableCell-root': {
             py: 2,
             px: 3,
+            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
           }
         }}
       >
@@ -296,10 +322,12 @@ export default function DevFixingDashboard() {
           <TableHead>
             <TableRow sx={{ 
               background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.primary.main, 0.05)} 100%)`,
+              transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
               '& .MuiTableCell-root': {
                 fontWeight: 600,
                 color: 'primary.main',
                 fontSize: '1rem',
+                transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
               }
             }}>
               <TableCell>Card</TableCell>
@@ -326,7 +354,7 @@ export default function DevFixingDashboard() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredCards.map(card => {
+            {filteredCards.map((card, index) => {
               const overdueLevel = getOverdueLevel(card.due);
               const status = getCardStatus(card.due);
               const rowStyle = {
@@ -337,7 +365,18 @@ export default function DevFixingDashboard() {
                   status === 'overdue' ? theme.palette.error.main :
                   status === 'soon' ? theme.palette.warning.main :
                   'inherit',
-                transition: 'all 0.2s ease',
+                transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                animation: `rowFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.05}s`,
+                '@keyframes rowFadeIn': {
+                  '0%': { 
+                    opacity: 0,
+                    transform: 'translateX(-20px)'
+                  },
+                  '100%': { 
+                    opacity: 1,
+                    transform: 'translateX(0)'
+                  }
+                },
                 '&:hover': {
                   backgroundColor: alpha(theme.palette.primary.main, 0.05),
                   transform: 'scale(1.01)',
@@ -405,6 +444,7 @@ export default function DevFixingDashboard() {
       minHeight: '100vh',
       background: alpha(theme.palette.background.default, 0.8),
       backdropFilter: 'blur(10px)',
+      transition: 'all 0.3s ease-in-out'
     }}>
       <Box sx={{ 
         display: 'flex', 
@@ -416,6 +456,11 @@ export default function DevFixingDashboard() {
         borderRadius: 3,
         boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
         border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: '0 6px 24px rgba(0,0,0,0.1)'
+        }
       }}>
         <Typography variant="h4" sx={{ 
           fontWeight: 700,
@@ -424,8 +469,9 @@ export default function DevFixingDashboard() {
           alignItems: 'center',
           gap: 1,
           textShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          fontSize: '1.5rem'
         }}>
-          🛠️ Dev Fixing Dashboard
+          Dev Fixing Dashboard
         </Typography>
         <Box sx={{
           display: 'flex',
@@ -444,10 +490,11 @@ export default function DevFixingDashboard() {
               variant="h6"
               sx={{
                 color: theme.palette.warning.main,
-                fontWeight: 600
+                fontWeight: 600,
+                fontSize: '0.9rem'
               }}
             >
-              🔄 Pending: {cards.length}
+              Pending: {cards.length}
             </Typography>
           </Box>
           <Box sx={{
@@ -463,10 +510,11 @@ export default function DevFixingDashboard() {
               variant="h6"
               sx={{
                 color: theme.palette.success.main,
-                fontWeight: 600
+                fontWeight: 600,
+                fontSize: '0.9rem'
               }}
             >
-              ✅ Done: {doneCards.length}
+              Done: {doneCards.length}
             </Typography>
           </Box>
         </Box>
@@ -481,50 +529,58 @@ export default function DevFixingDashboard() {
           borderRadius: 2,
           p: 1,
           boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           '& .MuiTabs-indicator': {
             backgroundColor: 'primary.main',
             height: 3,
             borderRadius: 3,
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
           },
           '& .MuiTab-root': {
             textTransform: 'none',
-            fontSize: '1rem',
+            fontSize: '0.85rem',
             fontWeight: 500,
             borderRadius: 2,
-            transition: 'all 0.3s ease',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             '&:hover': {
               backgroundColor: alpha(theme.palette.primary.main, 0.05),
+              transform: 'translateY(-1px)'
             },
             '&.Mui-selected': {
               backgroundColor: alpha(theme.palette.primary.main, 0.1),
+              transform: 'translateY(-1px)'
             }
           }
         }}
       >
-        <Tab 
-          icon={<PendingActionsIcon />} 
-          label="📋 Pending" 
-          iconPosition="start"
-        />
-        <Tab 
-          icon={<CheckCircleIcon />} 
-          label="✅ Done" 
-          iconPosition="start"
-        />
+        <Tab label="Pending" />
+        <Tab label="Done" />
       </Tabs>
 
       {tab === 0 && (
-        <>
-          {renderAppStats(filteredCards, '📊 Thống kê theo App')}
+        <Box sx={{ 
+          animation: 'fadeIn 0.3s ease-in-out',
+          '@keyframes fadeIn': {
+            '0%': { opacity: 0, transform: 'translateY(10px)' },
+            '100%': { opacity: 1, transform: 'translateY(0)' }
+          }
+        }}>
+          {renderAppStats(filteredCards, 'Thống kê theo App')}
           {renderTable(filteredCards)}
-        </>
+        </Box>
       )}
 
       {tab === 1 && (
-        <>
-          {renderAppStats(filteredDoneCards, '✅ Thống kê Done theo App')}
+        <Box sx={{ 
+          animation: 'fadeIn 0.3s ease-in-out',
+          '@keyframes fadeIn': {
+            '0%': { opacity: 0, transform: 'translateY(10px)' },
+            '100%': { opacity: 1, transform: 'translateY(0)' }
+          }
+        }}>
+          {renderAppStats(filteredDoneCards, 'Thống kê Done theo App')}
           {renderTable(filteredDoneCards)}
-        </>
+        </Box>
       )}
     </Box>
   );

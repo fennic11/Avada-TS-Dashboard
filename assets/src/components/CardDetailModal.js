@@ -5,12 +5,11 @@ import {
     MenuItem, Select, Dialog, DialogTitle, DialogContent,
     DialogContentText, DialogActions, Button, Paper,
     TextField, List, ListItem, Avatar,
-    Divider, Tabs, Tab, Snackbar, Alert, Menu
+    Divider, Snackbar, Alert, Menu
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import ImageIcon from '@mui/icons-material/Image';
 import SendIcon from '@mui/icons-material/Send';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -135,16 +134,43 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
     const extractLinksFromDescription = useCallback((desc) => {
         if (!desc) return { shopUrl: '', crispUrl: '' };
         
-        // Updated patterns to be more flexible
-        const shopUrlPattern = /(shop url|shop|store url|store):\s*(https?:\/\/[^\s\n]+)/i;
-        const crispUrlPattern = /(crisp chat url|crisp url|chat url|chat):\s*(https?:\/\/[^\s\n]+)/i;
+        // Updated patterns to match both markdown-style links and direct URLs
+        const shopUrlPatterns = [
+            /\[(https:\/\/[^\/\]]+\.myshopify\.com)\]\([^\)]+\s*"smartCard-inline"\)/i,  // Markdown style
+            /Shop URL:\s*(https:\/\/[^\/\s]+\.myshopify\.com)/i,  // Direct URL with "Shop URL:" prefix
+            /(https:\/\/[^\/\s]+\.myshopify\.com)/i  // Direct myshopify URL
+        ];
+
+        const crispUrlPatterns = [
+            /\[(https:\/\/app\.crisp\.chat\/[^\]]+)\]\([^\)]+\s*"smartCard-inline"\)/i,  // Markdown style
+            /Crisp chat URL:\s*(https:\/\/app\.crisp\.chat\/[^\s]+)/i,  // Direct URL with "Crisp chat URL:" prefix
+            /(https:\/\/app\.crisp\.chat\/website\/[^\/\s]+\/inbox\/session_[^\/\s]+)/i  // Direct crisp URL
+        ];
         
-        const shopMatch = desc.match(shopUrlPattern);
-        const crispMatch = desc.match(crispUrlPattern);
+        let shopUrl = '';
+        let crispUrl = '';
+
+        // Try each pattern for shop URL
+        for (const pattern of shopUrlPatterns) {
+            const match = desc.match(pattern);
+            if (match) {
+                shopUrl = match[1];
+                break;
+            }
+        }
+
+        // Try each pattern for crisp URL
+        for (const pattern of crispUrlPatterns) {
+            const match = desc.match(pattern);
+            if (match) {
+                crispUrl = match[1];
+                break;
+            }
+        }
         
         return {
-            shopUrl: shopMatch ? shopMatch[2] : '',
-            crispUrl: crispMatch ? crispMatch[2] : ''
+            shopUrl,
+            crispUrl
         };
     }, []);
 
@@ -492,36 +518,11 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
 
     const handlePaste = async (e) => {
         const items = e.clipboardData.items;
-        for (let i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf('image') !== -1) {
-                const file = items[i].getAsFile();
-                if (file) {
-                    try {
-                        const formData = new FormData();
-                        formData.append('file', file);
-                        
-                        await addAttachmentToCard(card.id, formData);
-                        
-                        // Load lại actions để hiển thị ảnh mới
-                        const updatedActions = await getActionsByCard(card.id);
-                        setActions(updatedActions);
-
-                        // Hiển thị thông báo thành công
-                        setSnackbar({
-                            open: true,
-                            message: 'Ảnh đã được upload thành công',
-                            severity: 'success'
-                        });
-                    } catch (error) {
-                        console.error('Error uploading pasted image:', error);
-                        // Hiển thị thông báo lỗi
-                        setSnackbar({
-                            open: true,
-                            message: 'Có lỗi xảy ra khi upload ảnh',
-                            severity: 'error'
-                        });
-                    }
-                }
+        for (let item of items) {
+            if (item.type.indexOf('image') === 0) {
+                const file = item.getAsFile();
+                setImageUpload(file);
+                break;
             }
         }
     };
@@ -777,24 +778,10 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                         )}
 
                         {/* Comments Section */}
-                        <Box sx={{
-                            bgcolor: '#ffffff',
-                            p: 2,
-                            borderRadius: '4px'
-                        }}>
-                            <Typography variant="subtitle1" gutterBottom sx={{                     
-                                color: '#1e293b',
-                                fontWeight: 600,
-                                fontSize: '1rem',
-                                mb: 2,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1 
-                            }}>
-                                Comments
-                            </Typography>
-                            <Stack spacing={2}>
-                                <Paper sx={{ 
+                        <Box sx={{ mt: 3 }}>
+                            <Paper 
+                                variant="outlined"
+                                sx={{ 
                                     p: 2.5,
                                     borderRadius: 1.5,
                                     borderColor: 'rgba(0, 0, 0, 0.12)',
@@ -803,7 +790,45 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                         borderColor: 'primary.main',
                                         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
                                     }
+                                }}
+                            >
+                                <Typography variant="subtitle1" gutterBottom sx={{ 
+                                    color: '#1e293b',
+                                    fontWeight: 600,
+                                    fontSize: '1rem',
+                                    mb: 2,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1
                                 }}>
+                                    Comments
+                                </Typography>
+                                <Box
+                                    component="div"
+                                    onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                    }}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        const files = Array.from(e.dataTransfer.files);
+                                        const imageFile = files.find(file => file.type.startsWith('image/'));
+                                        if (imageFile) {
+                                            setImageUpload(imageFile);
+                                        }
+                                    }}
+                                    sx={{
+                                        position: 'relative',
+                                        '&:focus-within': {
+                                            '& .comment-actions': {
+                                                opacity: 1,
+                                                transform: 'translateY(0)',
+                                                visibility: 'visible'
+                                            }
+                                        }
+                                    }}
+                                >
                                     <TextField
                                         fullWidth
                                         multiline
@@ -811,9 +836,10 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                         value={commentContent}
                                         onChange={(e) => setCommentContent(e.target.value)}
                                         onPaste={handlePaste}
-                                        placeholder="Add a comment..."
+                                        placeholder="Write a comment... You can also paste or drag & drop images"
                                         sx={{
                                             '& .MuiOutlinedInput-root': {
+                                                backgroundColor: '#f8fafc',
                                                 '& fieldset': {
                                                     borderColor: 'rgba(0, 0, 0, 0.12)',
                                                 },
@@ -824,48 +850,184 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                     borderColor: 'primary.main',
                                                 },
                                             },
+                                            '& .MuiOutlinedInput-input': {
+                                                fontSize: '0.9rem',
+                                                lineHeight: 1.6,
+                                            }
                                         }}
                                     />
-                                    <Box sx={{ 
-                                        display: 'flex', 
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        mt: 2
-                                    }}>
-                                        <Button
-                                            component="label"
+                                    
+                                    {/* Image Preview */}
+                                    {imageUpload && (
+                                        <Paper
                                             variant="outlined"
-                                            startIcon={<ImageIcon />}
-                                            sx={{ 
-                                                textTransform: 'none',
-                                                fontWeight: 500
+                                            sx={{
+                                                mt: 2,
+                                                p: 1,
+                                                borderRadius: 1,
+                                                borderColor: 'rgba(0, 0, 0, 0.12)',
+                                                position: 'relative'
                                             }}
                                         >
-                                            Upload Image
-                                            <input
-                                                type="file"
-                                                hidden
-                                                accept="image/*"
-                                                onChange={(e) => setImageUpload(e.target.files[0])}
-                                            />
-                                        </Button>
+                                            <Box sx={{ position: 'relative' }}>
+                                                <Box
+                                                    component="img"
+                                                    src={URL.createObjectURL(imageUpload)}
+                                                    alt="Upload preview"
+                                                    sx={{
+                                                        width: '100%',
+                                                        maxHeight: '200px',
+                                                        objectFit: 'contain',
+                                                        borderRadius: 0.5
+                                                    }}
+                                                />
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => setImageUpload(null)}
+                                                    sx={{
+                                                        position: 'absolute',
+                                                        top: -8,
+                                                        right: -8,
+                                                        bgcolor: 'background.paper',
+                                                        boxShadow: 1,
+                                                        '&:hover': {
+                                                            bgcolor: 'error.light',
+                                                            color: 'white'
+                                                        }
+                                                    }}
+                                                >
+                                                    <CloseIcon fontSize="small" />
+                                                </IconButton>
+                                            </Box>
+                                            <Typography 
+                                                variant="caption" 
+                                                color="text.secondary"
+                                                sx={{ 
+                                                    display: 'block',
+                                                    mt: 0.5,
+                                                    textAlign: 'center'
+                                                }}
+                                            >
+                                                {imageUpload.name}
+                                            </Typography>
+                                        </Paper>
+                                    )}
+
+                                    {/* Comment Actions */}
+                                    <Box 
+                                        className="comment-actions"
+                                        sx={{ 
+                                            display: 'flex', 
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            mt: 2,
+                                            gap: 2,
+                                            opacity: commentContent || imageUpload ? 1 : 0,
+                                            transform: commentContent || imageUpload ? 'translateY(0)' : 'translateY(10px)',
+                                            transition: 'all 0.2s ease-in-out',
+                                            visibility: commentContent || imageUpload ? 'visible' : 'hidden'
+                                        }}
+                                    >
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Button
+                                                component="label"
+                                                variant="outlined"
+                                                startIcon={<ImageIcon />}
+                                                sx={{ 
+                                                    textTransform: 'none',
+                                                    fontWeight: 500,
+                                                    color: 'text.secondary',
+                                                    borderColor: 'rgba(0, 0, 0, 0.12)',
+                                                    '&:hover': {
+                                                        borderColor: 'primary.main',
+                                                        bgcolor: 'rgba(25, 118, 210, 0.04)'
+                                                    }
+                                                }}
+                                            >
+                                                Add Image
+                                                <input
+                                                    type="file"
+                                                    hidden
+                                                    accept="image/*"
+                                                    onChange={(e) => setImageUpload(e.target.files[0])}
+                                                />
+                                            </Button>
+                                            <Typography 
+                                                variant="caption" 
+                                                color="text.secondary"
+                                                sx={{
+                                                    display: { xs: 'none', sm: 'block' },
+                                                    fontStyle: 'italic'
+                                                }}
+                                            >
+                                                or drag & drop
+                                            </Typography>
+                                        </Box>
                                         <Button
                                             variant="contained"
                                             onClick={handleAddComment}
-                                            disabled={commentLoading || !commentContent.trim()}
-                                            startIcon={commentLoading ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
+                                            disabled={commentLoading || (!commentContent.trim() && !imageUpload)}
                                             sx={{
                                                 textTransform: 'none',
                                                 fontWeight: 500,
-                                                minWidth: '120px'
+                                                minWidth: '120px',
+                                                position: 'relative',
+                                                '&.Mui-disabled': {
+                                                    bgcolor: 'rgba(0, 0, 0, 0.12)',
+                                                    color: 'rgba(0, 0, 0, 0.26)'
+                                                }
                                             }}
                                         >
-                                            {commentLoading ? 'Sending...' : 'Comment'}
+                                            {commentLoading ? (
+                                                <>
+                                                    <CircularProgress
+                                                        size={16}
+                                                        thickness={4}
+                                                        sx={{
+                                                            color: 'inherit',
+                                                            position: 'absolute',
+                                                            left: '50%',
+                                                            marginLeft: '-12px'
+                                                        }}
+                                                    />
+                                                    <Box sx={{ opacity: 0 }}>Comment</Box>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <SendIcon sx={{ mr: 1, fontSize: '1.1rem' }} />
+                                                    Comment
+                                                </>
+                                            )}
                                         </Button>
                                     </Box>
-                                </Paper>
+                                </Box>
+                            </Paper>
+                        </Box>
+
+                        {/* Activity History */}
+                        <Box sx={{ mt: 3 }}>
+                            <Paper 
+                                variant="outlined"
+                                sx={{ 
+                                    p: 2.5,
+                                    borderRadius: 1.5,
+                                    borderColor: 'rgba(0, 0, 0, 0.12)',
+                                    bgcolor: '#ffffff'
+                                }}
+                            >
+                                <Typography variant="subtitle1" gutterBottom sx={{ 
+                                    color: '#1e293b',
+                                    fontWeight: 600,
+                                    fontSize: '1rem',
+                                    mb: 2,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1
+                                }}>
+                                    Activity History
+                                </Typography>
                                 <CardActivityHistory actions={actions} />
-                            </Stack>
+                            </Paper>
                         </Box>
                     </Stack>
                 );
@@ -1043,8 +1205,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
             backgroundColor: '#ffffff',
             p: 2.5,
             borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-            border: '1px solid rgba(0, 0, 0, 0.08)'
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
         }}>
             <Typography 
                 variant="subtitle1" 
@@ -1052,7 +1213,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                 sx={{ 
                     color: '#1e293b',
                     fontWeight: 600,
-                    fontSize: '1rem',
+                    fontSize: '0.95rem',
                     mb: 2,
                     display: 'flex',
                     alignItems: 'center',
@@ -1546,22 +1707,25 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                     <Box sx={{
                                         bgcolor: '#ffffff',
                                         p: 2,
-                                        borderRadius: '4px'
+                                        borderRadius: '8px',
+                                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
                                     }}>
                                         <Typography variant="subtitle1" gutterBottom sx={{ 
                                             color: '#1e293b',
                                             fontWeight: 600,
-                                            fontSize: '1rem',
+                                            fontSize: '0.95rem',
                                             mb: 2,
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: 1
+                                            gap: 1,
+                                            letterSpacing: '0.01em',
+                                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
                                         }}>
                                             Informations
                                         </Typography>
-                                        <Stack direction="row" spacing={2} sx={{ width: '100%' }}> 
+                                        <Stack direction="row" spacing={1.5} sx={{ width: '100%' }}> 
                                             {shopUrl && (
-                                                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                                                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
                                                     <Link
                                                         href={shopUrl}
                                                         target="_blank"
@@ -1569,33 +1733,47 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                             display: 'flex',
                                                             flexDirection: 'column',
                                                             alignItems: 'center',
-                                                            color: '#1976d2',
+                                                            color: '#64748b',
                                                             textDecoration: 'none',
-                                                            gap: 1.5,
-                                                            border: '1px solid rgba(0, 0, 0, 0.12)',
-                                                            borderRadius: '4px',
-                                                            p: 2,
+                                                            gap: 1,
+                                                            border: '1px solid rgba(0, 0, 0, 0.08)',
+                                                            borderRadius: '6px',
+                                                            p: 1.5,
                                                             position: 'relative',
                                                             width: '100%',
+                                                            bgcolor: 'rgba(0, 0, 0, 0.02)',
+                                                            transition: 'all 0.2s ease-in-out',
+                                                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                                                             '&:hover': {
-                                                                backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                                                                backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                                                                transform: 'translateY(-1px)',
+                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                                                color: '#1e293b'
                                                             }
                                                         }}
                                                     >
                                                         <Box sx={{ 
-                                                            width: 40,
-                                                            height: 40,
+                                                            width: 32,
+                                                            height: 32,
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
-                                                            borderRadius: '4px',
-                                                            bgcolor: '#f5f5f5'
+                                                            borderRadius: '6px',
+                                                            bgcolor: 'rgba(0, 0, 0, 0.04)',
+                                                            color: '#64748b'
                                                         }}>
-                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                                                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
                                                             </svg>
                                                         </Box>
-                                                        <Typography variant="caption" sx={{ fontSize: '0.85rem', textAlign: 'center', color: '#1976d2' }}>
+                                                        <Typography variant="caption" sx={{ 
+                                                            fontSize: '0.75rem', 
+                                                            textAlign: 'center', 
+                                                            fontWeight: 500,
+                                                            letterSpacing: '0.02em',
+                                                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                                            textTransform: 'capitalize'
+                                                        }}>
                                                             View Shop
                                                         </Typography>
                                                         <IconButton
@@ -1608,20 +1786,21 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                                 position: 'absolute',
                                                                 top: 4,
                                                                 right: 4,
-                                                                color: '#1976d2',
                                                                 p: 0.5,
+                                                                color: '#94a3b8',
                                                                 '&:hover': {
-                                                                    color: '#1565c0'
+                                                                    color: '#1e293b',
+                                                                    bgcolor: 'rgba(0, 0, 0, 0.04)'
                                                                 }
                                                             }}
                                                         >
-                                                            <ContentCopyIcon sx={{ fontSize: 16 }} />
+                                                            <ContentCopyIcon sx={{ fontSize: 14 }} />
                                                         </IconButton>
                                                     </Link>
                                                 </Box>
                                             )}
                                             {crispUrl && (
-                                                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                                                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
                                                     <Link
                                                         href={crispUrl}
                                                         target="_blank"
@@ -1629,33 +1808,47 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                             display: 'flex',
                                                             flexDirection: 'column',
                                                             alignItems: 'center',
-                                                            color: '#1976d2',
+                                                            color: '#64748b',
                                                             textDecoration: 'none',
-                                                            gap: 1.5,
-                                                            border: '1px solid rgba(0, 0, 0, 0.12)',
-                                                            borderRadius: '4px',
-                                                            p: 2,
+                                                            gap: 1,
+                                                            border: '1px solid rgba(0, 0, 0, 0.08)',
+                                                            borderRadius: '6px',
+                                                            p: 1.5,
                                                             position: 'relative',
                                                             width: '100%',
+                                                            bgcolor: 'rgba(0, 0, 0, 0.02)',
+                                                            transition: 'all 0.2s ease-in-out',
+                                                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                                                             '&:hover': {
-                                                                backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                                                                backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                                                                transform: 'translateY(-1px)',
+                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                                                color: '#1e293b'
                                                             }
                                                         }}
                                                     >
                                                         <Box sx={{ 
-                                                            width: 40,
-                                                            height: 40,
+                                                            width: 32,
+                                                            height: 32,
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
-                                                            borderRadius: '4px',
-                                                            bgcolor: '#f5f5f5'
+                                                            borderRadius: '6px',
+                                                            bgcolor: 'rgba(0, 0, 0, 0.04)',
+                                                            color: '#64748b'
                                                         }}>
-                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                                                 <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12zM7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/>
                                                             </svg>
                                                         </Box>
-                                                        <Typography variant="caption" sx={{ fontSize: '0.85rem', textAlign: 'center', color: '#1976d2' }}>
+                                                        <Typography variant="caption" sx={{ 
+                                                            fontSize: '0.75rem', 
+                                                            textAlign: 'center',
+                                                            fontWeight: 500,
+                                                            letterSpacing: '0.02em',
+                                                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                                            textTransform: 'capitalize'
+                                                        }}>
                                                             View Chat
                                                         </Typography>
                                                         <IconButton
@@ -1668,21 +1861,22 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                                 position: 'absolute',
                                                                 top: 4,
                                                                 right: 4,
-                                                                color: '#1976d2',
                                                                 p: 0.5,
+                                                                color: '#94a3b8',
                                                                 '&:hover': {
-                                                                    color: '#1565c0'
+                                                                    color: '#1e293b',
+                                                                    bgcolor: 'rgba(0, 0, 0, 0.04)'
                                                                 }
                                                             }}
                                                         >
-                                                            <ContentCopyIcon sx={{ fontSize: 16 }} />
+                                                            <ContentCopyIcon sx={{ fontSize: 14 }} />
                                                         </IconButton>
                                                     </Link>
                                                 </Box>
                                             )}
                                         </Stack>
                                         {safeCard.shortUrl && (
-                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, mt: 2, width: '100%' }}>
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5, mt: 1.5, width: '100%' }}>
                                                 <Link
                                                     href={safeCard.shortUrl}
                                                     target="_blank"
@@ -1690,33 +1884,47 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                         display: 'flex',
                                                         flexDirection: 'column',
                                                         alignItems: 'center',
-                                                        color: '#1976d2',
+                                                        color: '#64748b',
                                                         textDecoration: 'none',
-                                                        gap: 1.5,
-                                                        border: '1px solid rgba(0, 0, 0, 0.12)',
-                                                        borderRadius: '4px',
-                                                        p: 2,
+                                                        gap: 1,
+                                                        border: '1px solid rgba(0, 0, 0, 0.08)',
+                                                        borderRadius: '6px',
+                                                        p: 1.5,
                                                         position: 'relative',
                                                         width: '100%',
+                                                        bgcolor: 'rgba(0, 0, 0, 0.02)',
+                                                        transition: 'all 0.2s ease-in-out',
+                                                        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                                                         '&:hover': {
-                                                            backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                                                            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                                                            transform: 'translateY(-1px)',
+                                                            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                                            color: '#1e293b'
                                                         }
                                                     }}
                                                 >
                                                     <Box sx={{ 
-                                                        width: 40,
-                                                        height: 40,
+                                                        width: 32,
+                                                        height: 32,
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
-                                                        borderRadius: '4px',
-                                                        bgcolor: '#f5f5f5'
+                                                        borderRadius: '6px',
+                                                        bgcolor: 'rgba(0, 0, 0, 0.04)',
+                                                        color: '#64748b'
                                                     }}>
-                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                                             <path d="M19.5 3h-15A1.5 1.5 0 003 4.5v15A1.5 1.5 0 004.5 21h15a1.5 1.5 0 001.5-1.5v-15A1.5 1.5 0 0019.5 3zm-15 1.5h15v15h-15v-15zM6 6h12v2H6V6zm0 4h12v2H6v-2zm0 4h12v2H6v-2z"/>
                                                         </svg>
                                                     </Box>
-                                                    <Typography variant="caption" sx={{ fontSize: '0.85rem', textAlign: 'center', color: '#1976d2' }}>
+                                                    <Typography variant="caption" sx={{ 
+                                                        fontSize: '0.75rem', 
+                                                        textAlign: 'center',
+                                                        fontWeight: 500,
+                                                        letterSpacing: '0.02em',
+                                                        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                                        textTransform: 'capitalize'
+                                                    }}>
                                                         View Trello
                                                     </Typography>
                                                     <IconButton
@@ -1729,14 +1937,15 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                             position: 'absolute',
                                                             top: 4,
                                                             right: 4,
-                                                            color: '#1976d2',
                                                             p: 0.5,
+                                                            color: '#94a3b8',
                                                             '&:hover': {
-                                                                color: '#1565c0'
+                                                                color: '#1e293b',
+                                                                bgcolor: 'rgba(0, 0, 0, 0.04)'
                                                             }
                                                         }}
                                                     >
-                                                        <ContentCopyIcon sx={{ fontSize: 16 }} />
+                                                        <ContentCopyIcon sx={{ fontSize: 14 }} />
                                                     </IconButton>
                                                 </Link>
                                             </Box>

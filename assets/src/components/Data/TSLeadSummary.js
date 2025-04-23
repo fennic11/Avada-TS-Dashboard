@@ -3,7 +3,8 @@ import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
     Typography, Grid, Button, Box, Chip,
     FormControl, InputLabel, Select, MenuItem,
-    useTheme, alpha, Tabs, Tab, CircularProgress, Backdrop, Avatar, Alert, Divider
+    useTheme, alpha, Tabs, Tab, CircularProgress, Backdrop, Avatar, Alert, Divider,
+    TextField, IconButton
 } from '@mui/material';
 import {
     PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
@@ -15,7 +16,8 @@ import listsId from '../../data/listsId.json';
 import CardDetailModal from '../CardDetailModal';
 import { parseISO, differenceInDays } from 'date-fns';
 import { calculateResolutionTime } from '../../utils/resolutionTime';
-import { useSnackbar } from 'notistack';
+import WarningIcon from '@mui/icons-material/Warning';
+import TimerIcon from '@mui/icons-material/Timer';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF4560', '#2E93fA'];
 
@@ -34,16 +36,17 @@ const TS_MEMBER_COLORS = {
 
 const TSLeadSummary = () => {
     const theme = useTheme();
-    const { enqueueSnackbar } = useSnackbar();
     const [cards, setCards] = useState([]);
     const [selectedCard, setSelectedCard] = useState(null);
+    const [cardUrl, setCardUrl] = useState('');
     const [sortByDueAsc, setSortByDueAsc] = useState(true);
     const [selectedTab, setSelectedTab] = useState(0);
     const [loading, setLoading] = useState(false);
     const [lastUpdateTime, setLastUpdateTime] = useState(Date.now());
     const [calculatingMember, setCalculatingMember] = useState(null);
     const [memberResults, setMemberResults] = useState({});
-    const [notifiedMembers, setNotifiedMembers] = useState(new Set());
+    const [uniqueApps, setUniqueApps] = useState([]);
+    const [filterType, setFilterType] = useState('all'); // 'all', 'cs', 'ts'
 
     const tabLabels = [
         { 
@@ -159,6 +162,20 @@ const TSLeadSummary = () => {
     const tsMembers = useMemo(() => {
         return members.filter(member => member.role === 'TS' || member.role === 'ts-lead');
     }, []);
+
+    // Get TS members with active cards
+    const activeTSMembers = useMemo(() => {
+        const activeMembers = new Set();
+        cards.forEach(card => {
+            card.idMembers.forEach(id => {
+                const member = members.find(m => m.id === id);
+                if (member && (member.role === 'TS' || member.role === 'ts-lead')) {
+                    activeMembers.add(id);
+                }
+            });
+        });
+        return activeMembers;
+    }, [cards, members]);
 
     const getAppLabel = (labels) => {
         const appLabel = labels.find(label => label.name?.startsWith('App:'));
@@ -292,6 +309,15 @@ const TSLeadSummary = () => {
                 let pass = true;
                 const filters = currentFilters;
 
+                // Filter by member type (CS/TS)
+                if (filterType !== 'all') {
+                    const hasTSMember = card.idMembers.some(id => {
+                        const member = members.find(m => m.id === id);
+                        return member && (member.role === 'TS' || member.role === 'ts-lead');
+                    });
+                    pass = filterType === 'ts' ? hasTSMember : !hasTSMember;
+                }
+
                 // Filter by TS member if selected
                 if (filters.tsMember) {
                     pass = card.idMembers.some(id => id === filters.tsMember);
@@ -326,7 +352,7 @@ const TSLeadSummary = () => {
 
                 return sortByDueAsc ? dateA - dateB : dateB - dateA;
             });
-    }, [cards, currentFilters, sortByDueAsc, selectedTab]);
+    }, [cards, currentFilters, sortByDueAsc, selectedTab, filterType]);
 
     // Memoized data for charts
     const chartsData = useMemo(() => {
@@ -517,58 +543,31 @@ const TSLeadSummary = () => {
         }
     };
 
-    // Check for high waiting ratio
+    const handleCardUrlSubmit = (e) => {
+        e.preventDefault();
+        try {
+            // Extract card ID from Trello URL
+            const cardId = cardUrl.split('/').pop();
+            if (cardId) {
+                setSelectedCard(cardId);
+                setCardUrl('');
+            } else {
+                console.error('Invalid card URL');
+            }
+        } catch (error) {
+            console.error('Error parsing card URL:', error);
+        }
+    };
+
+    // Update useEffect to collect unique apps
     useEffect(() => {
-        const checkHighWaitingRatio = () => {
-            tsMembers.forEach(member => {
-                const memberCards = cards.filter(card => card.idMembers.includes(member.id));
-                const totalCards = memberCards.length;
-                const waitingCards = memberCards.filter(card => 
-                    card.listName === "New Issues" && !card.dueComplete
-                ).length;
-                
-                const waitingRatio = totalCards > 0 ? waitingCards / totalCards : 0;
-                console.log('=== TS Member Stats ===');
-                console.log('Member:', member.username);
-                console.log('Total Cards:', totalCards);
-                console.log('Waiting Cards:', waitingCards);
-                console.log('Waiting Ratio:', waitingRatio);
-                console.log('=====================');
-
-                if (totalCards > 0 && waitingRatio > 0.4 && !notifiedMembers.has(member.id)) {
-                    enqueueSnackbar(`${member.username} has high waiting ratio: ${Math.round(waitingRatio * 100)}%`, {
-                        variant: 'warning',
-                        anchorOrigin: {
-                            vertical: 'bottom',
-                            horizontal: 'right',
-                        },
-                        autoHideDuration: 6000,
-                        preventDuplicate: true,
-                        style: {
-                            marginTop: '60px',
-                        },
-                        action: (key) => (
-                            <Button 
-                                onClick={() => {
-                                    setNotifiedMembers(prev => {
-                                        const newSet = new Set(prev);
-                                        newSet.add(member.id);
-                                        return newSet;
-                                    });
-                                }}
-                                color="inherit"
-                                size="small"
-                            >
-                                Dismiss
-                            </Button>
-                        ),
-                    });
-                }
-            });
-        };
-
-        checkHighWaitingRatio();
-    }, [cards, tsMembers, enqueueSnackbar, notifiedMembers]);
+        const apps = new Set();
+        cards.forEach(card => {
+            const appLabel = card.labels?.find(label => label.name?.startsWith('App:'))?.name?.replace('App:', '').trim() || 'Unknown';
+            apps.add(appLabel);
+        });
+        setUniqueApps(Array.from(apps).sort());
+    }, [cards]);
 
     return (
         <Box sx={{ 
@@ -579,6 +578,19 @@ const TSLeadSummary = () => {
             minHeight: '100vh',
             background: alpha(theme.palette.background.default, 0.8),
             backdropFilter: 'blur(10px)',
+            animation: 'fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+            '@keyframes fadeIn': {
+                from: {
+                    opacity: 0,
+                    transform: 'translateY(20px)',
+                    filter: 'blur(10px)'
+                },
+                to: {
+                    opacity: 1,
+                    transform: 'translateY(0)',
+                    filter: 'blur(0)'
+                }
+            }
         }}>
             <Box sx={{ 
                 display: 'flex', 
@@ -590,6 +602,11 @@ const TSLeadSummary = () => {
                 borderRadius: 3,
                 boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
                 border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.1)',
+                }
             }}>
                 <Typography variant="h4" sx={{ 
                     fontWeight: 700,
@@ -636,22 +653,68 @@ const TSLeadSummary = () => {
                 </Box>
             </Box>
 
-            <Paper sx={{ mb: 3, borderRadius: 2, overflow: 'hidden' }}>
+            <Paper sx={{ 
+                mb: 3, 
+                borderRadius: 2, 
+                overflow: 'hidden',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                '& .MuiTab-root': {
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    minWidth: 'auto',
+                    px: 3,
+                    py: 1.5,
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
+                    overflow: 'visible',
+                    '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        width: '100%',
+                        height: 3,
+                        backgroundColor: 'primary.main',
+                        transform: 'scaleX(0)',
+                        transformOrigin: 'left center',
+                        transition: 'transform 0.3s ease'
+                    },
+                    '&:hover': {
+                        backgroundColor: 'transparent',
+                        color: 'primary.main',
+                        '&::after': {
+                            transform: 'scaleX(0.8)'
+                        }
+                    },
+                    '&.Mui-selected': {
+                        fontWeight: 600,
+                        '&::after': {
+                            transform: 'scaleX(1)'
+                        }
+                    }
+                },
+                '& .MuiTabs-indicator': {
+                    display: 'none'
+                }
+            }}>
                 <Tabs
                     value={selectedTab}
                     onChange={handleTabChange}
                     variant="scrollable"
                     scrollButtons="auto"
                     sx={{
-                        '& .MuiTab-root': {
-                            textTransform: 'none',
-                            fontWeight: 500,
-                            minWidth: 'auto',
-                            px: 3,
-                            py: 1.5,
+                        borderBottom: 1,
+                        borderColor: 'divider',
+                        '& .MuiTabs-flexContainer': {
+                            gap: 1
                         },
-                        '& .MuiTabs-indicator': {
-                            height: 3,
+                        '& .MuiTabs-scrollButtons': {
+                            '&.Mui-disabled': {
+                                opacity: 0.3
+                            },
+                            '&:hover': {
+                                backgroundColor: 'transparent'
+                            }
                         }
                     }}
                 >
@@ -659,7 +722,12 @@ const TSLeadSummary = () => {
                         <Tab 
                             key={index} 
                             label={
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Box sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 1,
+                                    py: 0.5
+                                }}>
                                     {tab.label}
                                     <Chip 
                                         label={cards.filter(card => 
@@ -668,18 +736,27 @@ const TSLeadSummary = () => {
                                         size="small"
                                         sx={{ 
                                             height: '20px',
+                                            backgroundColor: selectedTab === index ? 
+                                                alpha(theme.palette.primary.main, 0.2) : 
+                                                alpha(theme.palette.primary.main, 0.1),
+                                            color: selectedTab === index ? 
+                                                'primary.main' : 
+                                                'text.secondary',
+                                            transition: 'all 0.2s ease',
                                             '& .MuiChip-label': {
                                                 px: 1,
-                                                fontSize: '0.75rem'
+                                                fontSize: '0.75rem',
+                                                fontWeight: selectedTab === index ? 600 : 500
                                             }
                                         }}
                                     />
                                 </Box>
                             }
                             sx={{
-                                '&.Mui-selected': {
-                                    color: 'primary.main',
-                                    fontWeight: 600,
+                                opacity: 1,
+                                color: selectedTab === index ? 'primary.main' : 'text.primary',
+                                '&:not(.Mui-selected):hover': {
+                                    opacity: 0.8
                                 }
                             }}
                         />
@@ -688,36 +765,262 @@ const TSLeadSummary = () => {
             </Paper>
 
             <Grid container spacing={2} sx={{ mb: 2 }}>
-                {/* TS Member Filter */}
-                <Grid item xs={12} md={4}>
+                {/* Member Type Filter */}
+                <Grid item xs={12} sm={6} md={3}>
                     <FormControl fullWidth>
-                        <InputLabel id="ts-member-label">TS Member</InputLabel>
+                        <InputLabel id="member-type-label"
+                            sx={{ 
+                                '&.Mui-focused': { 
+                                    color: 'primary.main',
+                                    fontWeight: 500 
+                                } 
+                            }}
+                        >
+                            Member Type
+                        </InputLabel>
+                        <Select
+                            labelId="member-type-label"
+                            value={filterType}
+                            onChange={(e) => setFilterType(e.target.value)}
+                            label="Member Type"
+                            sx={{
+                                height: { xs: '45px', sm: '50px' },
+                                borderRadius: 2,
+                                background: 'white',
+                                boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '& .MuiSelect-select': {
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1,
+                                    fontSize: { xs: '0.875rem', sm: '0.9rem' }
+                                },
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'rgba(0, 0, 0, 0.12)',
+                                    transition: 'all 0.2s ease'
+                                },
+                                '&:hover': {
+                                    transform: 'translateY(-1px)',
+                                    boxShadow: '0 4px 15px rgba(0,0,0,0.08)',
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: 'primary.main',
+                                        borderWidth: '2px'
+                                    }
+                                },
+                                '&.Mui-focused': {
+                                    transform: 'translateY(-1px)',
+                                    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: 'primary.main',
+                                        borderWidth: '2px'
+                                    }
+                                }
+                            }}
+                            MenuProps={{
+                                PaperProps: {
+                                    sx: {
+                                        mt: 1,
+                                        borderRadius: 2,
+                                        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                                        '& .MuiMenuItem-root': {
+                                            fontSize: { xs: '0.875rem', sm: '0.9rem' },
+                                            py: 1.5,
+                                            px: 2,
+                                            transition: 'all 0.2s ease',
+                                            '&:hover': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.08)
+                                            },
+                                            '&.Mui-selected': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                                                '&:hover': {
+                                                    backgroundColor: alpha(theme.palette.primary.main, 0.15)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }}
+                        >
+                            <MenuItem value="all">
+                                <Box sx={{ 
+                                    width: 8, 
+                                    height: 8, 
+                                    borderRadius: '50%', 
+                                    bgcolor: 'grey.400',
+                                    mr: 1 
+                                }} />
+                                All Members
+                            </MenuItem>
+                            <MenuItem value="cs">
+                                <Box sx={{ 
+                                    width: 8, 
+                                    height: 8, 
+                                    borderRadius: '50%', 
+                                    bgcolor: 'info.main',
+                                    mr: 1 
+                                }} />
+                                CS Members
+                            </MenuItem>
+                            <MenuItem value="ts">
+                                <Box sx={{ 
+                                    width: 8, 
+                                    height: 8, 
+                                    borderRadius: '50%', 
+                                    bgcolor: 'success.main',
+                                    mr: 1 
+                                }} />
+                                TS Members
+                            </MenuItem>
+                        </Select>
+                    </FormControl>
+                </Grid>
+
+                {/* TS Member Filter */}
+                <Grid item xs={12} sm={6} md={3}>
+                    <FormControl fullWidth>
+                        <InputLabel id="ts-member-label"
+                            sx={{ 
+                                '&.Mui-focused': { 
+                                    color: 'primary.main',
+                                    fontWeight: 500 
+                                } 
+                            }}
+                        >
+                            TS Member
+                        </InputLabel>
                         <Select
                             labelId="ts-member-label"
                             value={currentFilters.tsMember}
                             onChange={(e) => updateTabFilter('tsMember', e.target.value)}
                             label="TS Member"
                             sx={{
+                                height: { xs: '45px', sm: '50px' },
                                 borderRadius: 2,
                                 background: 'white',
                                 boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '& .MuiSelect-select': {
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1,
+                                    fontSize: { xs: '0.875rem', sm: '0.9rem' }
+                                },
                                 '& .MuiOutlinedInput-notchedOutline': {
                                     borderColor: 'rgba(0, 0, 0, 0.12)',
+                                    transition: 'all 0.2s ease'
                                 },
-                                '&:hover .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: 'primary.main',
+                                '&:hover': {
+                                    transform: 'translateY(-1px)',
+                                    boxShadow: '0 4px 15px rgba(0,0,0,0.08)',
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: 'primary.main',
+                                        borderWidth: '2px'
+                                    }
                                 },
-                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: 'primary.main',
+                                '&.Mui-focused': {
+                                    transform: 'translateY(-1px)',
+                                    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: 'primary.main',
+                                        borderWidth: '2px'
+                                    }
+                                }
+                            }}
+                            MenuProps={{
+                                PaperProps: {
+                                    sx: {
+                                        mt: 1,
+                                        borderRadius: 2,
+                                        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                                        maxHeight: { xs: 300, sm: 400 },
+                                        '& .MuiMenuItem-root': {
+                                            fontSize: { xs: '0.875rem', sm: '0.9rem' },
+                                            py: 1.5,
+                                            px: 2,
+                                            transition: 'all 0.2s ease',
+                                            '&:hover': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.08)
+                                            },
+                                            '&.Mui-selected': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                                                '&:hover': {
+                                                    backgroundColor: alpha(theme.palette.primary.main, 0.15)
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }}
                         >
                             <MenuItem value="">
-                                <em>All TS Members</em>
+                                <Box sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 1,
+                                    color: 'text.secondary',
+                                    fontStyle: 'italic'
+                                }}>
+                                    <Box sx={{ 
+                                        width: 24, 
+                                        height: 24, 
+                                        borderRadius: '50%',
+                                        bgcolor: alpha(theme.palette.primary.main, 0.08),
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '0.75rem'
+                                    }}>
+                                        All
+                                    </Box>
+                                    All TS Members
+                                </Box>
                             </MenuItem>
                             {tsMembers.map((member) => (
-                                <MenuItem key={member.id} value={member.id}>
-                                    {member.username}
+                                <MenuItem 
+                                    key={member.id} 
+                                    value={member.id}
+                                    sx={{
+                                        color: activeTSMembers.has(member.id) ? 'success.main' : 'inherit',
+                                        fontWeight: activeTSMembers.has(member.id) ? 600 : 400
+                                    }}
+                                >
+                                    <Box sx={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: 1,
+                                        width: '100%',
+                                        justifyContent: 'space-between'
+                                    }}>
+                                        <Box sx={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: 1 
+                                        }}>
+                                            <Avatar 
+                                                src={member.avatarUrl}
+                                                alt={member.username}
+                                                sx={{ 
+                                                    width: 24, 
+                                                    height: 24,
+                                                    fontSize: '0.75rem',
+                                                    bgcolor: TS_MEMBER_COLORS[member.id] || 'primary.main'
+                                                }}
+                                            >
+                                                {member.initials}
+                                            </Avatar>
+                                            {member.username}
+                                        </Box>
+                                        {activeTSMembers.has(member.id) && (
+                                            <Box
+                                                sx={{
+                                                    width: 8,
+                                                    height: 8,
+                                                    borderRadius: '50%',
+                                                    bgcolor: 'success.main'
+                                                }}
+                                            />
+                                        )}
+                                    </Box>
                                 </MenuItem>
                             ))}
                         </Select>
@@ -725,95 +1028,505 @@ const TSLeadSummary = () => {
                 </Grid>
 
                 {/* Status Filter */}
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} sm={6} md={3}>
                     <FormControl fullWidth>
-                        <InputLabel id="status-label">Status</InputLabel>
+                        <InputLabel id="status-label"
+                            sx={{ 
+                                '&.Mui-focused': { 
+                                    color: 'primary.main',
+                                    fontWeight: 500 
+                                } 
+                            }}
+                        >
+                            Status
+                        </InputLabel>
                         <Select
                             labelId="status-label"
                             value={currentFilters.status}
                             onChange={(e) => updateTabFilter('status', e.target.value)}
                             label="Status"
                             sx={{
+                                height: { xs: '45px', sm: '50px' },
                                 borderRadius: 2,
                                 background: 'white',
                                 boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '& .MuiSelect-select': {
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1,
+                                    fontSize: { xs: '0.875rem', sm: '0.9rem' }
+                                },
                                 '& .MuiOutlinedInput-notchedOutline': {
                                     borderColor: 'rgba(0, 0, 0, 0.12)',
+                                    transition: 'all 0.2s ease'
                                 },
-                                '&:hover .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: 'primary.main',
+                                '&:hover': {
+                                    transform: 'translateY(-1px)',
+                                    boxShadow: '0 4px 15px rgba(0,0,0,0.08)',
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: 'primary.main',
+                                        borderWidth: '2px'
+                                    }
                                 },
-                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: 'primary.main',
+                                '&.Mui-focused': {
+                                    transform: 'translateY(-1px)',
+                                    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: 'primary.main',
+                                        borderWidth: '2px'
+                                    }
+                                }
+                            }}
+                            MenuProps={{
+                                PaperProps: {
+                                    sx: {
+                                        mt: 1,
+                                        borderRadius: 2,
+                                        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                                        '& .MuiMenuItem-root': {
+                                            fontSize: { xs: '0.875rem', sm: '0.9rem' },
+                                            py: 1.5,
+                                            px: 2,
+                                            transition: 'all 0.2s ease',
+                                            '&:hover': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.08)
+                                            },
+                                            '&.Mui-selected': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                                                '&:hover': {
+                                                    backgroundColor: alpha(theme.palette.primary.main, 0.15)
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }}
                         >
                             <MenuItem value="">
-                                <em>All Statuses</em>
+                                <Box sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 1,
+                                    color: 'text.secondary',
+                                    fontStyle: 'italic'
+                                }}>
+                                    <Box sx={{ 
+                                        width: 8, 
+                                        height: 8, 
+                                        borderRadius: '50%',
+                                        bgcolor: 'grey.400'
+                                    }} />
+                                    All Statuses
+                                </Box>
                             </MenuItem>
                             {statusOptions.map((status) => (
                                 <MenuItem key={status.value} value={status.value}>
-                                    {status.label}
+                                    <Box sx={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: 1 
+                                    }}>
+                                        <Box sx={{ 
+                                            width: 8, 
+                                            height: 8, 
+                                            borderRadius: '50%',
+                                            bgcolor: (() => {
+                                                switch (status.value) {
+                                                    case 'done': return 'success.main';
+                                                    case 'in_progress': return 'primary.main';
+                                                    case 'waiting': return 'error.main';
+                                                    case 'pending': return 'warning.main';
+                                                    default: return 'grey.400';
+                                                }
+                                            })()
+                                        }} />
+                                        {status.label}
+                                    </Box>
                                 </MenuItem>
                             ))}
                         </Select>
                     </FormControl>
                 </Grid>
+
+                {/* App Filter */}
+                <Grid item xs={12} sm={6} md={3}>
+                    <FormControl fullWidth>
+                        <InputLabel id="app-label"
+                            sx={{ 
+                                '&.Mui-focused': { 
+                                    color: 'primary.main',
+                                    fontWeight: 500 
+                                } 
+                            }}
+                        >
+                            App
+                        </InputLabel>
+                        <Select
+                            labelId="app-label"
+                            value={currentFilters.app || ''}
+                            onChange={(e) => updateTabFilter('app', e.target.value)}
+                            label="App"
+                            sx={{
+                                height: { xs: '45px', sm: '50px' },
+                                borderRadius: 2,
+                                background: 'white',
+                                boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '& .MuiSelect-select': {
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1,
+                                    fontSize: { xs: '0.875rem', sm: '0.9rem' }
+                                },
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'rgba(0, 0, 0, 0.12)',
+                                    transition: 'all 0.2s ease'
+                                },
+                                '&:hover': {
+                                    transform: 'translateY(-1px)',
+                                    boxShadow: '0 4px 15px rgba(0,0,0,0.08)',
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: 'primary.main',
+                                        borderWidth: '2px'
+                                    }
+                                },
+                                '&.Mui-focused': {
+                                    transform: 'translateY(-1px)',
+                                    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: 'primary.main',
+                                        borderWidth: '2px'
+                                    }
+                                }
+                            }}
+                            MenuProps={{
+                                PaperProps: {
+                                    sx: {
+                                        mt: 1,
+                                        borderRadius: 2,
+                                        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                                        maxHeight: { xs: 300, sm: 400 },
+                                        '& .MuiMenuItem-root': {
+                                            fontSize: { xs: '0.875rem', sm: '0.9rem' },
+                                            py: 1.5,
+                                            px: 2,
+                                            transition: 'all 0.2s ease',
+                                            '&:hover': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.08)
+                                            },
+                                            '&.Mui-selected': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                                                '&:hover': {
+                                                    backgroundColor: alpha(theme.palette.primary.main, 0.15)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }}
+                        >
+                            <MenuItem value="">
+                                <Box sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 1,
+                                    color: 'text.secondary',
+                                    fontStyle: 'italic'
+                                }}>
+                                    <Box sx={{ 
+                                        width: 8, 
+                                        height: 8, 
+                                        borderRadius: '50%',
+                                        bgcolor: 'grey.400'
+                                    }} />
+                                    All Apps
+                                </Box>
+                            </MenuItem>
+                            {uniqueApps.map((app) => (
+                                <MenuItem key={app} value={app}>
+                                    <Box sx={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: 1,
+                                        width: '100%',
+                                        justifyContent: 'space-between'
+                                    }}>
+                                        <Box sx={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: 1 
+                                        }}>
+                                            <Box
+                                                sx={{
+                                                    width: 8,
+                                                    height: 8,
+                                                    borderRadius: '50%',
+                                                    backgroundColor: getAppColor(app)
+                                                }}
+                                            />
+                                            {app}
+                                        </Box>
+                                        {currentFilters.app === app && (
+                                            <Box
+                                                sx={{
+                                                    width: 8,
+                                                    height: 8,
+                                                    borderRadius: '50%',
+                                                    bgcolor: 'primary.main'
+                                                }}
+                                            />
+                                        )}
+                                    </Box>
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </Grid>
+
+                {/* Card URL Input */}
+                <Grid item xs={12} md={3}>
+                    <form onSubmit={handleCardUrlSubmit} style={{ width: '100%' }}>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            gap: 1,
+                            width: '100%'
+                        }}>
+                            <TextField
+                                fullWidth
+                                label="Enter Card URL"
+                                value={cardUrl}
+                                onChange={(e) => setCardUrl(e.target.value)}
+                                placeholder="https://trello.com/c/cardId"
+                                size="small"
+                                sx={{
+                                    flex: 1,
+                                    borderRadius: 2,
+                                    background: 'white',
+                                    boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+                                    '& .MuiOutlinedInput-root': {
+                                        borderRadius: 2,
+                                        height: { xs: '45px', sm: '50px' },
+                                        '& fieldset': {
+                                            borderColor: 'rgba(0, 0, 0, 0.12)',
+                                        },
+                                        '&:hover fieldset': {
+                                            borderColor: 'primary.main',
+                                        },
+                                        '&.Mui-focused fieldset': {
+                                            borderColor: 'primary.main',
+                                        }
+                                    },
+                                    '& .MuiInputLabel-root': {
+                                        transform: 'translate(14px, 16px) scale(1)',
+                                        '&.Mui-focused, &.MuiFormLabel-filled': {
+                                            transform: 'translate(14px, -9px) scale(0.75)'
+                                        }
+                                    }
+                                }}
+                            />
+                            <Button
+                                type="submit"
+                                variant="contained"
+                                sx={{
+                                    height: { xs: '45px', sm: '50px' },
+                                    minWidth: { xs: '45px', sm: '50px' },
+                                    borderRadius: 2,
+                                    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                                    backgroundColor: 'primary.main',
+                                    '&:hover': {
+                                        backgroundColor: 'primary.dark',
+                                        transform: 'translateY(-2px)',
+                                        boxShadow: '0 4px 15px rgba(0,0,0,0.15)'
+                                    },
+                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                }}
+                            >
+                                <Box 
+                                    component="span" 
+                                    sx={{ 
+                                        fontSize: '1.5rem',
+                                        lineHeight: 0,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    →
+                                </Box>
+                            </Button>
+                        </Box>
+                    </form>
+                </Grid>
             </Grid>
 
             {/* Active Filters Display */}
-            {(currentFilters.tsMember || currentFilters.status || currentFilters.app) && (
-                <Box sx={{ mb: 2 }}>
+            {(currentFilters.tsMember || currentFilters.status || currentFilters.app || filterType !== 'all') && (
+                <Box sx={{ 
+                    mb: 2,
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 1,
+                    p: { xs: 1, sm: 1.5 },
+                    borderRadius: 2,
+                    backgroundColor: alpha(theme.palette.background.paper, 0.5),
+                    backdropFilter: 'blur(8px)',
+                    border: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+                }}>
+                    {filterType !== 'all' && (
+                        <Chip
+                            label={`Type: ${filterType === 'ts' ? 'TS Members' : 'CS Members'}`}
+                            onDelete={() => setFilterType('all')}
+                            color="primary"
+                            variant="outlined"
+                            size="small"
+                            sx={{
+                                borderRadius: 2,
+                                height: '28px',
+                                '& .MuiChip-label': {
+                                    px: 1,
+                                    fontSize: { xs: '0.75rem', sm: '0.8rem' }
+                                },
+                                '& .MuiChip-deleteIcon': {
+                                    fontSize: '1rem',
+                                    color: 'primary.main',
+                                    transition: 'all 0.2s ease',
+                                    '&:hover': {
+                                        color: 'error.main'
+                                    }
+                                },
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&:hover': {
+                                    transform: 'translateY(-1px)',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                                }
+                            }}
+                        />
+                    )}
                     {currentFilters.tsMember && (
                         <Chip
-                            label={`TS Member: ${tsMembers.find(m => m.id === currentFilters.tsMember)?.username}`}
+                            avatar={
+                                <Avatar
+                                    src={tsMembers.find(m => m.id === currentFilters.tsMember)?.avatarUrl}
+                                    sx={{ width: 20, height: 20 }}
+                                >
+                                    {tsMembers.find(m => m.id === currentFilters.tsMember)?.initials}
+                                </Avatar>
+                            }
+                            label={`TS: ${tsMembers.find(m => m.id === currentFilters.tsMember)?.username}`}
                             onDelete={() => updateTabFilter('tsMember', '')}
                             color="primary"
                             variant="outlined"
+                            size="small"
                             sx={{
-                                m: 0.5,
                                 borderRadius: 2,
+                                height: '28px',
+                                '& .MuiChip-label': {
+                                    px: 1,
+                                    fontSize: { xs: '0.75rem', sm: '0.8rem' }
+                                },
                                 '& .MuiChip-deleteIcon': {
+                                    fontSize: '1rem',
                                     color: 'primary.main',
+                                    transition: 'all 0.2s ease',
                                     '&:hover': {
-                                        color: 'error.main',
+                                        color: 'error.main'
                                     }
+                                },
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&:hover': {
+                                    transform: 'translateY(-1px)',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                                 }
                             }}
                         />
                     )}
                     {currentFilters.status && (
                         <Chip
+                            icon={
+                                <Box
+                                    sx={{
+                                        width: 8,
+                                        height: 8,
+                                        borderRadius: '50%',
+                                        bgcolor: (() => {
+                                            switch (currentFilters.status) {
+                                                case 'done': return 'success.main';
+                                                case 'in_progress': return 'primary.main';
+                                                case 'waiting': return 'error.main';
+                                                case 'pending': return 'warning.main';
+                                                default: return 'grey.400';
+                                            }
+                                        })(),
+                                        ml: 1.5
+                                    }}
+                                />
+                            }
                             label={`Status: ${statusOptions.find(s => s.value === currentFilters.status)?.label}`}
                             onDelete={() => updateTabFilter('status', '')}
                             color="primary"
                             variant="outlined"
+                            size="small"
                             sx={{
-                                m: 0.5,
                                 borderRadius: 2,
+                                height: '28px',
+                                '& .MuiChip-label': {
+                                    px: 1,
+                                    fontSize: { xs: '0.75rem', sm: '0.8rem' }
+                                },
                                 '& .MuiChip-deleteIcon': {
+                                    fontSize: '1rem',
                                     color: 'primary.main',
+                                    transition: 'all 0.2s ease',
                                     '&:hover': {
-                                        color: 'error.main',
+                                        color: 'error.main'
                                     }
+                                },
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&:hover': {
+                                    transform: 'translateY(-1px)',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                                 }
                             }}
                         />
                     )}
                     {currentFilters.app && (
                         <Chip
+                            icon={
+                                <Box
+                                    sx={{
+                                        width: 8,
+                                        height: 8,
+                                        borderRadius: '50%',
+                                        bgcolor: getAppColor(currentFilters.app),
+                                        ml: 1.5
+                                    }}
+                                />
+                            }
                             label={`App: ${currentFilters.app}`}
                             onDelete={() => updateTabFilter('app', '')}
                             color="primary"
                             variant="outlined"
+                            size="small"
                             sx={{
-                                m: 0.5,
                                 borderRadius: 2,
+                                height: '28px',
+                                '& .MuiChip-label': {
+                                    px: 1,
+                                    fontSize: { xs: '0.75rem', sm: '0.8rem' }
+                                },
                                 '& .MuiChip-deleteIcon': {
+                                    fontSize: '1rem',
                                     color: 'primary.main',
+                                    transition: 'all 0.2s ease',
                                     '&:hover': {
-                                        color: 'error.main',
+                                        color: 'error.main'
                                     }
+                                },
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&:hover': {
+                                    transform: 'translateY(-1px)',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                                 }
                             }}
                         />
@@ -826,31 +1539,57 @@ const TSLeadSummary = () => {
                 {/* Member Distribution Pie Chart */}
                 <Grid item xs={12} md={4}>
                     <Paper sx={{ 
-                        p: 2, 
-                        borderRadius: 2,
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                        height: '400px'
+                        p: { xs: 2.5, sm: 3 }, 
+                        borderRadius: 3,
+                        background: 'linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%)',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+                        height: { xs: '400px', sm: '450px' },
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        '&:hover': {
+                            transform: 'translateY(-4px)',
+                            boxShadow: '0 12px 48px rgba(0,0,0,0.12)'
+                        }
                     }}>
-                        <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+                        <Typography variant="h6" gutterBottom sx={{ 
+                            mb: 2.5,
+                            fontSize: { xs: '1.1rem', sm: '1.2rem' },
+                            fontWeight: 600,
+                            color: 'primary.main',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            '&::before': {
+                                content: '""',
+                                width: 4,
+                                height: 24,
+                                backgroundColor: 'primary.main',
+                                borderRadius: 2,
+                                display: 'block'
+                            }
+                        }}>
                             Cards by TS Member
                         </Typography>
-                        <Divider />
-                        <ResponsiveContainer width="100%" height="100%">
+                        <Divider sx={{ mb: 3 }} />
+                        <ResponsiveContainer width="100%" height="80%">
                             <PieChart>
-                                <Legend 
-                                    verticalAlign="top" 
-                                    align="center"
-                                    height={36}
-                                />
                                 <Pie
                                     data={chartsData.pieData}
                                     dataKey="value"
                                     nameKey="name"
                                     cx="50%"
-                                    cy="50%"
-                                    outerRadius={80}
+                                    cy="42%"
+                                    outerRadius={({ viewBox: { width, height } }) => 
+                                        Math.min(width, height) * 0.32
+                                    }
+                                    innerRadius={({ viewBox: { width, height } }) => 
+                                        Math.min(width, height) * 0.2
+                                    }
                                     fill="#8884d8"
-                                    label={(entry) => `${entry.name}: ${entry.value}`}
+                                    paddingAngle={2}
+                                    label={false}
+                                    labelLine={false}
                                     onClick={handlePieChartClick}
                                 >
                                     {chartsData.pieData.map((entry, index) => (
@@ -859,12 +1598,78 @@ const TSLeadSummary = () => {
                                             fill={entry.color}
                                             style={{ 
                                                 cursor: 'pointer',
-                                                filter: currentFilters.tsMember === entry.name ? 'brightness(1.2)' : 'none'
+                                                filter: currentFilters.tsMember === entry.name ? 'brightness(1.2)' : 'none',
+                                                transition: 'all 0.3s ease'
                                             }}
                                         />
                                     ))}
                                 </Pie>
-                                <Tooltip />
+                                <Legend 
+                                    verticalAlign="middle" 
+                                    align="right"
+                                    layout="vertical"
+                                    iconType="circle"
+                                    wrapperStyle={{
+                                        paddingLeft: '24px',
+                                        fontSize: '13px',
+                                        width: '40%',
+                                        maxHeight: '100%',
+                                        overflowY: 'auto',
+                                        '& .recharts-legend-item': {
+                                            marginBottom: '12px !important',
+                                            display: 'flex !important',
+                                            alignItems: 'center !important'
+                                        }
+                                    }}
+                                    formatter={(value, entry) => {
+                                        const total = chartsData.pieData.reduce((sum, item) => sum + item.value, 0);
+                                        const percentage = ((entry.payload.value / total) * 100).toFixed(1);
+                                        return (
+                                            <Box sx={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center',
+                                                gap: 1,
+                                                fontSize: '0.8rem',
+                                                color: theme.palette.text.primary,
+                                                fontWeight: currentFilters.tsMember === entry.payload.name ? 600 : 400
+                                            }}>
+                                                <span style={{ 
+                                                    whiteSpace: 'nowrap',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    maxWidth: '120px'
+                                                }}>
+                                                    {entry.payload.name}
+                                                </span>
+                                                <span style={{ 
+                                                    color: theme.palette.text.secondary,
+                                                    marginLeft: 'auto'
+                                                }}>
+                                                    {entry.payload.value} ({percentage}%)
+                                                </span>
+                                            </Box>
+                                        );
+                                    }}
+                                />
+                                <Tooltip 
+                                    contentStyle={{
+                                        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                                        borderRadius: '12px',
+                                        border: 'none',
+                                        boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+                                        padding: '12px 16px',
+                                        fontSize: '13px',
+                                        fontWeight: 500
+                                    }}
+                                    itemStyle={{
+                                        padding: '4px 0'
+                                    }}
+                                    formatter={(value, name, props) => {
+                                        const total = chartsData.pieData.reduce((sum, item) => sum + item.value, 0);
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return [`${value} (${percentage}%)`, name];
+                                    }}
+                                />
                             </PieChart>
                         </ResponsiveContainer>
                     </Paper>
@@ -873,31 +1678,57 @@ const TSLeadSummary = () => {
                 {/* App Distribution Pie Chart */}
                 <Grid item xs={12} md={4}>
                     <Paper sx={{ 
-                        p: 2, 
-                        borderRadius: 2,
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                        height: '400px'
+                        p: { xs: 2.5, sm: 3 }, 
+                        borderRadius: 3,
+                        background: 'linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%)',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+                        height: { xs: '400px', sm: '450px' },
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        '&:hover': {
+                            transform: 'translateY(-4px)',
+                            boxShadow: '0 12px 48px rgba(0,0,0,0.12)'
+                        }
                     }}>
-                        <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+                        <Typography variant="h6" gutterBottom sx={{ 
+                            mb: 2.5,
+                            fontSize: { xs: '1.1rem', sm: '1.2rem' },
+                            fontWeight: 600,
+                            color: 'primary.main',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            '&::before': {
+                                content: '""',
+                                width: 4,
+                                height: 24,
+                                backgroundColor: 'primary.main',
+                                borderRadius: 2,
+                                display: 'block'
+                            }
+                        }}>
                             Cards by App
                         </Typography>
-                        <Divider />
-                        <ResponsiveContainer width="100%" height="100%">
+                        <Divider sx={{ mb: 3 }} />
+                        <ResponsiveContainer width="100%" height="80%">
                             <PieChart>
-                                <Legend 
-                                    verticalAlign="top" 
-                                    align="center"
-                                    height={36}
-                                />
                                 <Pie
                                     data={chartsData.appPieData}
                                     dataKey="value"
                                     nameKey="name"
                                     cx="50%"
-                                    cy="50%"
-                                    outerRadius={80}
+                                    cy="42%"
+                                    outerRadius={({ viewBox: { width, height } }) => 
+                                        Math.min(width, height) * 0.32
+                                    }
+                                    innerRadius={({ viewBox: { width, height } }) => 
+                                        Math.min(width, height) * 0.2
+                                    }
                                     fill="#8884d8"
-                                    label={(entry) => `${entry.value}`}
+                                    paddingAngle={2}
+                                    label={false}
+                                    labelLine={false}
                                     onClick={handleAppPieChartClick}
                                 >
                                     {chartsData.appPieData.map((entry, index) => (
@@ -906,12 +1737,78 @@ const TSLeadSummary = () => {
                                             fill={entry.color}
                                             style={{ 
                                                 cursor: 'pointer',
-                                                filter: currentFilters.app === entry.name ? 'brightness(1.2)' : 'none'
+                                                filter: currentFilters.app === entry.name ? 'brightness(1.2)' : 'none',
+                                                transition: 'all 0.3s ease'
                                             }}
                                         />
                                     ))}
                                 </Pie>
-                                <Tooltip />
+                                <Legend 
+                                    verticalAlign="middle" 
+                                    align="right"
+                                    layout="vertical"
+                                    iconType="circle"
+                                    wrapperStyle={{
+                                        paddingLeft: '24px',
+                                        fontSize: '13px',
+                                        width: '40%',
+                                        maxHeight: '100%',
+                                        overflowY: 'auto',
+                                        '& .recharts-legend-item': {
+                                            marginBottom: '12px !important',
+                                            display: 'flex !important',
+                                            alignItems: 'center !important'
+                                        }
+                                    }}
+                                    formatter={(value, entry) => {
+                                        const total = chartsData.appPieData.reduce((sum, item) => sum + item.value, 0);
+                                        const percentage = ((entry.payload.value / total) * 100).toFixed(1);
+                                        return (
+                                            <Box sx={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center',
+                                                gap: 1,
+                                                fontSize: '0.8rem',
+                                                color: theme.palette.text.primary,
+                                                fontWeight: currentFilters.app === entry.payload.name ? 600 : 400
+                                            }}>
+                                                <span style={{ 
+                                                    whiteSpace: 'nowrap',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    maxWidth: '120px'
+                                                }}>
+                                                    {entry.payload.name}
+                                                </span>
+                                                <span style={{ 
+                                                    color: theme.palette.text.secondary,
+                                                    marginLeft: 'auto'
+                                                }}>
+                                                    {entry.payload.value} ({percentage}%)
+                                                </span>
+                                            </Box>
+                                        );
+                                    }}
+                                />
+                                <Tooltip 
+                                    contentStyle={{
+                                        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                                        borderRadius: '12px',
+                                        border: 'none',
+                                        boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+                                        padding: '12px 16px',
+                                        fontSize: '13px',
+                                        fontWeight: 500
+                                    }}
+                                    itemStyle={{
+                                        padding: '4px 0'
+                                    }}
+                                    formatter={(value, name, props) => {
+                                        const total = chartsData.appPieData.reduce((sum, item) => sum + item.value, 0);
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return [`${value} (${percentage}%)`, name];
+                                    }}
+                                />
                             </PieChart>
                         </ResponsiveContainer>
                     </Paper>
@@ -920,88 +1817,199 @@ const TSLeadSummary = () => {
                 {/* Member Status Bar Chart */}
                 <Grid item xs={12} md={4}>
                     <Paper sx={{ 
-                        p: 2, 
-                        borderRadius: 2,
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                        height: '400px'
+                        p: { xs: 2.5, sm: 3 }, 
+                        borderRadius: 3,
+                        background: 'linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%)',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+                        height: { xs: '400px', sm: '450px' },
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        '&:hover': {
+                            transform: 'translateY(-4px)',
+                            boxShadow: '0 12px 48px rgba(0,0,0,0.12)'
+                        }
                     }}>
-                        <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+                        <Typography variant="h6" gutterBottom sx={{ 
+                            mb: 2.5,
+                            fontSize: { xs: '1.1rem', sm: '1.2rem' },
+                            fontWeight: 600,
+                            color: 'primary.main',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            '&::before': {
+                                content: '""',
+                                width: 4,
+                                height: 24,
+                                backgroundColor: 'primary.main',
+                                borderRadius: 2,
+                                display: 'block'
+                            }
+                        }}>
                             Cards by Status
                         </Typography>
-                        <Divider />
-                        <ResponsiveContainer width="100%" height="100%">
+                        <Divider sx={{ mb: 3 }} />
+                        <ResponsiveContainer width="100%" height="80%">
                             <BarChart 
                                 data={chartsData.barData}
                                 onClick={handleStatusBarChartClick}
                                 margin={{
                                     top: 20,
-                                    right: 30,
-                                    left: 20,
-                                    bottom: 70
+                                    right: 24,
+                                    left: -16,
+                                    bottom: 48
                                 }}
                             >
                                 <Legend 
-                                    verticalAlign="top" 
+                                    verticalAlign="bottom" 
                                     align="center"
-                                    height={36}
+                                    layout="horizontal"
+                                    wrapperStyle={{
+                                        paddingTop: '24px',
+                                        fontSize: '13px',
+                                        width: '100%',
+                                        maxHeight: '35%',
+                                        overflowY: 'auto',
+                                        '& .recharts-legend-item': {
+                                            marginRight: '16px !important'
+                                        }
+                                    }}
+                                    formatter={(value, entry) => {
+                                        // Truncate name if too long
+                                        const displayName = entry.dataKey.length > 15 
+                                            ? `${entry.dataKey.slice(0, 15)}...` 
+                                            : entry.dataKey;
+                                        return <span style={{ color: theme.palette.text.primary }}>{displayName}</span>;
+                                    }}
                                 />
-                                <CartesianGrid strokeDasharray="3 3" />
+                                <CartesianGrid 
+                                    strokeDasharray="3 3" 
+                                    stroke={alpha(theme.palette.divider, 0.15)}
+                                    vertical={false}
+                                />
                                 <XAxis 
                                     dataKey="name" 
                                     angle={-45} 
                                     textAnchor="end" 
-                                    height={80}
+                                    height={60}
                                     interval={0}
-                                    tick={{
-                                        fontSize: 12,
-                                        dx: -8,
-                                        dy: 8
+                                    tick={({ x, y, payload }) => {
+                                        // Truncate name if too long
+                                        const displayName = payload.value.length > 10 
+                                            ? `${payload.value.slice(0, 10)}...` 
+                                            : payload.value;
+                                        return (
+                                            <text 
+                                                x={x} 
+                                                y={y + 8}
+                                                textAnchor="end" 
+                                                fill={theme.palette.text.secondary}
+                                                fontSize="11"
+                                                transform={`rotate(-45, ${x}, ${y})`}
+                                            >
+                                                {displayName}
+                                            </text>
+                                        );
+                                    }}
+                                    axisLine={{
+                                        stroke: alpha(theme.palette.divider, 0.2)
+                                    }}
+                                    tickLine={{
+                                        stroke: alpha(theme.palette.divider, 0.2)
                                     }}
                                 />
-                                <YAxis />
-                                <Tooltip />
+                                <YAxis
+                                    tick={{
+                                        fontSize: 11,
+                                        fill: theme.palette.text.secondary
+                                    }}
+                                    axisLine={{
+                                        stroke: alpha(theme.palette.divider, 0.2)
+                                    }}
+                                    tickLine={{
+                                        stroke: alpha(theme.palette.divider, 0.2)
+                                    }}
+                                />
+                                <Tooltip 
+                                    cursor={{ fill: alpha(theme.palette.primary.main, 0.05) }}
+                                    contentStyle={{
+                                        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                                        borderRadius: '12px',
+                                        border: 'none',
+                                        boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+                                        padding: '12px 16px',
+                                        fontSize: '13px',
+                                        fontWeight: 500
+                                    }}
+                                    itemStyle={{
+                                        padding: '4px 0'
+                                    }}
+                                    formatter={(value, name, props) => {
+                                        return [`${value}`, name];
+                                    }}
+                                    labelFormatter={(label) => {
+                                        return `Member: ${label}`;
+                                    }}
+                                />
                                 <Bar 
                                     dataKey="Total Issues" 
-                                    fill="#9575cd"
+                                    fill={alpha('#9575cd', 0.85)}
                                     name="Total Issues"
+                                    radius={[4, 4, 0, 0]}
+                                    maxBarSize={40}
                                     style={{ cursor: 'pointer' }}
                                     label={{ 
                                         position: 'top',
-                                        fill: theme.palette.text.primary,
-                                        fontSize: 12
+                                        fill: theme.palette.text.secondary,
+                                        fontSize: 11,
+                                        dy: -4,
+                                        fontWeight: 500
                                     }}
                                 />
                                 <Bar 
                                     dataKey="Done" 
-                                    fill="#4caf50"
+                                    fill={alpha('#4caf50', 0.85)}
                                     name="Done"
+                                    radius={[4, 4, 0, 0]}
+                                    maxBarSize={40}
                                     style={{ cursor: 'pointer' }}
                                     label={{ 
                                         position: 'top',
-                                        fill: theme.palette.text.primary,
-                                        fontSize: 12
+                                        fill: theme.palette.text.secondary,
+                                        fontSize: 11,
+                                        dy: -4,
+                                        fontWeight: 500
                                     }}
                                 />
                                 <Bar 
                                     dataKey="Doing" 
-                                    fill="#2196f3"
+                                    fill={alpha('#2196f3', 0.85)}
                                     name="Doing"
+                                    radius={[4, 4, 0, 0]}
+                                    maxBarSize={40}
                                     style={{ cursor: 'pointer' }}
                                     label={{ 
                                         position: 'top',
-                                        fill: theme.palette.text.primary,
-                                        fontSize: 12
+                                        fill: theme.palette.text.secondary,
+                                        fontSize: 11,
+                                        dy: -4,
+                                        fontWeight: 500
                                     }}
                                 />
                                 <Bar 
                                     dataKey="Wait" 
-                                    fill="#f44336"
+                                    fill={alpha('#f44336', 0.85)}
                                     name="Wait"
+                                    radius={[4, 4, 0, 0]}
+                                    maxBarSize={40}
                                     style={{ cursor: 'pointer' }}
                                     label={{ 
                                         position: 'top',
-                                        fill: theme.palette.text.primary,
-                                        fontSize: 12
+                                        fill: theme.palette.text.secondary,
+                                        fontSize: 11,
+                                        dy: -4,
+                                        fontWeight: 500
                                     }}
                                 />
                             </BarChart>
@@ -1017,7 +2025,20 @@ const TSLeadSummary = () => {
                     mb: 3,
                     borderRadius: 2,
                     boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                    background: 'white'
+                    background: 'white',
+                    animation: 'tableAppear 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                    '@keyframes tableAppear': {
+                        from: {
+                            opacity: 0,
+                            transform: 'translateY(20px)',
+                            filter: 'blur(5px)'
+                        },
+                        to: {
+                            opacity: 1,
+                            transform: 'translateY(0)',
+                            filter: 'blur(0)'
+                        }
+                    }
                 }}>
                     <Typography variant="h6" gutterBottom sx={{ 
                         mb: 2,
@@ -1046,72 +2067,69 @@ const TSLeadSummary = () => {
                                 ).length;
 
                                 return (
-                                    <Grid item xs={12} sm={6} md={3} key={member.id}>
+                                    <Grid item xs={12} sm={6} md={4} lg={3} key={member.id}>
                                         <Paper sx={{ 
-                                            p: 1.5,
-                                            pt: 4,
+                                            p: 2,
                                             borderRadius: 2,
-                                            border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                                            background: alpha(theme.palette.primary.main, 0.02),
+                                            background: 'white',
                                             height: '100%',
                                             display: 'flex',
                                             flexDirection: 'column',
                                             position: 'relative',
+                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
                                             '&:hover': {
-                                                background: alpha(theme.palette.primary.main, 0.05),
-                                                transform: 'translateY(-2px)',
-                                                transition: 'all 0.2s ease'
+                                                transform: 'translateY(-4px)',
+                                                boxShadow: '0 12px 24px rgba(0,0,0,0.1)'
                                             }
                                         }}>
-                                            {/* Warning for high waiting ratio */}
+                                            {/* Warning Badge */}
                                             {(() => {
                                                 const waitingRatio = totalCards > 0 ? waitingCards / totalCards : 0;
                                                 if (totalCards > 0 && waitingRatio > 0.4) {
                                                     return (
-                                                        <Alert 
-                                                            severity="warning" 
-                                                            sx={{ 
-                                                                position: 'absolute',
-                                                                top: 0,
-                                                                left: 0,
-                                                                right: 0,
-                                                                borderRadius: '8px 8px 0 0',
-                                                                zIndex: 1,
-                                                                py: 0.5,
-                                                                '& .MuiAlert-icon': {
-                                                                    fontSize: '1rem'
-                                                                },
-                                                                '& .MuiAlert-message': {
-                                                                    fontSize: '0.75rem',
-                                                                    py: 0
-                                                                }
-                                                            }}
-                                                        >
-                                                            High waiting ratio: {Math.round(waitingRatio * 100)}%
-                                                        </Alert>
+                                                        <Box sx={{
+                                                            position: 'absolute',
+                                                            top: 12,
+                                                            right: 12,
+                                                            background: alpha(theme.palette.warning.main, 0.1),
+                                                            color: theme.palette.warning.main,
+                                                            px: 1,
+                                                            py: 0.5,
+                                                            borderRadius: 1,
+                                                            fontSize: '0.75rem',
+                                                            fontWeight: 500,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 0.5,
+                                                            zIndex: 1
+                                                        }}>
+                                                            <WarningIcon sx={{ fontSize: '0.875rem' }} />
+                                                            {Math.round(waitingRatio * 100)}% waiting
+                                                        </Box>
                                                     );
                                                 }
                                                 return null;
                                             })()}
 
-                                            {/* Header with Avatar and Name */}
+                                            {/* Member Header */}
                                             <Box sx={{ 
                                                 display: 'flex', 
-                                                alignItems: 'center', 
-                                                gap: 1, 
-                                                mb: 1.5,
-                                                pb: 1,
-                                                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+                                                alignItems: 'center',
+                                                gap: 1.5,
+                                                mb: 2
                                             }}>
                                                 <Avatar
                                                     src={member.avatarUrl}
                                                     alt={member.username}
                                                     sx={{ 
-                                                        width: 32, 
-                                                        height: 32,
+                                                        width: 40,
+                                                        height: 40,
                                                         bgcolor: TS_MEMBER_COLORS[member.id] || 'primary.main',
-                                                        fontSize: '0.9rem',
-                                                        fontWeight: 600
+                                                        fontSize: '1rem',
+                                                        fontWeight: 600,
+                                                        border: '2px solid white',
+                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                                                     }}
                                                 >
                                                     {member.initials}
@@ -1119,116 +2137,169 @@ const TSLeadSummary = () => {
                                                 <Box>
                                                     <Typography variant="subtitle1" sx={{ 
                                                         fontWeight: 600,
-                                                        color: 'primary.main',
-                                                        fontSize: '0.85rem'
+                                                        fontSize: '0.9rem',
+                                                        color: 'text.primary',
+                                                        lineHeight: 1.2
                                                     }}>
                                                         {member.username}
                                                     </Typography>
-                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                                                    <Typography variant="caption" sx={{
+                                                        color: 'text.secondary',
+                                                        fontSize: '0.75rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 0.5
+                                                    }}>
+                                                        <Box component="span" sx={{
+                                                            width: 6,
+                                                            height: 6,
+                                                            borderRadius: '50%',
+                                                            bgcolor: 'success.main',
+                                                            display: 'inline-block'
+                                                        }}/>
                                                         {member.role}
                                                     </Typography>
                                                 </Box>
                                             </Box>
 
-                                            {/* Card Statistics */}
+                                            {/* Stats Grid */}
                                             <Box sx={{ 
-                                                display: 'flex', 
-                                                gap: 0.5, 
-                                                mb: 1.5,
-                                                flexWrap: 'wrap'
+                                                display: 'grid',
+                                                gridTemplateColumns: 'repeat(2, 1fr)',
+                                                gap: 1,
+                                                mb: 2
                                             }}>
-                                                <Paper sx={{ 
-                                                    p: 0.5, 
-                                                    flex: '1 1 auto',
-                                                    minWidth: '60px',
-                                                    textAlign: 'center',
-                                                    background: alpha(theme.palette.background.default, 0.6)
+                                                <Box sx={{
+                                                    p: 1,
+                                                    borderRadius: 1.5,
+                                                    background: alpha(theme.palette.primary.main, 0.08),
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center'
                                                 }}>
-                                                    <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '0.9rem' }}>
+                                                    <Typography variant="h6" sx={{
+                                                        fontWeight: 700,
+                                                        color: 'primary.main',
+                                                        fontSize: '1.1rem',
+                                                        lineHeight: 1
+                                                    }}>
                                                         {totalCards}
                                                     </Typography>
-                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                                                    <Typography variant="caption" sx={{
+                                                        color: 'text.secondary',
+                                                        fontSize: '0.7rem',
+                                                        mt: 0.5
+                                                    }}>
                                                         Total
                                                     </Typography>
-                                                </Paper>
-                                                <Paper sx={{ 
-                                                    p: 0.5, 
-                                                    flex: '1 1 auto',
-                                                    minWidth: '60px',
-                                                    textAlign: 'center',
-                                                    background: alpha(theme.palette.success.main, 0.1)
+                                                </Box>
+
+                                                <Box sx={{
+                                                    p: 1,
+                                                    borderRadius: 1.5,
+                                                    background: alpha(theme.palette.success.main, 0.08),
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center'
                                                 }}>
-                                                    <Typography variant="h6" sx={{ 
-                                                        fontWeight: 600,
+                                                    <Typography variant="h6" sx={{
+                                                        fontWeight: 700,
                                                         color: 'success.main',
-                                                        fontSize: '0.9rem'
+                                                        fontSize: '1.1rem',
+                                                        lineHeight: 1
                                                     }}>
                                                         {completedCards}
                                                     </Typography>
-                                                    <Typography variant="caption" color="success.main" sx={{ fontSize: '0.65rem' }}>
+                                                    <Typography variant="caption" sx={{
+                                                        color: 'text.secondary',
+                                                        fontSize: '0.7rem',
+                                                        mt: 0.5
+                                                    }}>
                                                         Done
                                                     </Typography>
-                                                </Paper>
-                                                <Paper sx={{ 
-                                                    p: 0.5, 
-                                                    flex: '1 1 auto',
-                                                    minWidth: '60px',
-                                                    textAlign: 'center',
-                                                    background: alpha(theme.palette.primary.main, 0.1)
+                                                </Box>
+
+                                                <Box sx={{
+                                                    p: 1,
+                                                    borderRadius: 1.5,
+                                                    background: alpha(theme.palette.warning.main, 0.08),
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center'
                                                 }}>
-                                                    <Typography variant="h6" sx={{ 
-                                                        fontWeight: 600,
-                                                        color: 'primary.main',
-                                                        fontSize: '0.9rem'
+                                                    <Typography variant="h6" sx={{
+                                                        fontWeight: 700,
+                                                        color: 'warning.main',
+                                                        fontSize: '1.1rem',
+                                                        lineHeight: 1
                                                     }}>
                                                         {doingCards}
                                                     </Typography>
-                                                    <Typography variant="caption" color="primary.main" sx={{ fontSize: '0.65rem' }}>
+                                                    <Typography variant="caption" sx={{
+                                                        color: 'text.secondary',
+                                                        fontSize: '0.7rem',
+                                                        mt: 0.5
+                                                    }}>
                                                         Doing
                                                     </Typography>
-                                                </Paper>
-                                                <Paper sx={{ 
-                                                    p: 0.5, 
-                                                    flex: '1 1 auto',
-                                                    minWidth: '60px',
-                                                    textAlign: 'center',
-                                                    background: alpha(theme.palette.info.main, 0.1)
+                                                </Box>
+
+                                                <Box sx={{
+                                                    p: 1,
+                                                    borderRadius: 1.5,
+                                                    background: alpha(theme.palette.error.main, 0.08),
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center'
                                                 }}>
-                                                    <Typography variant="h6" sx={{ 
-                                                        fontWeight: 600,
-                                                        color: 'info.main',
-                                                        fontSize: '0.9rem'
+                                                    <Typography variant="h6" sx={{
+                                                        fontWeight: 700,
+                                                        color: 'error.main',
+                                                        fontSize: '1.1rem',
+                                                        lineHeight: 1
                                                     }}>
                                                         {waitingCards}
                                                     </Typography>
-                                                    <Typography variant="caption" color="info.main" sx={{ fontSize: '0.65rem' }}>
+                                                    <Typography variant="caption" sx={{
+                                                        color: 'text.secondary',
+                                                        fontSize: '0.7rem',
+                                                        mt: 0.5
+                                                    }}>
                                                         Wait
                                                     </Typography>
-                                                </Paper>
+                                                </Box>
                                             </Box>
 
-                                            {/* Resolution Time Section */}
-                                            <Box sx={{ mt: 'auto' }}>
-                                                {!memberResults[member.id] ? (
-                                                    <Button
-                                                        variant="outlined"
-                                                        size="small"
-                                                        fullWidth
-                                                        onClick={() => calculateMemberResolutionTime(member.id)}
-                                                        disabled={calculatingMember === member.id}
-                                                        sx={{ 
-                                                            py: 0.5,
-                                                            fontSize: '0.75rem'
-                                                        }}
-                                                    >
-                                                        {calculatingMember === member.id ? 'Calculating...' : 'Calculate Resolution Time'}
-                                                    </Button>
-                                                ) : memberResults[member.id].error ? (
-                                                    <Box sx={{ mt: 1 }}>
-                                                        <Typography color="error" variant="caption" sx={{ fontSize: '0.7rem' }}>
-                                                            {memberResults[member.id].error}
-                                                        </Typography>
+                                            {/* Resolution Time Button */}
+                                            {!memberResults[member.id] ? (
+                                                <Button
+                                                    variant="outlined"
+                                                    size="small"
+                                                    fullWidth
+                                                    onClick={() => calculateMemberResolutionTime(member.id)}
+                                                    disabled={calculatingMember === member.id}
+                                                    startIcon={<TimerIcon />}
+                                                    sx={{ 
+                                                        mt: 'auto',
+                                                        borderRadius: 1.5,
+                                                        textTransform: 'none',
+                                                        fontSize: '0.8rem'
+                                                    }}
+                                                >
+                                                    {calculatingMember === member.id ? (
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                            <CircularProgress size={16} />
+                                                            Calculating...
+                                                        </Box>
+                                                    ) : 'Calculate Resolution Time'}
+                                                </Button>
+                                            ) : memberResults[member.id].error ? (
+                                                <Alert 
+                                                    severity="error"
+                                                    sx={{ mt: 'auto', fontSize: '0.75rem' }}
+                                                    action={
                                                         <Button
+                                                            color="error"
                                                             size="small"
                                                             onClick={() => {
                                                                 setMemberResults(prev => {
@@ -1237,92 +2308,67 @@ const TSLeadSummary = () => {
                                                                     return newResults;
                                                                 });
                                                             }}
-                                                            sx={{ mt: 0.5, fontSize: '0.7rem' }}
                                                         >
-                                                            Try Again
+                                                            Retry
                                                         </Button>
-                                                    </Box>
-                                                ) : (
-                                                    <Box sx={{ mt: 1 }}>
-                                                        <Grid container spacing={0.5}>
-                                                            <Grid item xs={4}>
-                                                                <Paper sx={{ 
-                                                                    p: 0.5, 
-                                                                    textAlign: 'center',
-                                                                    background: alpha(theme.palette.background.paper, 0.8)
-                                                                }}>
-                                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                                                                        Total Time
-                                                                    </Typography>
-                                                                    <Typography variant="body1" sx={{ 
-                                                                        fontWeight: 600,
-                                                                        color: memberResults[member.id].averageResolutionTime > 120 ? 'error.main' : 'success.main',
-                                                                        fontSize: '0.8rem'
-                                                                    }}>
-                                                                        {Math.floor(memberResults[member.id].averageResolutionTime / 60)}h {memberResults[member.id].averageResolutionTime % 60}m
-                                                                    </Typography>
-                                                                </Paper>
-                                                            </Grid>
-                                                            <Grid item xs={4}>
-                                                                <Paper sx={{ 
-                                                                    p: 0.5, 
-                                                                    textAlign: 'center',
-                                                                    background: alpha(theme.palette.background.paper, 0.8)
-                                                                }}>
-                                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                                                                        TS Time
-                                                                    </Typography>
-                                                                    <Typography variant="body1" sx={{ 
-                                                                        fontWeight: 600,
-                                                                        color: memberResults[member.id].averageTSResolutionTime > 120 ? 'error.main' : 'success.main',
-                                                                        fontSize: '0.8rem'
-                                                                    }}>
-                                                                        {Math.floor(memberResults[member.id].averageTSResolutionTime / 60)}h {memberResults[member.id].averageTSResolutionTime % 60}m
-                                                                    </Typography>
-                                                                </Paper>
-                                                            </Grid>
-                                                            <Grid item xs={4}>
-                                                                <Paper sx={{ 
-                                                                    p: 0.5, 
-                                                                    textAlign: 'center',
-                                                                    background: alpha(theme.palette.background.paper, 0.8)
-                                                                }}>
-                                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                                                                        First Action
-                                                                    </Typography>
-                                                                    <Typography variant="body1" sx={{ 
-                                                                        fontWeight: 600,
-                                                                        color: memberResults[member.id].averageFirstActionTime > 30 ? 'error.main' : 'success.main',
-                                                                        fontSize: '0.8rem'
-                                                                    }}>
-                                                                        {Math.floor(memberResults[member.id].averageFirstActionTime / 60)}h {memberResults[member.id].averageFirstActionTime % 60}m
-                                                                    </Typography>
-                                                                </Paper>
-                                                            </Grid>
-                                                        </Grid>
-
-                                                        <Button
-                                                            size="small"
-                                                            fullWidth
-                                                            variant="text"
-                                                            onClick={() => {
-                                                                setMemberResults(prev => {
-                                                                    const newResults = {...prev};
-                                                                    delete newResults[member.id];
-                                                                    return newResults;
-                                                                });
-                                                            }}
-                                                            sx={{ 
-                                                                mt: 0.5, 
-                                                                fontSize: '0.7rem',
-                                                                py: 0.5
-                                                            }}
-                                                        >
-                                                            Calculate Again
-                                                        </Button>
-                                                    </Box>
-                                                )}
-                                            </Box>
+                                                    }
+                                                >
+                                                    {memberResults[member.id].error}
+                                                </Alert>
+                                            ) : (
+                                                <Box sx={{ 
+                                                    mt: 'auto',
+                                                    display: 'grid',
+                                                    gridTemplateColumns: 'repeat(3, 1fr)',
+                                                    gap: 1
+                                                }}>
+                                                    {['Total Time', 'TS Time', 'First Action'].map((label, index) => (
+                                                        <Box key={label} sx={{
+                                                            p: 1,
+                                                            borderRadius: 1.5,
+                                                            background: alpha(theme.palette.primary.main, 0.05),
+                                                            textAlign: 'center'
+                                                        }}>
+                                                            <Typography variant="caption" sx={{ 
+                                                                color: 'text.secondary', 
+                                                                fontSize: '0.65rem',
+                                                                display: 'block'
+                                                            }}>
+                                                                {label}
+                                                            </Typography>
+                                                            <Typography variant="body2" sx={{ 
+                                                                fontWeight: 600,
+                                                                color: (() => {
+                                                                    const time = index === 0 
+                                                                        ? memberResults[member.id].averageResolutionTime
+                                                                        : index === 1
+                                                                            ? memberResults[member.id].averageTSResolutionTime
+                                                                            : memberResults[member.id].averageFirstActionTime;
+                                                                    const threshold = index === 2 ? 30 : 120;
+                                                                    return time > threshold ? 'error.main' : 'success.main';
+                                                                })(),
+                                                                fontSize: '0.75rem'
+                                                            }}>
+                                                                {Math.floor((() => {
+                                                                    switch(index) {
+                                                                        case 0: return memberResults[member.id].averageResolutionTime;
+                                                                        case 1: return memberResults[member.id].averageTSResolutionTime;
+                                                                        case 2: return memberResults[member.id].averageFirstActionTime;
+                                                                        default: return 0;
+                                                                    }
+                                                                })() / 60)}h {(() => {
+                                                                    switch(index) {
+                                                                        case 0: return memberResults[member.id].averageResolutionTime;
+                                                                        case 1: return memberResults[member.id].averageTSResolutionTime;
+                                                                        case 2: return memberResults[member.id].averageFirstActionTime;
+                                                                        default: return 0;
+                                                                    }
+                                                                })() % 60}m
+                                                            </Typography>
+                                                        </Box>
+                                                    ))}
+                                                </Box>
+                                            )}
                                         </Paper>
                                     </Grid>
                                 );
@@ -1339,38 +2385,86 @@ const TSLeadSummary = () => {
                     boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
                     overflow: 'hidden',
                     background: 'white',
+                    animation: 'tableAppear 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                    '@keyframes tableAppear': {
+                        from: {
+                            opacity: 0,
+                            transform: 'translateY(20px)',
+                            filter: 'blur(5px)'
+                        },
+                        to: {
+                            opacity: 1,
+                            transform: 'translateY(0)',
+                            filter: 'blur(0)'
+                        }
+                    },
                     '& .MuiTableCell-root': {
-                        py: 2,
-                        px: 3,
+                        py: { xs: 1.5, sm: 2 },
+                        px: { xs: 1, sm: 2, md: 3 },
+                        transition: 'all 0.2s ease',
+                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                        whiteSpace: 'nowrap',
+                        borderBottom: '1px solid',
+                        borderColor: 'divider'
+                    },
+                    '& .MuiTableRow-root': {
+                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        '&:hover': {
+                            backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                            transform: 'scale(1.001)',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+                        }
                     }
                 }}
             >
-                <Table>
+                <Table sx={{ minWidth: { xs: '800px', md: '100%' } }}>
                     <TableHead>
                         <TableRow sx={{ 
-                            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.primary.main, 0.05)} 100%)`,
+                            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.primary.main, 0.05)} 100%)`,
                             '& .MuiTableCell-root': {
                                 fontWeight: 600,
                                 color: 'primary.main',
-                                fontSize: '1rem',
+                                fontSize: { xs: '0.8rem', sm: '0.9rem' },
+                                py: { xs: 2, sm: 2.5 },
+                                whiteSpace: 'nowrap',
+                                borderBottom: 'none',
+                                '&:first-of-type': {
+                                    borderTopLeftRadius: 12,
+                                },
+                                '&:last-child': {
+                                    borderTopRightRadius: 12,
+                                }
                             }
                         }}>
-                            <TableCell><b>#</b></TableCell>
-                            <TableCell><b>Tên Card</b></TableCell>
-                            <TableCell><b>Agent</b></TableCell>
-                            <TableCell><b>App</b></TableCell>
-                            <TableCell><b>List</b></TableCell>
-                            <TableCell><b>Status</b></TableCell>
+                            <TableCell width="5%"><b>#</b></TableCell>
+                            <TableCell width="25%"><b>Tên Card</b></TableCell>
+                            <TableCell width="20%"><b>Agent</b></TableCell>
+                            <TableCell width="10%"><b>App</b></TableCell>
+                            <TableCell width="15%"><b>List</b></TableCell>
+                            <TableCell width="10%"><b>Status</b></TableCell>
                             <TableCell
+                                width="15%"
                                 sx={{ 
                                     cursor: 'pointer',
                                     '&:hover': {
-                                        color: 'primary.main',
+                                        color: 'primary.dark',
                                     }
                                 }}
                                 onClick={() => setSortByDueAsc(prev => !prev)}
                             >
-                                <b>Due Date {sortByDueAsc ? '▲' : '▼'}</b>
+                                <Box sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 0.5 
+                                }}>
+                                    <b>Due Date</b>
+                                    <Box component="span" sx={{ 
+                                        transition: 'transform 0.2s ease',
+                                        transform: sortByDueAsc ? 'rotate(0deg)' : 'rotate(180deg)'
+                                    }}>
+                                        ▼
+                                    </Box>
+                                </Box>
                             </TableCell>
                         </TableRow>
                     </TableHead>
@@ -1385,11 +2479,9 @@ const TSLeadSummary = () => {
                                     hover 
                                     onClick={() => handleTaskClick(card)}
                                     sx={{ 
-                                        backgroundColor: '#FFFFFF',
-                                        transition: 'all 0.2s ease',
                                         cursor: 'pointer',
-                                        '&:hover': {
-                                            backgroundColor: alpha('#000', 0.02),
+                                        '&:nth-of-type(odd)': {
+                                            backgroundColor: alpha(theme.palette.primary.main, 0.02),
                                         },
                                         '& .MuiTableCell-root': {
                                             color: theme.palette.text.primary,
@@ -1404,7 +2496,7 @@ const TSLeadSummary = () => {
                                                 color: 'inherit',
                                                 textDecoration: 'none',
                                                 fontWeight: 500,
-                                                maxWidth: '250px',
+                                                maxWidth: { xs: '150px', sm: '200px', md: '250px' },
                                                 overflow: 'hidden',
                                                 textOverflow: 'ellipsis',
                                                 whiteSpace: 'nowrap'
@@ -1418,7 +2510,7 @@ const TSLeadSummary = () => {
                                             display: 'flex', 
                                             flexWrap: 'nowrap', 
                                             gap: 0.5,
-                                            maxWidth: '300px',
+                                            maxWidth: { xs: '200px', sm: '250px', md: '300px' },
                                             overflowX: 'auto',
                                             '&::-webkit-scrollbar': {
                                                 height: '4px'
@@ -1468,9 +2560,11 @@ const TSLeadSummary = () => {
                                             label={getAppLabel(card.labels || [])}
                                             size="small"
                                             sx={{
+                                                height: '22px',
                                                 backgroundColor: alpha(getAppColor(getAppLabel(card.labels || [])), 0.1),
                                                 color: getAppColor(getAppLabel(card.labels || [])),
                                                 fontWeight: 500,
+                                                fontSize: '0.75rem',
                                                 '&:hover': {
                                                     backgroundColor: alpha(getAppColor(getAppLabel(card.labels || [])), 0.2),
                                                 }
@@ -1482,20 +2576,23 @@ const TSLeadSummary = () => {
                                             label={card.listName}
                                             size="small"
                                             sx={{
+                                                height: '22px',
                                                 backgroundColor: alpha(theme.palette.primary.main, 0.1),
                                                 color: 'primary.main',
                                                 fontWeight: 500,
-                                                minWidth: '120px'
+                                                fontSize: '0.75rem',
+                                                minWidth: { xs: '100px', sm: '120px' }
                                             }}
                                         />
                                     </TableCell>
                                     <TableCell>
                                         <Chip
                                             label={status.label}
-                                            size="medium"
+                                            size="small"
                                             sx={{
+                                                height: '22px',
                                                 fontWeight: 500,
-                                                px: 2,
+                                                fontSize: '0.75rem',
                                                 backgroundColor: (() => {
                                                     switch (status.label) {
                                                         case 'Done':
@@ -1520,7 +2617,7 @@ const TSLeadSummary = () => {
                                                             return '#666666';
                                                     }
                                                 })(),
-                                                borderRadius: '16px',
+                                                borderRadius: '12px',
                                                 '&:hover': {
                                                     backgroundColor: (() => {
                                                         switch (status.label) {
@@ -1538,7 +2635,10 @@ const TSLeadSummary = () => {
                                             }}
                                         />
                                     </TableCell>
-                                    <TableCell sx={{ fontWeight: 500 }}>
+                                    <TableCell sx={{ 
+                                        fontWeight: 500,
+                                        color: theme.palette.text.secondary
+                                    }}>
                                         {dueDate ? dueDate.toLocaleDateString() : '—'}
                                     </TableCell>
                                 </TableRow>
@@ -1554,7 +2654,8 @@ const TSLeadSummary = () => {
                     zIndex: (theme) => theme.zIndex.drawer + 1,
                     position: 'absolute',
                     background: 'rgba(255, 255, 255, 0.8)',
-                    backdropFilter: 'blur(4px)'
+                    backdropFilter: 'blur(4px)',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
                 open={loading}
             >
@@ -1562,7 +2663,18 @@ const TSLeadSummary = () => {
                     display: 'flex', 
                     flexDirection: 'column', 
                     alignItems: 'center',
-                    gap: 2
+                    gap: 2,
+                    animation: loading ? 'loadingAppear 0.3s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
+                    '@keyframes loadingAppear': {
+                        from: {
+                            opacity: 0,
+                            transform: 'scale(0.9)',
+                        },
+                        to: {
+                            opacity: 1,
+                            transform: 'scale(1)',
+                        }
+                    }
                 }}>
                     <CircularProgress size={60} />
                     <Typography variant="h6" color="primary">
