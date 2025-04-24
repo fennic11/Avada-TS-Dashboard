@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
     Modal, Box, Typography, CircularProgress, Chip,
     Link, Stack, IconButton,
-    MenuItem, Select, Dialog, DialogTitle, DialogContent,
+    MenuItem, Dialog, DialogTitle, DialogContent,
     DialogContentText, DialogActions, Button, Paper,
     TextField, List, ListItem, Avatar,
     Divider, Snackbar, Alert, Menu
@@ -2005,7 +2005,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                 px: 2
                                             }}
                                         >
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
                                                 <Box 
                                                     sx={{ 
                                                         width: 8,
@@ -2015,7 +2015,15 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                         flexShrink: 0
                                                     }} 
                                                 />
-                                                <Typography sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
+                                                <Typography 
+                                                    sx={{ 
+                                                        fontSize: '0.875rem', 
+                                                        fontWeight: 500,
+                                                        whiteSpace: 'nowrap',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis'
+                                                    }}
+                                                >
                                                     {lists.find(list => list.id === currentListId)?.name || 'Select List'}
                                                 </Typography>
                                             </Box>
@@ -2120,7 +2128,8 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                                     color: currentListId === list.id ? 'primary.main' : 'text.primary',
                                                                     whiteSpace: 'nowrap',
                                                                     overflow: 'hidden',
-                                                                    textOverflow: 'ellipsis'
+                                                                    textOverflow: 'ellipsis',
+                                                                    maxWidth: '250px'
                                                                 }}
                                                             >
                                                                 {list.name}
