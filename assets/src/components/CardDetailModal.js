@@ -13,6 +13,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import ImageIcon from '@mui/icons-material/Image';
 import SendIcon from '@mui/icons-material/Send';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import {
     getActionsByCard,
     removeMemberByID,
@@ -111,6 +112,10 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
     const [labelMenuOpen, setLabelMenuOpen] = useState(false);
     const [assigneeMenuOpen, setAssigneeMenuOpen] = useState(false);
     const [assigneeSearch, setAssigneeSearch] = useState('');
+    // Add state for list search
+    const [listSearch, setListSearch] = useState('');
+    const [listMenuAnchorEl, setListMenuAnchorEl] = useState(null);
+    const listMenuOpen = Boolean(listMenuAnchorEl);
 
     const safeCard = useMemo(() => {
         if (!card) return null;
@@ -656,6 +661,14 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
             });
         }
     };
+
+    // Add filtered lists
+    const filteredLists = useMemo(() => {
+        if (!listSearch) return lists;
+        return lists.filter(list => 
+            list.name.toLowerCase().includes(listSearch.toLowerCase())
+        );
+    }, [lists, listSearch]);
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -1970,28 +1983,164 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                     }}>
                                         List
                                     </Typography>
-                                    <Select
-                                        size="small"
-                                        fullWidth
-                                        value={currentListId}
-                                        onChange={(e) => handleMoveList(e.target.value)}
-                                        sx={{
-                                            '& .MuiOutlinedInput-notchedOutline': {
-                                                borderColor: 'rgba(0, 0, 0, 0.12)'
-                                            },
-                                            '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                borderColor: 'primary.main'
-                                            },
-                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                borderColor: 'primary.main'
-                                            },
-                                            backgroundColor: '#f5f5f5'
-                                        }}
-                                    >
-                                        {lists.map(list => (
-                                            <MenuItem key={list.id} value={list.id}>{list.name}</MenuItem>
-                                        ))}
-                                    </Select>
+                                    <Box>
+                                        <Typography variant="subtitle2" gutterBottom>
+                                            List
+                                        </Typography>
+                                        <Button
+                                            onClick={(e) => setListMenuAnchorEl(e.currentTarget)}
+                                            sx={{
+                                                width: '100%',
+                                                height: '40px',
+                                                justifyContent: 'space-between',
+                                                textTransform: 'none',
+                                                backgroundColor: '#f8fafc',
+                                                border: '1px solid rgba(0, 0, 0, 0.12)',
+                                                borderRadius: '8px',
+                                                color: '#1e293b',
+                                                '&:hover': {
+                                                    backgroundColor: '#f1f5f9',
+                                                    borderColor: 'primary.main'
+                                                },
+                                                px: 2
+                                            }}
+                                        >
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <Box 
+                                                    sx={{ 
+                                                        width: 8,
+                                                        height: 8,
+                                                        borderRadius: '50%',
+                                                        bgcolor: 'primary.main',
+                                                        flexShrink: 0
+                                                    }} 
+                                                />
+                                                <Typography sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
+                                                    {lists.find(list => list.id === currentListId)?.name || 'Select List'}
+                                                </Typography>
+                                            </Box>
+                                            <KeyboardArrowDownIcon sx={{ color: '#64748b' }} />
+                                        </Button>
+
+                                        <Menu
+                                            anchorEl={listMenuAnchorEl}
+                                            open={listMenuOpen}
+                                            onClose={() => {
+                                                setListMenuAnchorEl(null);
+                                                setListSearch('');
+                                            }}
+                                            PaperProps={{
+                                                sx: {
+                                                    mt: 1,
+                                                    width: 320,
+                                                    maxHeight: 400,
+                                                    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                                                    borderRadius: '8px'
+                                                }
+                                            }}
+                                        >
+                                            <Box sx={{ p: 1, position: 'sticky', top: 0, bgcolor: 'background.paper', zIndex: 1 }}>
+                                                <TextField
+                                                    size="small"
+                                                    fullWidth
+                                                    placeholder="Search lists..."
+                                                    value={listSearch}
+                                                    onChange={(e) => setListSearch(e.target.value)}
+                                                    InputProps={{
+                                                        startAdornment: (
+                                                            <SearchIcon 
+                                                                fontSize="small" 
+                                                                sx={{ 
+                                                                    color: 'action.active',
+                                                                    mr: 1
+                                                                }} 
+                                                            />
+                                                        ),
+                                                        sx: {
+                                                            fontSize: '0.875rem',
+                                                            backgroundColor: '#f8fafc',
+                                                            '& .MuiOutlinedInput-notchedOutline': {
+                                                                borderColor: 'rgba(0, 0, 0, 0.08)'
+                                                            },
+                                                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                                borderColor: 'rgba(0, 0, 0, 0.15)'
+                                                            },
+                                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                                borderColor: '#1976d2'
+                                                            }
+                                                        }
+                                                    }}
+                                                />
+                                            </Box>
+                                            <Divider />
+                                            <Box sx={{ 
+                                                maxHeight: 320,
+                                                overflow: 'auto',
+                                                ...(filteredLists.length === 0 && {
+                                                    display: 'flex',
+                                                    justifyContent: 'center',
+                                                    alignItems: 'center',
+                                                    py: 2
+                                                })
+                                            }}>
+                                                {filteredLists.length > 0 ? (
+                                                    filteredLists.map(list => (
+                                                        <MenuItem 
+                                                            key={list.id}
+                                                            onClick={() => {
+                                                                handleMoveList(list.id);
+                                                                setListMenuAnchorEl(null);
+                                                                setListSearch('');
+                                                            }}
+                                                            sx={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '8px',
+                                                                minHeight: '40px',
+                                                                py: 1,
+                                                                px: 2,
+                                                                '&:hover': {
+                                                                    backgroundColor: 'rgba(25, 118, 210, 0.08)'
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Box 
+                                                                sx={{ 
+                                                                    width: 8,
+                                                                    height: 8,
+                                                                    borderRadius: '50%',
+                                                                    bgcolor: currentListId === list.id ? 'primary.main' : 'rgba(0, 0, 0, 0.12)',
+                                                                    flexShrink: 0
+                                                                }} 
+                                                            />
+                                                            <Typography 
+                                                                sx={{ 
+                                                                    fontSize: '0.875rem',
+                                                                    fontWeight: currentListId === list.id ? 500 : 400,
+                                                                    color: currentListId === list.id ? 'primary.main' : 'text.primary',
+                                                                    whiteSpace: 'nowrap',
+                                                                    overflow: 'hidden',
+                                                                    textOverflow: 'ellipsis'
+                                                                }}
+                                                            >
+                                                                {list.name}
+                                                            </Typography>
+                                                        </MenuItem>
+                                                    ))
+                                                ) : (
+                                                    <Typography 
+                                                        variant="body2" 
+                                                        sx={{ 
+                                                            color: 'text.secondary',
+                                                            fontStyle: 'italic'
+                                                        }}
+                                                    >
+                                                        No lists found
+                                                    </Typography>
+                                                )}
+                                            </Box>
+                                        </Menu>
+                                    </Box>
                                 </Box>
 
                                 {/* Assignees */}

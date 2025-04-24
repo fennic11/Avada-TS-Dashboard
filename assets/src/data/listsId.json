@@ -1,62 +1,426 @@
 [
     {
-        "id": "638d769884c52b05235a231b",
-        "name": "Blank ( Ko sửa ko xóa ')"
+      "id": "638d769884c52b05235a231b",
+      "name": "Blank ( Ko sửa ko xóa ')"
     },
     {
-        "id": "6535dfb2602fb050e415a2d5",
-        "name": "New Speed up (SLA: 2d)"
+      "id": "6535dfb2602fb050e415a2d5",
+      "name": "New Speed up (SLA: 2d)"
     },
     {
-        "id": "66262386cb856f894f7cdca2",
-        "name": "New Issues"
+      "id": "66262386cb856f894f7cdca2",
+      "name": "New Issues"
     },
     {
-        "id": "64c0e7d742b8d2b000f342e3",
-        "name": "Doing (Inshift)"
+      "id": "64c0e7d742b8d2b000f342e3",
+      "name": "Doing (Inshift)"
     },
     {
-        "id": "63c7b1a68e5576001577d65c",
-        "name": "Waiting to fix (from dev)"
+      "id": "63c7b1a68e5576001577d65c",
+      "name": "Waiting to fix (from dev)"
     },
     {
-        "id": "63c7d18b4fe38a004885aadf",
-        "name": "Update workflow required or Waiting for access (SLA: 2 days)"
+      "id": "63c7d18b4fe38a004885aadf",
+      "name": "Update workflow required or Waiting for access (SLA: 2 days)"
     },
     {
-        "id": "63f489b961f3a274163459a2",
-        "name": "Waiting for Customer's Confirmation (SLA: 2 days)"
+      "id": "63f489b961f3a274163459a2",
+      "name": "Waiting for Customer's Confirmation (SLA: 2 days)"
     },
     {
-        "id": "66d7d254bdad4fb0a354495a",
-        "name": "Done"
+      "id": "66d7d254bdad4fb0a354495a",
+      "name": "Done"
     },
     {
-        "id": "67c68b22af77d39946a8b964",
-        "name": "Done-T3-2025"
+      "id": "663ae7d6feac5f2f8d7a1c86",
+      "name": "Fix done from dev"
     },
     {
-        "id": "663ae7d6feac5f2f8d7a1c86",
-        "name": "Fix done from dev"
+      "id": "64dde9dc1fa67c936d8fec89",
+      "name": "Billing"
     },
     {
-        "id": "64dde9dc1fa67c936d8fec89",
-        "name": "Billing"
+      "id": "67931344e4b8ba8d2295df93",
+      "name": "Pending on solution 2025"
     },
     {
-        "id": "67931344e4b8ba8d2295df93",
-        "name": "Pending on solution 2025"
+      "id": "6629f8b136152f62cca0c46b",
+      "name": "CuongTT-Speed up"
     },
     {
-        "id": "6629f8b136152f62cca0c46b",
-        "name": "CuongTT-Speed up"
+      "id": "66ab3ead4afa398ea70ac212",
+      "name": "Issues level"
     },
     {
-        "id": "66ab3ead4afa398ea70ac212",
-        "name": "Issues level"
+      "id": "67452828b324c700a9ea960d",
+      "name": "Error Card"
     },
     {
-        "id": "67452828b324c700a9ea960d",
-        "name": "Error Card"
+      "id": "638d769884c52b05235a2317",
+      "name": "Backlog"
+    },
+    {
+      "id": "638d769884c52b05235a2318",
+      "name": "Upcoming"
+    },
+    {
+      "id": "638d769884c52b05235a231f",
+      "name": "Template-Copy only, do not edit"
+    },
+    {
+      "id": "638d769884c52b05235a2319",
+      "name": "Approved"
+    },
+    {
+      "id": "642e1e7b40275233631b01d1",
+      "name": "Template-Copy only, do not edit"
+    },
+    {
+      "id": "638d769884c52b05235a231a",
+      "name": "Mockup"
+    },
+    {
+      "id": "6628e4e01ab5a0eae1df5c67",
+      "name": "Speedup Old"
+    },
+    {
+      "id": "66271114639d3bbfd4f976db",
+      "name": "New Issues"
+    },
+    {
+      "id": "650bb04296503982ea484e98",
+      "name": "New Issues (SLA: 2d)"
+    },
+    {
+      "id": "67ab163be4c92b116a8a4582",
+      "name": "New List"
+    },
+    {
+      "id": "638d769884c52b05235a231c",
+      "name": "Pending (SLA: 2 days)"
+    },
+    {
+      "id": "656fc5727fde491fb022eefc",
+      "name": "Refund"
+    },
+    {
+      "id": "63c7b1dc1130ec0097bca68d",
+      "name": "Investigating"
+    },
+    {
+      "id": "64f97f3d08d563ffb754c0a3",
+      "name": "Speed Up Pro"
+    },
+    {
+      "id": "64f97d2080b654c50e6871ba",
+      "name": "Speed up Free"
+    },
+    {
+      "id": "638d77cd4440ee0132e6fe4b",
+      "name": "Need Help"
+    },
+    {
+      "id": "646a3f42d07339e142433265",
+      "name": "Help Provided"
+    },
+    {
+      "id": "638d769884c52b05235a231d",
+      "name": "In Review"
+    },
+    {
+      "id": "63c7b4bff268aa00dcc2d9d0",
+      "name": "Review Speed up"
+    },
+    {
+      "id": "64f6afae34e81107a3631488",
+      "name": "Review"
+    },
+    {
+      "id": "63bd2fb9ddc9ec00a7070b35",
+      "name": "Review"
+    },
+    {
+      "id": "638d769884c52b05235a231e",
+      "name": "Done 🎉-t10"
+    },
+    {
+      "id": "638d77e30f66bb00a48f983d",
+      "name": "No Reply"
+    },
+    {
+      "id": "67c68b22af77d39946a8b964",
+      "name": "Done-T3-2025"
+    },
+    {
+      "id": "660a60d92f4507db3f548b6f",
+      "name": "Done - 20/8 to 04/09"
+    },
+    {
+      "id": "64a4d4612b86d11acb86a591",
+      "name": "KPI-T6"
+    },
+    {
+      "id": "652c9f342049e33f76842b9f",
+      "name": "Done Temporary"
+    },
+    {
+      "id": "67e9fcc8af85bd97f5130b35",
+      "name": "Done-T4-2025"
+    },
+    {
+      "id": "638d769884c52b05235a2320",
+      "name": "Pending"
+    },
+    {
+      "id": "638d77da2c206503cb73df18",
+      "name": "Cannot Resolve"
+    },
+    {
+      "id": "6556cb8e89b5433f441325f4",
+      "name": "Done temporary 17/11"
+    },
+    {
+      "id": "6580f972afb008e7e361bbba",
+      "name": "Done 19/12/2023"
+    },
+    {
+      "id": "6594ca31bf00fbd37b5a3cf6",
+      "name": "done t1"
+    },
+    {
+      "id": "6618a18c3b4f79a3d5c98956",
+      "name": "Pending on solution 2024"
+    },
+    {
+      "id": "65bb5fea2603aeacb778ef14",
+      "name": "Done-t1-2024"
+    },
+    {
+      "id": "650bae9041e22f9e711d4ce9",
+      "name": "Done T9"
+    },
+    {
+      "id": "661c94051e7f89fc01c22e67",
+      "name": "Done-T4/2024"
+    },
+    {
+      "id": "6425105a875fc9de95e81bd4",
+      "name": "Feature request (manual)"
+    },
+    {
+      "id": "646f136bac545c98fd0799b8",
+      "name": "Feature Request"
+    },
+    {
+      "id": "64a783e3fa5e69dcb894f4cf",
+      "name": "Archived-T7"
+    },
+    {
+      "id": "661de754cf7a91cca9f8c4a7",
+      "name": "Thomas-Speedup"
+    },
+    {
+      "id": "63ef280384fefc0154d45ea0",
+      "name": "Pending On Solution"
+    },
+    {
+      "id": "64786c1376a94daf1d9e9130",
+      "name": "Archived T5"
+    },
+    {
+      "id": "6627184ebf7a0202295b4fee",
+      "name": "New Issues"
+    },
+    {
+      "id": "65424c29072f12dc1a83d321",
+      "name": "Done-T10"
+    },
+    {
+      "id": "638d973629899d010d386541",
+      "name": "Archived"
+    },
+    {
+      "id": "64c8be6e644734cb016dd908",
+      "name": "Done-t7"
+    },
+    {
+      "id": "64f6c9bb0194881925a75eb5",
+      "name": "Done T8"
+    },
+    {
+      "id": "65e44f08c2d0c1f79b93cbbf",
+      "name": "Done -13/03 - 01/04/24 🎉"
+    },
+    {
+      "id": "66d800de5d32ff5dddc18722",
+      "name": "Speed-up-T8-2024"
+    },
+    {
+      "id": "6645de6d3e33ffca6b196f15",
+      "name": "Done-T5-2024"
+    },
+    {
+      "id": "6646c06ef92dcecfc8df916f",
+      "name": "Cương speed thu viec"
+    },
+    {
+      "id": "666fb3c99a5e532e0cd996db",
+      "name": "Done-T6-2024"
+    },
+    {
+      "id": "64c8f3199fdc12e5a967673f",
+      "name": "Done-backup"
+    },
+    {
+      "id": "651863dd6ae6e5eef0500830",
+      "name": "Archived-column0"
+    },
+    {
+      "id": "665d9d7e4af73c7295991238",
+      "name": "CuowngTT Speed up T5"
+    },
+    {
+      "id": "666fe0d079c9306977c201c3",
+      "name": "Avada Training 2024"
+    },
+    {
+      "id": "66e8eec59e78244bb638255a",
+      "name": "Done-t9-2024"
+    },
+    {
+      "id": "670cc21888448fee582db75f",
+      "name": "Done-T10-2024"
+    },
+    {
+      "id": "66fa1fd67d574ad857f99c7b",
+      "name": "Speed-up-t9-2024"
+    },
+    {
+      "id": "6538e1a7476990599ae7fd09",
+      "name": "Template"
+    },
+    {
+      "id": "66fbaeb9dc2452f4d23f30ae",
+      "name": "fixDoneFromDev-t9-2024"
+    },
+    {
+      "id": "672327dfe5c8daf8918f5a4a",
+      "name": "fixdonefromdev-t10-2024"
+    },
+    {
+      "id": "672791056276f2e3feeaa242",
+      "name": "Speedup-t10-2024"
+    },
+    {
+      "id": "673b160323956aa1d4d8ce6d",
+      "name": "Done-t11-2024"
+    },
+    {
+      "id": "66b02f84d3983021002d430e",
+      "name": "fixDoneFromdev-t7-2024"
+    },
+    {
+      "id": "66c3f701dfa0bea008c291cd",
+      "name": "Done-20-8-2024"
+    },
+    {
+      "id": "654066b8c0cd305ee0631c62",
+      "name": "Archived - column1"
+    },
+    {
+      "id": "65432b12022434923b3f1701",
+      "name": "Done 🎉- to 3/3/24"
+    },
+    {
+      "id": "665ea85ee6ea8b26c8116287",
+      "name": "fixDoneFromDev-T5/2024"
+    },
+    {
+      "id": "667b8a108cca986ede867ba0",
+      "name": "CuongTT-Speed up T6/2024"
+    },
+    {
+      "id": "667e634b0cd36f0fdde4a5a3",
+      "name": "FixDoneFromDev-t6-2024"
+    },
+    {
+      "id": "669622f0e157533bccef3fa2",
+      "name": "Done T7/2024"
+    },
+    {
+      "id": "66d95e7e51f05268def3a7cb",
+      "name": "fixDoneFromDev-t8-2024"
+    },
+    {
+      "id": "674d363260e83e243ae727e3",
+      "name": "Bug-t11-2024"
+    },
+    {
+      "id": "674d3a70d6afaca3dcc085e7",
+      "name": "speed-up-t11-2024"
+    },
+    {
+      "id": "6765385e592c8eeb283d4cb5",
+      "name": "Done-T12-2024"
+    },
+    {
+      "id": "67779a885db4f9d7cd881b53",
+      "name": "speedup-t12-2024"
+    },
+    {
+      "id": "677de5212d1b28dcf7587c46",
+      "name": "Done-T1-2025"
+    },
+    {
+      "id": "67b296b5b16f06b4dcddcb49",
+      "name": "Done-T2-2025"
+    },
+    {
+      "id": "67c55bd4a0aa782430664534",
+      "name": "Speed-up-t2-2025"
+    },
+    {
+      "id": "67ebc3a59af41f947dfab750",
+      "name": "fix-done-from-dev-t3-2025"
+    },
+    {
+      "id": "67ef7b97a39afad7b1d1654d",
+      "name": "Speed-up-T3-2025"
+    },
+    {
+      "id": "677611e10e8ecc10f9650f68",
+      "name": "FixDoneFromdev-t12-2024"
+    },
+    {
+      "id": "654b5e99c80549deb43505d0",
+      "name": "Cannot Speed up"
+    },
+    {
+      "id": "65cb73c6808298930c0b7fd1",
+      "name": "Done 13/2/2024"
+    },
+    {
+      "id": "65f17610dedfbbde65af0bfd",
+      "name": "Done 13/3/2024"
+    },
+    {
+      "id": "677de5747b3af99c844c5d7c",
+      "name": "FixDoneFromDev-T1-2025"
+    },
+    {
+      "id": "67a17a3e70f5d2250905690d",
+      "name": "speedup-t1-2025"
+    },
+    {
+      "id": "67b297d9788d3e7d985323c7",
+      "name": "FixDoneFromDev-T2-2025"
+    },
+    {
+      "id": "6540a50cd8d8d7c0f27e9da6",
+      "name": "Kenny test list"
+    },
+    {
+      "id": "654c57f9550a71bfa9609c6a",
+      "name": "Archived"
     }
-]
+  ]

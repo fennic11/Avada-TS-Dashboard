@@ -7,10 +7,7 @@ import {
   TableSortLabel
 } from '@mui/material';
 import { getCardsByList } from '../../api/trelloApi';
-import PendingActionsIcon from '@mui/icons-material/PendingActions';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
-
+import CardDetailModal from '../CardDetailModal';
 
 export default function DevFixingDashboard() {
   const theme = useTheme();
@@ -21,6 +18,8 @@ export default function DevFixingDashboard() {
   const [tab, setTab] = useState(0);
   const [orderBy, setOrderBy] = useState('due');
   const [order, setOrder] = useState('asc');
+  const [selectedCard, setSelectedCard] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -122,6 +121,28 @@ export default function DevFixingDashboard() {
 
   const handleAppClick = (app) => {
     setSelectedApp(app === selectedApp ? 'Tất cả' : app);
+  };
+
+  const handleRowClick = async (card) => {
+    try {
+      // Ensure we have the full card data
+      const fullCardData = {
+        ...card,
+        id: card.id || card.shortUrl.split('/').pop(), // Extract ID from shortUrl if not available
+        shortUrl: card.shortUrl,
+        name: card.name,
+        desc: card.desc || '',
+        idList: card.idList,
+        due: card.due,
+        idMembers: card.idMembers || [],
+        labels: card.labels || []
+      };
+      
+      setSelectedCard(fullCardData);
+      setModalOpen(true);
+    } catch (error) {
+      console.error('Error handling row click:', error);
+    }
   };
 
   const renderAppStats = (cardList, title) => {
@@ -290,127 +311,142 @@ export default function DevFixingDashboard() {
       : sortedCards.filter(card => card.app === selectedApp);
     
     return (
-      <TableContainer 
-        component={Paper} 
-        sx={{ 
-          borderRadius: 3,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-          overflow: 'hidden',
-          background: 'white',
-          transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-          animation: 'tableFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-          '@keyframes tableFadeIn': {
-            '0%': { 
-              opacity: 0,
-              transform: 'translateY(20px)',
-              filter: 'blur(5px)'
-            },
-            '100%': { 
-              opacity: 1,
-              transform: 'translateY(0)',
-              filter: 'blur(0)'
-            }
-          },
-          '& .MuiTableCell-root': {
-            py: 2,
-            px: 3,
-            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
-          }
-        }}
-      >
-        <Table>
-          <TableHead>
-            <TableRow sx={{ 
-              background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.primary.main, 0.05)} 100%)`,
-              transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-              '& .MuiTableCell-root': {
-                fontWeight: 600,
-                color: 'primary.main',
-                fontSize: '1rem',
-                transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+      <>
+        <TableContainer 
+          component={Paper} 
+          sx={{ 
+            borderRadius: 3,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+            overflow: 'hidden',
+            background: 'white',
+            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+            animation: 'tableFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+            '@keyframes tableFadeIn': {
+              '0%': { 
+                opacity: 0,
+                transform: 'translateY(20px)',
+                filter: 'blur(5px)'
+              },
+              '100%': { 
+                opacity: 1,
+                transform: 'translateY(0)',
+                filter: 'blur(0)'
               }
-            }}>
-              <TableCell>Card</TableCell>
-              <TableCell>App</TableCell>
-              <TableCell>
-                <TableSortLabel
-                  active={orderBy === 'due'}
-                  direction={orderBy === 'due' ? order : 'asc'}
-                  onClick={() => handleRequestSort('due')}
-                  sx={{
-                    color: 'primary.main',
-                    '&.MuiTableSortLabel-active': {
-                      color: 'primary.main',
-                    },
-                    '&:hover': {
-                      color: 'primary.main',
-                    }
-                  }}
-                >
-                  Due
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>Trễ</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredCards.map((card, index) => {
-              const overdueLevel = getOverdueLevel(card.due);
-              const status = getCardStatus(card.due);
-              const rowStyle = {
-                ...(overdueLevel !== null && {
-                  background: `linear-gradient(135deg, ${alpha(theme.palette.error.main, 0.05 + overdueLevel * 0.02)} 0%, ${alpha(theme.palette.error.main, 0.02)} 100%)`,
-                }),
-                color:
-                  status === 'overdue' ? theme.palette.error.main :
-                  status === 'soon' ? theme.palette.warning.main :
-                  'inherit',
+            },
+            '& .MuiTableCell-root': {
+              py: 2,
+              px: 3,
+              transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+            }
+          }}
+        >
+          <Table>
+            <TableHead>
+              <TableRow sx={{ 
+                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.primary.main, 0.05)} 100%)`,
                 transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                animation: `rowFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.05}s`,
-                '@keyframes rowFadeIn': {
-                  '0%': { 
-                    opacity: 0,
-                    transform: 'translateX(-20px)'
-                  },
-                  '100%': { 
-                    opacity: 1,
-                    transform: 'translateX(0)'
-                  }
-                },
-                '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.05),
-                  transform: 'scale(1.01)',
+                '& .MuiTableCell-root': {
+                  fontWeight: 600,
+                  color: 'primary.main',
+                  fontSize: '1rem',
+                  transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
                 }
-              };
+              }}>
+                <TableCell>Card</TableCell>
+                <TableCell>App</TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={orderBy === 'due'}
+                    direction={orderBy === 'due' ? order : 'asc'}
+                    onClick={() => handleRequestSort('due')}
+                    sx={{
+                      color: 'primary.main',
+                      '&.MuiTableSortLabel-active': {
+                        color: 'primary.main',
+                      },
+                      '&:hover': {
+                        color: 'primary.main',
+                      }
+                    }}
+                  >
+                    Due
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>Trễ</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredCards.map((card, index) => {
+                const overdueLevel = getOverdueLevel(card.due);
+                const status = getCardStatus(card.due);
+                const rowStyle = {
+                  ...(overdueLevel !== null && {
+                    background: `linear-gradient(135deg, ${alpha(theme.palette.error.main, 0.05 + overdueLevel * 0.02)} 0%, ${alpha(theme.palette.error.main, 0.02)} 100%)`,
+                  }),
+                  color:
+                    status === 'overdue' ? theme.palette.error.main :
+                    status === 'soon' ? theme.palette.warning.main :
+                    'inherit',
+                  transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                  animation: `rowFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.05}s`,
+                  '@keyframes rowFadeIn': {
+                    '0%': { 
+                      opacity: 0,
+                      transform: 'translateX(-20px)'
+                    },
+                    '100%': { 
+                      opacity: 1,
+                      transform: 'translateX(0)'
+                    }
+                  },
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                    transform: 'scale(1.01)',
+                    cursor: 'pointer'
+                  }
+                };
 
-              return (
-                <TableRow key={card.shortUrl} sx={rowStyle}>
-                  <TableCell>
-                    <a
-                      href={card.shortUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        color: 'inherit',
-                        textDecoration: 'none',
-                        fontWeight: 500,
-                        '&:hover': {
-                          textDecoration: 'underline',
-                        }
-                      }}
-                    >
-                      {card.name}
-                    </a>
-                  </TableCell>
-                  <TableCell>{card.app}</TableCell>
-                  <TableCell>{formatDate(card.due)}</TableCell>
-                  <TableCell>{getOverdueDays(card.due) ?? '-'}</TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                return (
+                  <TableRow 
+                    key={card.shortUrl} 
+                    sx={rowStyle}
+                    onClick={() => handleRowClick(card)}
+                  >
+                    <TableCell>
+                      <Typography
+                        sx={{
+                          color: 'inherit',
+                          textDecoration: 'none',
+                          fontWeight: 500,
+                          '&:hover': {
+                            textDecoration: 'underline',
+                          }
+                        }}
+                      >
+                        {card.name}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{card.app}</TableCell>
+                    <TableCell>{formatDate(card.due)}</TableCell>
+                    <TableCell>{getOverdueDays(card.due) ?? '-'}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        {selectedCard && (
+          <CardDetailModal
+            open={modalOpen}
+            onClose={() => {
+              setModalOpen(false);
+              setSelectedCard(null);
+            }}
+            cardId={selectedCard.id}
+          />
+        )}
+      </>
     );
   };
 

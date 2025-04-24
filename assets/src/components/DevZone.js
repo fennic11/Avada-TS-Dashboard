@@ -64,6 +64,8 @@ const DevZone = () => {
     const [cardIdInput, setCardIdInput] = useState('');
     const [boardMembers, setBoardMembers] = useState(null);
     const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
+    const [listsData, setListsData] = useState(null);
+    const [isListsModalOpen, setIsListsModalOpen] = useState(false);
     const theme = useTheme();
 
     // Tạo Set chứa các member ID hợp lệ
@@ -297,6 +299,55 @@ const DevZone = () => {
         }
     };
 
+    const handleGetLists = async () => {
+        try {
+            setIsLoading(true);
+            const lists = await getListsByBoardId("638d769884c52b05235a2310");
+            // Chỉ lấy id và name của mỗi list
+            const simplifiedLists = lists.map(list => ({
+                id: list.id,
+                name: list.name
+            }));
+            setListsData(simplifiedLists);
+            setIsListsModalOpen(true);
+        } catch (error) {
+            console.error('Error fetching lists:', error);
+            setSnackbar({
+                open: true,
+                message: "Không thể lấy danh sách lists. Vui lòng thử lại.",
+                severity: "error"
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCloseListsModal = () => {
+        setIsListsModalOpen(false);
+        setListsData(null);
+    };
+
+    const handleCopyListsJSON = () => {
+        if (listsData) {
+            navigator.clipboard.writeText(JSON.stringify(listsData, null, 2))
+                .then(() => {
+                    setSnackbar({
+                        open: true,
+                        message: "Đã sao chép JSON vào clipboard",
+                        severity: "success"
+                    });
+                })
+                .catch(err => {
+                    console.error('Failed to copy:', err);
+                    setSnackbar({
+                        open: true,
+                        message: "Không thể sao chép JSON",
+                        severity: "error"
+                    });
+                });
+        }
+    };
+
     return (
         <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -481,6 +532,26 @@ const DevZone = () => {
                     </Box>
                 </Paper>
 
+                {/* Phần lấy lists */}
+                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
+                        Lấy Board Lists
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                        <Button 
+                            variant="contained" 
+                            onClick={handleGetLists}
+                            disabled={isLoading}
+                            sx={{ 
+                                minWidth: 200,
+                                borderRadius: 1
+                            }}
+                        >
+                            Lấy Board Lists
+                        </Button>
+                    </Box>
+                </Paper>
+
                 {isLoading && (
                     <Box sx={{ mt: 2 }}>
                         <Typography sx={{ mb: 1 }}>{log}</Typography>
@@ -660,6 +731,82 @@ const DevZone = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseMembersModal}>Close</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Lists Modal */}
+            <Dialog
+                open={isListsModalOpen}
+                onClose={handleCloseListsModal}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center' 
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Typography variant="h6">
+                                Board Lists
+                            </Typography>
+                            {listsData && (
+                                <Chip 
+                                    label={`${listsData.length} lists`}
+                                    size="small"
+                                    sx={{ 
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                        color: 'primary.main',
+                                        fontWeight: 500
+                                    }}
+                                />
+                            )}
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {listsData && (
+                                <Tooltip title="Copy JSON">
+                                    <IconButton 
+                                        onClick={handleCopyListsJSON}
+                                        sx={{ 
+                                            color: 'primary.main',
+                                            '&:hover': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                                            }
+                                        }}
+                                    >
+                                        <ContentCopyIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                            <IconButton onClick={handleCloseListsModal}>
+                                <CloseIcon />
+                            </IconButton>
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    {listsData && (
+                        <Paper 
+                            sx={{ 
+                                p: 2, 
+                                backgroundColor: '#f5f5f5',
+                                maxHeight: '60vh',
+                                overflow: 'auto'
+                            }}
+                        >
+                            <pre style={{ 
+                                margin: 0,
+                                whiteSpace: 'pre-wrap',
+                                wordWrap: 'break-word'
+                            }}>
+                                {JSON.stringify(listsData, null, 2)}
+                            </pre>
+                        </Paper>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseListsModal}>Close</Button>
                 </DialogActions>
             </Dialog>
         </Box>
