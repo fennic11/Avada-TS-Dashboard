@@ -600,3 +600,16 @@ export async function updateCardDueComplete(cardId, dueComplete) {
     }
 }
 
+export const getBoardLabels = async (boardId) => {
+    try {
+        const response = await fetch(`https://api.trello.com/1/boards/${boardId}/labels?key=${key}&token=${token}&limit=100`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch board labels');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching board labels:', error);
+        throw error;
+    }
+};
+

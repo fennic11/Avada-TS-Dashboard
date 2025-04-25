@@ -25,7 +25,8 @@ import {
     getCardsByList,
     getActionsByCard,
     getListsByBoardId,
-    getMembers
+    getMembers,
+    getBoardLabels
 } from "../api/trelloApi";
 import { calculateResolutionTime } from "../utils/resolutionTime";
 import { postCards } from "../api/cardsApi";
@@ -66,6 +67,8 @@ const DevZone = () => {
     const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
     const [listsData, setListsData] = useState(null);
     const [isListsModalOpen, setIsListsModalOpen] = useState(false);
+    const [boardLabels, setBoardLabels] = useState(null);
+    const [isLabelsModalOpen, setIsLabelsModalOpen] = useState(false);
     const theme = useTheme();
 
     // Tạo Set chứa các member ID hợp lệ
@@ -348,6 +351,50 @@ const DevZone = () => {
         }
     };
 
+    const handleGetLabels = async () => {
+        try {
+            setIsLoading(true);
+            const labels = await getBoardLabels("638d769884c52b05235a2310");
+            setBoardLabels(labels);
+            setIsLabelsModalOpen(true);
+        } catch (error) {
+            console.error('Error fetching board labels:', error);
+            setSnackbar({
+                open: true,
+                message: "Không thể lấy danh sách labels. Vui lòng thử lại.",
+                severity: "error"
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCloseLabelsModal = () => {
+        setIsLabelsModalOpen(false);
+        setBoardLabels(null);
+    };
+
+    const handleCopyLabelsJSON = () => {
+        if (boardLabels) {
+            navigator.clipboard.writeText(JSON.stringify(boardLabels, null, 2))
+                .then(() => {
+                    setSnackbar({
+                        open: true,
+                        message: "Đã sao chép JSON vào clipboard",
+                        severity: "success"
+                    });
+                })
+                .catch(err => {
+                    console.error('Failed to copy:', err);
+                    setSnackbar({
+                        open: true,
+                        message: "Không thể sao chép JSON",
+                        severity: "error"
+                    });
+                });
+        }
+    };
+
     return (
         <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -548,6 +595,26 @@ const DevZone = () => {
                             }}
                         >
                             Lấy Board Lists
+                        </Button>
+                    </Box>
+                </Paper>
+
+                {/* Phần lấy board labels */}
+                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
+                        Lấy Board Labels
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                        <Button 
+                            variant="contained" 
+                            onClick={handleGetLabels}
+                            disabled={isLoading}
+                            sx={{ 
+                                minWidth: 200,
+                                borderRadius: 1
+                            }}
+                        >
+                            Lấy Board Labels
                         </Button>
                     </Box>
                 </Paper>
@@ -807,6 +874,82 @@ const DevZone = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseListsModal}>Close</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Labels Modal */}
+            <Dialog
+                open={isLabelsModalOpen}
+                onClose={handleCloseLabelsModal}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center' 
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Typography variant="h6">
+                                Board Labels
+                            </Typography>
+                            {boardLabels && (
+                                <Chip 
+                                    label={`${boardLabels.length} labels`}
+                                    size="small"
+                                    sx={{ 
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                        color: 'primary.main',
+                                        fontWeight: 500
+                                    }}
+                                />
+                            )}
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {boardLabels && (
+                                <Tooltip title="Copy JSON">
+                                    <IconButton 
+                                        onClick={handleCopyLabelsJSON}
+                                        sx={{ 
+                                            color: 'primary.main',
+                                            '&:hover': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                                            }
+                                        }}
+                                    >
+                                        <ContentCopyIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                            <IconButton onClick={handleCloseLabelsModal}>
+                                <CloseIcon />
+                            </IconButton>
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    {boardLabels && (
+                        <Paper 
+                            sx={{ 
+                                p: 2, 
+                                backgroundColor: '#f5f5f5',
+                                maxHeight: '60vh',
+                                overflow: 'auto'
+                            }}
+                        >
+                            <pre style={{ 
+                                margin: 0,
+                                whiteSpace: 'pre-wrap',
+                                wordWrap: 'break-word'
+                            }}>
+                                {JSON.stringify(boardLabels, null, 2)}
+                            </pre>
+                        </Paper>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseLabelsModal}>Close</Button>
                 </DialogActions>
             </Dialog>
         </Box>

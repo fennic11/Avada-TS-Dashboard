@@ -116,6 +116,8 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
     const [listSearch, setListSearch] = useState('');
     const [listMenuAnchorEl, setListMenuAnchorEl] = useState(null);
     const listMenuOpen = Boolean(listMenuAnchorEl);
+    // Thêm state cho tìm kiếm label
+    const [labelSearch, setLabelSearch] = useState('');
 
     const safeCard = useMemo(() => {
         if (!card) return null;
@@ -454,12 +456,55 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
 
     const handleAddLabel = async () => {
         try {
+            console.log('Adding label with ID:', newLabelId);
+            console.log('Available labels:', labels);
+            
             const label = labels.find(l => l.id === newLabelId);
+            console.log('Found label:', label);
+            
+            if (!label) {
+                setSnackbar({
+                    open: true,
+                    message: `Label not found. ID: ${newLabelId}`,
+                    severity: 'error'
+                });
+                return;
+            }
+
+            // Kiểm tra xem label đã tồn tại trên card chưa
+            if (card.labels.some(l => l.id === newLabelId)) {
+                setSnackbar({
+                    open: true,
+                    message: 'Label already exists on this card',
+                    severity: 'warning'
+                });
+                return;
+            }
+
             await addLabelByID(card.id, newLabelId);
-            card.labels.push(label); // Cập nhật UI
+            
+            // Cập nhật state đúng cách
+            setCard(prevCard => ({
+                ...prevCard,
+                labels: [...prevCard.labels, label]
+            }));
+
             setNewLabelId('');
+            setLabelMenuOpen(false);
+            setLabelMenuAnchorEl(null);
+
+            setSnackbar({
+                open: true,
+                message: 'Label added successfully',
+                severity: 'success'
+            });
         } catch (err) {
             console.error('Failed to add label:', err);
+            setSnackbar({
+                open: true,
+                message: 'Failed to add label: ' + err.message,
+                severity: 'error'
+            });
         }
     };
 
@@ -669,6 +714,14 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
             list.name.toLowerCase().includes(listSearch.toLowerCase())
         );
     }, [lists, listSearch]);
+
+    // Thêm hàm lọc labels
+    const filteredLabels = useMemo(() => {
+        if (!labelSearch) return availableLabels;
+        return availableLabels.filter(label => 
+            label.name.toLowerCase().includes(labelSearch.toLowerCase())
+        );
+    }, [availableLabels, labelSearch]);
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -1588,64 +1641,118 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                 <Menu
                                     anchorEl={labelMenuAnchorEl}
                                     open={labelMenuOpen}
-                                    onClose={() => setLabelMenuOpen(false)}
-                                    anchorOrigin={{
-                                        vertical: 'bottom',
-                                        horizontal: 'left',
-                                    }}
-                                    transformOrigin={{
-                                        vertical: 'top',
-                                        horizontal: 'left',
+                                    onClose={() => {
+                                        setLabelMenuOpen(false);
+                                        setLabelSearch('');
                                     }}
                                     PaperProps={{
                                         sx: {
-                                            mt: 0.5,
-                                            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                                            mt: 1,
+                                            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
                                             borderRadius: '8px',
                                             minWidth: '250px',
                                             maxHeight: '400px'
                                         }
                                     }}
                                 >
-                                    {availableLabels.map(label => {
-                                        const labelColor = getLabelColor(label.name);
-                                        return (
-                                            <MenuItem 
-                                                key={label.id} 
-                                                onClick={() => {
-                                                    setNewLabelId(label.id);
-                                                    handleAddLabel();
-                                                    setLabelMenuOpen(false);
-                                                }}
-                                                sx={{ 
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 1,
-                                                    py: 1,
-                                                    px: 2,
-                                                    '&:hover': {
-                                                        backgroundColor: 'rgba(25, 118, 210, 0.08)'
+                                    {/* Search Box */}
+                                    <Box sx={{ p: 1, borderBottom: '1px solid rgba(0, 0, 0, 0.08)' }}>
+                                        <TextField
+                                            size="small"
+                                            fullWidth
+                                            placeholder="Search labels..."
+                                            value={labelSearch}
+                                            onChange={(e) => setLabelSearch(e.target.value)}
+                                            InputProps={{
+                                                startAdornment: (
+                                                    <SearchIcon 
+                                                        fontSize="small" 
+                                                        sx={{ 
+                                                            color: 'action.active',
+                                                            mr: 1
+                                                        }} 
+                                                    />
+                                                ),
+                                                sx: {
+                                                    fontSize: '0.875rem',
+                                                    backgroundColor: '#f8fafc',
+                                                    '& .MuiOutlinedInput-notchedOutline': {
+                                                        borderColor: 'rgba(0, 0, 0, 0.08)'
+                                                    },
+                                                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                        borderColor: 'rgba(0, 0, 0, 0.15)'
+                                                    },
+                                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                        borderColor: '#1976d2'
                                                     }
+                                                }
+                                            }}
+                                        />
+                                    </Box>
+                                    <Divider />
+                                    <Box sx={{ 
+                                        maxHeight: 300,
+                                        overflow: 'auto',
+                                        ...(filteredLabels.length === 0 && {
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                            py: 2
+                                        })
+                                    }}>
+                                        {filteredLabels.length > 0 ? (
+                                            filteredLabels.map(label => {
+                                                const labelColor = getLabelColor(label.name);
+                                                return (
+                                                    <MenuItem 
+                                                        key={label.id} 
+                                                        onClick={() => {
+                                                            setNewLabelId(label.id);
+                                                            handleAddLabel();
+                                                            setLabelMenuOpen(false);
+                                                            setLabelSearch('');
+                                                        }}
+                                                        sx={{ 
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 1,
+                                                            py: 1,
+                                                            px: 2,
+                                                            '&:hover': {
+                                                                backgroundColor: 'rgba(25, 118, 210, 0.08)'
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Box
+                                                            sx={{ 
+                                                                width: 32,
+                                                                height: 4,
+                                                                borderRadius: 2,
+                                                                bgcolor: labelColor,
+                                                                boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                                            }}
+                                                        />
+                                                        <Typography variant="body2" sx={{
+                                                            fontSize: '0.875rem',
+                                                            fontWeight: 500
+                                                        }}>
+                                                            {label.name}
+                                                        </Typography>
+                                                    </MenuItem>
+                                                );
+                                            })
+                                        ) : (
+                                            <Typography 
+                                                variant="body2" 
+                                                sx={{ 
+                                                    color: 'text.secondary',
+                                                    fontStyle: 'italic'
                                                 }}
                                             >
-                                                <Box
-                                                    sx={{ 
-                                                        width: 32,
-                                                        height: 4,
-                                                        borderRadius: 2,
-                                                        bgcolor: labelColor,
-                                                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                                                    }}
-                                                />
-                                                <Typography variant="body2" sx={{
-                                                    fontSize: '0.875rem',
-                                                    fontWeight: 500
-                                                }}>
-                                                    {label.name}
-                                                </Typography>
-                                            </MenuItem>
-                                        );
-                                    })}
+                                                No labels found
+                                            </Typography>
+                                        )}
+                                    </Box>
                                 </Menu>
                             )}
                         </Box>
