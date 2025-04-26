@@ -82,7 +82,6 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
     const [loading, setLoading] = useState(false);
     const [agents, setAgents] = useState([]);
     const [newAgentId, setNewAgentId] = useState('');
-    const [newLabelId, setNewLabelId] = useState('');
     const [currentListId, setCurrentListId] = useState('');
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
@@ -443,36 +442,55 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
         }
     };
 
-    const handleRemoveLabel = (label) => {
-        setConfirmAction({
-            message: `Xoá label "${label.name}" khỏi card?`,
-            onConfirm: async () => {
-                await removeLabelByID(card.id, label.id);
-                card.labels = card.labels.filter(l => l.id !== label.id);
-            }
-        });
-        setConfirmOpen(true);
-    };
-
-    const handleAddLabel = async () => {
+    const handleRemoveLabel = async (labelId) => {
         try {
-            console.log('Adding label with ID:', newLabelId);
-            console.log('Available labels:', labels);
-            
-            const label = labels.find(l => l.id === newLabelId);
-            console.log('Found label:', label);
-            
+            const label = card.labels.find(l => l.id === labelId);
             if (!label) {
                 setSnackbar({
                     open: true,
-                    message: `Label not found. ID: ${newLabelId}`,
+                    message: 'Label not found on card',
+                    severity: 'error'
+                });
+                return;
+            }
+
+            await removeLabelByID(card.id, labelId);
+            
+            // Cập nhật state đúng cách
+            setCard(prevCard => ({
+                ...prevCard,
+                labels: prevCard.labels.filter(l => l.id !== labelId)
+            }));
+
+            setSnackbar({
+                open: true,
+                message: 'Label removed successfully',
+                severity: 'success'
+            });
+        } catch (err) {
+            console.error('Failed to remove label:', err);
+            setSnackbar({
+                open: true,
+                message: 'Failed to remove label: ' + err.message,
+                severity: 'error'
+            });
+        }
+    };
+
+    const handleAddLabel = async (labelId) => {
+        try {
+            const label = labels.find(l => l.id === labelId);
+            if (!label) {
+                setSnackbar({
+                    open: true,
+                    message: 'Label not found',
                     severity: 'error'
                 });
                 return;
             }
 
             // Kiểm tra xem label đã tồn tại trên card chưa
-            if (card.labels.some(l => l.id === newLabelId)) {
+            if (card.labels.some(l => l.id === labelId)) {
                 setSnackbar({
                     open: true,
                     message: 'Label already exists on this card',
@@ -481,7 +499,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                 return;
             }
 
-            await addLabelByID(card.id, newLabelId);
+            await addLabelByID(card.id, labelId);
             
             // Cập nhật state đúng cách
             setCard(prevCard => ({
@@ -489,9 +507,9 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                 labels: [...prevCard.labels, label]
             }));
 
-            setNewLabelId('');
             setLabelMenuOpen(false);
             setLabelMenuAnchorEl(null);
+            setLabelSearch('');
 
             setSnackbar({
                 open: true,
@@ -723,6 +741,40 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
         );
     }, [availableLabels, labelSearch]);
 
+    // Add function to render description with clickable links
+    const renderDescriptionWithLinks = (text) => {
+        if (!text) return '';
+        
+        // Regular expression to match URLs
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        
+        // Split text by URLs and map to components
+        const parts = text.split(urlRegex);
+        
+        return parts.map((part, index) => {
+            if (part.match(urlRegex)) {
+                return (
+                    <Link 
+                        key={index} 
+                        href={part} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        sx={{ 
+                            color: 'primary.main',
+                            textDecoration: 'underline',
+                            '&:hover': {
+                                color: 'primary.dark'
+                            }
+                        }}
+                    >
+                        {part}
+                    </Link>
+                );
+            }
+            return part;
+        });
+    };
+
     const renderTabContent = () => {
         switch (activeTab) {
             case 0: // Details & Comments
@@ -759,7 +811,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                         whiteSpace: 'pre-wrap'
                                     }}
                                 >
-                                    {card.desc || ''}
+                                    {renderDescriptionWithLinks(card.desc || '')}
                                 </Typography>
                             </Box>
                         </Box>
@@ -1580,14 +1632,14 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                     gap: 0.5
                                 }}
                             >
-                                {enhancedLabels.map(label => (
+                                {card.labels.map(label => (
                                     <Chip
                                         key={label.id}
                                         label={label.name}
                                         size="small"
-                                        onDelete={() => handleRemoveLabel(label)}
+                                        onDelete={() => handleRemoveLabel(label.id)}
                                         sx={{ 
-                                            bgcolor: label.color,
+                                            bgcolor: getLabelColor(label.name),
                                             color: 'white',
                                             fontWeight: 500,
                                             fontSize: '0.75rem',
@@ -1603,7 +1655,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                 }
                                             },
                                             '&:hover': {
-                                                bgcolor: label.color,
+                                                bgcolor: getLabelColor(label.name),
                                                 filter: 'brightness(90%)',
                                                 boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
                                             }
@@ -1707,10 +1759,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                     <MenuItem 
                                                         key={label.id} 
                                                         onClick={() => {
-                                                            setNewLabelId(label.id);
-                                                            handleAddLabel();
-                                                            setLabelMenuOpen(false);
-                                                            setLabelSearch('');
+                                                            handleAddLabel(label.id);
                                                         }}
                                                         sx={{ 
                                                             display: 'flex',
@@ -2091,9 +2140,6 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                         List
                                     </Typography>
                                     <Box>
-                                        <Typography variant="subtitle2" gutterBottom>
-                                            List
-                                        </Typography>
                                         <Button
                                             onClick={(e) => setListMenuAnchorEl(e.currentTarget)}
                                             sx={{

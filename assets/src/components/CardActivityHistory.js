@@ -58,7 +58,7 @@ const CardActivityHistory = ({ actions }) => {
                 const text = action.data.text;
                 const slackLinkRegex = /\[([^\]]+)\]\((https:\/\/avadaio\.slack\.com\/archives\/[^)\s]+)/;
                 const slackMatch = text.match(slackLinkRegex);
-                const loomRegex = /(https:\/\/www\.loom\.com\/share\/[^\s]+)/;
+                const loomRegex = /(?:\[([^\]]+)\]\()?(https:\/\/www\.loom\.com\/share\/[^\s)]+)(?:\))?/;
                 const loomMatch = text.match(loomRegex);
                 
                 return (
@@ -95,35 +95,40 @@ const CardActivityHistory = ({ actions }) => {
                                 }
                             />
                         )}
+                        {loomMatch && (
+                            <Box
+                                sx={{
+                                    position: 'relative',
+                                    paddingBottom: '56.25%', // 16:9 aspect ratio
+                                    height: 0,
+                                    overflow: 'hidden',
+                                    maxWidth: '100%',
+                                    background: '#000',
+                                    borderRadius: 1,
+                                    mt: 1
+                                }}
+                            >
+                                <iframe
+                                    src={`https://www.loom.com/embed/${loomMatch[2].split('/').pop()}`}
+                                    frameBorder="0"
+                                    allowFullScreen
+                                    webkitallowfullscreen
+                                    mozallowfullscreen
+                                    style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        width: '100%',
+                                        height: '100%'
+                                    }}
+                                />
+                            </Box>
+                        )}
                         <Typography variant="body2" sx={{ whiteSpace: "pre-line" }}>
                             {slackMatch ? (
                                 text.split(slackLinkRegex)[0]
                             ) : loomMatch ? (
-                                <Box
-                                    sx={{
-                                        position: 'relative',
-                                        paddingBottom: '56.25%', // 16:9 aspect ratio
-                                        height: 0,
-                                        overflow: 'hidden',
-                                        maxWidth: '100%',
-                                        background: '#000',
-                                        borderRadius: 1,
-                                        mt: 1
-                                    }}
-                                >
-                                    <iframe
-                                        src={`${loomMatch[1].replace('/share/', '/embed/')}`}
-                                        frameBorder="0"
-                                        allowFullScreen
-                                        style={{
-                                            position: 'absolute',
-                                            top: 0,
-                                            left: 0,
-                                            width: '100%',
-                                            height: '100%'
-                                        }}
-                                    />
-                                </Box>
+                                text.split(loomRegex)[0]
                             ) : (
                                 text.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
                                     if (part.match(/^https?:\/\//)) {
