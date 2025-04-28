@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, Typography, Grid, Box, CircularProgress, useTheme, alpha } from '@mui/material';
-import { getCardsByList } from '../../api/trelloApi';
+import { Card, CardContent, Typography, Grid, Box, CircularProgress, useTheme, alpha, Button, Menu, MenuItem, TextField, InputAdornment } from '@mui/material';
+import { getCardsByList, getListsByBoardId } from '../../api/trelloApi';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import SearchIcon from '@mui/icons-material/Search';
 
 const SPEEDUP_POINTS = {
     '0': 4,
@@ -9,6 +11,9 @@ const SPEEDUP_POINTS = {
     '3': 40,
     '4': 45
 };
+
+const BOARD_ID = '638d769884c52b05235a2310';
+const DEFAULT_LIST_ID = '6629f8b136152f62cca0c46b';
 
 const SpeedUpKPI = () => {
     const theme = useTheme();
@@ -24,12 +29,32 @@ const SpeedUpKPI = () => {
         }
     });
     const [loading, setLoading] = useState(true);
+    const [lists, setLists] = useState([]);
+    const [currentList, setCurrentList] = useState(DEFAULT_LIST_ID);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [anchorEl, setAnchorEl] = useState(null);
+    const [open, setOpen] = useState(false);
+
+    useEffect(() => {
+        const fetchLists = async () => {
+            try {
+                const listsData = await getListsByBoardId(BOARD_ID);
+                if (listsData) {
+                    setLists(listsData);
+                }
+            } catch (error) {
+                console.error('Error fetching lists:', error);
+            }
+        };
+
+        fetchLists();
+    }, []);
 
     useEffect(() => {
         const fetchCards = async () => {
             try {
                 setLoading(true);
-                const cards = await getCardsByList('6629f8b136152f62cca0c46b');
+                const cards = await getCardsByList(currentList);
                 
                 if (!cards) {
                     throw new Error('Failed to fetch cards');
@@ -94,7 +119,26 @@ const SpeedUpKPI = () => {
         };
 
         fetchCards();
-    }, []);
+    }, [currentList]);
+
+    const handleClick = (event) => {
+        setAnchorEl(event.currentTarget);
+        setOpen(true);
+    };
+
+    const handleClose = () => {
+        setOpen(false);
+        setSearchTerm('');
+    };
+
+    const handleListSelect = (listId) => {
+        setCurrentList(listId);
+        handleClose();
+    };
+
+    const filteredLists = lists.filter(list => 
+        list.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     if (loading) {
         return (
@@ -118,7 +162,101 @@ const SpeedUpKPI = () => {
     }
 
     return (
-        <Box sx={{ width: '100%' }}>
+        <Box sx={{ width: '100%', p: 4 }}>
+            <Box sx={{ 
+                mb: 4,
+                display: 'flex', 
+                alignItems: 'center',
+                gap: 2
+            }}>
+                <Button
+                    variant="outlined"
+                    onClick={handleClick}
+                    startIcon={<AssignmentIcon />}
+                    sx={{
+                        minWidth: 300,
+                        justifyContent: 'flex-start',
+                        backgroundColor: 'white',
+                        borderRadius: 2,
+                        borderColor: alpha(theme.palette.primary.main, 0.2),
+                        borderWidth: 2,
+                        '&:hover': {
+                            borderColor: alpha(theme.palette.primary.main, 0.3),
+                            backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                        },
+                        py: 1.5,
+                        px: 2,
+                    }}
+                >
+                    {lists.find(list => list.id === currentList)?.name || 'Chọn list'}
+                </Button>
+
+                <Menu
+                    anchorEl={anchorEl}
+                    open={open}
+                    onClose={handleClose}
+                    PaperProps={{
+                        sx: {
+                            width: 300,
+                            maxHeight: 400,
+                            borderRadius: 2,
+                            border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+                        }
+                    }}
+                >
+                    <Box sx={{ p: 2, borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+                        <TextField
+                            fullWidth
+                            placeholder="Tìm kiếm list..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon sx={{ color: theme.palette.primary.main }} />
+                                    </InputAdornment>
+                                ),
+                            }}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                                    borderRadius: 1,
+                                }
+                            }}
+                        />
+                    </Box>
+                    <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
+                        {filteredLists.map((list) => (
+                            <MenuItem
+                                key={list.id}
+                                onClick={() => handleListSelect(list.id)}
+                                selected={list.id === currentList}
+                                sx={{
+                                    py: 1.5,
+                                    px: 2,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1,
+                                    '&:hover': {
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                                    },
+                                    '&.Mui-selected': {
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                                        '&:hover': {
+                                            backgroundColor: alpha(theme.palette.primary.main, 0.16),
+                                        }
+                                    }
+                                }}
+                            >
+                                <AssignmentIcon sx={{ fontSize: 20, color: theme.palette.primary.main }} />
+                                {list.name}
+                            </MenuItem>
+                        ))}
+                    </Box>
+                </Menu>
+            </Box>
+
             <Grid container spacing={3}>
                 {/* Summary Cards */}
                 <Grid item xs={12} md={6}>

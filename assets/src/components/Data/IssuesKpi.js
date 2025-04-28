@@ -4,7 +4,7 @@ import {
     Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, CircularProgress, Accordion,
     AccordionSummary, AccordionDetails, Card, CardContent, Link,
-    useTheme, alpha, Tabs, Tab, Chip, Fade, Select, MenuItem, FormControl, InputLabel, Avatar, Button, Tooltip
+    useTheme, alpha, Tabs, Tab, Chip, Fade, Menu, MenuItem, Button, Tooltip, TextField, InputAdornment, Avatar
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import GroupIcon from '@mui/icons-material/Group';
@@ -17,6 +17,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import SearchIcon from '@mui/icons-material/Search';
 import members from '../../data/members.json';
 import { getCardsByList, getListsByBoardId } from '../../api/trelloApi';
 
@@ -44,6 +45,12 @@ const IssuesKpiSummary = () => {
     const [lists, setLists] = useState([]);
     const [issuesSelectedList, setIssuesSelectedList] = useState('');
     const [bugsSelectedList, setBugsSelectedList] = useState('');
+    const [issuesSearchTerm, setIssuesSearchTerm] = useState('');
+    const [bugsSearchTerm, setBugsSearchTerm] = useState('');
+    const [issuesAnchorEl, setIssuesAnchorEl] = useState(null);
+    const [bugsAnchorEl, setBugsAnchorEl] = useState(null);
+    const [issuesOpen, setIssuesOpen] = useState(false);
+    const [bugsOpen, setBugsOpen] = useState(false);
 
     useEffect(() => {
         const fetchLists = async () => {
@@ -285,6 +292,44 @@ const IssuesKpiSummary = () => {
         }
     };
 
+    const handleIssuesClick = (event) => {
+        setIssuesAnchorEl(event.currentTarget);
+        setIssuesOpen(true);
+    };
+
+    const handleBugsClick = (event) => {
+        setBugsAnchorEl(event.currentTarget);
+        setBugsOpen(true);
+    };
+
+    const handleIssuesClose = () => {
+        setIssuesOpen(false);
+        setIssuesSearchTerm('');
+    };
+
+    const handleBugsClose = () => {
+        setBugsOpen(false);
+        setBugsSearchTerm('');
+    };
+
+    const handleIssuesListSelect = (listId) => {
+        setIssuesSelectedList(listId);
+        handleIssuesClose();
+    };
+
+    const handleBugsListSelect = (listId) => {
+        setBugsSelectedList(listId);
+        handleBugsClose();
+    };
+
+    const filteredIssuesLists = lists.filter(list => 
+        list.name.toLowerCase().includes(issuesSearchTerm.toLowerCase())
+    );
+
+    const filteredBugsLists = lists.filter(list => 
+        list.name.toLowerCase().includes(bugsSearchTerm.toLowerCase())
+    );
+
     if (loading) {
         return (
             <Box
@@ -463,51 +508,75 @@ const IssuesKpiSummary = () => {
                                     </Typography>
                                 </Box>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                                    <FormControl 
-                                        sx={{ 
+                                    <Button
+                                        variant="outlined"
+                                        onClick={handleIssuesClick}
+                                        startIcon={<AssignmentIcon />}
+                                        sx={{
                                             minWidth: 300,
-                                            '& .MuiInputLabel-root': {
-                                                color: theme.palette.text.secondary,
-                                                '&.Mui-focused': {
-                                                    color: theme.palette.primary.main,
-                                                }
+                                            justifyContent: 'flex-start',
+                                            backgroundColor: 'white',
+                                            borderRadius: 2,
+                                            borderColor: alpha(theme.palette.primary.main, 0.2),
+                                            borderWidth: 2,
+                                            '&:hover': {
+                                                borderColor: alpha(theme.palette.primary.main, 0.3),
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                                            },
+                                            py: 1.5,
+                                            px: 2,
+                                        }}
+                                    >
+                                        {lists.find(list => list.id === issuesSelectedList)?.name || 'Chọn list'}
+                                    </Button>
+
+                                    <Menu
+                                        anchorEl={issuesAnchorEl}
+                                        open={issuesOpen}
+                                        onClose={handleIssuesClose}
+                                        PaperProps={{
+                                            sx: {
+                                                width: 300,
+                                                maxHeight: 400,
+                                                borderRadius: 2,
+                                                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                                                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
                                             }
                                         }}
                                     >
-                                        <InputLabel>Chọn List</InputLabel>
-                                        <Select
-                                            value={issuesSelectedList}
-                                            label="Chọn List"
-                                            onChange={(e) => setIssuesSelectedList(e.target.value)}
-                                            sx={{
-                                                backgroundColor: 'white',
-                                                borderRadius: 2,
-                                                '& .MuiOutlinedInput-notchedOutline': {
-                                                    borderColor: alpha(theme.palette.primary.main, 0.2),
-                                                    borderWidth: 2,
-                                                },
-                                                '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                    borderColor: alpha(theme.palette.primary.main, 0.3),
-                                                },
-                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                    borderColor: theme.palette.primary.main,
-                                                },
-                                                '& .MuiSelect-select': {
-                                                    py: 1.5,
-                                                    px: 2,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 1,
-                                                }
-                                            }}
-                                        >
-                                            {lists.map((list) => (
-                                                <MenuItem 
-                                                    key={list.id} 
-                                                    value={list.id}
+                                        <Box sx={{ p: 2, borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+                                            <TextField
+                                                fullWidth
+                                                placeholder="Tìm kiếm list..."
+                                                value={issuesSearchTerm}
+                                                onChange={(e) => setIssuesSearchTerm(e.target.value)}
+                                                InputProps={{
+                                                    startAdornment: (
+                                                        <InputAdornment position="start">
+                                                            <SearchIcon sx={{ color: theme.palette.primary.main }} />
+                                                        </InputAdornment>
+                                                    ),
+                                                }}
+                                                sx={{
+                                                    '& .MuiOutlinedInput-root': {
+                                                        backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                                                        borderRadius: 1,
+                                                    }
+                                                }}
+                                            />
+                                        </Box>
+                                        <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
+                                            {filteredIssuesLists.map((list) => (
+                                                <MenuItem
+                                                    key={list.id}
+                                                    onClick={() => handleIssuesListSelect(list.id)}
+                                                    selected={list.id === issuesSelectedList}
                                                     sx={{
                                                         py: 1.5,
                                                         px: 2,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 1,
                                                         '&:hover': {
                                                             backgroundColor: alpha(theme.palette.primary.main, 0.08),
                                                         },
@@ -523,8 +592,9 @@ const IssuesKpiSummary = () => {
                                                     {list.name}
                                                 </MenuItem>
                                             ))}
-                                        </Select>
-                                    </FormControl>
+                                        </Box>
+                                    </Menu>
+
                                     <Tooltip title="Copy data to clipboard">
                                         <Button
                                             variant="contained"
@@ -910,6 +980,92 @@ const IssuesKpiSummary = () => {
                                         Xem thống kê và phân tích bugs
                                     </Typography>
                                 </Box>
+                                <Button
+                                    variant="outlined"
+                                    onClick={handleBugsClick}
+                                    startIcon={<AssignmentIcon />}
+                                    sx={{
+                                        minWidth: 300,
+                                        justifyContent: 'flex-start',
+                                        backgroundColor: 'white',
+                                        borderRadius: 2,
+                                        borderColor: alpha(theme.palette.primary.main, 0.2),
+                                        borderWidth: 2,
+                                        '&:hover': {
+                                            borderColor: alpha(theme.palette.primary.main, 0.3),
+                                            backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                                        },
+                                        py: 1.5,
+                                        px: 2,
+                                    }}
+                                >
+                                    {lists.find(list => list.id === bugsSelectedList)?.name || 'Chọn list'}
+                                </Button>
+
+                                <Menu
+                                    anchorEl={bugsAnchorEl}
+                                    open={bugsOpen}
+                                    onClose={handleBugsClose}
+                                    PaperProps={{
+                                        sx: {
+                                            width: 300,
+                                            maxHeight: 400,
+                                            borderRadius: 2,
+                                            border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+                                        }
+                                    }}
+                                >
+                                    <Box sx={{ p: 2, borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+                                        <TextField
+                                            fullWidth
+                                            placeholder="Tìm kiếm list..."
+                                            value={bugsSearchTerm}
+                                            onChange={(e) => setBugsSearchTerm(e.target.value)}
+                                            InputProps={{
+                                                startAdornment: (
+                                                    <InputAdornment position="start">
+                                                        <SearchIcon sx={{ color: theme.palette.primary.main }} />
+                                                    </InputAdornment>
+                                                ),
+                                            }}
+                                            sx={{
+                                                '& .MuiOutlinedInput-root': {
+                                                    backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                                                    borderRadius: 1,
+                                                }
+                                            }}
+                                        />
+                                    </Box>
+                                    <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
+                                        {filteredBugsLists.map((list) => (
+                                            <MenuItem
+                                                key={list.id}
+                                                onClick={() => handleBugsListSelect(list.id)}
+                                                selected={list.id === bugsSelectedList}
+                                                sx={{
+                                                    py: 1.5,
+                                                    px: 2,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 1,
+                                                    '&:hover': {
+                                                        backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                                                    },
+                                                    '&.Mui-selected': {
+                                                        backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                                                        '&:hover': {
+                                                            backgroundColor: alpha(theme.palette.primary.main, 0.16),
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                <AssignmentIcon sx={{ fontSize: 20, color: theme.palette.primary.main }} />
+                                                {list.name}
+                                            </MenuItem>
+                                        ))}
+                                    </Box>
+                                </Menu>
                             </Box>
                             <BugsKpiSummary selectedList={bugsSelectedList} />
                         </Paper>

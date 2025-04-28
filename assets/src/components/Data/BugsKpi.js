@@ -4,7 +4,7 @@ import {
     Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, CircularProgress, Accordion,
     AccordionSummary, AccordionDetails, Card, CardContent, Link,
-    Chip, Stack, Divider, useTheme, FormControl, InputLabel, Select, MenuItem, alpha, Button, Tooltip
+    Chip, Stack, Divider, useTheme, MenuItem, alpha, Button, Tooltip, Menu, TextField, InputAdornment
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PersonIcon from '@mui/icons-material/Person';
@@ -12,6 +12,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import DownloadIcon from '@mui/icons-material/Download';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import SearchIcon from '@mui/icons-material/Search';
 
 import { getCardsByList, getListsByBoardId } from '../../api/trelloApi';
 import members from '../../data/members.json';
@@ -24,6 +25,9 @@ const BugsKpiSummary = ({ selectedList = DEFAULT_LIST_ID }) => {
     const [loading, setLoading] = useState(true);
     const [lists, setLists] = useState([]);
     const [currentList, setCurrentList] = useState(selectedList);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [anchorEl, setAnchorEl] = useState(null);
+    const [open, setOpen] = useState(false);
     const theme = useTheme();
 
     useEffect(() => {
@@ -98,9 +102,24 @@ const BugsKpiSummary = ({ selectedList = DEFAULT_LIST_ID }) => {
         fetchData();
     }, [currentList]);
 
-    const handleListChange = (e) => {
-        setCurrentList(e.target.value);
+    const handleClick = (event) => {
+        setAnchorEl(event.currentTarget);
+        setOpen(true);
     };
+
+    const handleClose = () => {
+        setOpen(false);
+        setSearchTerm('');
+    };
+
+    const handleListSelect = (listId) => {
+        setCurrentList(listId);
+        handleClose();
+    };
+
+    const filteredLists = lists.filter(list => 
+        list.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     const getMemberName = (id) => {
         const mem = members.find((m) => m.id === id);
@@ -217,51 +236,75 @@ const BugsKpiSummary = ({ selectedList = DEFAULT_LIST_ID }) => {
                 alignItems: 'center',
                 gap: 2
             }}>
-                <FormControl 
-                    sx={{ 
+                <Button
+                    variant="outlined"
+                    onClick={handleClick}
+                    startIcon={<AssignmentIcon />}
+                    sx={{
                         minWidth: 300,
-                        '& .MuiInputLabel-root': {
-                            color: theme.palette.text.secondary,
-                            '&.Mui-focused': {
-                                color: theme.palette.primary.main,
-                            }
+                        justifyContent: 'flex-start',
+                        backgroundColor: 'white',
+                        borderRadius: 2,
+                        borderColor: alpha(theme.palette.primary.main, 0.2),
+                        borderWidth: 2,
+                        '&:hover': {
+                            borderColor: alpha(theme.palette.primary.main, 0.3),
+                            backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                        },
+                        py: 1.5,
+                        px: 2,
+                    }}
+                >
+                    {lists.find(list => list.id === currentList)?.name || 'Chọn list'}
+                </Button>
+
+                <Menu
+                    anchorEl={anchorEl}
+                    open={open}
+                    onClose={handleClose}
+                    PaperProps={{
+                        sx: {
+                            width: 300,
+                            maxHeight: 400,
+                            borderRadius: 2,
+                            border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
                         }
                     }}
                 >
-                    <InputLabel>Chọn List</InputLabel>
-                    <Select
-                        value={currentList}
-                        label="Chọn List"
-                        onChange={handleListChange}
-                        sx={{
-                            backgroundColor: 'white',
-                            borderRadius: 2,
-                            '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: alpha(theme.palette.primary.main, 0.2),
-                                borderWidth: 2,
-                            },
-                            '&:hover .MuiOutlinedInput-notchedOutline': {
-                                borderColor: alpha(theme.palette.primary.main, 0.3),
-                            },
-                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: theme.palette.primary.main,
-                            },
-                            '& .MuiSelect-select': {
-                                py: 1.5,
-                                px: 2,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1,
-                            }
-                        }}
-                    >
-                        {lists.map((list) => (
-                            <MenuItem 
-                                key={list.id} 
-                                value={list.id}
+                    <Box sx={{ p: 2, borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+                        <TextField
+                            fullWidth
+                            placeholder="Tìm kiếm list..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon sx={{ color: theme.palette.primary.main }} />
+                                    </InputAdornment>
+                                ),
+                            }}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                                    borderRadius: 1,
+                                }
+                            }}
+                        />
+                    </Box>
+                    <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
+                        {filteredLists.map((list) => (
+                            <MenuItem
+                                key={list.id}
+                                onClick={() => handleListSelect(list.id)}
+                                selected={list.id === currentList}
                                 sx={{
                                     py: 1.5,
                                     px: 2,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1,
                                     '&:hover': {
                                         backgroundColor: alpha(theme.palette.primary.main, 0.08),
                                     },
@@ -277,8 +320,9 @@ const BugsKpiSummary = ({ selectedList = DEFAULT_LIST_ID }) => {
                                 {list.name}
                             </MenuItem>
                         ))}
-                    </Select>
-                </FormControl>
+                    </Box>
+                </Menu>
+
                 <Button
                     variant="contained"
                     startIcon={<DownloadIcon />}
