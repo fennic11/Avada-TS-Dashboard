@@ -4,11 +4,13 @@ import {
     Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, CircularProgress, Accordion,
     AccordionSummary, AccordionDetails, Card, CardContent, Link,
-    useTheme, alpha, Tabs, Tab, Chip, Fade, Select, MenuItem, FormControl, InputLabel, Avatar
+    useTheme, alpha, Tabs, Tab, Chip, Fade, Select, MenuItem, FormControl, InputLabel, Avatar, Button, Tooltip
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import GroupIcon from '@mui/icons-material/Group';
 import WarningIcon from '@mui/icons-material/Warning';
+import DownloadIcon from '@mui/icons-material/Download';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SpeedUpKPI from './speedUpKpi';
 import BugsKpiSummary from './BugsKpi';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -174,6 +176,113 @@ const IssuesKpiSummary = () => {
 
     const handleTabChange = (event, newValue) => {
         setActiveTab(newValue);
+    };
+
+    const handleExportCards = async () => {
+        try {
+            const cards = await getCardsByList(issuesSelectedList);
+            if (!cards) return;
+
+            const exportData = cards.map(card => {
+                const appLabel = card.labels.find(label => label.name.includes('App:'))?.name || '';
+                const levelLabel = card.labels.find(label => ISSUE_POINTS[label.name])?.name || '';
+                const levelNumber = levelLabel.replace('Issue: level ', '').replace('Issues: Level ', '');
+                const point = ISSUE_POINTS[levelLabel] || 0;
+                
+                const memberNames = card.idMembers
+                    .map(id => {
+                        const member = members.find(m => m.id === id);
+                        return member?.kpiName || id;
+                    })
+                    .join(', ');
+
+                const today = new Date();
+                const formattedDate = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+
+                return {
+                    date: formattedDate,
+                    member: memberNames,
+                    app: appLabel,
+                    issue: card.name,
+                    link: card.shortUrl,
+                    level: levelNumber,
+                    point: point
+                };
+            });
+
+            // Convert to CSV
+            const headers = ['Date', 'Member', 'App', 'Issue', 'Link', 'Level', 'Point'];
+            const csvContent = [
+                headers.join(','),
+                ...exportData.map(row => [
+                    row.date,
+                    `"${row.member}"`,
+                    `"${row.app}"`,
+                    `"${row.issue}"`,
+                    `"${row.link}"`,
+                    `"${row.level}"`,
+                    row.point
+                ].join(','))
+            ].join('\n');
+
+            // Create and download file
+            const selectedList = lists.find(list => list.id === issuesSelectedList);
+            const listName = selectedList ? selectedList.name.replace(/[^a-zA-Z0-9]/g, '_') : 'unknown';
+            const today = new Date();
+            const formattedDate = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `Export_KPI_${listName}_${formattedDate.replace(/\//g, '_')}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('Error exporting cards:', error);
+            alert('Error exporting cards. Please try again.');
+        }
+    };
+
+    const handleCopyToClipboard = async () => {
+        try {
+            const cards = await getCardsByList(issuesSelectedList);
+            if (!cards) return;
+
+            const exportData = cards.map(card => {
+                const appLabel = card.labels.find(label => label.name.includes('App:'))?.name || '';
+                const levelLabel = card.labels.find(label => ISSUE_POINTS[label.name])?.name || '';
+                const levelNumber = levelLabel.replace('Issue: level ', '').replace('Issues: Level ', '');
+                const point = ISSUE_POINTS[levelLabel] || 0;
+                
+                const memberNames = card.idMembers
+                    .map(id => {
+                        const member = members.find(m => m.id === id);
+                        return member?.kpiName || id;
+                    })
+                    .join(', ');
+
+                const today = new Date();
+                const formattedDate = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+
+                return [
+                    formattedDate,
+                    memberNames,
+                    appLabel,
+                    card.name,
+                    card.shortUrl,
+                    levelNumber,
+                    point
+                ].join('\t');
+            }).join('\n');
+
+            await navigator.clipboard.writeText(exportData);
+            alert('Data copied to clipboard!');
+        } catch (error) {
+            console.error('Error copying data:', error);
+            alert('Error copying data. Please try again.');
+        }
     };
 
     if (loading) {
@@ -416,6 +525,40 @@ const IssuesKpiSummary = () => {
                                             ))}
                                         </Select>
                                     </FormControl>
+                                    <Tooltip title="Copy data to clipboard">
+                                        <Button
+                                            variant="contained"
+                                            startIcon={<ContentCopyIcon />}
+                                            onClick={handleCopyToClipboard}
+                                            sx={{
+                                                backgroundColor: 'primary.main',
+                                                color: 'white',
+                                                '&:hover': {
+                                                    backgroundColor: alpha(theme.palette.primary.main, 0.9),
+                                                }
+                                            }}
+                                        >
+                                            Copy Data
+                                        </Button>
+                                    </Tooltip>
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<DownloadIcon />}
+                                        onClick={handleExportCards}
+                                        sx={{
+                                            backgroundColor: 'primary.main',
+                                            color: 'white',
+                                            '&:hover': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.9),
+                                            },
+                                            '&.Mui-disabled': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.3),
+                                                color: 'white'
+                                            }
+                                        }}
+                                    >
+                                        Export Cards
+                                    </Button>
                                     <Box sx={{ textAlign: 'right' }}>
                                         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                                             Tổng số card

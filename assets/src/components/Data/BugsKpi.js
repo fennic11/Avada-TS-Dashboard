@@ -4,14 +4,17 @@ import {
     Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, CircularProgress, Accordion,
     AccordionSummary, AccordionDetails, Card, CardContent, Link,
-    Chip, Stack, Divider, useTheme, FormControl, InputLabel, Select, MenuItem, alpha
+    Chip, Stack, Divider, useTheme, FormControl, InputLabel, Select, MenuItem, alpha, Button, Tooltip
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PersonIcon from '@mui/icons-material/Person';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import DownloadIcon from '@mui/icons-material/Download';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
-import { getCardsByList, getMembers, getListsByBoardId } from '../../api/trelloApi';
+import { getCardsByList, getListsByBoardId } from '../../api/trelloApi';
+import members from '../../data/members.json';
 
 const BOARD_ID = '638d769884c52b05235a2310';
 const DEFAULT_LIST_ID = '663ae7d6feac5f2f8d7a1c86';
@@ -19,7 +22,6 @@ const DEFAULT_LIST_ID = '663ae7d6feac5f2f8d7a1c86';
 const BugsKpiSummary = ({ selectedList = DEFAULT_LIST_ID }) => {
     const [memberKPIs, setMemberKPIs] = useState({});
     const [loading, setLoading] = useState(true);
-    const [members, setMembers] = useState([]);
     const [lists, setLists] = useState([]);
     const [currentList, setCurrentList] = useState(selectedList);
     const theme = useTheme();
@@ -46,17 +48,13 @@ const BugsKpiSummary = ({ selectedList = DEFAULT_LIST_ID }) => {
             try {
                 setLoading(true);
 
-                const [cards, boardMembers] = await Promise.all([
-                    getCardsByList(currentList),
-                    getMembers(BOARD_ID),
-                ]);
-                console.log(boardMembers)
-                setMembers(boardMembers);
+                const cards = await getCardsByList(currentList);
+                if (!cards) return;
 
                 const kpiData = {};
 
                 for (let card of cards) {
-                    const memberIds = card.idMembers;
+                    const memberIds = card.idMembers.filter(id => members.some(m => m.id === id));
 
                     if (memberIds.length === 1) {
                         const id = memberIds[0];
@@ -106,7 +104,91 @@ const BugsKpiSummary = ({ selectedList = DEFAULT_LIST_ID }) => {
 
     const getMemberName = (id) => {
         const mem = members.find((m) => m.id === id);
-        return mem?.nickName || mem?.fullName || mem?.name || id;
+        return mem?.kpiName || mem?.fullName || id;
+    };
+
+    const handleExportCards = async () => {
+        try {
+            const cards = await getCardsByList(currentList);
+            if (!cards) return;
+
+            const exportData = Object.entries(memberKPIs).map(([memberId, data]) => {
+                const today = new Date();
+                const formattedDate = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+                const member = members.find(m => m.id === memberId);
+                const memberName = member?.kpiName || member?.fullName || memberId;
+
+                return {
+                    date: formattedDate,
+                    member: memberName,
+                    app: '',
+                    issue: 'Issues fu với dev',
+                    link: '',
+                    level: '',
+                    point: data.points
+                };
+            });
+
+            // Convert to CSV
+            const headers = ['Date', 'Member', 'App', 'Issue', 'Link', 'Level', 'Point'];
+            const csvContent = [
+                headers.join(','),
+                ...exportData.map(row => [
+                    row.date,
+                    `"${row.member}"`,
+                    `"${row.app}"`,
+                    `"${row.issue}"`,
+                    `"${row.link}"`,
+                    `"${row.level}"`,
+                    row.point
+                ].join(','))
+            ].join('\n');
+
+            // Create and download file
+            const selectedListObj = lists.find(list => list.id === currentList);
+            const listName = selectedListObj ? selectedListObj.name.replace(/[^a-zA-Z0-9]/g, '_') : 'unknown';
+            const today = new Date();
+            const formattedDate = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `Export_KPI_${listName}_${formattedDate.replace(/\//g, '_')}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('Error exporting cards:', error);
+            alert('Error exporting cards. Please try again.');
+        }
+    };
+
+    const handleCopyToClipboard = async () => {
+        try {
+            const exportData = Object.entries(memberKPIs).map(([memberId, data]) => {
+                const today = new Date();
+                const formattedDate = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+                const member = members.find(m => m.id === memberId);
+                const memberName = member?.kpiName || member?.fullName || memberId;
+
+                return [
+                    formattedDate,
+                    memberName,
+                    '',
+                    'Issues fu với dev',
+                    '',
+                    '',
+                    data.points
+                ].join('\t');
+            }).join('\n');
+
+            await navigator.clipboard.writeText(exportData);
+            alert('Data copied to clipboard!');
+        } catch (error) {
+            console.error('Error copying data:', error);
+            alert('Error copying data. Please try again.');
+        }
     };
 
     if (loading) {
@@ -197,6 +279,36 @@ const BugsKpiSummary = ({ selectedList = DEFAULT_LIST_ID }) => {
                         ))}
                     </Select>
                 </FormControl>
+                <Button
+                    variant="contained"
+                    startIcon={<DownloadIcon />}
+                    onClick={handleExportCards}
+                    sx={{
+                        backgroundColor: 'primary.main',
+                        color: 'white',
+                        '&:hover': {
+                            backgroundColor: alpha(theme.palette.primary.main, 0.9),
+                        }
+                    }}
+                >
+                    Export Cards
+                </Button>
+                <Tooltip title="Copy data to clipboard">
+                    <Button
+                        variant="contained"
+                        startIcon={<ContentCopyIcon />}
+                        onClick={handleCopyToClipboard}
+                        sx={{
+                            backgroundColor: 'primary.main',
+                            color: 'white',
+                            '&:hover': {
+                                backgroundColor: alpha(theme.palette.primary.main, 0.9),
+                            }
+                        }}
+                    >
+                        Copy Data
+                    </Button>
+                </Tooltip>
             </Box>
 
             <Grid container spacing={3}>
