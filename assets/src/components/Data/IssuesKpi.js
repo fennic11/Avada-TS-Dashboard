@@ -190,22 +190,30 @@ const IssuesKpiSummary = () => {
             const cards = await getCardsByList(issuesSelectedList);
             if (!cards) return;
 
-            const exportData = cards.map(card => {
+            // Sort: TS lên trên, còn lại xuống cuối
+            const sortedCards = [...cards].sort((a, b) => {
+                const mainA = a.idMembers && a.idMembers.length > 0 ? a.idMembers[0] : null;
+                const mainB = b.idMembers && b.idMembers.length > 0 ? b.idMembers[0] : null;
+                const roleA = members.find(m => m.id === mainA)?.role;
+                const roleB = members.find(m => m.id === mainB)?.role;
+                if (roleA === 'TS' && roleB !== 'TS') return -1;
+                if (roleA !== 'TS' && roleB === 'TS') return 1;
+                return 0;
+            });
+
+            const exportData = sortedCards.map(card => {
                 const appLabel = card.labels.find(label => label.name.includes('App:'))?.name || '';
                 const levelLabel = card.labels.find(label => ISSUE_POINTS[label.name])?.name || '';
                 const levelNumber = levelLabel.replace('Issue: level ', '').replace('Issues: Level ', '');
                 const point = ISSUE_POINTS[levelLabel] || 0;
-                
                 const memberNames = card.idMembers
                     .map(id => {
                         const member = members.find(m => m.id === id);
                         return member?.kpiName || id;
                     })
                     .join(', ');
-
                 const today = new Date();
                 const formattedDate = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
-
                 return {
                     date: formattedDate,
                     member: memberNames,
@@ -257,22 +265,30 @@ const IssuesKpiSummary = () => {
             const cards = await getCardsByList(issuesSelectedList);
             if (!cards) return;
 
-            const exportData = cards.map(card => {
+            // Sort: TS lên trên, còn lại xuống cuối
+            const sortedCards = [...cards].sort((a, b) => {
+                const mainA = a.idMembers && a.idMembers.length > 0 ? a.idMembers[0] : null;
+                const mainB = b.idMembers && b.idMembers.length > 0 ? b.idMembers[0] : null;
+                const roleA = members.find(m => m.id === mainA)?.role;
+                const roleB = members.find(m => m.id === mainB)?.role;
+                if (roleA === 'TS' && roleB !== 'TS') return -1;
+                if (roleA !== 'TS' && roleB === 'TS') return 1;
+                return 0;
+            });
+
+            const exportData = sortedCards.map(card => {
                 const appLabel = card.labels.find(label => label.name.includes('App:'))?.name || '';
                 const levelLabel = card.labels.find(label => ISSUE_POINTS[label.name])?.name || '';
                 const levelNumber = levelLabel.replace('Issue: level ', '').replace('Issues: Level ', '');
                 const point = ISSUE_POINTS[levelLabel] || 0;
-                
                 const memberNames = card.idMembers
                     .map(id => {
                         const member = members.find(m => m.id === id);
                         return member?.kpiName || id;
                     })
                     .join(', ');
-
                 const today = new Date();
                 const formattedDate = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
-
                 return [
                     formattedDate,
                     memberNames,
@@ -329,6 +345,56 @@ const IssuesKpiSummary = () => {
     const filteredBugsLists = lists.filter(list => 
         list.name.toLowerCase().includes(bugsSearchTerm.toLowerCase())
     );
+
+    const handleExportMemberCards = (memberId, cards) => {
+        try {
+            if (!cards || cards.length === 0) return;
+            const member = members.find(m => m.id === memberId);
+            const memberName = member?.kpiName || member?.fullName || memberId;
+            const today = new Date();
+            const formattedDate = `${today.getMonth() + 1}_${today.getDate()}_${today.getFullYear()}`;
+            const exportData = cards.map(card => {
+                const appLabel = card.labels?.find(label => label.name.includes('App:'))?.name || '';
+                const levelLabel = card.level || card.labels?.find(label => ISSUE_POINTS[label.name])?.name || '';
+                const levelNumber = levelLabel.replace('Issue: level ', '').replace('Issues: Level ', '');
+                const point = card.point || ISSUE_POINTS[levelLabel] || 0;
+                return {
+                    date: formattedDate.replace(/_/g, '/'),
+                    member: memberName,
+                    app: appLabel,
+                    issue: card.name,
+                    link: card.shortUrl,
+                    level: levelNumber,
+                    point: point
+                };
+            });
+            const headers = ['Date', 'Member', 'App', 'Issue', 'Link', 'Level', 'Point'];
+            const csvContent = [
+                headers.join(','),
+                ...exportData.map(row => [
+                    row.date,
+                    `"${row.member}"`,
+                    `"${row.app}"`,
+                    `"${row.issue}"`,
+                    `"${row.link}"`,
+                    `"${row.level}"`,
+                    row.point
+                ].join(','))
+            ].join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `Export_KPI_${memberName.replace(/[^a-zA-Z0-9]/g, '_')}_${formattedDate}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('Error exporting member cards:', error);
+            alert('Error exporting member cards. Please try again.');
+        }
+    };
 
     if (loading) {
         return (
@@ -793,7 +859,23 @@ const IssuesKpiSummary = () => {
                                                             {data.cards.length} cards
                                                         </Typography>
                                                     </Box>
-                                                    <Box sx={{ textAlign: 'right' }}>
+                                                    <Box sx={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
+                                                        <Button
+                                                            variant="contained"
+                                                            size="small"
+                                                            startIcon={<DownloadIcon />}
+                                                            sx={{
+                                                                backgroundColor: 'primary.main',
+                                                                color: 'white',
+                                                                mb: 1,
+                                                                '&:hover': {
+                                                                    backgroundColor: alpha(theme.palette.primary.main, 0.9),
+                                                                }
+                                                            }}
+                                                            onClick={() => handleExportMemberCards(memberId, data.cards)}
+                                                        >
+                                                            Export Cards
+                                                        </Button>
                                                         <Typography 
                                                             variant="h4" 
                                                             sx={{ 

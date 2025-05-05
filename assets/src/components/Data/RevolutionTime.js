@@ -142,7 +142,7 @@ function groupByTimeAndCount(cards, field, groupBy) {
 
     // Initialize maps for all TS members
     members
-        .filter(member => member.role === 'TS')
+        .filter(member => member.role === 'TS' || member.role === 'ts-lead')
         .forEach(member => {
             timeMap.set(member.fullName, 0);
             countMap.set(member.fullName, 0);
