@@ -613,3 +613,22 @@ export const getBoardLabels = async (boardId) => {
     }
 };
 
+export async function getCreateCardByCard(cardId) {
+    try {
+        const resp = await fetch(`${API_URL}/cards/${cardId}/actions?filter=createCard&key=${key}&token=${token}`, {
+            headers: {
+                Accept: "application/json"
+            }
+        });
+
+        if (!resp.ok) {
+            throw new Error(`Failed to fetch actions for card ${cardId}: ${resp.statusText}`);
+        }
+
+        return await resp.json();
+    } catch (error) {
+        console.error(`Error getting actions for card ${cardId}:`, error);
+        return null;
+    }
+}
+

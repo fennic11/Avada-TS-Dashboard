@@ -4,10 +4,15 @@ import {
   Paper,
   Card, CardContent, Typography, Grid, LinearProgress, Box,
   Tabs, Tab, CircularProgress, useTheme, alpha,
-  TableSortLabel
+  TableSortLabel, Button
 } from '@mui/material';
-import { getCardsByList } from '../../api/trelloApi';
+import { getCardsByList, getCreateCardByCard } from '../../api/trelloApi';
 import CardDetailModal from '../CardDetailModal';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
+import ClearIcon from '@mui/icons-material/Clear';
 
 export default function DevFixingDashboard() {
   const theme = useTheme();
@@ -20,27 +25,82 @@ export default function DevFixingDashboard() {
   const [order, setOrder] = useState('asc');
   const [selectedCard, setSelectedCard] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  // const [cardCache, setCardCache] = useState(new Map());
+
+  const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+  const processCardsInBatches = async (cards, batchSize = 10, delayMs = 1000) => {
+    const results = [];
+    
+    for (let i = 0; i < cards.length; i += batchSize) {
+      const batch = cards.slice(i, i + batchSize);
+      const batchPromises = batch.map(async card => {
+        try {
+          const appLabel = card.labels.find(label => label.name.includes('App:'));
+          const createCardData = await getCreateCardByCard(card.id);
+          const createDate = createCardData && createCardData.length > 0 ? createCardData[0].date : null;
+          
+          return {
+            shortUrl: card.shortUrl,
+            name: card.name,
+            due: card.due,
+            app: appLabel ? appLabel.name : 'Không có app',
+            idMembers: card.idMembers || [],
+            createDate: createDate
+          };
+        } catch (error) {
+          console.error(`Error processing card ${card.id}:`, error);
+          return {
+            shortUrl: card.shortUrl,
+            name: card.name,
+            due: card.due,
+            app: 'Không có app',
+            idMembers: card.idMembers || [],
+            createDate: null
+          };
+        }
+      });
+
+      try {
+        const batchResults = await Promise.all(batchPromises);
+        results.push(...batchResults);
+        
+        // Add delay between batches
+        if (i + batchSize < cards.length) {
+          await delay(delayMs);
+        }
+      } catch (error) {
+        console.error('Error processing batch:', error);
+        // Continue with next batch even if current batch fails
+      }
+    }
+
+    return results;
+  };
 
   useEffect(() => {
+    let isMounted = true;
+
     async function fetchData() {
       try {
-        const data = await getCardsByList('63c7b1a68e5576001577d65c'); // Main list
-        const doneData = await getCardsByList('663ae7d6feac5f2f8d7a1c86'); // Done list
+        setLoading(true);
+        
+        // Fetch both lists in parallel
+        const [data, doneData] = await Promise.all([
+          getCardsByList('63c7b1a68e5576001577d65c'), // Main list
+          getCardsByList('663ae7d6feac5f2f8d7a1c86')  // Done list
+        ]);
 
-        const mapCards = (cards) =>
-          cards.map(card => {
-            const appLabel = card.labels.find(label => label.name.includes('App:'));
-            return {
-              shortUrl: card.shortUrl,
-              name: card.name,
-              due: card.due,
-              app: appLabel ? appLabel.name : 'Không có app',
-              idMembers: card.idMembers || []
-            };
-          });
+        if (!isMounted) return;
 
-        const mappedMain = mapCards(data);
-        const mappedDone = mapCards(doneData);
+        // Process cards sequentially to avoid rate limiting
+        const mappedMain = await processCardsInBatches(data);
+        if (!isMounted) return;
+        
+        const mappedDone = await processCardsInBatches(doneData);
+        if (!isMounted) return;
 
         setCards(mappedMain);
         setDoneCards(mappedDone);
@@ -48,18 +108,35 @@ export default function DevFixingDashboard() {
       } catch (error) {
         console.error('Lỗi khi lấy dữ liệu:', error);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
 
     fetchData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const filterCards = (cards) =>
-    cards.filter(card => {
+  const filterCards = (cards) => {
+    // If no filters are applied, return all cards
+    if (selectedApp === 'Tất cả' && !startDate && !endDate) {
+      return cards;
+    }
+
+    return cards.filter(card => {
       const matchApp = selectedApp === 'Tất cả' || card.app === selectedApp;
-      return matchApp;
+      const matchDate = (!startDate || !endDate) || (
+        card.createDate && 
+        new Date(card.createDate) >= startDate && 
+        new Date(card.createDate) <= new Date(endDate.setHours(23, 59, 59, 999))
+      );
+      return matchApp && matchDate;
     });
+  };
 
   const filteredCards = filterCards(cards);
   const filteredDoneCards = filterCards(doneCards);
@@ -145,8 +222,19 @@ export default function DevFixingDashboard() {
     }
   };
 
+  const handleClearFilters = () => {
+    setSelectedApp('Tất cả');
+    setStartDate(null);
+    setEndDate(null);
+  };
+
   const renderAppStats = (cardList, title) => {
-    const appStats = cardList.reduce((acc, card) => {
+    // Use the original cards array for stats when no filters are applied
+    const statsSource = (selectedApp === 'Tất cả' && !startDate && !endDate) 
+      ? (tab === 0 ? cards : doneCards)
+      : cardList;
+
+    const appStats = statsSource.reduce((acc, card) => {
       acc[card.app] = (acc[card.app] || 0) + 1;
       return acc;
     }, {});
@@ -207,6 +295,25 @@ export default function DevFixingDashboard() {
             >
               Tổng số: <span style={{ color: theme.palette.primary.main, fontWeight: 600 }}>{totalCardsForPercentage}</span>
             </Typography>
+            {(selectedApp !== 'Tất cả' || startDate || endDate) && (
+              <Typography
+                variant="h6"
+                sx={{
+                  color: 'text.secondary',
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  backgroundColor: alpha(theme.palette.info.main, 0.1),
+                  px: 2,
+                  py: 1,
+                  borderRadius: 2,
+                  fontSize: '0.85rem'
+                }}
+              >
+                Đã lọc: <span style={{ color: theme.palette.info.main, fontWeight: 600 }}>{totalCards}</span>
+              </Typography>
+            )}
           </Box>
         </Box>
         <Grid container spacing={2}>
@@ -373,6 +480,7 @@ export default function DevFixingDashboard() {
                   </TableSortLabel>
                 </TableCell>
                 <TableCell>Trễ</TableCell>
+                <TableCell>Ngày tạo</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -429,6 +537,7 @@ export default function DevFixingDashboard() {
                     <TableCell>{card.app}</TableCell>
                     <TableCell>{formatDate(card.due)}</TableCell>
                     <TableCell>{getOverdueDays(card.due) ?? '-'}</TableCell>
+                    <TableCell>{formatDate(card.createDate)}</TableCell>
                   </TableRow>
                 );
               })}
@@ -554,6 +663,73 @@ export default function DevFixingDashboard() {
             </Typography>
           </Box>
         </Box>
+      </Box>
+
+      <Box sx={{ 
+        mb: 4,
+        display: 'flex',
+        gap: 2,
+        alignItems: 'center',
+        background: 'white',
+        p: 2,
+        borderRadius: 2,
+        boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
+      }}>
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+          <DatePicker
+            label="Từ ngày"
+            value={startDate ? dayjs(startDate) : null}
+            onChange={(newValue) => setStartDate(newValue ? newValue.toDate() : null)}
+            slotProps={{
+              textField: {
+                size: "small",
+                sx: { 
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.05)
+                  }
+                }
+              }
+            }}
+          />
+          <DatePicker
+            label="Đến ngày"
+            value={endDate ? dayjs(endDate) : null}
+            onChange={(newValue) => setEndDate(newValue ? newValue.toDate() : null)}
+            slotProps={{
+              textField: {
+                size: "small",
+                sx: { 
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.05)
+                  }
+                }
+              }
+            }}
+          />
+        </LocalizationProvider>
+        {(selectedApp !== 'Tất cả' || startDate || endDate) && (
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<ClearIcon />}
+            onClick={handleClearFilters}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              px: 2,
+              py: 1,
+              borderColor: alpha(theme.palette.primary.main, 0.5),
+              '&:hover': {
+                borderColor: theme.palette.primary.main,
+                backgroundColor: alpha(theme.palette.primary.main, 0.05)
+              }
+            }}
+          >
+            Xóa bộ lọc
+          </Button>
+        )}
       </Box>
 
       <Tabs 
