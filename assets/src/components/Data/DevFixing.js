@@ -16,8 +16,6 @@ import ClearIcon from '@mui/icons-material/Clear';
 
 export default function DevFixingDashboard() {
   const theme = useTheme();
-  const [cards, setCards] = useState([]);
-  const [doneCards, setDoneCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedApp, setSelectedApp] = useState('Tất cả');
   const [tab, setTab] = useState(0);
@@ -27,6 +25,8 @@ export default function DevFixingDashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
+  const [cards, setCards] = useState([]);
+  const [doneCards, setDoneCards] = useState([]);
   // const [cardCache, setCardCache] = useState(new Map());
 
   const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -293,27 +293,10 @@ export default function DevFixingDashboard() {
                 fontSize: '0.85rem'
               }}
             >
-              Tổng số: <span style={{ color: theme.palette.primary.main, fontWeight: 600 }}>{totalCardsForPercentage}</span>
+              Tổng số: <span style={{ color: theme.palette.primary.main, fontWeight: 600 }}>
+                {(selectedApp !== 'Tất cả' || startDate || endDate) ? totalCards : totalCardsForPercentage}
+              </span>
             </Typography>
-            {(selectedApp !== 'Tất cả' || startDate || endDate) && (
-              <Typography
-                variant="h6"
-                sx={{
-                  color: 'text.secondary',
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  backgroundColor: alpha(theme.palette.info.main, 0.1),
-                  px: 2,
-                  py: 1,
-                  borderRadius: 2,
-                  fontSize: '0.85rem'
-                }}
-              >
-                Đã lọc: <span style={{ color: theme.palette.info.main, fontWeight: 600 }}>{totalCards}</span>
-              </Typography>
-            )}
           </Box>
         </Box>
         <Grid container spacing={2}>

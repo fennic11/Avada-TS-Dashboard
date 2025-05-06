@@ -633,9 +633,6 @@ const ResolutionTimeList = () => {
                 </Grid>
             </Paper>
 
-            {/* Add Agent Leaderboard after filters */}
-            {!loading && <AgentLeaderboard data={filteredData} />}
-
             {loading ? (
                 <Box sx={{ 
                     display: 'flex',
@@ -1465,6 +1462,13 @@ const ResolutionTimeList = () => {
                 onClose={handleCloseModal}
                 cardId={selectedCard}
             />
+
+            {/* Add AgentLeaderboard here at the bottom */}
+            {!loading && (
+                <Box sx={{ mt: 4 }}>
+                    <AgentLeaderboard data={filteredData} />
+                </Box>
+            )}
         </Paper>
     );
 };
