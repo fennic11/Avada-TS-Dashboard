@@ -8,24 +8,15 @@ const UserSchema = new mongoose.Schema({
         trim: true,
         lowercase: true
     },
-    password: {
-        type: String,
-        required: true
-    },
-    name: {
-        type: String,
-        required: true
-    },
-    role: {
-        type: String,
-        enum: ['admin', 'user'],
-        default: 'user'
-    },
     createdAt: {
         type: Date,
         default: Date.now
     },
-    trelloId: {
+    apiKey: {
+        type: String,
+        required: false
+    },
+    token: {
         type: String,
         required: false
     }

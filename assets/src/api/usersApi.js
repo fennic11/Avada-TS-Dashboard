@@ -108,3 +108,72 @@ const determineUserRole = (email) => {
     }
     return ROLES.BA; // Default role if member not found or no role specified
 };
+
+// Update user information
+export const updateUser = async (email, updateData) => {
+    try {
+        const response = await fetch(`${API_URL}/auth/user`, {
+            method: 'PUT',
+            headers: {
+                ...getAuthHeaders(),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({...updateData, email}),
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw data;
+        }
+
+        // Nếu update thành công và là user hiện tại, cập nhật localStorage
+        const currentUser = getCurrentUser();
+        if (currentUser && currentUser.email === email) {
+            const updatedUser = {
+                ...currentUser,
+                ...updateData
+            };
+            saveUserData(updatedUser);
+        }
+
+        return data;
+    } catch (error) {
+        throw error || { message: 'An error occurred while updating user' };
+    }
+};
+
+// Get user by email
+export const getUserByEmail = async (email) => {
+    try {
+        const response = await fetch(`${API_URL}/auth/user/${email}`, {
+            method: 'GET',
+            headers: getAuthHeaders(),
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw data;
+        }
+
+        // Nếu lấy được user, thêm thông tin từ members.json
+        if (data.success && data.data) {
+            const memberInfo = members.find(m => m.email && m.email.toLowerCase() === email.toLowerCase());
+            const completeUserData = {
+                ...data.data,
+                fullName: memberInfo?.fullName || data.data.name || '',
+                username: memberInfo?.username || '',
+                avatarUrl: memberInfo?.avatarUrl || '',
+                initials: memberInfo?.initials || '',
+                role: determineUserRole(email),
+                trelloId: memberInfo?.id || ''
+            };
+            return completeUserData;
+        }
+
+        return data;
+    } catch (error) {
+        throw error || { message: 'An error occurred while fetching user' };
+    }
+};

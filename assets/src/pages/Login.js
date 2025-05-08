@@ -11,7 +11,7 @@ import logo from '../Logo có nền/Logo có nền/Avada_Brandmark_PhienBanMauCh
 import { GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
 import members from '../data/members.json';
-
+import { getUserByEmail } from '../api/usersApi';
 const Login = () => {
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
@@ -26,17 +26,15 @@ const Login = () => {
             setIsLoading(true);
             const decoded = jwtDecode(credentialResponse.credential);
             console.log(decoded);
-            
-            // Kiểm tra email có trong members.json không
-            const member = members.find(m => m.email === decoded.email);
-            if (!member) {
+
+            // Lấy thông tin user từ database bằng email
+            const userData = await getUserByEmail(decoded.email);
+            if (!userData) {
                 throw new Error('Email không có quyền truy cập');
             }
-
-            // Gửi thông tin Google đến server
-
-            // Lưu thông tin user và token
-            localStorage.setItem('user' , JSON.stringify({...decoded, trelloId: member.id, role: member.role, apiKey: member.apiKey, token: member.token}));
+            console.log(userData);
+            
+            localStorage.setItem('user' , JSON.stringify({...decoded, trelloId: userData.trelloId, role: userData.role, apiKey: userData.apiKey, token: userData.token}));
             
             // Chuyển hướng về trang chủ
             navigate('/bugs');

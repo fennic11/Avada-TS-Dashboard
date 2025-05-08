@@ -30,7 +30,7 @@ import {
 } from "../api/trelloApi";
 import { calculateResolutionTime } from "../utils/resolutionTime";
 import { postCards } from "../api/cardsApi";
-import { register } from "../api/usersApi";
+import { register, updateUser } from "../api/usersApi";
 import members from "../data/members.json";
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -73,6 +73,11 @@ const DevZone = () => {
     const [isListsModalOpen, setIsListsModalOpen] = useState(false);
     const [boardLabels, setBoardLabels] = useState(null);
     const [isLabelsModalOpen, setIsLabelsModalOpen] = useState(false);
+    const [updateUserData, setUpdateUserData] = useState({
+        email: "",
+        apiKey: "",
+        token: ""
+    });
     const theme = useTheme();
 
     // Tạo Set chứa các member ID hợp lệ
@@ -456,6 +461,47 @@ const DevZone = () => {
         }
     };
 
+    const handleUpdateUser = async () => {
+        if (!updateUserData.email.trim()) {
+            setSnackbar({
+                open: true,
+                message: "Vui lòng nhập email",
+                severity: "warning"
+            });
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            const result = await updateUser(updateUserData.email, {
+                apiKey: updateUserData.apiKey,
+                token: updateUserData.token
+            });
+            
+            setSnackbar({
+                open: true,
+                message: "Cập nhật thông tin thành công!",
+                severity: "success"
+            });
+            
+            // Reset form
+            setUpdateUserData({
+                email: "",
+                apiKey: "",
+                token: ""
+            });
+        } catch (error) {
+            console.error('Update user error:', error);
+            setSnackbar({
+                open: true,
+                message: error.message || "Có lỗi xảy ra khi cập nhật thông tin",
+                severity: "error"
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -721,6 +767,54 @@ const DevZone = () => {
                             }}
                         >
                             Lấy Board Labels
+                        </Button>
+                    </Box>
+                </Paper>
+
+                {/* Phần cập nhật thông tin user */}
+                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
+                        Cập nhật thông tin user
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <TextField
+                            label="Email"
+                            type="email"
+                            value={updateUserData.email}
+                            onChange={(e) => setUpdateUserData({ ...updateUserData, email: e.target.value })}
+                            fullWidth
+                            placeholder="Nhập email của user"
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
+                        />
+                        <TextField
+                            label="API Key"
+                            value={updateUserData.apiKey}
+                            onChange={(e) => setUpdateUserData({ ...updateUserData, apiKey: e.target.value })}
+                            fullWidth
+                            placeholder="Nhập API Key"
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
+                        />
+                        <TextField
+                            label="Token"
+                            value={updateUserData.token}
+                            onChange={(e) => setUpdateUserData({ ...updateUserData, token: e.target.value })}
+                            fullWidth
+                            placeholder="Nhập Token"
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
+                        />
+                        <Button 
+                            variant="contained" 
+                            onClick={handleUpdateUser}
+                            disabled={isLoading}
+                            sx={{ 
+                                alignSelf: 'flex-start',
+                                minWidth: 120,
+                                borderRadius: 1,
+                                textTransform: 'none',
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            Cập nhật
                         </Button>
                     </Box>
                 </Paper>

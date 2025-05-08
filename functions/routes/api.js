@@ -5,9 +5,8 @@ const authController = require('../controllers/authController');
 const notionController = require('../controllers/notionController');
 
 // Auth routes
-router.post('/auth/register', authController.register);
-router.post('/auth/login', authController.login);
-
+router.put('/auth/user', authController.createOrUpdateUser);
+router.get('/auth/user/:email', authController.getUserByEmail);
 // Card routes
 router.post('/cards', cardController.createOrUpdateCard);
 router.get('/cards', cardController.getCards);

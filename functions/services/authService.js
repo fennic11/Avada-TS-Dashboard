@@ -1,14 +1,9 @@
 const User = require('../models/User');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 
-const register = async (userData) => {
+
+const createOrUpdateUser = async (userData) => {
     try {
-        const { email, password, name, role, trelloId } = userData;
-        
-        // Log user data
-        console.log('Auth service user data:', userData);
-        console.log('TrelloId from user data:', trelloId);
+        const { email, apiKey, token } = userData;  
 
         // Check if user already exists
         const existingUser = await User.findOne({ email });
@@ -16,95 +11,51 @@ const register = async (userData) => {
             throw new Error('Email already exists');
         }
 
-        // Check if trelloId already exists
-        if (trelloId) {
-            const existingTrelloUser = await User.findOne({ trelloId });
-            if (existingTrelloUser) {
-                throw new Error('Trello ID already exists');
-            }
-        }
-
-        // Hash password
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
         // Create new user
-        const user = new User({
+        const user = new User({ 
             email,
-            password: hashedPassword,
-            name,
-            role: role || 'user',
-            trelloId: trelloId || null
+            apiKey: apiKey || null,
+            token: token || null
         });
-
-        console.log('User to be saved:', user);
 
         await user.save();
 
-        // Generate JWT token
-        const token = jwt.sign(
-            { userId: user._id, role: user.role },
-            process.env.JWT_SECRET || 'your-secret-key',
-            { expiresIn: '24h' }
-        );
-
-        const result = {
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                trelloId: trelloId || null
-            },
-            token
-        };
-
-        console.log('Final result:', result);
-        return result;
+        return user;
     } catch (error) {
-        console.error('Auth service error:', error);
         throw error;
     }
 };
 
-const login = async (email, password) => {
+const getUserByEmail = async (email) => {
     try {
-        // Find user by email
+        if (!email) {
+            throw new Error('Email is required');
+        }
+
         const user = await User.findOne({ email });
         if (!user) {
-            throw new Error('Invalid credentials');
+            throw new Error('User not found');
         }
 
-        // Check password
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            throw new Error('Invalid credentials');
-        }
-
-        // Generate JWT token
-        const token = jwt.sign(
-            { userId: user._id, role: user.role },
-            process.env.JWT_SECRET || 'your-secret-key',
-            { expiresIn: '24h' }
-        );
-
-        // Return user info and token
-        return {
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                trelloId: user.trelloId
-            },
-            token
+        // Không trả về password
+        const userData = {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            trelloId: user.trelloId,
+            apiKey: user.apiKey,
+            token: user.token
         };
+
+        return userData;
     } catch (error) {
+        console.error('Get user by email error:', error);
         throw error;
     }
 };
 
 module.exports = {
-    login,
-    register
+    createOrUpdateUser,
+    getUserByEmail
 }; 
