@@ -535,7 +535,9 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/6308e9353f075502098ff04b/fc2c08d439e460b7a2a446f794eec21e",
       "initials": "QN",
       "role": "admin",
-      "kpiName": "QuangNQ"
+      "kpiName": "QuangNQ",
+      "apiKey": "6617086a2ab6e15e6c89bd4466ce8839",
+      "token": "ATTAdcc1a6c00170c2de207cda726497211c43fa01dab5b18d0eced273cbce16ac195DADA9A9"
     },
     {
       "id": "629d618f2801948704ab5abb",
@@ -851,7 +853,9 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/65dc1670ae5414d1dd11a26d/040127be60bf273f2c5b577c428ff508",
       "initials": "ĐQ",
       "role": "TS",
-      "kpiName": "QuanDM"
+      "kpiName": "QuanDM",
+      "apiKey": "cf2607a0d174022b124e44da7de80b04",
+      "token": "ATTA036de45ea4f020d17df5c03509e19ddbaa65a148b6c5113c17b5f67e34e65dd2C8213892"
     },
     {
       "id": "6642c90302ccc5b0b88171e1",

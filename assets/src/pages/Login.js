@@ -36,7 +36,7 @@ const Login = () => {
             // Gửi thông tin Google đến server
 
             // Lưu thông tin user và token
-            localStorage.setItem('user' , JSON.stringify({...decoded, trelloId: member.id, role: member.role}));
+            localStorage.setItem('user' , JSON.stringify({...decoded, trelloId: member.id, role: member.role, apiKey: member.apiKey, token: member.token}));
             
             // Chuyển hướng về trang chủ
             navigate('/bugs');

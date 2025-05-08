@@ -63,6 +63,10 @@ const DevZone = () => {
     const [cardActions, setCardActions] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [cardIdInput, setCardIdInput] = useState('');
+    const [apiKey, setApiKey] = useState('');
+    const [token, setToken] = useState('');
+    const [cardDetails, setCardDetails] = useState(null);
+    const [isCardDetailsModalOpen, setIsCardDetailsModalOpen] = useState(false);
     const [boardMembers, setBoardMembers] = useState(null);
     const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
     const [listsData, setListsData] = useState(null);
@@ -207,6 +211,63 @@ const DevZone = () => {
         setIsModalOpen(false);
         setSelectedCard(null);
         setCardActions(null);
+    };
+
+    const handleGetCardDetails = async () => {
+        if (!cardIdInput.trim() || !apiKey.trim() || !token.trim()) {
+            setSnackbar({
+                open: true,
+                message: "Vui lòng nhập đầy đủ Card ID, API Key và Token",
+                severity: "warning"
+            });
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            const response = await fetch(`https://api.trello.com/1/cards/${cardIdInput.trim()}?key=${apiKey.trim()}&token=${token.trim()}`);
+            if (!response.ok) {
+                throw new Error('Không thể lấy thông tin card');
+            }
+            const data = await response.json();
+            setCardDetails(data);
+            setIsCardDetailsModalOpen(true);
+        } catch (error) {
+            console.error('Error fetching card details:', error);
+            setSnackbar({
+                open: true,
+                message: error.message || "Có lỗi xảy ra khi lấy thông tin card",
+                severity: "error"
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCloseCardDetailsModal = () => {
+        setIsCardDetailsModalOpen(false);
+        setCardDetails(null);
+    };
+
+    const handleCopyCardDetailsJSON = () => {
+        if (cardDetails) {
+            navigator.clipboard.writeText(JSON.stringify(cardDetails, null, 2))
+                .then(() => {
+                    setSnackbar({
+                        open: true,
+                        message: "Đã sao chép JSON vào clipboard",
+                        severity: "success"
+                    });
+                })
+                .catch(err => {
+                    console.error('Failed to copy:', err);
+                    setSnackbar({
+                        open: true,
+                        message: "Không thể sao chép JSON",
+                        severity: "error"
+                    });
+                });
+        }
     };
 
     const handleGetActions = async () => {
@@ -430,6 +491,51 @@ const DevZone = () => {
                         </Button>
                     </Box>
                 </Paper> */}
+
+                {/* Phần lấy Card Details */}
+                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
+                        Lấy Card Details
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <TextField
+                            label="Card ID"
+                            value={cardIdInput}
+                            onChange={(e) => setCardIdInput(e.target.value)}
+                            fullWidth
+                            placeholder="Nhập ID của card"
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
+                        />
+                        <TextField
+                            label="API Key"
+                            value={apiKey}
+                            onChange={(e) => setApiKey(e.target.value)}
+                            fullWidth
+                            placeholder="Nhập API Key"
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
+                        />
+                        <TextField
+                            label="Token"
+                            value={token}
+                            onChange={(e) => setToken(e.target.value)}
+                            fullWidth
+                            placeholder="Nhập Token"
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
+                        />
+                        <Button 
+                            variant="contained" 
+                            onClick={handleGetCardDetails}
+                            disabled={isLoading}
+                            sx={{ 
+                                minWidth: 120,
+                                height: '56px',
+                                borderRadius: 1
+                            }}
+                        >
+                            Lấy Card Details
+                        </Button>
+                    </Box>
+                </Paper>
 
                 {/* Phần lấy actions theo ID */}
                 <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
@@ -950,6 +1056,69 @@ const DevZone = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseLabelsModal}>Close</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Card Details Modal */}
+            <Dialog
+                open={isCardDetailsModalOpen}
+                onClose={handleCloseCardDetailsModal}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center' 
+                    }}>
+                        <Typography variant="h6">
+                            Card Details
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {cardDetails && (
+                                <Tooltip title="Copy JSON">
+                                    <IconButton 
+                                        onClick={handleCopyCardDetailsJSON}
+                                        sx={{ 
+                                            color: 'primary.main',
+                                            '&:hover': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                                            }
+                                        }}
+                                    >
+                                        <ContentCopyIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                            <IconButton onClick={handleCloseCardDetailsModal}>
+                                <CloseIcon />
+                            </IconButton>
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    {cardDetails && (
+                        <Paper 
+                            sx={{ 
+                                p: 2, 
+                                backgroundColor: '#f5f5f5',
+                                maxHeight: '60vh',
+                                overflow: 'auto'
+                            }}
+                        >
+                            <pre style={{ 
+                                margin: 0,
+                                whiteSpace: 'pre-wrap',
+                                wordWrap: 'break-word'
+                            }}>
+                                {JSON.stringify(cardDetails, null, 2)}
+                            </pre>
+                        </Paper>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseCardDetailsModal}>Close</Button>
                 </DialogActions>
             </Dialog>
         </Box>

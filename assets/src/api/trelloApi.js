@@ -1,15 +1,22 @@
-const key = process.env.REACT_APP_TRELLO_KEY || "6617086a2ab6e15e6c89bd4466ce8839";
-const token = process.env.REACT_APP_TRELLO_TOKEN || "ATTAdcc1a6c00170c2de207cda726497211c43fa01dab5b18d0eced273cbce16ac195DADA9A9";
+// Lấy key và token từ localStorage
+const getCredentials = () => {
+    const user = localStorage.getItem('user');
+    if (!user) {
+        throw new Error('User not found in localStorage');
+    }
+    const userData = JSON.parse(user);
+    return {
+        key: userData.apiKey || "6617086a2ab6e15e6c89bd4466ce8839",
+        token: userData.token || "ATTAdcc1a6c00170c2de207cda726497211c43fa01dab5b18d0eced273cbce16ac195DADA9A9"
+    };
+};
+
 const API_URL = `https://api.trello.com/1`;
 const BOARD_ID = process.env.REACT_APP_BOARD_ID || "638d769884c52b05235a2310";
 
-
-
-
-
-
 export async function getCardsByList(listId) {
     try {
+        const { key, token } = getCredentials();
         const resp = await fetch(`${API_URL}/lists/${listId}/cards?key=${key}&token=${token}`, {
             headers: {
                 Accept: "application/json"
@@ -29,6 +36,7 @@ export async function getCardsByList(listId) {
 
 export async function getCardsByListandMember(listId, idMember) {
     try {
+        const { key, token } = getCredentials();
         const resp = await fetch(`${API_URL}/lists/${listId}/cards?key=${key}&token=${token}`, {
             headers: {
                 Accept: "application/json"
@@ -55,6 +63,7 @@ export async function getCardsByListandMember(listId, idMember) {
 
 export async function getListsByBoardId() {
     try {
+        const { key, token } = getCredentials();
         const openListsRes = await fetch(`${API_URL}/boards/${BOARD_ID}/lists?key=${key}&token=${token}`, {
             headers: {
                 Accept: "application/json"
@@ -85,10 +94,9 @@ export async function getListsByBoardId() {
     }
 }
 
-
-
 export async function getActionsByCard(cardId) {
     try {
+        const { key, token } = getCredentials();
         const resp = await fetch(`${API_URL}/cards/${cardId}/actions?filter=all&key=${key}&token=${token}`, {
             headers: {
                 Accept: "application/json"
@@ -108,6 +116,7 @@ export async function getActionsByCard(cardId) {
 
 export async function getCreateCardAction(cardId) {
     try {
+        const { key, token } = getCredentials();
         const resp = await fetch(`${API_URL}/cards/${cardId}/actions?filter=createCard&key=${key}&token=${token}`, {
             headers: {
                 Accept: "application/json"
@@ -120,7 +129,7 @@ export async function getCreateCardAction(cardId) {
 
         const actions = await resp.json();
         if (actions && actions.length > 0) {
-            return actions[0].date; // Chỉ trả về date của action đầu tiên
+            return actions[0].date;
         }
         return null;
     } catch (error) {
@@ -129,9 +138,9 @@ export async function getCreateCardAction(cardId) {
     }
 }
 
-
 export async function removeMemberByID(cardId, idMember) {
     try {
+        const { key, token } = getCredentials();
         console.log(`Removing member ${idMember} from card ${cardId}...`);
 
         const resp = await fetch(`${API_URL}/cards/${cardId}/idMembers/${idMember}?key=${key}&token=${token}`, {
@@ -154,6 +163,7 @@ export async function removeMemberByID(cardId, idMember) {
 
 export async function removeLabelByID(cardId, idLabel) {
     try {
+        const { key, token } = getCredentials();
         console.log(`Removing label ${idLabel} from card ${cardId}...`);
 
         const resp = await fetch(`${API_URL}/cards/${cardId}/idLabels/${idLabel}?key=${key}&token=${token}`, {
@@ -174,39 +184,40 @@ export async function removeLabelByID(cardId, idLabel) {
     }
 }
 
-
 export const addMemberByID = async (cardId, memberId) => {
-  try {
-    const response = await fetch(`${API_URL}/cards/${cardId}/idMembers?key=${key}&token=${token}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        value: memberId
-      })
-    });
+    try {
+        const { key, token } = getCredentials();
+        const response = await fetch(`${API_URL}/cards/${cardId}/idMembers?key=${key}&token=${token}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                value: memberId
+            })
+        });
 
-    if (!response.ok) {
-      throw new Error('Failed to add member to card');
+        if (!response.ok) {
+            throw new Error('Failed to add member to card');
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error adding member:', error);
+        throw error;
     }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error adding member:', error);
-    throw error;
-  }
 };
 
 export async function addLabelByID(cardId, idLabel) {
     try {
+        const { key, token } = getCredentials();
         const resp = await fetch(`${API_URL}/cards/${cardId}/idLabels?key=${key}&token=${token}&value=${idLabel}`, {
             method: "POST",
             headers: {
                 Accept: "application/json"
             },
-            body: JSON.stringify({ value: idLabel }) // Trello API có thể yêu cầu gửi ID dưới dạng body
+            body: JSON.stringify({ value: idLabel })
         });
 
         if (!resp.ok) {
@@ -220,14 +231,14 @@ export async function addLabelByID(cardId, idLabel) {
     }
 }
 
-
 export async function moveCardToList(cardId, newListId) {
-    const url = `https://api.trello.com/1/cards/${cardId}?key=${key}&token=${token}`;
-
-    const body = new URLSearchParams();
-    body.append('idList', newListId);
-
     try {
+        const { key, token } = getCredentials();
+        const url = `${API_URL}/cards/${cardId}?key=${key}&token=${token}`;
+
+        const body = new URLSearchParams();
+        body.append('idList', newListId);
+
         const response = await fetch(url, {
             method: 'PUT',
             headers: {
@@ -251,10 +262,10 @@ export async function moveCardToList(cardId, newListId) {
 }
 
 export async function addCommentToCard(cardId, text) {
-    const url = `https://api.trello.com/1/cards/${cardId}/actions/comments?text=${text}&key=${key}&token=${token}`;
-
-
     try {
+        const { key, token } = getCredentials();
+        const url = `${API_URL}/cards/${cardId}/actions/comments?text=${text}&key=${key}&token=${token}`;
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -277,6 +288,7 @@ export async function addCommentToCard(cardId, text) {
 
 export async function getCardsByBoardAndMember(idMember) {
     try {
+        const { key, token } = getCredentials();
         const resp = await fetch(`${API_URL}/boards/${BOARD_ID}/cards/member/${idMember}?key=${key}&token=${token}&fields=all`, {
             headers: {
                 Accept: "application/json"
@@ -298,6 +310,7 @@ export async function getCardsByBoardAndMember(idMember) {
 
 export async function getBoardMembers(boardId) {
     try {
+        const { key, token } = getCredentials();
         const resp = await fetch(`${API_URL}/boards/${boardId}/members?key=${key}&token=${token}&fields=id,fullName,username,avatarUrl,initials`, {
             headers: {
                 Accept: "application/json"
@@ -317,6 +330,7 @@ export async function getBoardMembers(boardId) {
 
 export async function getMembers() {
     try {
+        const { key, token } = getCredentials();
         const resp = await fetch(`${API_URL}/boards/${BOARD_ID}/members?key=${key}&token=${token}&fields=id,fullName,username,avatarUrl,initials`, {
             headers: {
                 Accept: "application/json"
@@ -335,9 +349,10 @@ export async function getMembers() {
 }
 
 export async function addAttachmentToCard(cardId, file) {
-    const url = `${API_URL}/cards/${cardId}/attachments?key=${key}&token=${token}`;
-    
     try {
+        const { key, token } = getCredentials();
+        const url = `${API_URL}/cards/${cardId}/attachments?key=${key}&token=${token}`;
+        
         const response = await fetch(url, {
             method: 'POST',
             body: file
@@ -357,9 +372,10 @@ export async function addAttachmentToCard(cardId, file) {
 }
 
 export async function getCardAttachments(cardId) {
-    const url = `${API_URL}/cards/${cardId}/attachments?key=${key}&token=${token}`;
-    
     try {
+        const { key, token } = getCredentials();
+        const url = `${API_URL}/cards/${cardId}/attachments?key=${key}&token=${token}`;
+        
         const response = await fetch(url, {
             headers: {
                 Accept: 'application/json'
@@ -379,9 +395,10 @@ export async function getCardAttachments(cardId) {
 }
 
 export async function deleteAttachment(cardId, attachmentId) {
-    const url = `${API_URL}/cards/${cardId}/attachments/${attachmentId}?key=${key}&token=${token}`;
-    
     try {
+        const { key, token } = getCredentials();
+        const url = `${API_URL}/cards/${cardId}/attachments/${attachmentId}?key=${key}&token=${token}`;
+        
         const response = await fetch(url, {
             method: 'DELETE',
             headers: {
@@ -401,9 +418,10 @@ export async function deleteAttachment(cardId, attachmentId) {
 }
 
 export async function updateCardDescription(cardId, description) {
-    const url = `${API_URL}/cards/${cardId}?key=${key}&token=${token}`;
-    
     try {
+        const { key, token } = getCredentials();
+        const url = `${API_URL}/cards/${cardId}?key=${key}&token=${token}`;
+        
         const response = await fetch(url, {
             method: 'PUT',
             headers: {
@@ -426,9 +444,10 @@ export async function updateCardDescription(cardId, description) {
 }
 
 export async function updateCardName(cardId, name) {
-    const url = `${API_URL}/cards/${cardId}?key=${key}&token=${token}`;
-    
     try {
+        const { key, token } = getCredentials();
+        const url = `${API_URL}/cards/${cardId}?key=${key}&token=${token}`;
+        
         const response = await fetch(url, {
             method: 'PUT',
             headers: {
@@ -451,9 +470,10 @@ export async function updateCardName(cardId, name) {
 }
 
 export async function updateCardDueDate(cardId, dueDate) {
-    const url = `${API_URL}/cards/${cardId}?key=${key}&token=${token}`;
-    
     try {
+        const { key, token } = getCredentials();
+        const url = `${API_URL}/cards/${cardId}?key=${key}&token=${token}`;
+        
         const response = await fetch(url, {
             method: 'PUT',
             headers: {
@@ -477,6 +497,7 @@ export async function updateCardDueDate(cardId, dueDate) {
 
 export async function getCardById(cardId) {
     try {
+        const { key, token } = getCredentials();
         const resp = await fetch(`${API_URL}/cards/${cardId}?key=${key}&token=${token}`, {
             headers: {
                 Accept: "application/json"
@@ -497,13 +518,16 @@ export async function getCardById(cardId) {
 export async function getMemberNotifications() {
     try {
         const user = localStorage.getItem('user');
-        console.log(JSON.parse(user));
-        const trelloId = JSON.parse(user).trelloId;
-        console.log(JSON.parse(user));
+        if (!user) {
+            throw new Error('User not found in localStorage');
+        }
+        const userData = JSON.parse(user);
+        const trelloId = userData.trelloId;
         if (!trelloId) {
             throw new Error('Trello ID not found in localStorage');
         }
 
+        const { key, token } = getCredentials();
         const resp = await fetch(`${API_URL}/members/${trelloId}/notifications?key=${key}&token=${token}&filter=all`, {
             headers: {
                 Accept: "application/json"
@@ -525,13 +549,7 @@ export async function getMemberNotifications() {
 
 export async function markAllNotificationsAsRead() {
     try {
-        const user = localStorage.getItem('user');
-        console.log(JSON.parse(user));
-        const trelloId = JSON.parse(user).trelloId;
-        if (!trelloId) {
-            throw new Error('Trello ID not found in localStorage');
-        }
-
+        const { key, token } = getCredentials();
         const resp = await fetch(`${API_URL}/notifications/all/read?key=${key}&token=${token}`, {
             method: 'POST',
             headers: {
@@ -551,34 +569,35 @@ export async function markAllNotificationsAsRead() {
 }
 
 export const updateNotificationStatus = async (notificationId, isRead) => {
-  try {
+    try {
+        const { key, token } = getCredentials();
+        const response = await fetch(`${API_URL}/notifications/${notificationId}?key=${key}&token=${token}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                unread: !isRead
+            })
+        });
 
-    const response = await fetch(`${API_URL}/notifications/${notificationId}?key=${key}&token=${token}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        unread: !isRead
-      })
-    });
+        if (!response.ok) {
+            throw new Error('Failed to update notification status');
+        }
 
-    if (!response.ok) {
-      throw new Error('Failed to update notification status');
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error updating notification status:', error);
+        return null;
     }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error updating notification status:', error);
-    return null;
-  }
 };
 
 export async function updateCardDueComplete(cardId, dueComplete) {
-    const url = `${API_URL}/cards/${cardId}?key=${key}&token=${token}`;
-    
     try {
+        const { key, token } = getCredentials();
+        const url = `${API_URL}/cards/${cardId}?key=${key}&token=${token}`;
+        
         const response = await fetch(url, {
             method: 'PUT',
             headers: {
@@ -602,7 +621,8 @@ export async function updateCardDueComplete(cardId, dueComplete) {
 
 export const getBoardLabels = async (boardId) => {
     try {
-        const response = await fetch(`https://api.trello.com/1/boards/${boardId}/labels?key=${key}&token=${token}&limit=100`);
+        const { key, token } = getCredentials();
+        const response = await fetch(`${API_URL}/boards/${boardId}/labels?key=${key}&token=${token}&limit=100`);
         if (!response.ok) {
             throw new Error('Failed to fetch board labels');
         }
@@ -615,6 +635,7 @@ export const getBoardLabels = async (boardId) => {
 
 export async function getCreateCardByCard(cardId) {
     try {
+        const { key, token } = getCredentials();
         const resp = await fetch(`${API_URL}/cards/${cardId}/actions?filter=createCard&key=${key}&token=${token}`, {
             headers: {
                 Accept: "application/json"

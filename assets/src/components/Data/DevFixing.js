@@ -6,60 +6,64 @@ import {
   Tabs, Tab, CircularProgress, useTheme, alpha,
   TableSortLabel, Button
 } from '@mui/material';
-import { getCardsByList, getCreateCardByCard } from '../../api/trelloApi';
+import { getCardsByList } from '../../api/trelloApi';
 import CardDetailModal from '../CardDetailModal';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import dayjs from 'dayjs';
 import ClearIcon from '@mui/icons-material/Clear';
 
 export default function DevFixingDashboard() {
   const theme = useTheme();
   const [loading, setLoading] = useState(true);
-  const [selectedApp, setSelectedApp] = useState('Tất cả');
   const [tab, setTab] = useState(0);
   const [orderBy, setOrderBy] = useState('due');
   const [order, setOrder] = useState('asc');
   const [selectedCard, setSelectedCard] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [startDate, setStartDate] = useState(null);
-  const [endDate, setEndDate] = useState(null);
   const [cards, setCards] = useState([]);
   const [doneCards, setDoneCards] = useState([]);
-  // const [cardCache, setCardCache] = useState(new Map());
+  const [cardCache, setCardCache] = useState(new Map());
+  const [selectedApp, setSelectedApp] = useState('Tất cả');
 
   const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
   const processCardsInBatches = async (cards, batchSize = 10, delayMs = 1000) => {
     const results = [];
+    const newCache = new Map(cardCache);
     
     for (let i = 0; i < cards.length; i += batchSize) {
       const batch = cards.slice(i, i + batchSize);
       const batchPromises = batch.map(async card => {
+        // Check cache first
+        if (cardCache.has(card.id)) {
+          return cardCache.get(card.id);
+        }
+
         try {
           const appLabel = card.labels.find(label => label.name.includes('App:'));
-          const createCardData = await getCreateCardByCard(card.id);
-          const createDate = createCardData && createCardData.length > 0 ? createCardData[0].date : null;
           
-          return {
+          const processedCard = {
+            id: card.id,
             shortUrl: card.shortUrl,
             name: card.name,
             due: card.due,
             app: appLabel ? appLabel.name : 'Không có app',
-            idMembers: card.idMembers || [],
-            createDate: createDate
+            idMembers: card.idMembers || []
           };
+
+          // Add to cache
+          newCache.set(card.id, processedCard);
+          return processedCard;
         } catch (error) {
           console.error(`Error processing card ${card.id}:`, error);
-          return {
+          const errorCard = {
+            id: card.id,
             shortUrl: card.shortUrl,
             name: card.name,
             due: card.due,
             app: 'Không có app',
-            idMembers: card.idMembers || [],
-            createDate: null
+            idMembers: card.idMembers || []
           };
+          newCache.set(card.id, errorCard);
+          return errorCard;
         }
       });
 
@@ -67,79 +71,57 @@ export default function DevFixingDashboard() {
         const batchResults = await Promise.all(batchPromises);
         results.push(...batchResults);
         
+        // Update cache after each batch
+        setCardCache(newCache);
+        
         // Add delay between batches
         if (i + batchSize < cards.length) {
           await delay(delayMs);
         }
       } catch (error) {
         console.error('Error processing batch:', error);
-        // Continue with next batch even if current batch fails
       }
     }
 
     return results;
   };
 
-  useEffect(() => {
-    let isMounted = true;
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch both pending and done data
+      const [pendingData, doneData] = await Promise.all([
+        getCardsByList('63c7b1a68e5576001577d65c'),
+        getCardsByList('663ae7d6feac5f2f8d7a1c86')
+      ]);
 
-    async function fetchData() {
-      try {
-        setLoading(true);
-        
-        // Fetch both lists in parallel
-        const [data, doneData] = await Promise.all([
-          getCardsByList('63c7b1a68e5576001577d65c'), // Main list
-          getCardsByList('663ae7d6feac5f2f8d7a1c86')  // Done list
-        ]);
+      // Process both sets of cards
+      const [mappedPendingCards, mappedDoneCards] = await Promise.all([
+        processCardsInBatches(pendingData),
+        processCardsInBatches(doneData)
+      ]);
 
-        if (!isMounted) return;
+      // Update both states
+      setCards(mappedPendingCards);
+      setDoneCards(mappedDoneCards);
 
-        // Process cards sequentially to avoid rate limiting
-        const mappedMain = await processCardsInBatches(data);
-        if (!isMounted) return;
-        
-        const mappedDone = await processCardsInBatches(doneData);
-        if (!isMounted) return;
-
-        setCards(mappedMain);
-        setDoneCards(mappedDone);
-
-      } catch (error) {
-        console.error('Lỗi khi lấy dữ liệu:', error);
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
+    } catch (error) {
+      console.error('Lỗi khi lấy dữ liệu:', error);
+    } finally {
+      setLoading(false);
     }
-
-    fetchData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const filterCards = (cards) => {
-    // If no filters are applied, return all cards
-    if (selectedApp === 'Tất cả' && !startDate && !endDate) {
-      return cards;
-    }
-
-    return cards.filter(card => {
-      const matchApp = selectedApp === 'Tất cả' || card.app === selectedApp;
-      const matchDate = (!startDate || !endDate) || (
-        card.createDate && 
-        new Date(card.createDate) >= startDate && 
-        new Date(card.createDate) <= new Date(endDate.setHours(23, 59, 59, 999))
-      );
-      return matchApp && matchDate;
-    });
   };
 
-  const filteredCards = filterCards(cards);
-  const filteredDoneCards = filterCards(doneCards);
+  // Load all data on mount
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Handle tab change
+  const handleTabChange = (event, newValue) => {
+    setTab(newValue);
+  };
 
   const getOverdueLevel = (dueDate) => {
     if (!dueDate) return null;
@@ -196,10 +178,6 @@ export default function DevFixingDashboard() {
     });
   };
 
-  const handleAppClick = (app) => {
-    setSelectedApp(app === selectedApp ? 'Tất cả' : app);
-  };
-
   const handleRowClick = async (card) => {
     try {
       // Ensure we have the full card data
@@ -222,27 +200,32 @@ export default function DevFixingDashboard() {
     }
   };
 
-  const handleClearFilters = () => {
-    setSelectedApp('Tất cả');
-    setStartDate(null);
-    setEndDate(null);
+  const handleAppClick = (app) => {
+    setSelectedApp(app === selectedApp ? 'Tất cả' : app);
   };
 
-  const renderAppStats = (cardList, title) => {
-    // Use the original cards array for stats when no filters are applied
-    const statsSource = (selectedApp === 'Tất cả' && !startDate && !endDate) 
-      ? (tab === 0 ? cards : doneCards)
-      : cardList;
+  const filterCards = (cards) => {
+    if (selectedApp === 'Tất cả') {
+      return cards;
+    }
+    return cards.filter(card => card.app === selectedApp);
+  };
 
-    const appStats = statsSource.reduce((acc, card) => {
+  const filteredCards = filterCards(cards);
+  const filteredDoneCards = filterCards(doneCards);
+
+  const renderAppStats = (cardList, title) => {
+    const appStats = cardList.reduce((acc, card) => {
       acc[card.app] = (acc[card.app] || 0) + 1;
       return acc;
     }, {});
     const totalCards = cardList.length;
     const top3Apps = Object.entries(appStats).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([app]) => app);
 
-    // Calculate total cards for percentage (use all cards if in pending tab, all done cards if in done tab)
-    const totalCardsForPercentage = tab === 0 ? cards.length : doneCards.length;
+    // Filter appStats based on selectedApp
+    const filteredAppStats = selectedApp === 'Tất cả' 
+      ? appStats 
+      : { [selectedApp]: appStats[selectedApp] || 0 };
 
     return (
       <Box sx={{ 
@@ -272,6 +255,29 @@ export default function DevFixingDashboard() {
             }}
           >
             {title}
+            {selectedApp !== 'Tất cả' && (
+              <Button
+                variant="outlined"
+                color="primary"
+                size="small"
+                startIcon={<ClearIcon />}
+                onClick={() => setSelectedApp('Tất cả')}
+                sx={{
+                  ml: 2,
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  px: 2,
+                  py: 0.5,
+                  borderColor: alpha(theme.palette.primary.main, 0.5),
+                  '&:hover': {
+                    borderColor: theme.palette.primary.main,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.05)
+                  }
+                }}
+              >
+                Xem tất cả
+              </Button>
+            )}
           </Typography>
           <Box sx={{
             display: 'flex',
@@ -294,16 +300,16 @@ export default function DevFixingDashboard() {
               }}
             >
               Tổng số: <span style={{ color: theme.palette.primary.main, fontWeight: 600 }}>
-                {(selectedApp !== 'Tất cả' || startDate || endDate) ? totalCards : totalCardsForPercentage}
+                {selectedApp === 'Tất cả' ? totalCards : filteredCards.length}
               </span>
             </Typography>
           </Box>
         </Box>
         <Grid container spacing={2}>
-          {Object.entries(appStats)
+          {Object.entries(filteredAppStats)
             .sort(([, a], [, b]) => b - a)
             .map(([app, count]) => {
-              const percent = totalCardsForPercentage > 0 ? (count / totalCardsForPercentage) * 100 : 0;
+              const percent = totalCards > 0 ? (count / totalCards) * 100 : 0;
               const isTopApp = top3Apps.includes(app);
               const isSelected = selectedApp === app;
               return (
@@ -463,7 +469,6 @@ export default function DevFixingDashboard() {
                   </TableSortLabel>
                 </TableCell>
                 <TableCell>Trễ</TableCell>
-                <TableCell>Ngày tạo</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -520,7 +525,6 @@ export default function DevFixingDashboard() {
                     <TableCell>{card.app}</TableCell>
                     <TableCell>{formatDate(card.due)}</TableCell>
                     <TableCell>{getOverdueDays(card.due) ?? '-'}</TableCell>
-                    <TableCell>{formatDate(card.createDate)}</TableCell>
                   </TableRow>
                 );
               })}
@@ -648,76 +652,9 @@ export default function DevFixingDashboard() {
         </Box>
       </Box>
 
-      <Box sx={{ 
-        mb: 4,
-        display: 'flex',
-        gap: 2,
-        alignItems: 'center',
-        background: 'white',
-        p: 2,
-        borderRadius: 2,
-        boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
-      }}>
-        <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <DatePicker
-            label="Từ ngày"
-            value={startDate ? dayjs(startDate) : null}
-            onChange={(newValue) => setStartDate(newValue ? newValue.toDate() : null)}
-            slotProps={{
-              textField: {
-                size: "small",
-                sx: { 
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    backgroundColor: alpha(theme.palette.primary.main, 0.05)
-                  }
-                }
-              }
-            }}
-          />
-          <DatePicker
-            label="Đến ngày"
-            value={endDate ? dayjs(endDate) : null}
-            onChange={(newValue) => setEndDate(newValue ? newValue.toDate() : null)}
-            slotProps={{
-              textField: {
-                size: "small",
-                sx: { 
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                    backgroundColor: alpha(theme.palette.primary.main, 0.05)
-                  }
-                }
-              }
-            }}
-          />
-        </LocalizationProvider>
-        {(selectedApp !== 'Tất cả' || startDate || endDate) && (
-          <Button
-            variant="outlined"
-            color="primary"
-            startIcon={<ClearIcon />}
-            onClick={handleClearFilters}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              px: 2,
-              py: 1,
-              borderColor: alpha(theme.palette.primary.main, 0.5),
-              '&:hover': {
-                borderColor: theme.palette.primary.main,
-                backgroundColor: alpha(theme.palette.primary.main, 0.05)
-              }
-            }}
-          >
-            Xóa bộ lọc
-          </Button>
-        )}
-      </Box>
-
       <Tabs 
         value={tab} 
-        onChange={(e, newValue) => setTab(newValue)} 
+        onChange={handleTabChange}
         sx={{ 
           mb: 4,
           background: 'white',
@@ -760,8 +697,8 @@ export default function DevFixingDashboard() {
             '100%': { opacity: 1, transform: 'translateY(0)' }
           }
         }}>
-          {renderAppStats(filteredCards, 'Thống kê theo App')}
-          {renderTable(filteredCards)}
+          {renderAppStats(cards, 'Thống kê theo App')}
+          {renderTable(cards)}
         </Box>
       )}
 
@@ -773,8 +710,8 @@ export default function DevFixingDashboard() {
             '100%': { opacity: 1, transform: 'translateY(0)' }
           }
         }}>
-          {renderAppStats(filteredDoneCards, 'Thống kê Done theo App')}
-          {renderTable(filteredDoneCards)}
+          {renderAppStats(doneCards, 'Thống kê Done theo App')}
+          {renderTable(doneCards)}
         </Box>
       )}
     </Box>
