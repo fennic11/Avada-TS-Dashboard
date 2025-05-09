@@ -7,8 +7,13 @@ const createOrUpdateUser = async (userData) => {
 
         // Check if user already exists
         const existingUser = await User.findOne({ email });
+        
         if (existingUser) {
-            throw new Error('Email already exists');
+            // Update existing user
+            existingUser.apiKey = apiKey || existingUser.apiKey;
+            existingUser.token = token || existingUser.token;
+            await existingUser.save();
+            return existingUser;
         }
 
         // Create new user
@@ -19,7 +24,6 @@ const createOrUpdateUser = async (userData) => {
         });
 
         await user.save();
-
         return user;
     } catch (error) {
         throw error;
