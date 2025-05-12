@@ -653,3 +653,44 @@ export async function getCreateCardByCard(cardId) {
     }
 }
 
+export async function getCardsByBoardWithDateFilter(since, before, username = null) {
+    try {
+        const { key, token } = getCredentials();
+        let url = `${API_URL}/boards/${BOARD_ID}/cards?key=${key}&token=${token}`;
+        
+        // Add date filters if provided
+        if (since) {
+            url += `&since=${since}`; // ISO-formatted date or Mongo ID
+        }
+        if (before) {
+            url += `&before=${before}`; // ISO-formatted date or Mongo ID
+        }
+
+        // Add member filter if provided
+        if (username) {
+            url += `&member_fields=${username}`;
+        }
+
+        // Add additional useful fields
+        url += '&fields=id,name,desc,due,dueComplete,idList,idMembers,labels,attachments,actions,url';
+
+        const resp = await fetch(url, {
+            headers: {
+                Accept: "application/json"
+            }
+        });
+
+        if (!resp.ok) {
+            throw new Error(`Failed to fetch cards: ${resp.statusText}`);
+        }
+
+        const cards = await resp.json();
+        console.log(cards[0]);
+        console.log(`Found ${cards.length} cards with date filters${username ? ` for member ${username}` : ''}`);
+        return cards;
+    } catch (error) {
+        console.error('Error getting cards with date filters:', error);
+        return null;
+    }
+}
+
