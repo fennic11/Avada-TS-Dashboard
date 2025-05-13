@@ -32,6 +32,10 @@
     "name": "Done"
   },
   {
+    "id": "68196adc0828b5e2f551fd4f",
+    "name": "Done-T5-2025"
+  },
+  {
     "id": "663ae7d6feac5f2f8d7a1c86",
     "name": "Fix done from dev"
   },
@@ -48,16 +52,8 @@
     "name": "CuongTT-Speed up"
   },
   {
-    "id": "66ab3ead4afa398ea70ac212",
-    "name": "Issues level"
-  },
-  {
     "id": "67452828b324c700a9ea960d",
     "name": "Error Card"
-  },
-  {
-    "id": "680cb187eee7da4c30ab98ce",
-    "name": "SpeedUp-T4-2025"
   },
   {
     "id": "638d769884c52b05235a2317",
@@ -296,6 +292,10 @@
     "name": "Done-T10-2024"
   },
   {
+    "id": "66ab3ead4afa398ea70ac212",
+    "name": "Issues level"
+  },
+  {
     "id": "66fa1fd67d574ad857f99c7b",
     "name": "Speed-up-t9-2024"
   },
@@ -390,6 +390,14 @@
   {
     "id": "67ef7b97a39afad7b1d1654d",
     "name": "Speed-up-T3-2025"
+  },
+  {
+    "id": "680cb187eee7da4c30ab98ce",
+    "name": "SpeedUp-T4-2025"
+  },
+  {
+    "id": "681815d627ded451da07299d",
+    "name": "fixDoneFromDev-T4-2025"
   },
   {
     "id": "677611e10e8ecc10f9650f68",
