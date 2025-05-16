@@ -506,7 +506,7 @@ const DevZone = () => {
         <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 {/* Phần xử lý cards */}
-                {/* <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
+                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
                     <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
                         Xử lý Cards
                     </Typography>
@@ -536,7 +536,7 @@ const DevZone = () => {
                             Tính Resolution Time và Gửi lên API
                         </Button>
                     </Box>
-                </Paper> */}
+                </Paper>
 
                 {/* Phần lấy Card Details */}
                 <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>

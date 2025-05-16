@@ -14,12 +14,17 @@ import {
   Card,
   CardContent,
   List,
-  Button
+  Button,
+  Link,
+  Modal,
+  IconButton
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import members from '../../data/members.json';
 import listsId from '../../data/listsId.json';
 import { getCardsByBoardWithDateFilter } from '../../api/trelloApi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import CardDetailModal from '../CardDetailModal';
 
 const STATUS_MAP = {
   pending: { label: 'Pending', color: '#ff9800' },
@@ -46,6 +51,8 @@ const Issues = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [appFilter, setAppFilter] = useState('');
   const [didAutoFetch, setDidAutoFetch] = useState(false);
+  const [selectedCardId, setSelectedCardId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Get list IDs from listsId.json
   const getListIdByName = (name) => {
@@ -315,6 +322,16 @@ const Issues = () => {
         )}
       </Paper>
     );
+  };
+
+  const handleRowClick = (card) => {
+    setSelectedCardId(card.id);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedCardId(null);
   };
 
   return (
@@ -602,7 +619,15 @@ const Issues = () => {
             </thead>
             <tbody>
               {filteredIssues.map(card => (
-                <tr key={card.id} style={{ borderBottom: '1px solid #eee' }}>
+                <tr
+                  key={card.id}
+                  style={{
+                    borderBottom: '1px solid #eee',
+                    cursor: 'pointer',
+                    '&:hover': { backgroundColor: '#f5f5f5' }
+                  }}
+                  onClick={() => handleRowClick(card)}
+                >
                   <td style={{ padding: 8 }}>{card.name}</td>
                   <td style={{ padding: 8 }}>{(card.idMembers || []).map(id => members.find(m => m.id === id)?.fullName).join(', ')}</td>
                   <td style={{ padding: 8 }}>
@@ -620,6 +645,13 @@ const Issues = () => {
           </table>
         </Box>
       </Paper>
+
+      {/* Card Detail Modal */}
+      <CardDetailModal
+        open={isModalOpen}
+        onClose={handleCloseModal}
+        cardId={selectedCardId}
+      />
     </Box>
   );
 };

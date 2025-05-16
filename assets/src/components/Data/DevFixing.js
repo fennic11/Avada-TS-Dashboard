@@ -9,103 +9,46 @@ import {
 import { getCardsByList } from '../../api/trelloApi';
 import CardDetailModal from '../CardDetailModal';
 import ClearIcon from '@mui/icons-material/Clear';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function DevFixingDashboard() {
   const theme = useTheme();
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState(0);
   const [orderBy, setOrderBy] = useState('due');
   const [order, setOrder] = useState('asc');
   const [selectedCard, setSelectedCard] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [cards, setCards] = useState([]);
-  const [doneCards, setDoneCards] = useState([]);
   const [cardCache, setCardCache] = useState(new Map());
   const [selectedApp, setSelectedApp] = useState('Tất cả');
 
   const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-  const processCardsInBatches = async (cards, batchSize = 10, delayMs = 1000) => {
-    const results = [];
-    const newCache = new Map(cardCache);
-    
-    for (let i = 0; i < cards.length; i += batchSize) {
-      const batch = cards.slice(i, i + batchSize);
-      const batchPromises = batch.map(async card => {
-        // Check cache first
-        if (cardCache.has(card.id)) {
-          return cardCache.get(card.id);
-        }
-
-        try {
-          const appLabel = card.labels.find(label => label.name.includes('App:'));
-          
-          const processedCard = {
-            id: card.id,
-            shortUrl: card.shortUrl,
-            name: card.name,
-            due: card.due,
-            app: appLabel ? appLabel.name : 'Không có app',
-            idMembers: card.idMembers || []
-          };
-
-          // Add to cache
-          newCache.set(card.id, processedCard);
-          return processedCard;
-        } catch (error) {
-          console.error(`Error processing card ${card.id}:`, error);
-          const errorCard = {
-            id: card.id,
-            shortUrl: card.shortUrl,
-            name: card.name,
-            due: card.due,
-            app: 'Không có app',
-            idMembers: card.idMembers || []
-          };
-          newCache.set(card.id, errorCard);
-          return errorCard;
-        }
-      });
-
-      try {
-        const batchResults = await Promise.all(batchPromises);
-        results.push(...batchResults);
-        
-        // Update cache after each batch
-        setCardCache(newCache);
-        
-        // Add delay between batches
-        if (i + batchSize < cards.length) {
-          await delay(delayMs);
-        }
-      } catch (error) {
-        console.error('Error processing batch:', error);
-      }
-    }
-
-    return results;
+  const processCards = (cards) => {
+    return cards.map(card => {
+      const appLabel = card.labels.find(label => label.name.includes('App:'));
+      const createAction = card.actions?.find(action => action.type === 'createCard');
+      const createDate = createAction?.date ? new Date(createAction.date) : null;
+      return {
+        id: card.id,
+        shortUrl: card.shortUrl,
+        name: card.name,
+        due: card.due,
+        app: appLabel ? appLabel.name : 'Không có app',
+        idMembers: card.idMembers || [],
+        createDate: createDate
+      };
+    });
   };
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      
-      // Fetch both pending and done data
-      const [pendingData, doneData] = await Promise.all([
-        getCardsByList('63c7b1a68e5576001577d65c'),
-        getCardsByList('663ae7d6feac5f2f8d7a1c86')
-      ]);
-
-      // Process both sets of cards
-      const [mappedPendingCards, mappedDoneCards] = await Promise.all([
-        processCardsInBatches(pendingData),
-        processCardsInBatches(doneData)
-      ]);
-
-      // Update both states
+      // Fetch pending data only
+      const pendingData = await getCardsByList('63c7b1a68e5576001577d65c');
+      // Process cards simply
+      const mappedPendingCards = processCards(pendingData);
       setCards(mappedPendingCards);
-      setDoneCards(mappedDoneCards);
-
     } catch (error) {
       console.error('Lỗi khi lấy dữ liệu:', error);
     } finally {
@@ -117,11 +60,6 @@ export default function DevFixingDashboard() {
   useEffect(() => {
     fetchData();
   }, []);
-
-  // Handle tab change
-  const handleTabChange = (event, newValue) => {
-    setTab(newValue);
-  };
 
   const getOverdueLevel = (dueDate) => {
     if (!dueDate) return null;
@@ -212,7 +150,6 @@ export default function DevFixingDashboard() {
   };
 
   const filteredCards = filterCards(cards);
-  const filteredDoneCards = filterCards(doneCards);
 
   const renderAppStats = (cardList, title) => {
     const appStats = cardList.reduce((acc, card) => {
@@ -222,10 +159,30 @@ export default function DevFixingDashboard() {
     const totalCards = cardList.length;
     const top3Apps = Object.entries(appStats).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([app]) => app);
 
-    // Filter appStats based on selectedApp
     const filteredAppStats = selectedApp === 'Tất cả' 
       ? appStats 
       : { [selectedApp]: appStats[selectedApp] || 0 };
+
+    const getChartData = (app) => {
+      const appCards = cardList.filter(card => card.app === app && card.createDate);
+      
+      console.log(`Cards for ${app}:`, appCards.length);
+      
+      const dateMap = new Map();
+      appCards.forEach(card => {
+        if (card.createDate) {
+          const date = card.createDate.toISOString().split('T')[0];
+          dateMap.set(date, (dateMap.get(date) || 0) + 1);
+        }
+      });
+
+      const chartData = Array.from(dateMap.entries())
+        .map(([date, count]) => ({ date, count }))
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      console.log(`Chart data for ${app}:`, chartData);
+      return chartData;
+    };
 
     return (
       <Box sx={{ 
@@ -312,6 +269,8 @@ export default function DevFixingDashboard() {
               const percent = totalCards > 0 ? (count / totalCards) * 100 : 0;
               const isTopApp = top3Apps.includes(app);
               const isSelected = selectedApp === app;
+              const chartData = getChartData(app);
+
               return (
                 <Grid item xs={12} sm={6} md={4} lg={3} key={app}>
                   <Card
@@ -390,6 +349,80 @@ export default function DevFixingDashboard() {
                           }
                         }}
                       />
+                      
+                      {/* Chart */}
+                      <Box sx={{ height: 120, mt: 2, width: '100%' }}>
+                        {chartData.length > 0 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart 
+                              data={chartData} 
+                              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                            >
+                              <defs>
+                                <linearGradient id="colorLine" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor={isTopApp ? theme.palette.error.main : theme.palette.primary.main} stopOpacity={0.8}/>
+                                  <stop offset="95%" stopColor={isTopApp ? theme.palette.error.main : theme.palette.primary.main} stopOpacity={0.1}/>
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid 
+                                strokeDasharray="3 3" 
+                                stroke={alpha(theme.palette.primary.main, 0.1)}
+                                vertical={false}
+                              />
+                              <XAxis 
+                                dataKey="date" 
+                                tick={{ fontSize: 10, fill: theme.palette.text.secondary }}
+                                tickFormatter={(date) => new Date(date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                                minTickGap={20}
+                                axisLine={{ stroke: alpha(theme.palette.primary.main, 0.2) }}
+                                tickLine={{ stroke: alpha(theme.palette.primary.main, 0.2) }}
+                              />
+                              <YAxis 
+                                tick={{ fontSize: 10, fill: theme.palette.text.secondary }}
+                                allowDecimals={false}
+                                domain={[0, 'auto']}
+                                axisLine={{ stroke: alpha(theme.palette.primary.main, 0.2) }}
+                                tickLine={{ stroke: alpha(theme.palette.primary.main, 0.2) }}
+                              />
+                              <Tooltip 
+                                contentStyle={{
+                                  backgroundColor: theme.palette.background.paper,
+                                  border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                                  borderRadius: 8,
+                                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                }}
+                                formatter={(value) => [`${value} cards`, 'Số lượng']}
+                                labelFormatter={(date) => new Date(date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                              />
+                              <Line 
+                                type="monotone" 
+                                dataKey="count" 
+                                stroke={isTopApp ? theme.palette.error.main : theme.palette.primary.main}
+                                strokeWidth={2}
+                                dot={false}
+                                isAnimationActive={false}
+                                activeDot={{
+                                  r: 4,
+                                  strokeWidth: 2,
+                                  fill: isTopApp ? theme.palette.error.main : theme.palette.primary.main,
+                                  stroke: theme.palette.background.paper
+                                }}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <Box sx={{ 
+                            height: '100%', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            color: 'text.secondary',
+                            fontSize: '0.8rem'
+                          }}>
+                            Không có dữ liệu
+                          </Box>
+                        )}
+                      </Box>
                     </CardContent>
                   </Card>
                 </Grid>
@@ -629,91 +662,19 @@ export default function DevFixingDashboard() {
               Pending: {cards.length}
             </Typography>
           </Box>
-          <Box sx={{
-            backgroundColor: alpha(theme.palette.success.main, 0.1),
-            px: 2,
-            py: 1,
-            borderRadius: 2,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1
-          }}>
-            <Typography
-              variant="h6"
-              sx={{
-                color: theme.palette.success.main,
-                fontWeight: 600,
-                fontSize: '0.9rem'
-              }}
-            >
-              Done: {doneCards.length}
-            </Typography>
-          </Box>
         </Box>
       </Box>
 
-      <Tabs 
-        value={tab} 
-        onChange={handleTabChange}
-        sx={{ 
-          mb: 4,
-          background: 'white',
-          borderRadius: 2,
-          p: 1,
-          boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          '& .MuiTabs-indicator': {
-            backgroundColor: 'primary.main',
-            height: 3,
-            borderRadius: 3,
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-          },
-          '& .MuiTab-root': {
-            textTransform: 'none',
-            fontSize: '0.85rem',
-            fontWeight: 500,
-            borderRadius: 2,
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            '&:hover': {
-              backgroundColor: alpha(theme.palette.primary.main, 0.05),
-              transform: 'translateY(-1px)'
-            },
-            '&.Mui-selected': {
-              backgroundColor: alpha(theme.palette.primary.main, 0.1),
-              transform: 'translateY(-1px)'
-            }
-          }
-        }}
-      >
-        <Tab label="Pending" />
-        <Tab label="Done" />
-      </Tabs>
-
-      {tab === 0 && (
-        <Box sx={{ 
-          animation: 'fadeIn 0.3s ease-in-out',
-          '@keyframes fadeIn': {
-            '0%': { opacity: 0, transform: 'translateY(10px)' },
-            '100%': { opacity: 1, transform: 'translateY(0)' }
-          }
-        }}>
-          {renderAppStats(cards, 'Thống kê theo App')}
-          {renderTable(cards)}
-        </Box>
-      )}
-
-      {tab === 1 && (
-        <Box sx={{ 
-          animation: 'fadeIn 0.3s ease-in-out',
-          '@keyframes fadeIn': {
-            '0%': { opacity: 0, transform: 'translateY(10px)' },
-            '100%': { opacity: 1, transform: 'translateY(0)' }
-          }
-        }}>
-          {renderAppStats(doneCards, 'Thống kê Done theo App')}
-          {renderTable(doneCards)}
-        </Box>
-      )}
+      <Box sx={{ 
+        animation: 'fadeIn 0.3s ease-in-out',
+        '@keyframes fadeIn': {
+          '0%': { opacity: 0, transform: 'translateY(10px)' },
+          '100%': { opacity: 1, transform: 'translateY(0)' }
+        }
+      }}>
+        {renderAppStats(cards, 'Thống kê theo App')}
+        {renderTable(cards)}
+      </Box>
     </Box>
   );
 }

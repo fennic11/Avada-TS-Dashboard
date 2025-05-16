@@ -15,9 +15,10 @@ const API_URL = `https://api.trello.com/1`;
 const BOARD_ID = process.env.REACT_APP_BOARD_ID || "638d769884c52b05235a2310";
 
 export async function getCardsByList(listId) {
+    
     try {
         const { key, token } = getCredentials();
-        const resp = await fetch(`${API_URL}/lists/${listId}/cards?key=${key}&token=${token}`, {
+        const resp = await fetch(`${API_URL}/lists/${listId}/cards?key=${key}&token=${token}&actions=createCard`, {
             headers: {
                 Accept: "application/json"
             }
@@ -26,8 +27,9 @@ export async function getCardsByList(listId) {
         if (!resp.ok) {
             throw new Error(`Failed to fetch cards for list ${listId}: ${resp.statusText}`);
         }
-
-        return await resp.json();
+        const cards = await resp.json();
+        console.log(cards[cards.length - 1]);
+        return cards;
     } catch (error) {
         console.error(`Error getting cards for list ${listId}:`, error);
         return null;
@@ -669,7 +671,7 @@ export async function getCardsByBoardWithDateFilter(since, before) {
         // Add member filter if provided
 
         // Add additional useful fields
-        url += '&fields=id,name,idList,idMembers,labels,url,due&filter=all';
+        url += '&fields=id,name,idList,idMembers,labels,url,due';
         const resp = await fetch(url, {
             headers: {
                 Accept: "application/json"
@@ -681,7 +683,7 @@ export async function getCardsByBoardWithDateFilter(since, before) {
         }
 
         const cards = await resp.json();
-        console.log(cards[0]);
+        console.log(cards[cards.length - 1]);
         console.log(`Found ${cards.length} cards with date: ''}`);
         return cards;
     } catch (error) {
@@ -689,4 +691,3 @@ export async function getCardsByBoardWithDateFilter(since, before) {
         return null;
     }
 }
-
