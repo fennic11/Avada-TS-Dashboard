@@ -43,7 +43,9 @@ export const ROLE_PERMISSIONS = {
     },
     [ROLES.DEV]: {
         allowedTabs: [
-            TABS.DEV_ZONE
+            TABS.BUGS,
+            TABS.ISSUES
+
         ],
         description: 'Access to Dev related features'
     },

@@ -838,10 +838,13 @@
     },
     {
       "id": "64586bc3e4fb5e43136979bf",
+      "email": "dongnv@avada.email",
       "fullName": "Đông Nguyễn Văn",
       "username": "dong1207",
       "avatarUrl": "https://trello-members.s3.amazonaws.com/64586bc3e4fb5e43136979bf/5a86806ec91ddd7db58a3d27f210c199",
-      "initials": "ĐV"
+      "initials": "ĐV",
+      "role": "dev",
+      "kpiName": "DongNV"
     },
     {
       "id": "65dc1670ae5414d1dd11a26d",
