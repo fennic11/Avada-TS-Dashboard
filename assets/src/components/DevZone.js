@@ -36,6 +36,9 @@ import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { alpha } from '@mui/material/styles';
 import { useTheme } from '@mui/material/styles';
+import SendIcon from '@mui/icons-material/Send';
+import ListIcon from '@mui/icons-material/List';
+import { getChannelId, sendMessageToChannel } from "../api/slackApi";
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -78,6 +81,11 @@ const DevZone = () => {
         apiKey: "",
         token: ""
     });
+    const [slackMessage, setSlackMessage] = useState('');
+    const [isSendingSlack, setIsSendingSlack] = useState(false);
+    const [channels, setChannels] = useState(null);
+    const [isChannelsModalOpen, setIsChannelsModalOpen] = useState(false);
+    const [isLoadingChannels, setIsLoadingChannels] = useState(false);
     const theme = useTheme();
 
     // Tạo Set chứa các member ID hợp lệ
@@ -502,6 +510,80 @@ const DevZone = () => {
         }
     };
 
+    const handleSendSlackMessage = async () => {
+        if (!slackMessage.trim()) {
+            setSnackbar({
+                open: true,
+                message: "Vui lòng nhập nội dung tin nhắn",
+                severity: "warning"
+            });
+            return;
+        }
+
+        try {
+            const response = await sendMessageToChannel(slackMessage);
+            setSnackbar({
+                open: true,
+                message: "Đã gửi tin nhắn đến Slack thành công!",
+                severity: "success"
+            });
+            setSlackMessage('');    
+        } catch (error) {
+            console.error('Error sending Slack message:', error);
+            setSnackbar({
+                open: true,
+                message: error.message || "Có lỗi xảy ra khi gửi tin nhắn",
+                severity: "error"
+            });
+        } finally {
+            setIsSendingSlack(false);
+        }
+    };
+
+    const handleGetChannels = async () => {
+        try {
+            setIsLoadingChannels(true);
+            const data = await getChannelId();
+            setChannels(data);
+            setIsChannelsModalOpen(true);
+        } catch (error) {
+            console.error('Error fetching channels:', error);
+            setSnackbar({
+                open: true,
+                message: error.message || "Có lỗi xảy ra khi lấy danh sách channels",
+                severity: "error"
+            });
+        } finally {
+            setIsLoadingChannels(false);
+        }
+    };
+
+    const handleCloseChannelsModal = () => {
+        setIsChannelsModalOpen(false);
+        setChannels(null);
+    };
+
+    const handleCopyChannelsJSON = () => {
+        if (channels) {
+            navigator.clipboard.writeText(JSON.stringify(channels, null, 2))
+                .then(() => {
+                    setSnackbar({
+                        open: true,
+                        message: "Đã sao chép JSON vào clipboard",
+                        severity: "success"
+                    });
+                })
+                .catch(err => {
+                    console.error('Failed to copy:', err);
+                    setSnackbar({
+                        open: true,
+                        message: "Không thể sao chép JSON",
+                        severity: "error"
+                    });
+                });
+        }
+    };
+
     return (
         <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -816,6 +898,65 @@ const DevZone = () => {
                         >
                             Cập nhật
                         </Button>
+                    </Box>
+                </Paper>
+
+                {/* Phần gửi tin nhắn Slack */}
+                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
+                        Gửi tin nhắn đến Slack
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <TextField
+                            label="Nội dung tin nhắn"
+                            value={slackMessage}
+                            onChange={(e) => setSlackMessage(e.target.value)}
+                            fullWidth
+                            multiline
+                            rows={4}
+                            placeholder="Nhập nội dung tin nhắn cần gửi đến Slack..."
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
+                        />
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <Button 
+                                variant="contained" 
+                                onClick={handleSendSlackMessage}
+                                disabled={isSendingSlack}
+                                startIcon={<SendIcon />}
+                                sx={{ 
+                                    minWidth: 120,
+                                    borderRadius: 1,
+                                    textTransform: 'none',
+                                    fontWeight: 'bold',
+                                    backgroundColor: '#4A154B',
+                                    '&:hover': {
+                                        backgroundColor: '#3a1039'
+                                    }
+                                }}
+                            >
+                                {isSendingSlack ? 'Đang gửi...' : 'Gửi đến Slack'}
+                            </Button>
+                            <Button 
+                                variant="outlined" 
+                                onClick={handleGetChannels}
+                                disabled={isLoadingChannels}
+                                startIcon={<ListIcon />}
+                                sx={{ 
+                                    minWidth: 120,
+                                    borderRadius: 1,
+                                    textTransform: 'none',
+                                    fontWeight: 'bold',
+                                    borderColor: '#4A154B',
+                                    color: '#4A154B',
+                                    '&:hover': {
+                                        borderColor: '#3a1039',
+                                        backgroundColor: alpha('#4A154B', 0.1)
+                                    }
+                                }}
+                            >
+                                {isLoadingChannels ? 'Đang tải...' : 'Xem Channels'}
+                            </Button>
+                        </Box>
                     </Box>
                 </Paper>
 
@@ -1213,6 +1354,82 @@ const DevZone = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseCardDetailsModal}>Close</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Channels Modal */}
+            <Dialog
+                open={isChannelsModalOpen}
+                onClose={handleCloseChannelsModal}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center' 
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Typography variant="h6">
+                                Slack Channels
+                            </Typography>
+                            {channels && (
+                                <Chip 
+                                    label={`${channels.length} channels`}
+                                    size="small"
+                                    sx={{ 
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                        color: 'primary.main',
+                                        fontWeight: 500
+                                    }}
+                                />
+                            )}
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {channels && (
+                                <Tooltip title="Copy JSON">
+                                    <IconButton 
+                                        onClick={handleCopyChannelsJSON}
+                                        sx={{ 
+                                            color: 'primary.main',
+                                            '&:hover': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                                            }
+                                        }}
+                                    >
+                                        <ContentCopyIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                            <IconButton onClick={handleCloseChannelsModal}>
+                                <CloseIcon />
+                            </IconButton>
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    {channels && (
+                        <Paper 
+                            sx={{ 
+                                p: 2, 
+                                backgroundColor: '#f5f5f5',
+                                maxHeight: '60vh',
+                                overflow: 'auto'
+                            }}
+                        >
+                            <pre style={{ 
+                                margin: 0,
+                                whiteSpace: 'pre-wrap',
+                                wordWrap: 'break-word'
+                            }}>
+                                {JSON.stringify(channels, null, 2)}
+                            </pre>
+                        </Paper>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseChannelsModal}>Close</Button>
                 </DialogActions>
             </Dialog>
         </Box>

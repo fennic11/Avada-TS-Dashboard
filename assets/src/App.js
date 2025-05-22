@@ -12,6 +12,7 @@ import { SnackbarProvider } from 'notistack';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { TABS, ROLES, hasTabAccess, getAccessibleTabs } from './utils/roles';
 
+
 // Import existing pages
 import Bugs from './pages/Dashboard';
 import Issues from './pages/Issues';
@@ -20,6 +21,7 @@ import Kpis from './pages/Kpi';
 import TSLead from './pages/TSLeadPage';
 import TSWorkspace from './pages/TSWorkspace';
 import BaPage from './pages/BaPage';
+import Slack from './pages/Slack';
 
 const theme = createTheme({
     palette: {
@@ -166,6 +168,16 @@ const App = () => {
                                     <PrivateRoute>
                                         <Layout>
                                             <BaPage />
+                                        </Layout>
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path="/slack-channel"
+                                element={
+                                    <PrivateRoute>
+                                        <Layout>
+                                            <Slack />   
                                         </Layout>
                                     </PrivateRoute>
                                 }

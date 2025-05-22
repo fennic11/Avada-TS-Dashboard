@@ -7,7 +7,8 @@ export const TABS = {
     TS_LEAD: 'TS-lead-workspace',
     TS_WORKSPACE: 'TS-workspace',
     BA_PAGE: 'ba-page',
-    DEV_ZONE: 'dev-zone'
+    DEV_ZONE: 'dev-zone',
+    SLACK_CHANNEL: 'slack-channel'
 };
 
 // Define roles and their permissions
@@ -55,7 +56,8 @@ export const ROLE_PERMISSIONS = {
             TABS.DATA_KPI,
             TABS.ISSUES,
             TABS.TS_LEAD,
-            TABS.TS_WORKSPACE
+            TABS.TS_WORKSPACE,
+            TABS.SLACK_CHANNEL
         ],
         description: 'Access to TS Lead related features'
     }

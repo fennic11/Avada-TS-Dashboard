@@ -30,7 +30,8 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/66557fb36a637c6c5535b081/feab84eb79ea906306db986d9b0b2dd8",
       "initials": "NA",
       "kpiName": "AnNVH",
-      "role": "TS"
+      "role": "TS",
+      "slackId": "U07604WT3L0"
     },
     {
       "id": "63b3a60ff51ce601421b0dd3",
@@ -39,7 +40,8 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/63b3a60ff51ce601421b0dd3/a8941248051f78d5d323bc1045ada156",
       "initials": "NA",
       "kpiName": "AnhNN",
-      "role": "TS"
+      "role": "TS",
+      "slackId": "U04HAAWA3DJ"
     },
     {
       "id": "667924a3d2faee1b53834780",
@@ -108,7 +110,8 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/65f7bdde58e8e0a6ba703027/89889a161a7e4ab3d213c8fafb351e85",
       "initials": "CT",
       "role": "TS",
-      "kpiName": "CuongTT"
+      "kpiName": "CuongTT",
+      "slackId": "U06PW1UQVUM"
     },
     {
       "id": "61a886478176518087f3e853",
@@ -324,7 +327,8 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/652379ca67556a7b753dd6d3/2a90d8a962df18b16de1f825e405abb1",
       "initials": "M",
       "role": "TS",
-      "kpiName": "HienNT2"
+      "kpiName": "HienNT2",
+      "slackId": "U0608R8FLKC"
     },
     {
       "id": "66d7c4e0bee239293b90cc16",
@@ -534,8 +538,9 @@
       "email": "quangnq@avada.io",
       "avatarUrl": "https://trello-members.s3.amazonaws.com/6308e9353f075502098ff04b/fc2c08d439e460b7a2a446f794eec21e",
       "initials": "QN",
-      "role": "dev",
-      "kpiName": "QuangNQ"
+      "role": "admin",
+      "kpiName": "QuangNQ",
+      "slackId": "U01N91HCC3F"
     },
     {
       "id": "629d618f2801948704ab5abb",
@@ -676,7 +681,8 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/66385f83fe51bce2bd707ff6/641476cc8a35c87e5ac5915f49b58427",
       "initials": "TP",
       "role": "TS",
-      "kpiName": "PhuongTTB"
+      "kpiName": "PhuongTTB",
+      "slackId": "U071WA0K0UW"
     },
     {
       "id": "64d070a2fdfec7de5fb327c7",
@@ -749,7 +755,8 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/63b3a589a05c1801101fd5d2/2a326e17c53569098cc79d3cda60e72f",
       "initials": "W",
       "role": "TS",
-      "kpiName": "TungTD"
+      "kpiName": "TungTD",
+      "slackId": "U04HAAWL352"
     },
     {
       "id": "62f9c29c03e59937e0063fd8",
@@ -854,7 +861,8 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/65dc1670ae5414d1dd11a26d/040127be60bf273f2c5b577c428ff508",
       "initials": "ĐQ",
       "role": "ts-lead",
-      "kpiName": "QuanDM"
+      "kpiName": "QuanDM",
+      "slackId": "U06LNG16WG1"
     },
     {
       "id": "6642c90302ccc5b0b88171e1",

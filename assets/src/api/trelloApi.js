@@ -18,7 +18,7 @@ export async function getCardsByList(listId) {
     
     try {
         const { key, token } = getCredentials();
-        const resp = await fetch(`${API_URL}/lists/${listId}/cards?key=${key}&token=${token}&actions=createCard`, {
+        const resp = await fetch(`${API_URL}/lists/${listId}/cards?key=${key}&token=${token}`, {
             headers: {
                 Accept: "application/json"
             }
@@ -29,6 +29,28 @@ export async function getCardsByList(listId) {
         }
         const cards = await resp.json();
         console.log(cards[cards.length - 1]);
+        return cards;
+    } catch (error) {
+        console.error(`Error getting cards for list ${listId}:`, error);
+        return null;
+    }
+}
+
+export async function getDevFixingCards(listId) {
+    
+    try {
+        const { key, token } = getCredentials();
+        const resp = await fetch(`${API_URL}/lists/${listId}/cards?key=${key}&token=${token}`, {
+            headers: {
+                Accept: "application/json"
+            }
+        });
+
+        if (!resp.ok) {
+            throw new Error(`Failed to fetch cards for list ${listId}: ${resp.statusText}`);
+        }
+        const cards = await resp.json();
+        console.log(cards[0]);
         return cards;
     } catch (error) {
         console.error(`Error getting cards for list ${listId}:`, error);

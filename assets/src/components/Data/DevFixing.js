@@ -2,11 +2,10 @@ import React, { useEffect, useState } from 'react';
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper,
-  Card, CardContent, Typography, Grid, LinearProgress, Box,
-  Tabs, Tab, CircularProgress, useTheme, alpha,
+  Card, CardContent, Typography, Grid, LinearProgress, Box, CircularProgress, useTheme, alpha,
   TableSortLabel, Button
 } from '@mui/material';
-import { getCardsByList } from '../../api/trelloApi';
+import { getDevFixingCards } from '../../api/trelloApi';
 import CardDetailModal from '../CardDetailModal';
 import ClearIcon from '@mui/icons-material/Clear';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -19,16 +18,21 @@ export default function DevFixingDashboard() {
   const [selectedCard, setSelectedCard] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [cards, setCards] = useState([]);
-  const [cardCache, setCardCache] = useState(new Map());
   const [selectedApp, setSelectedApp] = useState('Tất cả');
 
-  const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
   const processCards = (cards) => {
     return cards.map(card => {
       const appLabel = card.labels.find(label => label.name.includes('App:'));
       const createAction = card.actions?.find(action => action.type === 'createCard');
-      const createDate = createAction?.date ? new Date(createAction.date) : null;
+      let createDate = createAction?.date ? new Date(createAction.date) : null;
+      
+      // If no create date is available, set it to 2 days before due date
+      if (!createDate && card.due) {
+        const dueDate = new Date(card.due);
+        createDate = new Date(dueDate.getTime() - (2 * 24 * 60 * 60 * 1000)); // Subtract 2 days
+      }
+
       return {
         id: card.id,
         shortUrl: card.shortUrl,
@@ -45,7 +49,7 @@ export default function DevFixingDashboard() {
     try {
       setLoading(true);
       // Fetch pending data only
-      const pendingData = await getCardsByList('63c7b1a68e5576001577d65c');
+      const pendingData = await getDevFixingCards('63c7b1a68e5576001577d65c');
       // Process cards simply
       const mappedPendingCards = processCards(pendingData);
       setCards(mappedPendingCards);
@@ -166,7 +170,7 @@ export default function DevFixingDashboard() {
     const getChartData = (app) => {
       const appCards = cardList.filter(card => card.app === app && card.createDate);
       
-      console.log(`Cards for ${app}:`, appCards.length);
+      // console.log(`Cards for ${app}:`, appCards.length);
       
       const dateMap = new Map();
       appCards.forEach(card => {
@@ -180,7 +184,7 @@ export default function DevFixingDashboard() {
         .map(([date, count]) => ({ date, count }))
         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-      console.log(`Chart data for ${app}:`, chartData);
+      // console.log(`Chart data for ${app}:`, chartData);
       return chartData;
     };
 

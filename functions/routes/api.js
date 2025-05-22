@@ -3,6 +3,7 @@ const router = express.Router();
 const cardController = require('../controllers/cardController');
 const authController = require('../controllers/authController');
 const notionController = require('../controllers/notionController');
+const slackController = require('../controllers/slackController');
 
 // Auth routes
 router.put('/auth/user', authController.createOrUpdateUser);
@@ -14,4 +15,12 @@ router.get('/cards/:cardUrl', cardController.getCardByUrl);
 
 // Notion routes
 router.get('/notion/search', notionController.search);
+
+// Slack routes
+router.post('/slack/sendMessageToChannel', slackController.sendMessageToChannelController);
+router.get('/slack/getChannelId', slackController.getChannelIdController);
+router.post('/slack/sendMessage', slackController.sendMessageController);
+
 module.exports = router;
+
+

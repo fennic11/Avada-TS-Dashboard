@@ -18,7 +18,8 @@ import {
     TableCell,
     TableContainer,
     TableHead,
-    TableRow
+    TableRow,
+    Grid
 } from '@mui/material';
 import { getCardsByList, getListsByBoardId } from '../api/trelloApi';
 import CardDetailModal from './CardDetailModal';
@@ -87,6 +88,19 @@ const BaSummary = () => {
     // Handle app selection change
     const handleAppChange = (event) => {
         setSelectedApp(event.target.value);
+    };
+
+    // Count cards by app
+    const getAppStats = () => {
+        const stats = {};
+        cards.forEach(card => {
+            card.labels?.forEach(label => {
+                if (label.name.startsWith('App')) {
+                    stats[label.name] = (stats[label.name] || 0) + 1;
+                }
+            });
+        });
+        return stats;
     };
 
     useEffect(() => {
@@ -195,6 +209,54 @@ const BaSummary = () => {
                 >
                     BA Summary
                 </Typography>
+
+                {/* App Stats Section */}
+                <Box sx={{ mb: 3 }}>
+                    <Grid container spacing={2}>
+                        {Object.entries(getAppStats())
+                            .filter(([appLabel]) => !selectedApp || appLabel === selectedApp)
+                            .map(([appLabel, count]) => (
+                                <Grid item key={appLabel} xs={12} sm={6} md={4} lg={3}>
+                                    <Box
+                                        onClick={() => setSelectedApp(appLabel === selectedApp ? '' : appLabel)}
+                                        sx={{
+                                            p: 2,
+                                            borderRadius: 2,
+                                            background: generateColor(appLabel),
+                                            color: '#fff',
+                                            fontWeight: 600,
+                                            fontSize: '1rem',
+                                            boxShadow: appLabel === selectedApp ? '0 4px 16px rgba(0,0,0,0.10)' : '0 2px 8px rgba(0,0,0,0.05)',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            transition: 'all 0.2s',
+                                            border: appLabel === selectedApp ? '2px solid #fff' : '2px solid transparent',
+                                            opacity: appLabel === selectedApp || !selectedApp ? 1 : 0.6,
+                                            '&:hover': {
+                                                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                                                opacity: 1
+                                            }
+                                        }}
+                                    >
+                                        <span>{appLabel}</span>
+                                        <Chip
+                                            label={count}
+                                            size="small"
+                                            sx={{
+                                                background: 'rgba(255,255,255,0.18)',
+                                                color: '#fff',
+                                                fontWeight: 700,
+                                                fontSize: '1rem',
+                                                ml: 2
+                                            }}
+                                        />
+                                    </Box>
+                                </Grid>
+                            ))}
+                    </Grid>
+                </Box>
 
                 {/* Filters Section */}
                 <Box sx={{ 
