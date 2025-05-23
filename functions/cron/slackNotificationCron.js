@@ -46,6 +46,7 @@ const startSlackNotificationCron = () => {
         try {
             const currentHour = new Date().getHours();
             const { date, shift } = getShiftInfo(currentHour);
+            console.log(date, shift);
             
             console.log(`Running Slack notification cron job for ${shift} on ${date}...`);
             await sendNotificationsToTSMembers(date, shift);
