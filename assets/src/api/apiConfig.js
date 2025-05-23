@@ -1,4 +1,4 @@
-const API_URL = process.env.REACT_APP_API_URL || 'https://avada-ts-dashboard-production.up.railway.app/api';
+const API_URL = process.env.REACT_APP_API_URL || 'https://avada-ts-dashboard.onrender.com/api';
 
 // Helper function to handle API responses
 const handleResponse = async (response) => {
