@@ -4,6 +4,7 @@ const cardController = require('../controllers/cardController');
 const authController = require('../controllers/authController');
 const notionController = require('../controllers/notionController');
 const slackController = require('../controllers/slackController');
+const workShiftController = require('../controllers/workShiftController');
 
 // Auth routes
 router.put('/auth/user', authController.createOrUpdateUser);
@@ -20,6 +21,11 @@ router.get('/notion/search', notionController.search);
 router.post('/slack/sendMessageToChannel', slackController.sendMessageToChannelController);
 router.get('/slack/getChannelId', slackController.getChannelIdController);
 router.post('/slack/sendMessage', slackController.sendMessageController);
+router.get('/slack/sendNotificationsToTSMembers', slackController.sendNotificationsToTSMembersController);  
+
+// Work shift routes
+router.post('/work-shift', workShiftController.saveWorkShift);
+router.get('/work-shift', workShiftController.getWorkShift);
 
 module.exports = router;
 

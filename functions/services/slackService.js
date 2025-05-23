@@ -25,6 +25,7 @@ const sendMessage = async (message) => {
 
 const sendMessageToChannel = async (message) => {
     try {
+        console.log(WEBHOOK_URL);
         const response = await fetch(WEBHOOK_URL, {
             method: 'POST',
             headers: {

@@ -16,7 +16,10 @@ const SlackNotification = () => {
     const LIST_2_ID = '63c7d18b4fe38a004885aadf';
 
     // Filter TS members
-    const tsMembers = members.filter(member => member.role === 'ts' || member.role === 'ts-lead');
+    const tsMembers = members.filter(member => 
+        member.role?.toLowerCase() === 'ts' || 
+        member.role?.toLowerCase() === 'ts-lead'
+    );
 
     const formatSlackMessage = (member, cards) => {
         let message = `*Check những card cần fu này trước khi làm việc nhé <@${member.slackId}>*\n\n`;
@@ -40,6 +43,7 @@ const SlackNotification = () => {
                     message += `• ${card.name} - ${card.shortUrl}\n`;
                 });
             }
+            message += '----------------------------------------------------';
         } else {
             message += "You don't have any cards at the moment.";
         }

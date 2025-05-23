@@ -19,7 +19,8 @@ import {
     DialogActions,
     IconButton,
     Chip,
-    Tooltip
+    Tooltip,
+    Grid
 } from "@mui/material";
 import {
     getCardsByList,
@@ -31,6 +32,7 @@ import {
 import { calculateResolutionTime } from "../utils/resolutionTime";
 import { postCards } from "../api/cardsApi";
 import { register, updateUser } from "../api/usersApi";
+import { saveWorkShift } from "../api/workShiftApi";
 import members from "../data/members.json";
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -39,6 +41,7 @@ import { useTheme } from '@mui/material/styles';
 import SendIcon from '@mui/icons-material/Send';
 import ListIcon from '@mui/icons-material/List';
 import { getChannelId, sendMessageToChannel } from "../api/slackApi";
+import AddIcon from '@mui/icons-material/Add';
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -86,6 +89,13 @@ const DevZone = () => {
     const [channels, setChannels] = useState(null);
     const [isChannelsModalOpen, setIsChannelsModalOpen] = useState(false);
     const [isLoadingChannels, setIsLoadingChannels] = useState(false);
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [workShifts, setWorkShifts] = useState([
+        {
+            shiftName: "",
+            tsMembers: []
+        }
+    ]);
     const theme = useTheme();
 
     // Tạo Set chứa các member ID hợp lệ
@@ -95,6 +105,21 @@ const DevZone = () => {
     const memberOptions = members.map(member => ({
         id: member.id,
         label: `${member.name} (${member.id})`
+    }));
+
+    // Filter TS members
+    const tsMembers = members.filter(member => 
+        member.role?.toLowerCase() === 'ts' || 
+        member.role?.toLowerCase() === 'ts-lead'
+    );
+
+    // Format members for Autocomplete
+    const tsMemberOptions = tsMembers.map(member => ({
+        id: member.id,
+        label: `${member.username} (${member.role})`,
+        name: member.username,
+        role: member.role,
+        slackId: member.slackId
     }));
 
     useEffect(() => {
@@ -584,9 +609,210 @@ const DevZone = () => {
         }
     };
 
+    const handleAddShift = () => {
+        setWorkShifts([
+            ...workShifts,
+            {
+                shiftName: "",
+                tsMembers: []
+            }
+        ]);
+    };
+
+    const handleRemoveShift = (index) => {
+        if (workShifts.length > 1) {
+            setWorkShifts(workShifts.filter((_, i) => i !== index));
+        }
+    };
+
+    const handleShiftChange = (index, field, value) => {
+        const newShifts = [...workShifts];
+        if (field === 'tsMembers') {
+            const validMembers = Array.isArray(value) 
+                ? value.filter(member => member && member.id)
+                : [];
+            newShifts[index] = {
+                ...newShifts[index],
+                [field]: validMembers
+            };
+        } else {
+            newShifts[index] = {
+                ...newShifts[index],
+                [field]: value
+            };
+        }
+        setWorkShifts(newShifts);
+    };
+
+    const handleSaveWorkShift = async () => {
+        try {
+            setIsLoading(true);
+            
+            // Validate data before sending
+            const validShifts = workShifts.filter(shift => 
+                shift.shiftName && 
+                Array.isArray(shift.tsMembers) && 
+                shift.tsMembers.length > 0
+            );
+
+            if (validShifts.length === 0) {
+                throw new Error('Vui lòng nhập đầy đủ thông tin cho ít nhất một ca trực');
+            }
+
+            // Format data as an array of shifts with date
+            const workShiftData = validShifts.map(shift => ({
+                date: selectedDate,
+                shiftName: shift.shiftName,
+                tsMembers: shift.tsMembers.map(member => ({
+                    slackId: member.slackId,
+                    trelloId: member.id
+                }))
+            }));
+
+            console.log('Sending data:', workShiftData);
+            const response = await saveWorkShift(workShiftData);
+            
+            setSnackbar({
+                open: true,
+                message: "Lưu ca làm việc thành công!",
+                severity: "success"
+            });
+
+            // Reset form but keep the date
+            setWorkShifts([{
+                shiftName: "",
+                tsMembers: []
+            }]);
+        } catch (error) {
+            console.error('Error saving work shift:', error);
+            setSnackbar({
+                open: true,
+                message: error.message || "Có lỗi xảy ra khi lưu ca làm việc",
+                severity: "error"
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {/* Work Shift Management Section */}
+                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
+                        Quản lý ca làm việc
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {/* Date Selection */}
+                        <TextField
+                            type="date"
+                            label="Chọn ngày"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            fullWidth
+                            InputLabelProps={{
+                                shrink: true,
+                            }}
+                        />
+
+                        {/* Shifts */}
+                        {workShifts.map((shift, index) => (
+                            <Box key={index} sx={{ 
+                                p: 2, 
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: 1,
+                                position: 'relative'
+                            }}>
+                                {workShifts.length > 1 && (
+                                    <IconButton
+                                        onClick={() => handleRemoveShift(index)}
+                                        sx={{
+                                            position: 'absolute',
+                                            right: 8,
+                                            top: 8,
+                                            color: 'error.main'
+                                        }}
+                                    >
+                                        <CloseIcon />
+                                    </IconButton>
+                                )}
+                                <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
+                                    Ca trực {index + 1}
+                                </Typography>
+                                <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                                    <TextField
+                                        label="Tên ca trực"
+                                        value={shift.shiftName}
+                                        onChange={(e) => handleShiftChange(index, 'shiftName', e.target.value)}
+                                        fullWidth
+                                        placeholder="Nhập tên ca trực"
+                                    />
+                                </Box>
+
+                                <Autocomplete
+                                    multiple
+                                    options={tsMemberOptions}
+                                    getOptionLabel={(option) => option.label}
+                                    value={shift.tsMembers}
+                                    onChange={(event, newValue) => {
+                                        handleShiftChange(index, 'tsMembers', newValue);
+                                    }}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Chọn TS"
+                                            fullWidth
+                                            placeholder="Chọn TS cho ca trực"
+                                        />
+                                    )}
+                                    renderOption={(props, option) => (
+                                        <li {...props}>
+                                            <Box>
+                                                <Typography variant="body1">{option.name}</Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    {option.role}
+                                                </Typography>
+                                            </Box>
+                                        </li>
+                                    )}
+                                />
+                            </Box>
+                        ))}
+
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <Button 
+                                variant="outlined" 
+                                onClick={handleAddShift}
+                                startIcon={<AddIcon />}
+                                sx={{ 
+                                    minWidth: 120,
+                                    borderRadius: 1,
+                                    textTransform: 'none',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                Thêm ca trực
+                            </Button>
+
+                            <Button 
+                                variant="contained" 
+                                onClick={handleSaveWorkShift}
+                                disabled={isLoading}
+                                sx={{ 
+                                    minWidth: 120,
+                                    borderRadius: 1,
+                                    textTransform: 'none',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                Lưu ca làm việc
+                            </Button>
+                        </Box>
+                    </Box>
+                </Paper>
+
                 {/* Phần xử lý cards */}
                 <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
                     <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>

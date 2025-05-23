@@ -1,4 +1,6 @@
 const slackService = require('../services/slackService');
+const slackNotificationService = require('../services/slackNotificationService');
+
 
 const sendMessageToChannelController = async (req, res) => {
     const { message } = req.body;
@@ -17,8 +19,14 @@ const sendMessageController = async (req, res) => {
     res.json(result);
 }
 
+const sendNotificationsToTSMembersController = async (req, res) => {
+    const result = await slackNotificationService.sendNotificationsToTSMembers('2025-05-23', '4');
+    res.json(result);
+}
+
 module.exports = {
     sendMessageToChannelController,
     getChannelIdController,
-    sendMessageController
+    sendMessageController,
+    sendNotificationsToTSMembersController
 } 
