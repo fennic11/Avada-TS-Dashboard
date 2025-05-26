@@ -9,7 +9,7 @@ const { startSlackNotificationCron } = require('./cron/slackNotificationCron');
 // Import routes
 const api = require('./routes/api');
 const notionRoutes = require('./routes/notionRoutes');
-
+const webhookRoutes = require('./routes/webhook');
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -57,7 +57,7 @@ app.get('/', (req, res) => {
 
 // API Routes
 app.use('/api', api);
-
+app.use('/webhook', webhookRoutes);
 // 404 handler
 app.use((req, res, next) => {
     res.status(404).json({

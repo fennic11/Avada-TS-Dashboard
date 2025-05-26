@@ -2,7 +2,7 @@ const cron = require('node-cron');
 const { sendNotificationsToTSMembers } = require('../services/slackNotificationService');
 
 // Chạy vào 0h, 4h, 8h, 12h, 16h, 18h, 20h mỗi ngày
-const schedule = '0 18,22,2,6,10,12,14 * * *';
+const schedule = '0 17,21,1,5,9,11,13 * * *';
 
 
 const getShiftInfo = (hour) => {
