@@ -6,11 +6,14 @@ const schedule = '0 0,4,8,12,16,18,20 * * *';
 
 const getShiftInfo = (hour) => {
     const now = new Date();
+    // Add 7 hours to compensate for timezone difference
+    now.setHours(now.getHours() + 7);
     const date = now.toISOString().split('T')[0];
+    const adjustedHour = now.getHours();
     
-    // Xác định ca dựa trên giờ
+    // Xác định ca dựa trên giờ đã điều chỉnh
     let shift;
-    switch(hour) {
+    switch(adjustedHour) {
         case 0:
             shift = '1';
             break;
