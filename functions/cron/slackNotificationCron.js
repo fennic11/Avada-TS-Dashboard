@@ -1,19 +1,16 @@
 const cron = require('node-cron');
 const { sendNotificationsToTSMembers } = require('../services/slackNotificationService');
 
-// Chạy vào 0h, 4h, 8h, 12h, 16h, 18h, 20h mỗi ngày
-const schedule = '0 0,4,8,12,16,18,20 * * *';
+// Chạy vào 17h, 21h, 1h, 5h, 9h, 11h, 13h mỗi ngày (7 tiếng sớm hơn)
+const schedule = '0 17,21,1,5,9,11,13 * * *';
 
 const getShiftInfo = (hour) => {
     const now = new Date();
-    // Add 7 hours to compensate for timezone difference
-    now.setHours(now.getHours() + 7);
     const date = now.toISOString().split('T')[0];
-    const adjustedHour = now.getHours();
     
-    // Xác định ca dựa trên giờ đã điều chỉnh
+    // Xác định ca dựa trên giờ
     let shift;
-    switch(adjustedHour) {
+    switch(hour) {
         case 0:
             shift = '1';
             break;
