@@ -8,9 +8,10 @@ const schedule = '0 17,21,1,5,9,11,13 * * *';
 const getShiftInfo = (hour) => {
     const now = new Date();
     // Add 7 hours to compensate for timezone difference
-    now.setHours(now.getHours() + 6);
+    now.setHours(now.getHours() + 7);
     const date = now.toISOString().split('T')[0];
     const adjustedHour = now.getHours();
+    console.log('shiftTime', adjustedHour);
     
     // Xác định ca dựa trên giờ đã điều chỉnh
     let shift;
