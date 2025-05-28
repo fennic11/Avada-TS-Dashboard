@@ -714,3 +714,22 @@ export async function getCardsByBoardWithDateFilter(since, before) {
     }
 }
 
+export async function searchCards(query) {
+    try {
+        const { key, token } = getCredentials();
+        const resp = await fetch(`${API_URL}/search?key=${key}&token=${token}&query=${query}&idBoards=${BOARD_ID}`, {
+            headers: {
+                Accept: "application/json"
+            }
+        });
+
+        if (!resp.ok) {
+            throw new Error(`Failed to search cards: ${resp.statusText}`);
+        }
+
+        return await resp.json();
+    } catch (error) {
+        console.error('Error searching cards:', error);
+        return null;
+    }
+}

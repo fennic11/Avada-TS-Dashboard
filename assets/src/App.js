@@ -22,6 +22,7 @@ import TSLead from './pages/TSLeadPage';
 import TSWorkspace from './pages/TSWorkspace';
 import BaPage from './pages/BaPage';
 import Slack from './pages/Slack';
+import LeaderboardPage from './pages/Leaderboard';
 
 const theme = createTheme({
     palette: {
@@ -178,6 +179,16 @@ const App = () => {
                                     <PrivateRoute>
                                         <Layout>
                                             <Slack />   
+                                        </Layout>
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path="/leaderboard"
+                                element={
+                                    <PrivateRoute>
+                                        <Layout>
+                                            <LeaderboardPage /> 
                                         </Layout>
                                     </PrivateRoute>
                                 }

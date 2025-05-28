@@ -5,6 +5,7 @@ const authController = require('../controllers/authController');
 const notionController = require('../controllers/notionController');
 const slackController = require('../controllers/slackController');
 const workShiftController = require('../controllers/workShiftController');
+const leaderboardController = require('../controllers/leaderboardController');
 
 // Auth routes
 router.put('/auth/user', authController.createOrUpdateUser);
@@ -26,6 +27,10 @@ router.get('/slack/sendNotificationsToTSMembers', slackController.sendNotificati
 // Work shift routes
 router.post('/work-shift', workShiftController.saveWorkShift);
 router.get('/work-shift', workShiftController.getWorkShift);
+
+// Leaderboard routes
+router.get('/leaderboard', leaderboardController.getLeaderboard);
+router.post('/leaderboard', leaderboardController.createLeaderboard);
 
 module.exports = router;
 

@@ -20,14 +20,16 @@ import {
     IconButton,
     Chip,
     Tooltip,
-    Grid
+    Grid,
+    Link
 } from "@mui/material";
 import {
     getCardsByList,
     getActionsByCard,
     getListsByBoardId,
     getMembers,
-    getBoardLabels
+    getBoardLabels,
+    searchCards
 } from "../api/trelloApi";
 import { calculateResolutionTime } from "../utils/resolutionTime";
 import { postCards } from "../api/cardsApi";
@@ -42,6 +44,7 @@ import SendIcon from '@mui/icons-material/Send';
 import ListIcon from '@mui/icons-material/List';
 import { getChannelId, sendMessageToChannel } from "../api/slackApi";
 import AddIcon from '@mui/icons-material/Add';
+import { createLeaderboard } from "../api/leaderboardApi";
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -96,6 +99,20 @@ const DevZone = () => {
             tsMembers: []
         }
     ]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState(null);
+    const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+    const [leaderboardData, setLeaderboardData] = useState({
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear(),
+        points: members.filter(member => 
+            member.role?.toLowerCase() === 'ts' || 
+            member.role?.toLowerCase() === 'ts-lead'
+        ).map(member => ({
+            memberId: member.id,
+            points: 1000
+        }))
+    });
     const theme = useTheme();
 
     // Tạo Set chứa các member ID hợp lệ
@@ -107,7 +124,7 @@ const DevZone = () => {
         label: `${member.name} (${member.id})`
     }));
 
-    // Filter TS members
+    // Filter TS members from members.json
     const tsMembers = members.filter(member => 
         member.role?.toLowerCase() === 'ts' || 
         member.role?.toLowerCase() === 'ts-lead'
@@ -695,6 +712,131 @@ const DevZone = () => {
         }
     };
 
+    const handleSearchCards = async () => {
+        if (!searchQuery.trim()) {
+            setSnackbar({
+                open: true,
+                message: "Vui lòng nhập từ khóa tìm kiếm",
+                severity: "warning"
+            });
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            const results = await searchCards(searchQuery);
+            console.log(results);
+            setSearchResults(results);
+            setIsSearchModalOpen(true);
+        } catch (error) {
+            console.error('Error searching cards:', error);
+            setSnackbar({
+                open: true,
+                message: error.message || "Có lỗi xảy ra khi tìm kiếm cards",
+                severity: "error"
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCloseSearchModal = () => {
+        setIsSearchModalOpen(false);
+        setSearchResults(null);
+    };
+
+    const handleCopySearchResultsJSON = () => {
+        if (searchResults) {
+            navigator.clipboard.writeText(JSON.stringify(searchResults, null, 2))
+                .then(() => {
+                    setSnackbar({
+                        open: true,
+                        message: "Đã sao chép JSON vào clipboard",
+                        severity: "success"
+                    });
+                })
+                .catch(err => {
+                    console.error('Failed to copy:', err);
+                    setSnackbar({
+                        open: true,
+                        message: "Không thể sao chép JSON",
+                        severity: "error"
+                    });
+                });
+        }
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('vi-VN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    const getLabelColor = (color) => {
+        const colorMap = {
+            'black_light': '#808080',
+            'yellow_dark': '#FFA000',
+            'sky_light': '#4FC3F7',
+            'orange_light': '#FFB74D',
+            'purple_light': '#CE93D8',
+            'red_dark': '#D32F2F',
+            'purple': '#9C27B0',
+            'null': '#E0E0E0'
+        };
+        return colorMap[color] || '#E0E0E0';
+    };
+
+    const handleAddPoints = () => {
+        setLeaderboardData(prev => ({
+            ...prev,
+            points: [...prev.points, { memberId: '', points: 1000 }]
+        }));
+    };
+
+    const handleRemovePoints = (index) => {
+        setLeaderboardData(prev => ({
+            ...prev,
+            points: prev.points.filter((_, i) => i !== index)
+        }));
+    };
+
+    const handlePointsChange = (index, field, value) => {
+        setLeaderboardData(prev => ({
+            ...prev,
+            points: prev.points.map((point, i) => 
+                i === index ? { ...point, [field]: value } : point
+            )
+        }));
+    };
+
+    const handleSavePoints = async () => {
+        try {
+            setIsLoading(true);
+            console.log('Leaderboard data:', leaderboardData);
+            await createLeaderboard(leaderboardData);
+            setSnackbar({
+                open: true,
+                message: "Lưu điểm thành công!",
+                severity: "success"
+            });
+        } catch (error) {
+            console.error('Error saving points:', error);
+            setSnackbar({
+                open: true,
+                message: error.message || "Có lỗi xảy ra khi lưu điểm",
+                severity: "error"
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -808,6 +950,170 @@ const DevZone = () => {
                                 }}
                             >
                                 Lưu ca làm việc
+                            </Button>
+                        </Box>
+                    </Box>
+                </Paper>
+
+                {/* Leaderboard Input Section */}
+                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
+                        Quản lý điểm Leaderboard
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {/* Month and Year Selection */}
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <FormControl fullWidth>
+                                <InputLabel>Tháng</InputLabel>
+                                <Select
+                                    value={leaderboardData.month}
+                                    label="Tháng"
+                                    onChange={(e) => setLeaderboardData(prev => ({
+                                        ...prev,
+                                        month: e.target.value
+                                    }))}
+                                >
+                                    {Array.from({ length: 12 }, (_, i) => (
+                                        <MenuItem key={i + 1} value={i + 1}>
+                                            Tháng {i + 1}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                            <FormControl fullWidth>
+                                <InputLabel>Năm</InputLabel>
+                                <Select
+                                    value={leaderboardData.year}
+                                    label="Năm"
+                                    onChange={(e) => setLeaderboardData(prev => ({
+                                        ...prev,
+                                        year: e.target.value
+                                    }))}
+                                >
+                                    {Array.from({ length: 5 }, (_, i) => {
+                                        const year = new Date().getFullYear() - 2 + i;
+                                        return (
+                                            <MenuItem key={year} value={year}>
+                                                {year}
+                                            </MenuItem>
+                                        );
+                                    })}
+                                </Select>
+                            </FormControl>
+                        </Box>
+
+                        {/* Points Input */}
+                        {leaderboardData.points.map((point, index) => (
+                            <Box key={index} sx={{ 
+                                p: 2, 
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: 1,
+                                position: 'relative'
+                            }}>
+                                {leaderboardData.points.length > 1 && (
+                                    <IconButton
+                                        onClick={() => handleRemovePoints(index)}
+                                        sx={{
+                                            position: 'absolute',
+                                            right: 8,
+                                            top: 8,
+                                            color: 'error.main'
+                                        }}
+                                    >
+                                        <CloseIcon />
+                                    </IconButton>
+                                )}
+                                <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
+                                    Điểm số {index + 1}
+                                </Typography>
+                                <Box sx={{ display: 'flex', gap: 2 }}>
+                                    <Box sx={{ flex: 8 }}>
+                                        <Autocomplete
+                                            options={tsMemberOptions}
+                                            getOptionLabel={(option) => option.label}
+                                            value={tsMemberOptions.find(option => option.id === point.memberId) || null}
+                                            onChange={(event, newValue) => {
+                                                handlePointsChange(index, 'memberId', newValue?.id || '');
+                                            }}
+                                            renderInput={(params) => (
+                                                <TextField
+                                                    {...params}
+                                                    label="Chọn thành viên"
+                                                    placeholder="Chọn thành viên"
+                                                    sx={{
+                                                        '& .MuiInputBase-input': {
+                                                            fontSize: '1.2rem',
+                                                            fontWeight: 'bold'
+                                                        }
+                                                    }}
+                                                />
+                                            )}
+                                            renderOption={(props, option) => (
+                                                <li {...props}>
+                                                    <Box>
+                                                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                                                            {option.name}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            {option.role}
+                                                        </Typography>
+                                                    </Box>
+                                                </li>
+                                            )}
+                                        />
+                                    </Box>
+                                    <Box sx={{ flex: 2 }}>
+                                        <TextField
+                                            label="Điểm số"
+                                            type="number"
+                                            value={point.points}
+                                            onChange={(e) => handlePointsChange(index, 'points', parseInt(e.target.value) || 0)}
+                                            InputProps={{
+                                                inputProps: { min: 0 },
+                                                sx: {
+                                                    fontSize: '0.9rem',
+                                                    color: 'text.secondary'
+                                                }
+                                            }}
+                                            sx={{
+                                                '& .MuiInputLabel-root': {
+                                                    fontSize: '0.9rem'
+                                                }
+                                            }}
+                                        />
+                                    </Box>
+                                </Box>
+                            </Box>
+                        ))}
+
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <Button 
+                                variant="outlined" 
+                                onClick={handleAddPoints}
+                                startIcon={<AddIcon />}
+                                sx={{ 
+                                    minWidth: 120,
+                                    borderRadius: 1,
+                                    textTransform: 'none',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                Thêm điểm
+                            </Button>
+
+                            <Button 
+                                variant="contained" 
+                                onClick={handleSavePoints}
+                                disabled={isLoading}
+                                sx={{ 
+                                    minWidth: 120,
+                                    borderRadius: 1,
+                                    textTransform: 'none',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                Lưu điểm
                             </Button>
                         </Box>
                     </Box>
@@ -1183,6 +1489,37 @@ const DevZone = () => {
                                 {isLoadingChannels ? 'Đang tải...' : 'Xem Channels'}
                             </Button>
                         </Box>
+                    </Box>
+                </Paper>
+
+                {/* Phần tìm kiếm cards */}
+                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
+                        Tìm kiếm Cards
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                        <TextField
+                            label="Từ khóa tìm kiếm"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            fullWidth
+                            placeholder="Nhập từ khóa để tìm kiếm cards..."
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
+                        />
+                        <Button 
+                            variant="contained" 
+                            onClick={handleSearchCards}
+                            disabled={isLoading}
+                            sx={{ 
+                                minWidth: 120,
+                                height: '56px',
+                                borderRadius: 1,
+                                textTransform: 'none',
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            {isLoading ? 'Đang tìm...' : 'Tìm kiếm'}
+                        </Button>
                     </Box>
                 </Paper>
 
@@ -1656,6 +1993,161 @@ const DevZone = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseChannelsModal}>Close</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Search Results Modal */}
+            <Dialog
+                open={isSearchModalOpen}
+                onClose={handleCloseSearchModal}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center' 
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Typography variant="h6">
+                                Kết quả tìm kiếm
+                            </Typography>
+                            {searchResults?.cards && (
+                                <Chip 
+                                    label={`${searchResults.cards.length} cards`}
+                                    size="small"
+                                    sx={{ 
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                        color: 'primary.main',
+                                        fontWeight: 500
+                                    }}
+                                />
+                            )}
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {searchResults && (
+                                <Tooltip title="Copy JSON">
+                                    <IconButton 
+                                        onClick={handleCopySearchResultsJSON}
+                                        sx={{ 
+                                            color: 'primary.main',
+                                            '&:hover': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                                            }
+                                        }}
+                                    >
+                                        <ContentCopyIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                            <IconButton onClick={handleCloseSearchModal}>
+                                <CloseIcon />
+                            </IconButton>
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    {searchResults?.cards && (
+                        <Box sx={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: 2,
+                            maxHeight: '60vh',
+                            overflow: 'auto',
+                            p: 1
+                        }}>
+                            {searchResults.cards.map((card) => (
+                                <Paper 
+                                    key={card.id}
+                                    sx={{ 
+                                        p: 2,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: 1,
+                                        '&:hover': {
+                                            backgroundColor: alpha(theme.palette.primary.main, 0.05)
+                                        }
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                                            {card.name}
+                                        </Typography>
+                                        <Chip 
+                                            label={card.closed ? 'Đã đóng' : 'Đang mở'} 
+                                            size="small"
+                                            color={card.closed ? 'error' : 'success'}
+                                            sx={{ ml: 1 }}
+                                        />
+                                    </Box>
+                                    
+                                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                        {card.labels.map((label) => (
+                                            <Chip
+                                                key={label.id}
+                                                label={label.name}
+                                                size="small"
+                                                sx={{ 
+                                                    backgroundColor: alpha(getLabelColor(label.color), 0.2),
+                                                    color: getLabelColor(label.color),
+                                                    border: `1px solid ${alpha(getLabelColor(label.color), 0.3)}`
+                                                }}
+                                            />
+                                        ))}
+                                    </Box>
+
+                                    <Box sx={{ display: 'flex', gap: 2, color: 'text.secondary', fontSize: '0.875rem' }}>
+                                        <Typography variant="body2">
+                                            Due: {formatDate(card.due)}
+                                        </Typography>
+                                        <Typography variant="body2">
+                                            Last Activity: {formatDate(card.dateLastActivity)}
+                                        </Typography>
+                                    </Box>
+
+                                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                        <Typography variant="body2" color="text.secondary">
+                                            URL:
+                                        </Typography>
+                                        <Link 
+                                            href={card.url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            sx={{ 
+                                                color: 'primary.main',
+                                                textDecoration: 'none',
+                                                '&:hover': {
+                                                    textDecoration: 'underline'
+                                                }
+                                            }}
+                                        >
+                                            {card.shortUrl}
+                                        </Link>
+                                    </Box>
+
+                                    {card.desc && (
+                                        <Typography 
+                                            variant="body2" 
+                                            color="text.secondary"
+                                            sx={{
+                                                display: '-webkit-box',
+                                                WebkitLineClamp: 2,
+                                                WebkitBoxOrient: 'vertical',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis'
+                                            }}
+                                        >
+                                            {card.desc}
+                                        </Typography>
+                                    )}
+                                </Paper>
+                            ))}
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseSearchModal}>Đóng</Button>
                 </DialogActions>
             </Dialog>
         </Box>

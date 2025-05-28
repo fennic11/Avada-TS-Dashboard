@@ -54,7 +54,7 @@ const startSlackNotificationCron = () => {
             console.log(date, shift);
             
             console.log(`Running Slack notification cron job for ${shift} on ${date}...`);
-            await sendNotificationsToTSMembers(date, shift);
+            // await sendNotificationsToTSMembers(date, shift);
             console.log(`Slack notification sent successfully for ${shift}`);
         } catch (error) {
             console.error('Error in Slack notification cron job:', error);

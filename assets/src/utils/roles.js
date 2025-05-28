@@ -8,7 +8,8 @@ export const TABS = {
     TS_WORKSPACE: 'TS-workspace',
     BA_PAGE: 'ba-page',
     DEV_ZONE: 'dev-zone',
-    SLACK_CHANNEL: 'slack-channel'
+    SLACK_CHANNEL: 'slack-channel',
+    LEADERBOARD: 'leaderboard'
 };
 
 // Define roles and their permissions
