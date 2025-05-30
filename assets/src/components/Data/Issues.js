@@ -14,12 +14,8 @@ import {
   Card,
   CardContent,
   List,
-  Button,
-  Link,
-  Modal,
-  IconButton
+  Button
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
 import members from '../../data/members.json';
 import listsId from '../../data/listsId.json';
 import { getCardsByBoardWithDateFilter } from '../../api/trelloApi';
@@ -60,9 +56,11 @@ const Issues = () => {
     return list ? list.id : null;
   };
 
-  // Function to get date string in YYYY-MM-DD format
-  const getFormattedDate = (date) => {
-    return date.toISOString().split('T')[0];
+  // Function to get date string in YYYY-MM-DDTHH:mm format
+  const getFormattedDateTime = (date, hour = 0, minute = 0) => {
+    const d = new Date(date);
+    d.setHours(hour, minute, 0, 0);
+    return d.toISOString().slice(0, 16); // 'YYYY-MM-DDTHH:mm'
   };
 
   // Function to set default dates (7 ngày trước ngày hôm qua -> ngày hôm qua)
@@ -72,8 +70,8 @@ const Issues = () => {
     yesterday.setDate(today.getDate() - 1);
     const lastWeek = new Date(yesterday);
     lastWeek.setDate(yesterday.getDate() - 7);
-    setEndDate(getFormattedDate(yesterday));
-    setStartDate(getFormattedDate(lastWeek));
+    setEndDate(getFormattedDateTime(yesterday, 23, 59));
+    setStartDate(getFormattedDateTime(lastWeek, 0, 0));
   };
 
   useEffect(() => {
@@ -334,6 +332,67 @@ const Issues = () => {
     setSelectedCardId(null);
   };
 
+  // Hàm lấy create date = due - 2 ngày
+  const getCreateDate = (card) => {
+    if (card.due) {
+      const dueDate = new Date(card.due);
+      dueDate.setDate(dueDate.getDate() - 2);
+      return dueDate.toISOString().slice(0, 10);
+    }
+    return null;
+  };
+
+  // Group issues by create date
+  const getIssuesByDayData = () => {
+    const dayMap = {};
+    filteredCards.forEach(card => {
+      const date = getCreateDate(card);
+      if (date) {
+        if (!dayMap[date]) dayMap[date] = 0;
+        dayMap[date]++;
+      }
+    });
+    return Object.entries(dayMap)
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  };
+
+  // Hàm xác định ca trực từ giờ
+  const getShift = (dateString) => {
+    if (!dateString) return null;
+    const hour = new Date(dateString).getHours();
+    if (hour >= 0 && hour < 4) return 'Ca 1 (0-3h59)';
+    if (hour >= 4 && hour < 8) return 'Ca 2 (4-7h59)';
+    if (hour >= 8 && hour < 12) return 'Ca 3 (8-11h59)';
+    if (hour >= 12 && hour < 16) return 'Ca 4 (12-15h59)';
+    if (hour >= 16 && hour < 18) return 'Ca 5.1 (16-17h59)';
+    if (hour >= 18 && hour < 20) return 'Ca 5.2 (18-19h59)';
+    if (hour >= 20 && hour < 24) return 'Ca 6 (20-23h59)';
+    return null;
+  };
+
+  // Group issues by shift
+  const getIssuesByShiftData = () => {
+    const shiftMap = {
+      'Ca 1 (0-3h59)': 0,
+      'Ca 2 (4-7h59)': 0,
+      'Ca 3 (8-11h59)': 0,
+      'Ca 4 (12-15h59)': 0,
+      'Ca 5.1 (16-17h59)': 0,
+      'Ca 5.2 (18-19h59)': 0,
+      'Ca 6 (20-23h59)': 0,
+    };
+    filteredCards.forEach(card => {
+      if (card.due) {
+        const createDate = new Date(card.due);
+        createDate.setDate(createDate.getDate() - 2);
+        const shift = getShift(createDate.toISOString());
+        if (shift) shiftMap[shift]++;
+      }
+    });
+    return Object.entries(shiftMap).map(([shift, count]) => ({ shift, count }));
+  };
+
   return (
     <Box sx={{
       p: { xs: 1, sm: 2, md: 4 },
@@ -353,7 +412,7 @@ const Issues = () => {
             <TextField
               fullWidth
               label="Start Date"
-              type="date"
+              type="datetime-local"
               value={startDate}
               onChange={e => setStartDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
@@ -381,7 +440,7 @@ const Issues = () => {
             <TextField
               fullWidth
               label="End Date"
-              type="date"
+              type="datetime-local"
               value={endDate}
               onChange={e => setEndDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
@@ -566,6 +625,34 @@ const Issues = () => {
           </React.Fragment>
         ))}
       </Grid>
+
+      {/* Issues by Day Chart */}
+      <Paper elevation={0} sx={{ p: 3, borderRadius: 2, mb: 3 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>Issues by Day</Typography>
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={getIssuesByDayData()} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis allowDecimals={false} />
+            <RechartsTooltip />
+            <Bar dataKey="count" fill="#1976d2" name="Issues" />
+          </BarChart>
+        </ResponsiveContainer>
+      </Paper>
+
+      {/* Issues by Shift Chart */}
+      <Paper elevation={0} sx={{ p: 3, borderRadius: 2, mb: 3 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>Issues by Shift</Typography>
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={getIssuesByShiftData()} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="shift" />
+            <YAxis allowDecimals={false} />
+            <RechartsTooltip />
+            <Bar dataKey="count" fill="#ff9800" name="Issues" />
+          </BarChart>
+        </ResponsiveContainer>
+      </Paper>
 
       {/* Charts */}
       <Grid container spacing={2} sx={{ mb: 3 }}>

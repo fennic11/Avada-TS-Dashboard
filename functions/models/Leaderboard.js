@@ -2,11 +2,11 @@ const mongoose = require('mongoose');
 
 const LeaderboardSchema = new mongoose.Schema({
     month: {
-        type: String,
+        type: Number,
         required: true
     },
     year: {
-        type: String,
+        type: Number,
         required: true
     },
     points: {

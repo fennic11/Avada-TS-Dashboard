@@ -21,7 +21,8 @@ import {
     Chip,
     Tooltip,
     Grid,
-    Link
+    Link,
+    Avatar
 } from "@mui/material";
 import {
     getCardsByList,
@@ -45,6 +46,7 @@ import ListIcon from '@mui/icons-material/List';
 import { getChannelId, sendMessageToChannel } from "../api/slackApi";
 import AddIcon from '@mui/icons-material/Add';
 import { createLeaderboard } from "../api/leaderboardApi";
+import PhotoCamera from '@mui/icons-material/PhotoCamera';
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -837,6 +839,36 @@ const DevZone = () => {
         }
     };
 
+    // Thêm hàm upload ảnh
+    const uploadImage = async (file) => {
+        const formData = new FormData();
+        formData.append('image', file);
+        const res = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await res.json();
+        return data.url; // server trả về { url: 'link ảnh' }
+    };
+
+    const handleAvatarChange = async (index, file) => {
+        try {
+            const url = await uploadImage(file);
+            setLeaderboardData(prev => ({
+                ...prev,
+                points: prev.points.map((point, i) =>
+                    i === index ? { ...point, avatarUrl: url } : point
+                )
+            }));
+        } catch (err) {
+            setSnackbar({
+                open: true,
+                message: 'Upload ảnh thất bại!',
+                severity: 'error'
+            });
+        }
+    };
+
     return (
         <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -1063,7 +1095,7 @@ const DevZone = () => {
                                             )}
                                         />
                                     </Box>
-                                    <Box sx={{ flex: 2 }}>
+                                    <Box sx={{ flex: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                                         <TextField
                                             label="Điểm số"
                                             type="number"
@@ -1082,6 +1114,23 @@ const DevZone = () => {
                                                 }
                                             }}
                                         />
+                                        <input
+                                            accept="image/*"
+                                            style={{ display: 'none' }}
+                                            id={`avatar-upload-${index}`}
+                                            type="file"
+                                            onChange={e => {
+                                                if (e.target.files[0]) handleAvatarChange(index, e.target.files[0]);
+                                            }}
+                                        />
+                                        <label htmlFor={`avatar-upload-${index}`}>
+                                            <IconButton color="primary" component="span">
+                                                <PhotoCamera />
+                                            </IconButton>
+                                        </label>
+                                        {point.avatarUrl && (
+                                            <Avatar src={point.avatarUrl} sx={{ width: 36, height: 36, ml: 1 }} />
+                                        )}
                                     </Box>
                                 </Box>
                             </Box>

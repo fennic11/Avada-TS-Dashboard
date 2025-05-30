@@ -679,6 +679,7 @@ export async function getCreateCardByCard(cardId) {
 
 export async function getCardsByBoardWithDateFilter(since, before) {
     try {
+        console.log(since, before);
         const { key, token } = getCredentials();
         let url = `${API_URL}/boards/${BOARD_ID}/cards?key=${key}&token=${token}`;
         

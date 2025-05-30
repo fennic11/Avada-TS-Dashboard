@@ -1,8 +1,8 @@
 const leaderboardService = require('../services/leaderboardService');
 
 const getLeaderboard = async (req, res) => {
-    const { time } = req.query;
-    const leaderboard = await leaderboardService.getLeaderboard(time);
+    const { month, year } = req.query;
+    const leaderboard = await leaderboardService.getLeaderboard(month, year);
     res.json(leaderboard);
 };
 
