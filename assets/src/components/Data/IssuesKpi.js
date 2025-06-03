@@ -11,6 +11,7 @@ import GroupIcon from '@mui/icons-material/Group';
 import WarningIcon from '@mui/icons-material/Warning';
 import DownloadIcon from '@mui/icons-material/Download';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import SpeedUpKPI from './speedUpKpi';
 import BugsKpiSummary from './BugsKpi';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -20,6 +21,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import SearchIcon from '@mui/icons-material/Search';
 import members from '../../data/members.json';
 import { getCardsByList, getListsByBoardId } from '../../api/trelloApi';
+import CardDetailModal from '../CardDetailModal';
 
 const ISSUE_POINTS = {
     'Issue: level 0': 4,
@@ -51,6 +53,8 @@ const IssuesKpiSummary = () => {
     const [bugsAnchorEl, setBugsAnchorEl] = useState(null);
     const [issuesOpen, setIssuesOpen] = useState(false);
     const [bugsOpen, setBugsOpen] = useState(false);
+    const [selectedCard, setSelectedCard] = useState(null);
+    const [modalOpen, setModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchLists = async () => {
@@ -396,6 +400,109 @@ const IssuesKpiSummary = () => {
         }
     };
 
+    const handleCardClick = (card) => {
+        setSelectedCard(card);
+        setModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setModalOpen(false);
+        setSelectedCard(null);
+    };
+
+    const handleReset = async () => {
+        setLoading(true);
+        try {
+            // Reset states but keep current list selection
+            setSingleMemberKPIs({});
+            setTotalCards(0);
+            setNoLevelCards(0);
+            setMultiLevelCards([]);
+            setActiveLevelFilter({});
+            
+            // Fetch data for current list
+            if (activeTab === 0 && issuesSelectedList) {
+                const memberIdsList = members.map(m => m.id);
+                const cards = await getCardsByList(issuesSelectedList);
+                if (!cards) return;
+
+                setTotalCards(cards.length);
+
+                const singleKPI = {};
+                const multiCards = [];
+                const noLevelCards = [];
+                const multiLevelCards = [];
+
+                for (let card of cards) {
+                    const validLabels = card.labels.filter(label => ISSUE_POINTS[label.name]);
+                    const memberIds = card.idMembers;
+                    const validMembers = memberIds.filter(id => memberIdsList.includes(id));
+
+                    // Không có agent => bỏ qua
+                    if (validMembers.length === 0) continue;
+
+                    // Có nhiều hơn 1 label level => bỏ vào danh sách riêng
+                    if (validLabels.length > 1) {
+                        multiLevelCards.push({ ...card, memberIds: validMembers, levels: validLabels.map(l => l.name) });
+                        continue;
+                    }
+
+                    // Không có level => thêm vào danh sách card không có level
+                    if (validLabels.length === 0) {
+                        noLevelCards.push({ ...card, memberIds: validMembers });
+                        continue;
+                    }
+
+                    // Tới đây là card hợp lệ (1 label level + có member)
+                    const level = validLabels[0].name;
+                    const point = ISSUE_POINTS[level];
+
+                    if (validMembers.length === 1) {
+                        const memberId = validMembers[0];
+                        if (!singleKPI[memberId]) {
+                            singleKPI[memberId] = {
+                                points: 0,
+                                cards: [],
+                                levelPoints: {},
+                                levelCardCount: {},
+                            };
+                        }
+
+                        singleKPI[memberId].points += point;
+                        singleKPI[memberId].cards.push({ ...card, level, point });
+
+                        // Level - Điểm
+                        if (!singleKPI[memberId].levelPoints[level]) {
+                            singleKPI[memberId].levelPoints[level] = 0;
+                        }
+                        singleKPI[memberId].levelPoints[level] += point;
+
+                        // Level - Số lượng card
+                        if (!singleKPI[memberId].levelCardCount[level]) {
+                            singleKPI[memberId].levelCardCount[level] = 0;
+                        }
+                        singleKPI[memberId].levelCardCount[level] += 1;
+                    } else {
+                        multiCards.push({
+                            card,
+                            point,
+                            level,
+                            memberIds: validMembers,
+                        });
+                    }
+                }
+
+                setSingleMemberKPIs(singleKPI);
+                setNoLevelCards(noLevelCards);
+                setMultiLevelCards(multiLevelCards);
+            }
+        } catch (error) {
+            console.error('Error resetting data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     if (loading) {
         return (
             <Box
@@ -493,39 +600,72 @@ const IssuesKpiSummary = () => {
                     overflow: 'hidden'
                 }}
             >
-                <Tabs 
-                    value={activeTab} 
-                    onChange={handleTabChange}
-                    sx={{
-                        '& .MuiTabs-indicator': {
-                            backgroundColor: 'primary.main',
-                            height: 3,
-                        },
-                        '& .MuiTab-root': {
-                            textTransform: 'none',
-                            fontSize: '1rem',
-                            fontWeight: 500,
-                            minWidth: 160,
-                            py: 2,
-                        }
-                    }}
-                >
-                    <Tab 
-                        icon={<BarChartIcon />} 
-                        label="Issues KPI" 
-                        iconPosition="start"
-                    />
-                    <Tab 
-                        icon={<BugReportIcon />} 
-                        label="Bugs KPI" 
-                        iconPosition="start"
-                    />
-                    <Tab 
-                        icon={<TrendingUpIcon />} 
-                        label="Speed Up KPI" 
-                        iconPosition="start"
-                    />
-                </Tabs>
+                <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    px: 2,
+                    py: 1,
+                    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+                }}>
+                    <Tabs 
+                        value={activeTab} 
+                        onChange={handleTabChange}
+                        sx={{
+                            '& .MuiTabs-indicator': {
+                                backgroundColor: 'primary.main',
+                                height: 3,
+                            },
+                            '& .MuiTab-root': {
+                                textTransform: 'none',
+                                fontSize: '1rem',
+                                fontWeight: 500,
+                                minWidth: 160,
+                                py: 2,
+                            }
+                        }}
+                    >
+                        <Tab 
+                            icon={<BarChartIcon />} 
+                            label="Issues KPI" 
+                            iconPosition="start"
+                        />
+                        <Tab 
+                            icon={<BugReportIcon />} 
+                            label="Bugs KPI" 
+                            iconPosition="start"
+                        />
+                        <Tab 
+                            icon={<TrendingUpIcon />} 
+                            label="Speed Up KPI" 
+                            iconPosition="start"
+                        />
+                    </Tabs>
+                    <Tooltip title="Reset data">
+                        <Button
+                            variant="outlined"
+                            startIcon={<RefreshIcon />}
+                            onClick={handleReset}
+                            disabled={loading}
+                            sx={{
+                                textTransform: 'none',
+                                borderRadius: 2,
+                                borderColor: alpha(theme.palette.primary.main, 0.2),
+                                color: 'primary.main',
+                                '&:hover': {
+                                    borderColor: 'primary.main',
+                                    backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                                },
+                                '&.Mui-disabled': {
+                                    borderColor: alpha(theme.palette.primary.main, 0.1),
+                                    color: alpha(theme.palette.primary.main, 0.3),
+                                }
+                            }}
+                        >
+                            Reset Data
+                        </Button>
+                    </Tooltip>
+                </Box>
             </Paper>
 
             {/* Main Content */}
@@ -974,8 +1114,10 @@ const IssuesKpiSummary = () => {
                                                                             sx={{
                                                                                 '&:hover': {
                                                                                     background: alpha(theme.palette.primary.main, 0.03),
+                                                                                    cursor: 'pointer'
                                                                                 }
                                                                             }}
+                                                                            onClick={() => handleCardClick(card)}
                                                                         >
                                                                             <TableCell>
                                                                                 <Link
@@ -1314,6 +1456,13 @@ const IssuesKpiSummary = () => {
                     )}
                 </Box>
             </Fade>
+
+            {/* Card Detail Modal */}
+            <CardDetailModal
+                open={modalOpen}
+                onClose={handleCloseModal}
+                cardId={selectedCard?.id}
+            />
         </Box>
     );
 };

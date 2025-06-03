@@ -3,12 +3,13 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper,
   Card, CardContent, Typography, Grid, LinearProgress, Box, CircularProgress, useTheme, alpha,
-  TableSortLabel, Button
+  TableSortLabel, Button, TextField
 } from '@mui/material';
 import { getDevFixingCards } from '../../api/trelloApi';
 import CardDetailModal from '../CardDetailModal';
 import ClearIcon from '@mui/icons-material/Clear';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import FilterListIcon from '@mui/icons-material/FilterList';
 
 export default function DevFixingDashboard() {
   const theme = useTheme();
@@ -19,7 +20,9 @@ export default function DevFixingDashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [cards, setCards] = useState([]);
   const [selectedApp, setSelectedApp] = useState('Tất cả');
-
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [showDateFilter, setShowDateFilter] = useState(false);
 
   const processCards = (cards) => {
     return cards.map(card => {
@@ -147,10 +150,30 @@ export default function DevFixingDashboard() {
   };
 
   const filterCards = (cards) => {
-    if (selectedApp === 'Tất cả') {
-      return cards;
+    let filtered = cards;
+
+    // Filter by app
+    if (selectedApp !== 'Tất cả') {
+      filtered = filtered.filter(card => card.app === selectedApp);
     }
-    return cards.filter(card => card.app === selectedApp);
+
+    // Filter by date range
+    if (startDate || endDate) {
+      filtered = filtered.filter(card => {
+        if (!card.createDate) return false;
+        
+        const createDate = new Date(card.createDate);
+        const start = startDate ? new Date(startDate) : null;
+        const end = endDate ? new Date(endDate + 'T23:59:59') : null; // Set to end of day
+
+        const isAfterStart = !start || createDate >= start;
+        const isBeforeEnd = !end || createDate <= end;
+
+        return isAfterStart && isBeforeEnd;
+      });
+    }
+
+    return filtered;
   };
 
   const filteredCards = filterCards(cards);
@@ -505,6 +528,7 @@ export default function DevFixingDashboard() {
                     Due
                   </TableSortLabel>
                 </TableCell>
+                <TableCell>Create Date</TableCell>
                 <TableCell>Trễ</TableCell>
               </TableRow>
             </TableHead>
@@ -561,6 +585,7 @@ export default function DevFixingDashboard() {
                     </TableCell>
                     <TableCell>{card.app}</TableCell>
                     <TableCell>{formatDate(card.due)}</TableCell>
+                    <TableCell>{formatDate(card.createDate)}</TableCell>
                     <TableCell>{getOverdueDays(card.due) ?? '-'}</TableCell>
                   </TableRow>
                 );
@@ -644,8 +669,25 @@ export default function DevFixingDashboard() {
         </Typography>
         <Box sx={{
           display: 'flex',
-          gap: 2
+          gap: 2,
+          alignItems: 'center'
         }}>
+          <Button
+            variant="outlined"
+            startIcon={<FilterListIcon />}
+            onClick={() => setShowDateFilter(!showDateFilter)}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              borderColor: alpha(theme.palette.primary.main, 0.5),
+              '&:hover': {
+                borderColor: theme.palette.primary.main,
+                backgroundColor: alpha(theme.palette.primary.main, 0.05)
+              }
+            }}
+          >
+            Lọc theo ngày
+          </Button>
           <Box sx={{
             backgroundColor: alpha(theme.palette.warning.main, 0.1),
             px: 2,
@@ -669,6 +711,56 @@ export default function DevFixingDashboard() {
         </Box>
       </Box>
 
+      {showDateFilter && (
+        <Box sx={{ 
+          mb: 3,
+          p: 2,
+          background: 'white',
+          borderRadius: 2,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+          display: 'flex',
+          gap: 2,
+          alignItems: 'center',
+          flexWrap: 'wrap'
+        }}>
+          <TextField
+            type="date"
+            label="Từ ngày"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            InputLabelProps={{
+              shrink: true,
+            }}
+            sx={{ minWidth: 200 }}
+          />
+          <TextField
+            type="date"
+            label="Đến ngày"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            InputLabelProps={{
+              shrink: true,
+            }}
+            sx={{ minWidth: 200 }}
+          />
+          <Button
+            variant="outlined"
+            color="error"
+            size="small"
+            onClick={() => {
+              setStartDate('');
+              setEndDate('');
+            }}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none'
+            }}
+          >
+            Xóa bộ lọc
+          </Button>
+        </Box>
+      )}
+
       <Box sx={{ 
         animation: 'fadeIn 0.3s ease-in-out',
         '@keyframes fadeIn': {
@@ -676,8 +768,8 @@ export default function DevFixingDashboard() {
           '100%': { opacity: 1, transform: 'translateY(0)' }
         }
       }}>
-        {renderAppStats(cards, 'Thống kê theo App')}
-        {renderTable(cards)}
+        {renderAppStats(filterCards(cards), 'Thống kê theo App')}
+        {renderTable(filterCards(cards))}
       </Box>
     </Box>
   );

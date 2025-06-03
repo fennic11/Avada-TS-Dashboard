@@ -3,7 +3,7 @@ import { Box, Grid, Typography, Avatar, Card, CardContent, Paper, Divider, Badge
 import { getLeaderboard } from '../api/leaderboardApi';
 import { getResolutionTimes } from '../api/cardsApi';
 import members from '../data/members.json';
-import { ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, LineChart } from 'recharts';
+import { Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, LineChart } from 'recharts';
 
 // Custom tooltip để format AVG đẹp hơn
 const CustomTooltip = ({ active, payload, label }) => {
