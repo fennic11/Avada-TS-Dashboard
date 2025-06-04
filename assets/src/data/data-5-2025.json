@@ -1,0 +1,127 @@
+[
+    {
+      "app": "App: SEO",
+      "totalCards": 715,
+      "totalPoints": 7163
+    },
+    {
+      "app": "App: Accessibility",
+      "totalCards": 18,
+      "totalPoints": 187
+    },
+    {
+      "app": "App: Email Marketing",
+      "totalCards": 48,
+      "totalPoints": 216
+    },
+    {
+      "app": "App: Free Gift",
+      "totalCards": 149,
+      "totalPoints": 966
+    },
+    {
+      "app": "App: Air Reviews",
+      "totalCards": 486,
+      "totalPoints": 4394
+    },
+    {
+      "app": "App: Blog",
+      "totalCards": 140,
+      "totalPoints": 1172
+    },
+    {
+      "app": "App: Boost Sales",
+      "totalCards": 88,
+      "totalPoints": 789
+    },
+    {
+      "app": "App: Bundle",
+      "totalCards": 83,
+      "totalPoints": 716
+    },
+    {
+      "app": "App: Cookie Bar",
+      "totalCards": 79,
+      "totalPoints": 673
+    },
+    {
+      "app": "App: Cart Drawer",
+      "totalCards": 4,
+      "totalPoints": 57
+    },
+    {
+      "app": "App: Chatty",
+      "totalCards": 264,
+      "totalPoints": 1999
+    },
+    {
+      "app": "App: Joy",
+      "totalCards": 384,
+      "totalPoints": 3032
+    },
+    {
+      "app": "App: Instagram Feed",
+      "totalCards": 31,
+      "totalPoints": 289
+    },
+    {
+      "app": "App: Image Optimizer",
+      "totalCards": 5,
+      "totalPoints": 40
+    },
+    {
+      "app": "App: Joy Subscriptions",
+      "totalCards": 199,
+      "totalPoints": 1484
+    },
+    {
+      "app": "App: Order Limit",
+      "totalCards": 71,
+      "totalPoints": 388
+    },
+    {
+      "app": "App: PDF Invoice",
+      "totalCards": 156,
+      "totalPoints": 1653
+    },
+    {
+      "app": "App: Size Chart",
+      "totalCards": 162,
+      "totalPoints": 1505
+    },
+    {
+      "app": "App: Seo",
+      "totalCards": 1,
+      "totalPoints": 8
+    },
+    {
+      "app": "App: survey",
+      "totalCards": 20,
+      "totalPoints": 182
+    },
+    {
+      "app": "App: WhatsApp",
+      "totalCards": 3,
+      "totalPoints": 24
+    },
+    {
+      "app": "App: Product Feed",
+      "totalCards": 1,
+      "totalPoints": 8
+    },
+    {
+      "app": "App: Post Purchase Upsell",
+      "totalCards": 2,
+      "totalPoints": 38
+    },
+    {
+      "app": "App: Tiktok Feed",
+      "totalCards": 1,
+      "totalPoints": 8
+    },
+    {
+      "app": "App: AI Product Description",
+      "totalCards": 1,
+      "totalPoints": 8
+    }
+  ]

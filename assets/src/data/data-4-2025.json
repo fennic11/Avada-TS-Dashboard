@@ -1,0 +1,107 @@
+[
+    {
+      "app": "App: Blog",
+      "totalCards": 164,
+      "totalPoints": 1261
+    },
+    {
+      "app": "App: Boost Sales",
+      "totalCards": 120,
+      "totalPoints": 1169
+    },
+    {
+      "app": "App: Air Reviews",
+      "totalCards": 404,
+      "totalPoints": 3834
+    },
+    {
+      "app": "App: Cookie Bar",
+      "totalCards": 79,
+      "totalPoints": 582
+    },
+    {
+      "app": "App: Joy",
+      "totalCards": 519,
+      "totalPoints": 4428
+    },
+    {
+      "app": "App: Joy Subscriptions",
+      "totalCards": 158,
+      "totalPoints": 1193
+    },
+    {
+      "app": "App: Size Chart",
+      "totalCards": 140,
+      "totalPoints": 1249
+    },
+    {
+      "app": "App: Free Gift",
+      "totalCards": 107,
+      "totalPoints": 760
+    },
+    {
+      "app": "App: SEO",
+      "totalCards": 811,
+      "totalPoints": 7978
+    },
+    {
+      "app": "App: survey",
+      "totalCards": 29,
+      "totalPoints": 189
+    },
+    {
+      "app": "App: Post Purchase Upsell",
+      "totalCards": 9,
+      "totalPoints": 72
+    },
+    {
+      "app": "App: Chatty",
+      "totalCards": 341,
+      "totalPoints": 2645
+    },
+    {
+      "app": "App: Email Marketing",
+      "totalCards": 48,
+      "totalPoints": 313
+    },
+    {
+      "app": "App: Instagram Feed",
+      "totalCards": 41,
+      "totalPoints": 384
+    },
+    {
+      "app": "App: PDF Invoice",
+      "totalCards": 126,
+      "totalPoints": 1191
+    },
+    {
+      "app": "App: Bundle",
+      "totalCards": 145,
+      "totalPoints": 1172
+    },
+    {
+      "app": "App: Accessibility",
+      "totalCards": 25,
+      "totalPoints": 229
+    },
+    {
+      "app": "App: Order Limit",
+      "totalCards": 83,
+      "totalPoints": 642
+    },
+    {
+      "app": "App: Form",
+      "totalCards": 1,
+      "totalPoints": 8
+    },
+    {
+      "app": "App: Image Optimizer",
+      "totalCards": 12,
+      "totalPoints": 64
+    },
+    {
+      "app": "App: Product Feed",
+      "totalCards": 3,
+      "totalPoints": 16
+    }
+  ]

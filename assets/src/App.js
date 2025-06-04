@@ -23,6 +23,7 @@ import TSWorkspace from './pages/TSWorkspace';
 import BaPage from './pages/BaPage';
 import Slack from './pages/Slack';
 import LeaderboardPage from './pages/Leaderboard';
+import PlanTsTeam from './pages/PlanTsTeam';
 
 const theme = createTheme({
     palette: {
@@ -195,6 +196,16 @@ const App = () => {
                             />
                             <Route path="/" element={<Navigate to="/bugs" replace />} />
                             <Route path="*" element={<Navigate to="/" replace />} />
+                            <Route
+                                path="/plan-ts-team"
+                                element={
+                                    <PrivateRoute>
+                                        <Layout>
+                                            <PlanTsTeam />  
+                                        </Layout>
+                                    </PrivateRoute>
+                                }
+                            />
                         </Routes>
                     </Router>
                 </ThemeProvider>

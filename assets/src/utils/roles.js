@@ -9,7 +9,8 @@ export const TABS = {
     BA_PAGE: 'ba-page',
     DEV_ZONE: 'dev-zone',
     SLACK_CHANNEL: 'slack-channel',
-    LEADERBOARD: 'leaderboard'
+    LEADERBOARD: 'leaderboard',
+    PLAN_TS_TEAM: 'plan-ts-team'
 };
 
 // Define roles and their permissions
@@ -61,6 +62,12 @@ export const ROLE_PERMISSIONS = {
             TABS.SLACK_CHANNEL
         ],
         description: 'Access to TS Lead related features'
+        },
+    [ROLES.PLAN_TS_TEAM]: {
+        allowedTabs: [
+            TABS.PLAN_TS_TEAM
+        ],
+        description: 'Access to Plan Ts Team related features'
     }
 };
 

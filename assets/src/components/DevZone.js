@@ -115,6 +115,8 @@ const DevZone = () => {
             points: 1000
         }))
     });
+    const [appStats, setAppStats] = useState({});
+    const [isLoadingStats, setIsLoadingStats] = useState(false);
     const theme = useTheme();
 
     // Tạo Set chứa các member ID hợp lệ
@@ -140,6 +142,18 @@ const DevZone = () => {
         role: member.role,
         slackId: member.slackId
     }));
+
+    // Add these new state variables after other useState declarations
+    const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+    const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
+    const [jsonData, setJsonData] = useState(null);
+
+    // Add new state for export modal
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [exportData, setExportData] = useState(null);
+
+    // Add new state for multiple lists
+    const [listIds, setListIds] = useState(['']);
 
     useEffect(() => {
         const fetchLists = async () => {
@@ -869,6 +883,248 @@ const DevZone = () => {
         }
     };
 
+    const calculateKPI = (level) => {
+        const kpiMap = {
+            'Issue: level 0': 4,
+            'Issue: level 1': 8,
+            'Issue: level 2': 15,
+            'Issue: level 3': 30,
+            'Issues: Level 4': 45
+        };
+        return kpiMap[level.toLowerCase()] || 0;
+    };
+
+    const handleGetAppStats = async () => {
+        // Validate list IDs
+        const validListIds = listIds.filter(id => id.trim() !== '');
+        if (validListIds.length === 0) {
+            setSnackbar({
+                open: true,
+                message: "Vui lòng nhập ít nhất một List ID",
+                severity: "warning"
+            });
+            return;
+        }
+
+        setIsLoadingStats(true);
+        try {
+            // Get cards from all lists
+            const allCards = [];
+            for (const listId of validListIds) {
+                console.log('Fetching cards for list:', listId);
+                const cards = await getCardsByList(listId);
+                console.log('Cards received:', cards);
+                if (Array.isArray(cards)) {
+                    allCards.push(...cards);
+                }
+            }
+
+            console.log('Total cards collected:', allCards.length);
+
+            const stats = {};
+
+            allCards.forEach(card => {
+                // Tìm label App và Level
+                const appLabel = card.labels?.find(label => label.name.startsWith('App:'));
+                const levelLabel = card.labels?.find(label => 
+                    label.name.toLowerCase().startsWith('issue: level') || 
+                    label.name.toLowerCase().startsWith('issues: level')
+                );
+
+                console.log('Card labels:', card.labels);
+                console.log('Found app label:', appLabel);
+                console.log('Found level label:', levelLabel);
+
+                if (appLabel) {
+                    const appName = appLabel.name; // Giữ nguyên "App:" trong tên
+                    if (!stats[appName]) {
+                        stats[appName] = {
+                            totalCards: 0,
+                            totalKPI: 0
+                        };
+                    }
+
+                    stats[appName].totalCards++;
+                    if (levelLabel) {
+                        const points = calculatePoints(levelLabel.name);
+                        console.log('Calculated points for level:', levelLabel.name, points);
+                        stats[appName].totalKPI += points;
+                    }
+                }
+            });
+
+            console.log('Final stats:', stats);
+            setAppStats(stats);
+            setSnackbar({
+                open: true,
+                message: "Đã lấy thống kê thành công!",
+                severity: "success"
+            });
+        } catch (error) {
+            console.error('Error fetching app stats:', error);
+            setSnackbar({
+                open: true,
+                message: "Có lỗi xảy ra khi lấy thống kê",
+                severity: "error"
+            });
+        } finally {
+            setIsLoadingStats(false);
+        }
+    };
+
+    // Add these new functions after other function declarations
+    const handleOpenStatsModal = () => {
+      setIsStatsModalOpen(true);
+    };
+
+    const handleCloseStatsModal = () => {
+      setIsStatsModalOpen(false);
+    };
+
+    const handleCopyStatsJSON = () => {
+      if (appStats) {
+        navigator.clipboard.writeText(JSON.stringify(appStats, null, 2))
+          .then(() => {
+            setSnackbar({
+              open: true,
+              message: "Đã sao chép JSON vào clipboard",
+              severity: "success"
+            });
+          })
+          .catch(err => {
+            console.error('Failed to copy:', err);
+            setSnackbar({
+              open: true,
+              message: "Không thể sao chép JSON",
+              severity: "error"
+            });
+          });
+      }
+    };
+
+    const calculatePoints = (level) => {
+      const pointsMap = {
+        'issue: level 0': 4,
+        'issue: level 1': 8,
+        'issue: level 2': 15,
+        'issue: level 3': 30,
+        'issue: level 4': 45
+      };
+      return pointsMap[level.toLowerCase()] || 0;
+    };
+
+    const handleOpenJsonModal = (data) => {
+      // Calculate points for each card
+      const processedData = {
+        ...data,
+        points: 0,
+        level: null
+      };
+
+      // Find level label and calculate points
+      if (data.labels) {
+        const levelLabel = data.labels.find(label => 
+          label.name.toLowerCase().startsWith('issue: level')
+        );
+        if (levelLabel) {
+          processedData.level = levelLabel.name;
+          processedData.points = calculatePoints(levelLabel.name);
+        }
+      }
+
+      setJsonData(processedData);
+      setIsJsonModalOpen(true);
+    };
+
+    const handleCloseJsonModal = () => {
+      setIsJsonModalOpen(false);
+      setJsonData(null);
+    };
+
+    const handleCopyJson = () => {
+      if (jsonData) {
+        navigator.clipboard.writeText(JSON.stringify(jsonData, null, 2))
+          .then(() => {
+            setSnackbar({
+              open: true,
+              message: "Đã sao chép JSON vào clipboard",
+              severity: "success"
+            });
+          })
+          .catch(err => {
+            console.error('Failed to copy:', err);
+            setSnackbar({
+              open: true,
+              message: "Không thể sao chép JSON",
+              severity: "error"
+            });
+          });
+      }
+    };
+
+    const handleExportStats = () => {
+        if (!appStats || Object.keys(appStats).length === 0) {
+            setSnackbar({
+                open: true,
+                message: "Không có dữ liệu để xuất",
+                severity: "warning"
+            });
+            return;
+        }
+
+        // Format data for export
+        const formattedData = Object.entries(appStats).map(([appName, stats]) => ({
+            app: appName,
+            totalCards: stats.totalCards,
+            totalPoints: stats.totalKPI
+        }));
+
+        setExportData(formattedData);
+        setIsExportModalOpen(true);
+    };
+
+    const handleCloseExportModal = () => {
+        setIsExportModalOpen(false);
+        setExportData(null);
+    };
+
+    const handleCopyExportData = () => {
+        if (exportData) {
+            navigator.clipboard.writeText(JSON.stringify(exportData, null, 2))
+                .then(() => {
+                    setSnackbar({
+                        open: true,
+                        message: "Đã sao chép JSON vào clipboard",
+                        severity: "success"
+                    });
+                })
+                .catch(err => {
+                    console.error('Failed to copy:', err);
+                    setSnackbar({
+                        open: true,
+                        message: "Không thể sao chép JSON",
+                        severity: "error"
+                    });
+                });
+        }
+    };
+
+    const handleAddList = () => {
+        setListIds([...listIds, '']);
+    };
+
+    const handleRemoveList = (index) => {
+        if (listIds.length > 1) {
+            setListIds(listIds.filter((_, i) => i !== index));
+        }
+    };
+
+    const handleListChange = (index, value) => {
+        const newListIds = [...listIds];
+        newListIds[index] = value;
+        setListIds(newListIds);
+    };
+
     return (
         <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -1572,6 +1828,126 @@ const DevZone = () => {
                     </Box>
                 </Paper>
 
+                {/* Thống kê theo App */}
+                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
+                        Thống kê theo App
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            {listIds.map((listId, index) => (
+                                <Box key={index} sx={{ 
+                                    display: 'flex', 
+                                    gap: 2, 
+                                    alignItems: 'center',
+                                    position: 'relative'
+                                }}>
+                                    <TextField
+                                        label={`List ID ${index + 1}`}
+                                        value={listId}
+                                        onChange={(e) => handleListChange(index, e.target.value)}
+                                        fullWidth
+                                        placeholder="Nhập List ID"
+                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
+                                    />
+                                    {listIds.length > 1 && (
+                                        <IconButton
+                                            onClick={() => handleRemoveList(index)}
+                                            sx={{
+                                                color: 'error.main',
+                                                position: 'absolute',
+                                                right: -40
+                                            }}
+                                        >
+                                            <CloseIcon />
+                                        </IconButton>
+                                    )}
+                                </Box>
+                            ))}
+                            <Button 
+                                variant="outlined" 
+                                onClick={handleAddList}
+                                startIcon={<AddIcon />}
+                                sx={{ 
+                                    alignSelf: 'flex-start',
+                                    minWidth: 120,
+                                    borderRadius: 1,
+                                    textTransform: 'none',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                Thêm List
+                            </Button>
+                        </Box>
+
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <Button 
+                                variant="contained" 
+                                onClick={handleGetAppStats}
+                                disabled={isLoadingStats}
+                                sx={{ 
+                                    minWidth: 120,
+                                    height: '56px',
+                                    borderRadius: 1,
+                                    textTransform: 'none',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                {isLoadingStats ? 'Đang tải...' : 'Lấy thống kê'}
+                            </Button>
+                            {Object.keys(appStats).length > 0 && (
+                                <Button 
+                                    variant="outlined" 
+                                    onClick={handleExportStats}
+                                    sx={{ 
+                                        minWidth: 120,
+                                        height: '56px',
+                                        borderRadius: 1,
+                                        textTransform: 'none',
+                                        fontWeight: 'bold'
+                                    }}
+                                >
+                                    Xuất JSON
+                                </Button>
+                            )}
+                        </Box>
+
+                        {Object.keys(appStats).length > 0 && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                {Object.entries(appStats).map(([appName, stats]) => (
+                                    <Paper 
+                                        key={appName}
+                                        elevation={2}
+                                        sx={{ 
+                                            p: 2,
+                                            borderRadius: 2,
+                                            background: 'linear-gradient(to right, #ffffff, #f5f5f5)'
+                                        }}
+                                    >
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                                                {appName}
+                                            </Typography>
+                                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                                <Chip 
+                                                    label={`${stats.totalCards} cards`}
+                                                    color="primary"
+                                                    variant="outlined"
+                                                />
+                                                <Chip 
+                                                    label={`${stats.totalKPI} points`}
+                                                    color="success"
+                                                    variant="outlined"
+                                                />
+                                            </Box>
+                                        </Box>
+                                    </Paper>
+                                ))}
+                            </Box>
+                        )}
+                    </Box>
+                </Paper>
+
                 {isLoading && (
                     <Box sx={{ mt: 2 }}>
                         <Typography sx={{ mb: 1 }}>{log}</Typography>
@@ -2197,6 +2573,220 @@ const DevZone = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseSearchModal}>Đóng</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Stats Modal */}
+            <Dialog
+                open={isStatsModalOpen}
+                onClose={handleCloseStatsModal}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center' 
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Typography variant="h6">
+                                Thống kê App
+                            </Typography>
+                            {appStats && (
+                                <Chip 
+                                    label={`${Object.keys(appStats).length} apps`}
+                                    size="small"
+                                    sx={{ 
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                        color: 'primary.main',
+                                        fontWeight: 500
+                                    }}
+                                />
+                            )}
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {appStats && (
+                                <Tooltip title="Copy JSON">
+                                    <IconButton 
+                                        onClick={handleCopyStatsJSON}
+                                        sx={{ 
+                                            color: 'primary.main',
+                                            '&:hover': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                                            }
+                                        }}
+                                    >
+                                        <ContentCopyIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                            <IconButton onClick={handleCloseStatsModal}>
+                                <CloseIcon />
+                            </IconButton>
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    {appStats && (
+                        <Paper 
+                            sx={{ 
+                                p: 2, 
+                                backgroundColor: '#f5f5f5',
+                                maxHeight: '60vh',
+                                overflow: 'auto'
+                            }}
+                        >
+                            <pre style={{ 
+                                margin: 0,
+                                whiteSpace: 'pre-wrap',
+                                wordWrap: 'break-word'
+                            }}>
+                                {JSON.stringify(appStats, null, 2)}
+                            </pre>
+                        </Paper>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseStatsModal}>Đóng</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* JSON Modal */}
+            <Dialog
+                open={isJsonModalOpen}
+                onClose={handleCloseJsonModal}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center' 
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Typography variant="h6">
+                                JSON Data
+                            </Typography>
+                            {jsonData?.points > 0 && (
+                                <Chip 
+                                    label={`${jsonData.points} points`}
+                                    color="primary"
+                                    sx={{ 
+                                        fontWeight: 'bold',
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                        color: theme.palette.primary.main
+                                    }}
+                                />
+                            )}
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    {jsonData && (
+                        <Paper 
+                            sx={{ 
+                                p: 2, 
+                                backgroundColor: '#f5f5f5',
+                                maxHeight: '60vh',
+                                overflow: 'auto'
+                            }}
+                        >
+                            <pre style={{ 
+                                margin: 0,
+                                whiteSpace: 'pre-wrap',
+                                wordWrap: 'break-word',
+                                fontFamily: 'monospace',
+                                fontSize: '14px',
+                                lineHeight: '1.5'
+                            }}>
+                                {JSON.stringify(jsonData, null, 2)}
+                            </pre>
+                        </Paper>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseJsonModal}>Close</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Export Modal */}
+            <Dialog
+                open={isExportModalOpen}
+                onClose={handleCloseExportModal}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center' 
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Typography variant="h6">
+                                Thống kê App
+                            </Typography>
+                            {exportData && (
+                                <Chip 
+                                    label={`${exportData.length} apps`}
+                                    size="small"
+                                    sx={{ 
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                        color: 'primary.main',
+                                        fontWeight: 500
+                                    }}
+                                />
+                            )}
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {exportData && (
+                                <Tooltip title="Copy JSON">
+                                    <IconButton 
+                                        onClick={handleCopyExportData}
+                                        sx={{ 
+                                            color: 'primary.main',
+                                            '&:hover': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                                            }
+                                        }}
+                                    >
+                                        <ContentCopyIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                            <IconButton onClick={handleCloseExportModal}>
+                                <CloseIcon />
+                            </IconButton>
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    {exportData && (
+                        <Paper 
+                            sx={{ 
+                                p: 2, 
+                                backgroundColor: '#f5f5f5',
+                                maxHeight: '60vh',
+                                overflow: 'auto'
+                            }}
+                        >
+                            <pre style={{ 
+                                margin: 0,
+                                whiteSpace: 'pre-wrap',
+                                wordWrap: 'break-word',
+                                fontFamily: 'monospace',
+                                fontSize: '14px',
+                                lineHeight: '1.5'
+                            }}>
+                                {JSON.stringify(exportData, null, 2)}
+                            </pre>
+                        </Paper>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseExportModal}>Đóng</Button>
                 </DialogActions>
             </Dialog>
         </Box>

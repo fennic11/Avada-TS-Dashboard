@@ -32,10 +32,6 @@
     "name": "Done"
   },
   {
-    "id": "68196adc0828b5e2f551fd4f",
-    "name": "Done-T5-2025"
-  },
-  {
     "id": "663ae7d6feac5f2f8d7a1c86",
     "name": "Fix done from dev"
   },
@@ -400,8 +396,20 @@
     "name": "fixDoneFromDev-T4-2025"
   },
   {
+    "id": "683d065bc40bc6b93deb5859",
+    "name": "FixDoneFromDev-T5-2025"
+  },
+  {
+    "id": "683ed51ab9a65e79d00a6ded",
+    "name": "SpeedUp-T5-2025"
+  },
+  {
     "id": "677611e10e8ecc10f9650f68",
     "name": "FixDoneFromdev-t12-2024"
+  },
+  {
+    "id": "68196adc0828b5e2f551fd4f",
+    "name": "Done-T5-2025"
   },
   {
     "id": "654b5e99c80549deb43505d0",

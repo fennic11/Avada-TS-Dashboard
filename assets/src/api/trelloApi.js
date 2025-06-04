@@ -646,7 +646,7 @@ export async function updateCardDueComplete(cardId, dueComplete) {
 export const getBoardLabels = async (boardId) => {
     try {
         const { key, token } = getCredentials();
-        const response = await fetch(`${API_URL}/boards/${boardId}/labels?key=${key}&token=${token}&limit=100`);
+        const response = await fetch(`${API_URL}/boards/${boardId}/labels?key=${key}&token=${token}&limit=500`);
         if (!response.ok) {
             throw new Error('Failed to fetch board labels');
         }
@@ -694,7 +694,7 @@ export async function getCardsByBoardWithDateFilter(since, before) {
         // Add member filter if provided
 
         // Add additional useful fields
-        url += '&fields=id,name,idList,idMembers,labels,url,due';
+        url += '&fields=id,name,idList,idMembers,labels,url,due&filter=all';
         const resp = await fetch(url, {
             headers: {
                 Accept: "application/json"

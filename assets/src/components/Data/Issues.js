@@ -33,8 +33,6 @@ const STATUS_MAP = {
 const Issues = () => {
   const [selectedMember, setSelectedMember] = useState('');
   const [tsMembers, setTsMembers] = useState([]);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
   const [filteredCards, setFilteredCards] = useState([]);
   const [loading, setLoading] = useState(false);
   const [categorizedCards, setCategorizedCards] = useState({
@@ -46,7 +44,6 @@ const Issues = () => {
   });
   const [statusFilter, setStatusFilter] = useState('');
   const [appFilter, setAppFilter] = useState('');
-  const [didAutoFetch, setDidAutoFetch] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -56,50 +53,19 @@ const Issues = () => {
     return list ? list.id : null;
   };
 
-  // Function to get date string in YYYY-MM-DDTHH:mm format
-  const getFormattedDateTime = (date, hour = 0, minute = 0) => {
-    const d = new Date(date);
-    d.setHours(hour, minute, 0, 0);
-    return d.toISOString().slice(0, 16); // 'YYYY-MM-DDTHH:mm'
-  };
-
-  // Function to set default dates (7 ngày trước ngày hôm qua -> ngày hôm qua)
-  const setDefaultDates = () => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const lastWeek = new Date(yesterday);
-    lastWeek.setDate(yesterday.getDate() - 7);
-    setEndDate(getFormattedDateTime(yesterday, 23, 59));
-    setStartDate(getFormattedDateTime(lastWeek, 0, 0));
-  };
-
   useEffect(() => {
     // Filter members with TS and TS-lead roles
     const filteredMembers = members.filter(member => 
       member.role === 'TS' || member.role === 'TS-lead'
     );
     setTsMembers(filteredMembers);
-    setDefaultDates();
+    handleGetData();
   }, []);
 
-  useEffect(() => {
-    if (startDate && endDate && !didAutoFetch) {
-      handleGetData();
-      setDidAutoFetch(true);
-    }
-  }, [startDate, endDate]);
-
   const handleGetData = async () => {
-    if (!startDate && !endDate) {
-      alert('Please select at least one date');
-      return;
-    }
-
     setLoading(true);
     try {
-      const cards = await getCardsByBoardWithDateFilter(startDate, endDate);
-      console.log(cards.length);
+      const cards = await getCardsByBoardWithDateFilter();
       if (cards) {
         // Filter cards by selected member if any
         const filteredCards = selectedMember 
@@ -149,20 +115,6 @@ const Issues = () => {
       console.error('Error fetching cards:', error);
     }
     setLoading(false);
-  };
-
-  // Effect to filter cards when member selection changes
-  useEffect(() => {
-    if (filteredCards.length > 0) {
-      const filteredByMember = selectedMember 
-        ? filteredCards.filter(card => card.idMembers && card.idMembers.includes(selectedMember))
-        : filteredCards;
-      setFilteredCards(filteredByMember);
-    }
-  }, [selectedMember]);
-
-  const handleMemberChange = (event) => {
-    setSelectedMember(event.target.value);
   };
 
   // Prepare data for charts
@@ -404,80 +356,6 @@ const Issues = () => {
       minHeight: '100vh',
       border: '1px solid #e0e7ef'
     }}>
-      {/* Date Filter Section */}
-      <Paper elevation={3} sx={{ p: 2, mb: 2, borderRadius: 2, background: 'white', boxShadow: '0 2px 8px 0 #e0e7ef' }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1.5, fontSize: 18 }}>Date Filter</Typography>
-        <Grid container spacing={1.5} alignItems="center">
-          <Grid item xs={12} sm={6} md={3}>
-            <TextField
-              fullWidth
-              label="Start Date"
-              type="datetime-local"
-              value={startDate}
-              onChange={e => setStartDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              size="small"
-              sx={{
-                background: '#f6f8fa',
-                borderRadius: 1.5,
-                '& .MuiOutlinedInput-root': {
-                  fontSize: 15,
-                  background: '#f6f8fa',
-                  borderRadius: 1.5,
-                  '& fieldset': { borderColor: '#e0e7ef' },
-                  '&:hover fieldset': { borderColor: '#1976d2' },
-                  '&.Mui-focused fieldset': { borderColor: '#1976d2', borderWidth: 2 }
-                },
-                '& .MuiInputLabel-root': {
-                  color: '#1976d2',
-                  fontWeight: 500,
-                  fontSize: 15
-                }
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <TextField
-              fullWidth
-              label="End Date"
-              type="datetime-local"
-              value={endDate}
-              onChange={e => setEndDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              size="small"
-              sx={{
-                background: '#f6f8fa',
-                borderRadius: 1.5,
-                '& .MuiOutlinedInput-root': {
-                  fontSize: 15,
-                  background: '#f6f8fa',
-                  borderRadius: 1.5,
-                  '& fieldset': { borderColor: '#e0e7ef' },
-                  '&:hover fieldset': { borderColor: '#1976d2' },
-                  '&.Mui-focused fieldset': { borderColor: '#1976d2', borderWidth: 2 }
-                },
-                '& .MuiInputLabel-root': {
-                  color: '#1976d2',
-                  fontWeight: 500,
-                  fontSize: 15
-                }
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              fullWidth
-              variant="contained"
-              onClick={handleGetData}
-              disabled={loading}
-              sx={{ height: 40, fontSize: 15, backgroundColor: '#1976d2', '&:hover': { backgroundColor: '#1565c0' }, borderRadius: 1.5, boxShadow: '0 2px 8px 0 #e0e7ef' }}
-            >
-              {loading ? 'Loading...' : 'Get Data'}
-            </Button>
-          </Grid>
-        </Grid>
-      </Paper>
-
       {/* Filters Section */}
       <Paper elevation={3} sx={{ p: 2, mb: 2, borderRadius: 2, background: 'white', boxShadow: '0 2px 8px 0 #e0e7ef' }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1.5, fontSize: 18 }}>Filters</Typography>
