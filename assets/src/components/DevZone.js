@@ -1005,7 +1005,7 @@ const DevZone = () => {
     const calculatePoints = (level) => {
       const pointsMap = {
         'issue: level 0': 4,
-        'issue: level 1': 8,
+        'issue: level 1': 10,
         'issue: level 2': 15,
         'issue: level 3': 30,
         'issue: level 4': 45

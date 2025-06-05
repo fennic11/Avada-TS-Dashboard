@@ -864,7 +864,7 @@ const PlanTsTeam = () => {
                                             <TableCell>Thành viên</TableCell>
                                             <TableCell align="center">Số ca trực (tháng)</TableCell>
                                             <TableCell align="center">KPI ca trực (tháng)</TableCell>
-                                            <TableCell align="center">KPI trung bình</TableCell>
+                                            <TableCell align="center">KPI Issue (tháng)</TableCell>
                                             <TableCell align="center">Tổng KPI</TableCell>
                                         </TableRow>
                                     </TableHead>
