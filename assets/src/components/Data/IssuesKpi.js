@@ -85,14 +85,26 @@ const IssuesKpiSummary = () => {
                 const cards = await getCardsByList(issuesSelectedList);
                 if (!cards) return;
 
-                setTotalCards(cards.length);
+                // Filter cards to only include those with TS/ts-lead members or ricky_avada
+                const filteredCards = cards.filter(card => {
+                    return card.idMembers.some(id => {
+                        const member = members.find(m => m.id === id);
+                        return member && (
+                            member.role === 'TS' || 
+                            member.role === 'ts-lead' || 
+                            member.username === 'ricky_avada'
+                        );
+                    });
+                });
+
+                setTotalCards(filteredCards.length);
 
                 const singleKPI = {};
                 const multiCards = [];
                 const noLevelCards = [];
                 const multiLevelCards = [];
 
-                for (let card of cards) {
+                for (let card of filteredCards) {
                     const validLabels = card.labels.filter(label => ISSUE_POINTS[label.name]);
                     const memberIds = card.idMembers;
                     const validMembers = memberIds.filter(id => memberIdsList.includes(id));
@@ -194,8 +206,20 @@ const IssuesKpiSummary = () => {
             const cards = await getCardsByList(issuesSelectedList);
             if (!cards) return;
 
+            // Filter cards to only include those with TS/ts-lead members or ricky_avada
+            const filteredCards = cards.filter(card => {
+                return card.idMembers.some(id => {
+                    const member = members.find(m => m.id === id);
+                    return member && (
+                        member.role === 'TS' || 
+                        member.role === 'ts-lead' || 
+                        member.username === 'ricky_avada'
+                    );
+                });
+            });
+
             // Sort: TS lên trên, còn lại xuống cuối
-            const sortedCards = [...cards].sort((a, b) => {
+            const sortedCards = [...filteredCards].sort((a, b) => {
                 const mainA = a.idMembers && a.idMembers.length > 0 ? a.idMembers[0] : null;
                 const mainB = b.idMembers && b.idMembers.length > 0 ? b.idMembers[0] : null;
                 const roleA = members.find(m => m.id === mainA)?.role;
@@ -248,12 +272,12 @@ const IssuesKpiSummary = () => {
             const selectedList = lists.find(list => list.id === issuesSelectedList);
             const listName = selectedList ? selectedList.name.replace(/[^a-zA-Z0-9]/g, '_') : 'unknown';
             const today = new Date();
-            const formattedDate = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+            const formattedDate = `${today.getMonth() + 1}_${today.getDate()}_${today.getFullYear()}`;
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             const url = URL.createObjectURL(blob);
             link.setAttribute('href', url);
-            link.setAttribute('download', `Export_KPI_${listName}_${formattedDate.replace(/\//g, '_')}.csv`);
+            link.setAttribute('download', `Export_${listName}_${formattedDate}.csv`);
             link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();
@@ -269,8 +293,20 @@ const IssuesKpiSummary = () => {
             const cards = await getCardsByList(issuesSelectedList);
             if (!cards) return;
 
+            // Filter cards to only include those with TS/ts-lead members or ricky_avada
+            const filteredCards = cards.filter(card => {
+                return card.idMembers.some(id => {
+                    const member = members.find(m => m.id === id);
+                    return member && (
+                        member.role === 'TS' || 
+                        member.role === 'ts-lead' || 
+                        member.username === 'ricky_avada'
+                    );
+                });
+            });
+
             // Sort: TS lên trên, còn lại xuống cuối
-            const sortedCards = [...cards].sort((a, b) => {
+            const sortedCards = [...filteredCards].sort((a, b) => {
                 const mainA = a.idMembers && a.idMembers.length > 0 ? a.idMembers[0] : null;
                 const mainB = b.idMembers && b.idMembers.length > 0 ? b.idMembers[0] : null;
                 const roleA = members.find(m => m.id === mainA)?.role;
@@ -426,14 +462,26 @@ const IssuesKpiSummary = () => {
                 const cards = await getCardsByList(issuesSelectedList);
                 if (!cards) return;
 
-                setTotalCards(cards.length);
+                // Filter cards to only include those with TS/ts-lead members or ricky_avada
+                const filteredCards = cards.filter(card => {
+                    return card.idMembers.some(id => {
+                        const member = members.find(m => m.id === id);
+                        return member && (
+                            member.role === 'TS' || 
+                            member.role === 'ts-lead' || 
+                            member.username === 'ricky_avada'
+                        );
+                    });
+                });
+
+                setTotalCards(filteredCards.length);
 
                 const singleKPI = {};
                 const multiCards = [];
                 const noLevelCards = [];
                 const multiLevelCards = [];
 
-                for (let card of cards) {
+                for (let card of filteredCards) {
                     const validLabels = card.labels.filter(label => ISSUE_POINTS[label.name]);
                     const memberIds = card.idMembers;
                     const validMembers = memberIds.filter(id => memberIdsList.includes(id));

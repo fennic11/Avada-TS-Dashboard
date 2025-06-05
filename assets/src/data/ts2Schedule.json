@@ -1,0 +1,60 @@
+{
+    "TS2": {
+        "Monday": [
+          [],
+          [],
+          ["Nguyễn Văn Hoài An", "Trần Đức Tùng"],
+          ["Trần Thị Bích Phương"],
+          ["Nguyễn Tiếng Dũng", "Ma Hoàng Hải"],
+          ["Trần Đức Tùng", "Trần Thị Bích Phương"]
+        ],
+        "Tuesday": [
+          ["Nguyễn Văn Hoài An"],
+          [],
+          ["Ma Hoàng Hải", "Nguyễn Tiến Dũng"],
+          ["Nguyễn Tiến Dũng"],
+          ["Trần Đức Tùng", "Nguyễn Văn Hoài An"],
+          ["Ma Hoàng Hải", "Trần Thị Bích Phương"]
+        ],
+        "Wednesday": [
+          ["Nguyễn Tiến Dũng"],
+          [],
+          ["Trần Đức Tùng", "Ma Hoàng Hải"],
+          ["Nguyễn Văn Hoài An"],
+          ["Ma Hoàng Hải", "Trần Thị Bích Phương"],
+          ["Trần Đức Tùng", "Nguyễn Văn Hoài An"]
+        ],
+        "Thursday": [
+          ["Ma Hoàng Hải"],
+          [],
+          ["Trần Thị Bích Phương", "Nguyễn Tiến Dũng"],
+          ["Nguyễn Văn Hoài An"],
+          ["Trần Đức Tùng", "Nguyễn Tiến Dũng"],
+          ["Nguyễn Văn Hoài An", "Trần Thị Bích Phương"]
+        ],
+        "Friday": [
+          ["Trần Đức Tùng"],
+          [],
+          ["Nguyễn Tiến Dũng", "Ma Hoàng Hải"],
+          ["Nguyễn Văn Hoài An"],
+          ["Trần Thị Bích Phương", "Nguyễn Tiến Dũng"],
+          ["Ma Hoàng Hải", "Nguyễn Văn Hoài An"]
+        ],
+        "Saturday": [
+          ["Trần Đức Tùng"],
+          [],
+          ["Nguyễn Tiến Dũng"],
+          ["Trần Thị Bích Phương"],
+          ["Nguyễn Tiến Dũng", "Trần Đức Tùng"],
+          ["Ma Hoàng Hải", "Trần Thị Bích Phương"]
+        ],
+        "Sunday": [
+          [],
+          [],
+          ["Nguyễn Tiến Dũng"],
+          ["Ma Hoàng Hải"],
+          ["Trần Thị Bích Phương"],
+          ["Nguyễn Văn Hoài An"]
+        ]
+      }
+}

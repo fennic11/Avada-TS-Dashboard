@@ -1,0 +1,60 @@
+{
+    "TS1": {
+    "Monday": [
+        [],
+        [],
+        ["Nguyễn Ngọc Anh"],
+        ["Nguyễn Thị Hiền"],
+        ["TS 4", "TS 5"],
+        ["Trần Thế Cương", "Nguyễn Thị Hiền"]
+    ],
+    "Tuesday": [
+        ["Nguyễn Ngọc Anh"],
+        [],
+        ["TS 4"],
+        ["Trần Thế Cương"],
+        ["TS 4", "Nguyễn Ngọc Anh"],
+        ["Trần Thế Cương", "Nguyễn Thị Hiền"]
+    ],
+    "Wednesday": [
+        ["TS 5"],
+        [],
+        ["Trần Thế Cương"],
+        ["Nguyễn Ngọc Anh"],
+        ["TS 5", "Nguyễn Thị Hiền"],
+        ["TS 4", "Nguyễn Ngọc Anh"]
+    ],
+    "Thursday": [
+        ["Trần Thế Cương"],
+        [],
+        ["Nguyễn Thị Hiền"],
+        ["Nguyễn Ngọc Anh"],
+        ["TS 4", "TS 5"],
+        ["Trần Thế Cương", "Nguyễn Thị Hiền"]
+    ],
+    "Friday": [
+        ["TS 4"],
+        [],
+        ["TS 5"],
+        ["Trần Thế Cương"],
+        ["Nguyễn Thị Hiền", "Nguyễn Ngọc Anh"],
+        ["TS 5", "TS 4"]
+    ],
+    "Saturday": [
+        ["Nguyễn Ngọc Anh"],
+        [],
+        ["TS 5"],
+        ["Nguyễn Thị Hiền"],
+        ["TS 5", "TS 4"],
+        ["Trần Thế Cương", "Nguyễn Thị Hiền"]
+    ],
+    "Sunday": [
+        [],
+        [],
+        ["TS 5"],
+        ["TS 4"],
+        ["Nguyễn Thị Hiền"],
+        ["Nguyễn Ngọc Anh, Trần Thế Cương"]
+    ]
+    }
+}
