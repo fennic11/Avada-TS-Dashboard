@@ -6,7 +6,7 @@ const notionController = require('../controllers/notionController');
 const slackController = require('../controllers/slackController');
 const workShiftController = require('../controllers/workShiftController');
 const leaderboardController = require('../controllers/leaderboardController');
-
+const crispController = require('../controllers/crispController');
 // Auth routes
 router.put('/auth/user', authController.createOrUpdateUser);
 router.get('/auth/user/:email', authController.getUserByEmail);
@@ -31,6 +31,10 @@ router.get('/work-shift', workShiftController.getWorkShift);
 // Leaderboard routes
 router.get('/leaderboard', leaderboardController.getLeaderboard);
 router.post('/leaderboard', leaderboardController.createLeaderboard);
+
+// Crisp routes
+router.post('/crisp/createConversation', crispController.createConversationController);
+
 
 module.exports = router;
 

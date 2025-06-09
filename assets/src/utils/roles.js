@@ -19,7 +19,8 @@ export const ROLES = {
     TS: 'ts',
     BA: 'ba',
     DEV: 'dev',
-    TS_LEAD: 'ts-lead'
+    TS_LEAD: 'ts-lead',
+    PM: 'pm'
 };
 
 // Define permissions for each role
@@ -43,6 +44,14 @@ export const ROLE_PERMISSIONS = {
             TABS.BA_PAGE
         ],
         description: 'Access to BA related features'
+    },
+    [ROLES.PM]: {
+        allowedTabs: [
+            TABS.BUGS,
+            TABS.BA_PAGE,
+            TABS.ISSUES
+        ],
+        description: 'Access to PM related features'
     },
     [ROLES.DEV]: {
         allowedTabs: [

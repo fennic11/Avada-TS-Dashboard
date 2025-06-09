@@ -106,6 +106,8 @@ const determineUserRole = (email) => {
                 return ROLES.TS_LEAD;
             case 'dev':
                 return ROLES.DEV;
+            case 'pm':
+                return ROLES.PM;
             default:
                 return ROLES.BA;
         }

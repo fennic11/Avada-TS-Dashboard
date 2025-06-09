@@ -47,6 +47,7 @@ import { getChannelId, sendMessageToChannel } from "../api/slackApi";
 import AddIcon from '@mui/icons-material/Add';
 import { createLeaderboard } from "../api/leaderboardApi";
 import PhotoCamera from '@mui/icons-material/PhotoCamera';
+import { createConversation } from "../api/crispApi";
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -154,6 +155,9 @@ const DevZone = () => {
 
     // Add new state for multiple lists
     const [listIds, setListIds] = useState(['']);
+
+    const [conversationNote, setConversationNote] = useState('');
+    const [conversationDialog, setConversationDialog] = useState(false);
 
     useEffect(() => {
         const fetchLists = async () => {
@@ -1005,7 +1009,7 @@ const DevZone = () => {
     const calculatePoints = (level) => {
       const pointsMap = {
         'issue: level 0': 4,
-        'issue: level 1': 10,
+        'issue: level 1': 8,
         'issue: level 2': 15,
         'issue: level 3': 30,
         'issue: level 4': 45
@@ -1123,6 +1127,44 @@ const DevZone = () => {
         const newListIds = [...listIds];
         newListIds[index] = value;
         setListIds(newListIds);
+    };
+
+    const handleOpenConversationDialog = () => {
+        setConversationDialog(true);
+    };
+
+    const handleCloseConversationDialog = () => {
+        setConversationDialog(false);
+        setConversationNote('');
+    };
+
+    const handleCreateConversation = async () => {
+        if (!conversationNote.trim()) {
+            setSnackbar({
+                open: true,
+                message: 'Vui lòng nhập note cho conversation!',
+                severity: 'warning'
+            });
+            return;
+        }
+
+        try {
+            const conversation = await createConversation(conversationNote);
+            
+            setSnackbar({
+                open: true,
+                message: 'Tạo conversation thành công!',
+                severity: 'success'
+            });
+            setConversationNote(''); // Reset note sau khi tạo thành công
+        } catch (error) {
+            console.error('Error creating conversation:', error);
+            setSnackbar({
+                open: true,
+                message: 'Lỗi khi tạo conversation: ' + error.message,
+                severity: 'error'
+            });
+        }
     };
 
     return (
@@ -2789,6 +2831,75 @@ const DevZone = () => {
                     <Button onClick={handleCloseExportModal}>Đóng</Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Thêm button mở dialog tạo conversation */}
+            <Button
+                variant="contained"
+                color="primary"
+                onClick={handleOpenConversationDialog}
+                sx={{ mt: 2, mb: 2 }}
+            >
+                Tạo Conversation Mới
+            </Button>
+
+            {/* Dialog tạo conversation */}
+            <Dialog 
+                open={conversationDialog} 
+                onClose={handleCloseConversationDialog}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle>Tạo Conversation Mới</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        label="Note cho conversation"
+                        type="text"
+                        fullWidth
+                        multiline
+                        rows={4}
+                        value={conversationNote}
+                        onChange={(e) => setConversationNote(e.target.value)}
+                        variant="outlined"
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseConversationDialog}>Hủy</Button>
+                    <Button 
+                        onClick={handleCreateConversation}
+                        variant="contained"
+                        color="primary"
+                    >
+                        Tạo Conversation
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Form tạo conversation */}
+            <Paper sx={{ p: 2, mt: 2, mb: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                    Tạo Conversation Mới
+                </Typography>
+                <TextField
+                    fullWidth
+                    multiline
+                    rows={4}
+                    label="Note cho conversation"
+                    value={conversationNote}
+                    onChange={(e) => setConversationNote(e.target.value)}
+                    variant="outlined"
+                    sx={{ mb: 2 }}
+                />
+                <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleCreateConversation}
+                    disabled={!conversationNote.trim()}
+                >
+                    Tạo Conversation
+                </Button>
+            </Paper>
         </Box>
     );
 };
