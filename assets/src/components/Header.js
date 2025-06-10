@@ -2,18 +2,27 @@ import * as React from 'react';
 import {
   AppBar, Box, Toolbar, IconButton, Typography, Menu, Container,
   Button, MenuItem, Avatar, Tooltip, Badge, List, ListItem,
-  ListItemText, ListItemAvatar, Divider, CircularProgress, Snackbar, Alert
+  ListItemText, ListItemAvatar, Divider, CircularProgress, Snackbar, Alert, Drawer, ListItemButton, ListItemIcon
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CheckIcon from '@mui/icons-material/Check';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import BugReportIcon from '@mui/icons-material/BugReport';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import GroupIcon from '@mui/icons-material/Group';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import ChatIcon from '@mui/icons-material/Chat';
+import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import logo from '../Logo có nền/Logo có nền/Avada_Brandmark_PhienBanMauChinhTrenNenSang.jpg';
 import { Link, useLocation } from 'react-router-dom';
 import { getCurrentUser, logout } from '../api/usersApi';
 import { getMemberNotifications, markAllNotificationsAsRead, updateNotificationStatus } from '../api/trelloApi';
 import { formatDistanceToNow } from 'date-fns';
 import CardDetailModal from './CardDetailModal';
-import { TABS, ROLES, ROLE_PERMISSIONS, hasTabAccess, getAccessibleTabs } from '../utils/roles';
+import {ROLES, ROLE_PERMISSIONS, getAccessibleTabs } from '../utils/roles';
 
 // Convert TABS to menu items format
 const getMenuItems = (role) => {
@@ -26,8 +35,22 @@ const getMenuItems = (role) => {
   }));
 };
 
-function ResponsiveAppBar() {
-  const [anchorElNav, setAnchorElNav] = React.useState(null);
+// Hàm chọn icon theo path/tab
+const getTabIcon = (path) => {
+  if (path.includes('bugs')) return <BugReportIcon />;
+  if (path.includes('issues')) return <AssignmentIcon />;
+  if (path.includes('resolution-time')) return <TimelineIcon />;
+  if (path.includes('data-kpi')) return <BarChartIcon />;
+  if (path.includes('TS-lead-workspace')) return <WorkspacePremiumIcon />;
+  if (path.includes('TS-workspace')) return <GroupIcon />;
+  if (path.includes('ba-page')) return <AssignmentIcon />;
+  if (path.includes('slack')) return <ChatIcon />;
+  if (path.includes('leaderboard')) return <EmojiEventsIcon />;
+  if (path.includes('plan-ts-team')) return <GroupIcon />;
+  return <DashboardIcon />;
+};
+
+function ResponsiveAppBar({ sidebarOpen = true, onToggleSidebar, drawerWidth = 220 }) {
   const [anchorElUser, setAnchorElUser] = React.useState(null);
   const [anchorElNoti, setAnchorElNoti] = React.useState(null);
   const [user, setUser] = React.useState(null);
@@ -45,10 +68,14 @@ function ResponsiveAppBar() {
   const userRole = currentUser?.role || ROLES.BA;
 
   // Get accessible tabs based on user role
-  const accessibleTabs = getAccessibleTabs(userRole);
 
   // Filter menu items based on accessible tabs
   const currentMenuItems = getMenuItems(userRole);
+
+  const MAIN_TABS_COUNT = 4; // Số tab chính muốn hiển thị
+  const mainMenuItems = currentMenuItems.slice(0, MAIN_TABS_COUNT);
+  const moreMenuItems = currentMenuItems.slice(MAIN_TABS_COUNT);
+  const [anchorElMore, setAnchorElMore] = React.useState(null);
 
   React.useEffect(() => {
     if (currentUser) {
@@ -67,9 +94,6 @@ function ResponsiveAppBar() {
     // Cleanup interval on component unmount
     return () => clearInterval(interval);
   }, []);
-
-  const handleOpenNavMenu = (event) => setAnchorElNav(event.currentTarget);
-  const handleCloseNavMenu = () => setAnchorElNav(null);
 
   const handleOpenUserMenu = (event) => setAnchorElUser(event.currentTarget);
   const handleCloseUserMenu = () => setAnchorElUser(null);
@@ -223,11 +247,65 @@ function ResponsiveAppBar() {
 
   return (
     <>
+      {/* Sidebar dọc */}
+      {sidebarOpen && (
+        <Drawer
+          variant="permanent"
+          sx={{
+            width: drawerWidth,
+            flexShrink: 0,
+            '& .MuiDrawer-paper': {
+              width: drawerWidth,
+              boxSizing: 'border-box',
+              background: 'linear-gradient(135deg, #06038D 0%, #1B263B 100%)',
+              color: 'white',
+              borderRight: 0
+            }
+          }}
+          open
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', p: 2, justifyContent: 'space-between' }}>
+            <img src={logo} alt="logo" height={40} style={{ borderRadius: 8 }} />
+            <IconButton
+              onClick={onToggleSidebar}
+              sx={{ color: 'white', ml: 1 }}
+            >
+              <MenuIcon />
+            </IconButton>
+          </Box>
+          <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
+          <List>
+            {currentMenuItems.map((item, idx) => (
+              <ListItemButton
+                key={item.path}
+                component={Link}
+                to={item.path}
+                selected={location.pathname === item.path}
+                sx={{
+                  color: 'white',
+                  '&.Mui-selected': { background: 'rgba(255,255,255,0.08)' },
+                  borderRadius: 1,
+                  mx: 1,
+                  my: 0.5
+                }}
+              >
+                <ListItemIcon sx={{ color: 'white', minWidth: 36 }}>
+                  {getTabIcon(item.path)}
+                </ListItemIcon>
+                <ListItemText primary={item.label} />
+              </ListItemButton>
+            ))}
+          </List>
+        </Drawer>
+      )}
+      {/* Header chỉ giữ lại thông báo và user menu, dịch sang phải nếu sidebarOpen */}
       <AppBar 
         position="sticky" 
         sx={{ 
           background: 'linear-gradient(135deg, #06038D 0%, #1B263B 100%)',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
+          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+          width: sidebarOpen ? { sm: `calc(100% - ${drawerWidth}px)` } : '100%',
+          ml: sidebarOpen ? `${drawerWidth}px` : 0
         }}
       >
         <Container maxWidth="xxl">
@@ -235,136 +313,25 @@ function ResponsiveAppBar() {
             disableGutters 
             sx={{ 
               minHeight: { xs: '64px', md: '72px' },
-              gap: 2
+              gap: 2,
+              justifyContent: 'flex-end',
+              position: 'relative'
             }}
           >
-            {/* Logo desktop */}
-            <Link to="/">
-              <Box 
-                sx={{ 
-                  display: { xs: 'none', md: 'flex' }, 
-                  alignItems: 'center',
-                  mr: 3
-                }}
-              >
-                <img 
-                  src={logo} 
-                  alt="logo" 
-                  height={45} 
-                  style={{ 
-                    borderRadius: 8,
-                    transition: 'transform 0.2s',
-                    '&:hover': {
-                      transform: 'scale(1.05)'
-                    }
-                  }} 
-                />
-              </Box>
-            </Link>
-
-            {/* Mobile menu */}
-            <Box sx={{ display: { xs: 'flex', md: 'none' }, flexGrow: 1 }}>
+            {/* Nút toggle sidebar chỉ hiện khi sidebarOpen=false */}
+            {!sidebarOpen && (
               <IconButton
-                size="large"
-                onClick={handleOpenNavMenu}
-                sx={{ 
+                onClick={onToggleSidebar}
+                sx={{
+                  position: 'absolute',
+                  left: 0,
                   color: 'white',
-                  '&:hover': {
-                    background: 'rgba(255,255,255,0.1)'
-                  }
+                  zIndex: 1201
                 }}
               >
                 <MenuIcon />
               </IconButton>
-              <Menu
-                anchorEl={anchorElNav}
-                open={Boolean(anchorElNav)}
-                onClose={handleCloseNavMenu}
-                sx={{
-                  display: { xs: 'block', md: 'none' },
-                  '& .MuiPaper-root': {
-                    borderRadius: 2,
-                    mt: 1,
-                    background: 'white',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
-                  }
-                }}
-              >
-                {currentMenuItems.map((item) => (
-                  <MenuItem 
-                    key={item.path} 
-                    onClick={handleCloseNavMenu}
-                    component={Link}
-                    to={item.path}
-                    selected={location.pathname === item.path}
-                  >
-                    <Typography textAlign="center">{item.label}</Typography>
-                  </MenuItem>
-                ))}
-              </Menu>
-            </Box>
-
-            {/* Logo mobile */}
-            <Link to="/">
-              <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
-                <img 
-                  src={logo} 
-                  alt="logo" 
-                  height={40} 
-                  style={{ borderRadius: 8 }} 
-                />
-              </Box>
-            </Link>
-
-            {/* Desktop menu */}
-            <Box 
-              sx={{ 
-                flexGrow: 1, 
-                display: { xs: 'none', md: 'flex' }, 
-                gap: 1
-              }}
-            >
-              {currentMenuItems.map((item) => (
-                <Button
-                  key={item.path}
-                  component={Link}
-                  to={item.path}
-                  onClick={handleCloseNavMenu}
-                  sx={{
-                    px: 2,
-                    py: 1,
-                    color: 'white',
-                    position: 'relative',
-                    fontWeight: 500,
-                    fontSize: '0.95rem',
-                    transition: 'all 0.2s',
-                    '&::after': {
-                      content: '""',
-                      position: 'absolute',
-                      bottom: 6,
-                      left: '50%',
-                      width: location.pathname === item.path ? '30%' : '0%',
-                      height: '2px',
-                      backgroundColor: 'white',
-                      transition: 'all 0.3s',
-                      transform: 'translateX(-50%)'
-                    },
-                    '&:hover': {
-                      backgroundColor: 'rgba(255,255,255,0.1)',
-                      '&::after': {
-                        width: '30%'
-                      }
-                    },
-                    ...(location.pathname === item.path && {
-                      backgroundColor: 'rgba(255,255,255,0.1)',
-                    })
-                  }}
-                >
-                  {item.label}
-                </Button>
-              ))}
-            </Box>
-
+            )}
             {/* Notification menu */}
             <Box sx={{ flexGrow: 0, mr: 1 }}>
               <Tooltip title="Notifications">
@@ -615,7 +582,6 @@ function ResponsiveAppBar() {
                 )}
               </Menu>
             </Box>
-
             {/* User menu */}
             <Box sx={{ flexGrow: 0 }}>
               <Tooltip title="Open settings">
@@ -656,7 +622,7 @@ function ResponsiveAppBar() {
                   <Typography textAlign="center">{user?.email || ''}</Typography>
                 </MenuItem>
                 <MenuItem onClick={handleLogout}>
-                  <Typography textAlign="center" color="error">Đăng xuất</Typography>
+                  <Typography textAlign="center" color="error">Logout</Typography>
                 </MenuItem>
               </Menu>
             </Box>

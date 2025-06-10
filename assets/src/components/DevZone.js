@@ -20,7 +20,6 @@ import {
     IconButton,
     Chip,
     Tooltip,
-    Grid,
     Link,
     Avatar
 } from "@mui/material";
@@ -181,6 +180,7 @@ const DevZone = () => {
             
             const response = await register(registerData);
             console.log('Register response:', response);
+
             
             setLog("✅ Đăng ký thành công!");
             setRegisterData({
@@ -269,17 +269,6 @@ const DevZone = () => {
 
         setLog("✅ Hoàn thành xử lý toàn bộ cards.");
         setIsLoading(false);
-    };
-
-    const handleCardClick = async (card) => {
-        try {
-            setSelectedCard(card);
-            const actions = await getActionsByCard(card.id);
-            setCardActions(actions);
-            setIsModalOpen(true);
-        } catch (error) {
-            console.error('Error fetching card actions:', error);
-        }
     };
 
     const handleCloseModal = () => {
@@ -543,7 +532,7 @@ const DevZone = () => {
 
         try {
             setIsLoading(true);
-            const result = await updateUser(updateUserData.email, {
+            await updateUser(updateUserData.email, {
                 apiKey: updateUserData.apiKey,
                 token: updateUserData.token
             });
@@ -583,7 +572,7 @@ const DevZone = () => {
         }
 
         try {
-            const response = await sendMessageToChannel(slackMessage);
+            await sendMessageToChannel(slackMessage);
             setSnackbar({
                 open: true,
                 message: "Đã gửi tin nhắn đến Slack thành công!",
@@ -707,7 +696,7 @@ const DevZone = () => {
             }));
 
             console.log('Sending data:', workShiftData);
-            const response = await saveWorkShift(workShiftData);
+            await saveWorkShift(workShiftData);
             
             setSnackbar({
                 open: true,
@@ -887,16 +876,6 @@ const DevZone = () => {
         }
     };
 
-    const calculateKPI = (level) => {
-        const kpiMap = {
-            'Issue: level 0': 4,
-            'Issue: level 1': 8,
-            'Issue: level 2': 15,
-            'Issue: level 3': 30,
-            'Issues: Level 4': 45
-        };
-        return kpiMap[level.toLowerCase()] || 0;
-    };
 
     const handleGetAppStats = async () => {
         // Validate list IDs
@@ -935,24 +914,32 @@ const DevZone = () => {
                     label.name.toLowerCase().startsWith('issues: level')
                 );
 
-                console.log('Card labels:', card.labels);
-                console.log('Found app label:', appLabel);
-                console.log('Found level label:', levelLabel);
-
                 if (appLabel) {
                     const appName = appLabel.name; // Giữ nguyên "App:" trong tên
                     if (!stats[appName]) {
                         stats[appName] = {
                             totalCards: 0,
-                            totalKPI: 0
+                            levels: {
+                                'Level 0': 0,
+                                'Level 1': 0,
+                                'Level 2': 0,
+                                'Level 3': 0,
+                                'Level 4': 0
+                            }
                         };
                     }
 
                     stats[appName].totalCards++;
                     if (levelLabel) {
-                        const points = calculatePoints(levelLabel.name);
-                        console.log('Calculated points for level:', levelLabel.name, points);
-                        stats[appName].totalKPI += points;
+                        // Extract level number from label name
+                        const levelMatch = levelLabel.name.match(/level\s*(\d+)/i);
+                        if (levelMatch) {
+                            const levelNum = levelMatch[1];
+                            const levelKey = `Level ${levelNum}`;
+                            if (stats[appName].levels.hasOwnProperty(levelKey)) {
+                                stats[appName].levels[levelKey]++;
+                            }
+                        }
                     }
                 }
             });
@@ -977,9 +964,6 @@ const DevZone = () => {
     };
 
     // Add these new functions after other function declarations
-    const handleOpenStatsModal = () => {
-      setIsStatsModalOpen(true);
-    };
 
     const handleCloseStatsModal = () => {
       setIsStatsModalOpen(false);
@@ -1006,64 +990,10 @@ const DevZone = () => {
       }
     };
 
-    const calculatePoints = (level) => {
-      const pointsMap = {
-        'issue: level 0': 4,
-        'issue: level 1': 8,
-        'issue: level 2': 15,
-        'issue: level 3': 30,
-        'issue: level 4': 45
-      };
-      return pointsMap[level.toLowerCase()] || 0;
-    };
-
-    const handleOpenJsonModal = (data) => {
-      // Calculate points for each card
-      const processedData = {
-        ...data,
-        points: 0,
-        level: null
-      };
-
-      // Find level label and calculate points
-      if (data.labels) {
-        const levelLabel = data.labels.find(label => 
-          label.name.toLowerCase().startsWith('issue: level')
-        );
-        if (levelLabel) {
-          processedData.level = levelLabel.name;
-          processedData.points = calculatePoints(levelLabel.name);
-        }
-      }
-
-      setJsonData(processedData);
-      setIsJsonModalOpen(true);
-    };
 
     const handleCloseJsonModal = () => {
       setIsJsonModalOpen(false);
       setJsonData(null);
-    };
-
-    const handleCopyJson = () => {
-      if (jsonData) {
-        navigator.clipboard.writeText(JSON.stringify(jsonData, null, 2))
-          .then(() => {
-            setSnackbar({
-              open: true,
-              message: "Đã sao chép JSON vào clipboard",
-              severity: "success"
-            });
-          })
-          .catch(err => {
-            console.error('Failed to copy:', err);
-            setSnackbar({
-              open: true,
-              message: "Không thể sao chép JSON",
-              severity: "error"
-            });
-          });
-      }
     };
 
     const handleExportStats = () => {
@@ -1080,7 +1010,12 @@ const DevZone = () => {
         const formattedData = Object.entries(appStats).map(([appName, stats]) => ({
             app: appName,
             totalCards: stats.totalCards,
-            totalPoints: stats.totalKPI
+            levels: Object.entries(stats.levels)
+                .filter(([_, count]) => count > 0)
+                .reduce((acc, [level, count]) => {
+                    acc[level] = count;
+                    return acc;
+                }, {})
         }));
 
         setExportData(formattedData);
@@ -1149,7 +1084,7 @@ const DevZone = () => {
         }
 
         try {
-            const conversation = await createConversation(conversationNote);
+            await createConversation(conversationNote);
             
             setSnackbar({
                 open: true,
@@ -1970,18 +1905,24 @@ const DevZone = () => {
                                             <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
                                                 {appName}
                                             </Typography>
-                                            <Box sx={{ display: 'flex', gap: 2 }}>
-                                                <Chip 
-                                                    label={`${stats.totalCards} cards`}
-                                                    color="primary"
-                                                    variant="outlined"
-                                                />
-                                                <Chip 
-                                                    label={`${stats.totalKPI} points`}
-                                                    color="success"
-                                                    variant="outlined"
-                                                />
-                                            </Box>
+                                            <Chip 
+                                                label={`${stats.totalCards} cards`}
+                                                color="primary"
+                                                variant="outlined"
+                                            />
+                                        </Box>
+                                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                            {Object.entries(stats.levels).map(([level, count]) => (
+                                                count > 0 && (
+                                                    <Chip
+                                                        key={level}
+                                                        label={`${level}: ${count}`}
+                                                        color="success"
+                                                        variant="outlined"
+                                                        size="small"
+                                                    />
+                                                )
+                                            ))}
                                         </Box>
                                     </Paper>
                                 ))}

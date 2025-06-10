@@ -75,12 +75,21 @@ const PrivateRoute = ({ children }) => {
 };
 
 const Layout = ({ children }) => {
+    const [sidebarOpen, setSidebarOpen] = React.useState(true);
+    const drawerWidth = 220;
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-            <Header />
-            <Container component="main" maxWidth="xxl" sx={{ flex: 1, py: 3 }}>
-                {children}
-            </Container>
+        <Box sx={{ minHeight: '100vh', width: '100%' }}>
+            {sidebarOpen && <Header drawerWidth={drawerWidth} sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen(o => !o)} />}
+            {!sidebarOpen && <Header drawerWidth={drawerWidth} sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen(o => !o)} />}
+            {sidebarOpen ? (
+                <Container component="main" maxWidth="xxl" sx={{ flex: 1, py: 3, ml: `${drawerWidth}px`, width: '93%', marginLeft: '10rem', marginRight: 'auto' }}>
+                    {children}
+                </Container>
+            ) : (
+                <Container component="main" maxWidth="xxl" sx={{ flex: 1, py: 3 }}>
+                    {children}
+                </Container>
+            )}
         </Box>
     );
 };

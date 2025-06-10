@@ -1,127 +1,238 @@
 [
-    {
-      "app": "App: SEO",
-      "totalCards": 715,
-      "totalPoints": 7163
-    },
-    {
-      "app": "App: Accessibility",
-      "totalCards": 18,
-      "totalPoints": 187
-    },
-    {
-      "app": "App: Email Marketing",
-      "totalCards": 48,
-      "totalPoints": 216
-    },
-    {
-      "app": "App: Free Gift",
-      "totalCards": 149,
-      "totalPoints": 966
-    },
-    {
-      "app": "App: Air Reviews",
-      "totalCards": 486,
-      "totalPoints": 4394
-    },
-    {
-      "app": "App: Blog",
-      "totalCards": 140,
-      "totalPoints": 1172
-    },
-    {
-      "app": "App: Boost Sales",
-      "totalCards": 88,
-      "totalPoints": 789
-    },
-    {
-      "app": "App: Bundle",
-      "totalCards": 83,
-      "totalPoints": 716
-    },
-    {
-      "app": "App: Cookie Bar",
-      "totalCards": 79,
-      "totalPoints": 673
-    },
-    {
-      "app": "App: Cart Drawer",
-      "totalCards": 4,
-      "totalPoints": 57
-    },
-    {
-      "app": "App: Chatty",
-      "totalCards": 264,
-      "totalPoints": 1999
-    },
-    {
-      "app": "App: Joy",
-      "totalCards": 384,
-      "totalPoints": 3032
-    },
-    {
-      "app": "App: Instagram Feed",
-      "totalCards": 31,
-      "totalPoints": 289
-    },
-    {
-      "app": "App: Image Optimizer",
-      "totalCards": 5,
-      "totalPoints": 40
-    },
-    {
-      "app": "App: Joy Subscriptions",
-      "totalCards": 199,
-      "totalPoints": 1484
-    },
-    {
-      "app": "App: Order Limit",
-      "totalCards": 71,
-      "totalPoints": 388
-    },
-    {
-      "app": "App: PDF Invoice",
-      "totalCards": 156,
-      "totalPoints": 1653
-    },
-    {
-      "app": "App: Size Chart",
-      "totalCards": 162,
-      "totalPoints": 1505
-    },
-    {
-      "app": "App: Seo",
-      "totalCards": 1,
-      "totalPoints": 8
-    },
-    {
-      "app": "App: survey",
-      "totalCards": 20,
-      "totalPoints": 182
-    },
-    {
-      "app": "App: WhatsApp",
-      "totalCards": 3,
-      "totalPoints": 24
-    },
-    {
-      "app": "App: Product Feed",
-      "totalCards": 1,
-      "totalPoints": 8
-    },
-    {
-      "app": "App: Post Purchase Upsell",
-      "totalCards": 2,
-      "totalPoints": 38
-    },
-    {
-      "app": "App: Tiktok Feed",
-      "totalCards": 1,
-      "totalPoints": 8
-    },
-    {
-      "app": "App: AI Product Description",
-      "totalCards": 1,
-      "totalPoints": 8
+  {
+    "app": "App: SEO",
+    "totalCards": 708,
+    "levels": {
+      "Level 0": 4,
+      "Level 1": 443,
+      "Level 2": 197,
+      "Level 3": 28,
+      "Level 4": 6
     }
-  ]
+  },
+  {
+    "app": "App: Accessibility",
+    "totalCards": 30,
+    "levels": {
+      "Level 1": 20,
+      "Level 2": 3,
+      "Level 3": 1
+    }
+  },
+  {
+    "app": "App: Email Marketing",
+    "totalCards": 44,
+    "levels": {
+      "Level 0": 1,
+      "Level 1": 29,
+      "Level 2": 3
+    }
+  },
+  {
+    "app": "App: Free Gift",
+    "totalCards": 157,
+    "levels": {
+      "Level 0": 7,
+      "Level 1": 111,
+      "Level 2": 8,
+      "Level 3": 3,
+      "Level 4": 2
+    }
+  },
+  {
+    "app": "App: Air Reviews",
+    "totalCards": 487,
+    "levels": {
+      "Level 0": 9,
+      "Level 1": 370,
+      "Level 2": 58,
+      "Level 3": 25,
+      "Level 4": 9
+    }
+  },
+  {
+    "app": "App: Blog",
+    "totalCards": 155,
+    "levels": {
+      "Level 0": 1,
+      "Level 1": 119,
+      "Level 2": 16,
+      "Level 3": 4
+    }
+  },
+  {
+    "app": "App: Boost Sales",
+    "totalCards": 91,
+    "levels": {
+      "Level 0": 1,
+      "Level 1": 71,
+      "Level 2": 9,
+      "Level 3": 3,
+      "Level 4": 1
+    }
+  },
+  {
+    "app": "App: Bundle",
+    "totalCards": 95,
+    "levels": {
+      "Level 0": 2,
+      "Level 1": 76,
+      "Level 2": 3,
+      "Level 3": 4
+    }
+  },
+  {
+    "app": "App: Cookie Bar",
+    "totalCards": 76,
+    "levels": {
+      "Level 1": 60,
+      "Level 2": 10,
+      "Level 3": 3
+    }
+  },
+  {
+    "app": "App: Cart Drawer",
+    "totalCards": 6,
+    "levels": {
+      "Level 0": 1,
+      "Level 1": 2,
+      "Level 2": 1,
+      "Level 3": 1
+    }
+  },
+  {
+    "app": "App: Chatty",
+    "totalCards": 282,
+    "levels": {
+      "Level 0": 8,
+      "Level 1": 213,
+      "Level 2": 25,
+      "Level 3": 4,
+      "Level 4": 2
+    }
+  },
+  {
+    "app": "App: Joy",
+    "totalCards": 369,
+    "levels": {
+      "Level 0": 4,
+      "Level 1": 257,
+      "Level 2": 42,
+      "Level 3": 19,
+      "Level 4": 8
+    }
+  },
+  {
+    "app": "App: Instagram Feed",
+    "totalCards": 37,
+    "levels": {
+      "Level 1": 25,
+      "Level 2": 7
+    }
+  },
+  {
+    "app": "App: Image Optimizer",
+    "totalCards": 8,
+    "levels": {
+      "Level 1": 6
+    }
+  },
+  {
+    "app": "App: Joy Subscriptions",
+    "totalCards": 220,
+    "levels": {
+      "Level 0": 4,
+      "Level 1": 158,
+      "Level 2": 17,
+      "Level 3": 5,
+      "Level 4": 1
+    }
+  },
+  {
+    "app": "App: Order Limit",
+    "totalCards": 62,
+    "levels": {
+      "Level 1": 50,
+      "Level 2": 4
+    }
+  },
+  {
+    "app": "App: PDF Invoice",
+    "totalCards": 162,
+    "levels": {
+      "Level 1": 103,
+      "Level 2": 27,
+      "Level 3": 16,
+      "Level 4": 8
+    }
+  },
+  {
+    "app": "App: Size Chart",
+    "totalCards": 173,
+    "levels": {
+      "Level 0": 1,
+      "Level 1": 142,
+      "Level 2": 15,
+      "Level 3": 6,
+      "Level 4": 2
+    }
+  },
+  {
+    "app": "App: Seo",
+    "totalCards": 2,
+    "levels": {
+      "Level 1": 1
+    }
+  },
+  {
+    "app": "App: survey",
+    "totalCards": 30,
+    "levels": {
+      "Level 1": 27,
+      "Level 3": 1
+    }
+  },
+  {
+    "app": "App: WhatsApp",
+    "totalCards": 3,
+    "levels": {
+      "Level 1": 3
+    }
+  },
+  {
+    "app": "App: Product Feed",
+    "totalCards": 2,
+    "levels": {
+      "Level 1": 2
+    }
+  },
+  {
+    "app": "App: Post Purchase Upsell",
+    "totalCards": 6,
+    "levels": {
+      "Level 1": 3,
+      "Level 3": 1
+    }
+  },
+  {
+    "app": "App: Tiktok Feed",
+    "totalCards": 1,
+    "levels": {
+      "Level 1": 1
+    }
+  },
+  {
+    "app": "App: AI Product Description",
+    "totalCards": 2,
+    "levels": {
+      "Level 1": 1
+    }
+  },
+  {
+    "app": "App: Form",
+    "totalCards": 2,
+    "levels": {
+      "Level 1": 1
+    }
+  }
+]

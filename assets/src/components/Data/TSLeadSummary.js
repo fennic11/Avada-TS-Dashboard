@@ -208,19 +208,6 @@ const TSLeadSummary = () => {
         return colors[Math.abs(hash) % colors.length];
     };
 
-    const getOverdueColor = (daysOverdue, dueComplete) => {
-        if (dueComplete) return '#E8F5E9'; // Light green for done
-        if (!daysOverdue) return '#FFFFFF'; // White for normal
-        const alpha = Math.min(0.2 + daysOverdue * 0.1, 1);
-        return `rgba(255, 0, 0, ${alpha})`; // Red for overdue
-    };
-
-    const getTextColor = (backgroundColor) => {
-        if (backgroundColor === '#FFFFFF') return theme.palette.text.primary;
-        if (backgroundColor === '#E8F5E9') return '#2E7D32'; // Dark green text for done
-        return '#FFFFFF'; // White text for other cases
-    };
-
     const getOverdueDays = (dueDate) => {
         if (!dueDate) return null;
         const diff = differenceInDays(new Date(), parseISO(dueDate));
@@ -268,15 +255,6 @@ const TSLeadSummary = () => {
     };
 
     const handlePieChartClick = (entry) => {
-        if (entry && entry.name) {
-            const member = tsMembers.find(m => m.username === entry.name);
-            if (member) {
-                updateTabFilter('tsMember', member.id);
-            }
-        }
-    };
-
-    const handleBarChartClick = (entry) => {
         if (entry && entry.name) {
             const member = tsMembers.find(m => m.username === entry.name);
             if (member) {
@@ -357,7 +335,6 @@ const TSLeadSummary = () => {
     // Memoized data for charts
     const chartsData = useMemo(() => {
         // Count total cards per TS member
-        const memberTotals = {};
         const memberStats = {};
         const appStats = {};
         const uniqueApps = new Set();

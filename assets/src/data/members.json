@@ -435,10 +435,12 @@
     },
     {
       "id": "65640e994007c4aa1e366d28",
+      "email": "trangnt@avadagroup.com",
       "fullName": "Nguyễn Thị Trang",
       "username": "nguynthtrang112",
       "avatarUrl": "https://trello-members.s3.amazonaws.com/65640e994007c4aa1e366d28/508a3764bbf1abfa5af47493f42143c7",
-      "initials": "NT"
+      "initials": "NT",
+      "role": "ba"
     },
     {
       "id": "65af3fcb29f1856b500b6016",
@@ -737,9 +739,11 @@
     {
       "id": "6296e0963b6dd82348753a8c",
       "fullName": "Vũ Trọng Nghĩa",
+      "email": "nghiavt@avadagroup.com",
       "username": "vutrngnghia9",
       "avatarUrl": "https://trello-members.s3.amazonaws.com/6296e0963b6dd82348753a8c/007d2d37ec188c8e3f542f4fa6441b86",
-      "initials": "VN"
+      "initials": "VN",
+      "role": "pm"
     },
     {
       "id": "63b3a589a05c1801101fd5d2",
@@ -880,4 +884,5 @@
       "initials": "K",
       "role": "TS"
     }
+
   ]

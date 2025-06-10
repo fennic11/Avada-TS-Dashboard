@@ -12,8 +12,8 @@
           ["Nguyễn Văn Hoài An"],
           [],
           ["Ma Hoàng Hải", "Nguyễn Tiến Dũng"],
-          ["Nguyễn Tiến Dũng"],
-          ["Trần Đức Tùng", "Nguyễn Văn Hoài An"],
+          ["Nguyễn Văn Hoài An"],
+          ["Trần Đức Tùng", "Nguyễn Tiến Dũng"],
           ["Ma Hoàng Hải", "Trần Thị Bích Phương"]
         ],
         "Wednesday": [
@@ -36,12 +36,12 @@
           ["Trần Đức Tùng"],
           [],
           ["Nguyễn Tiến Dũng", "Ma Hoàng Hải"],
-          ["Nguyễn Văn Hoài An"],
-          ["Trần Thị Bích Phương", "Nguyễn Tiến Dũng"],
+          ["Trần Thị Bích Phương"],
+          ["Trần Đức Tùng", "Nguyễn Tiến Dũng"],
           ["Ma Hoàng Hải", "Nguyễn Văn Hoài An"]
         ],
         "Saturday": [
-          ["Trần Đức Tùng"],
+          ["Nguyễn Văn Hoài An"],
           [],
           ["Nguyễn Tiến Dũng"],
           ["Trần Thị Bích Phương"],
@@ -54,7 +54,7 @@
           ["Nguyễn Tiến Dũng"],
           ["Ma Hoàng Hải"],
           ["Trần Thị Bích Phương"],
-          ["Nguyễn Văn Hoài An"]
+          ["Trần Đức Tùng"]
         ]
       }
 }

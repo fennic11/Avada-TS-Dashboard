@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Container, Typography, Grid, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, FormControl, InputLabel, Select, MenuItem, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Box, Container, Typography, Grid, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, FormControl, InputLabel, Select, MenuItem, ToggleButton, ToggleButtonGroup, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, InputAdornment } from '@mui/material';
 import GroupTS1 from '../data/GroupTS1.json';
 import GroupTS2 from '../data/GroupTS2.json';
 import data1 from '../data/data-1-2025.json';
@@ -14,6 +14,22 @@ import ts2Schedule from '../data/ts2Schedule.json';
 const PlanTsTeam = () => {
     const [selectedMonth, setSelectedMonth] = useState('5');
     const [teamSize, setTeamSize] = useState('5');
+    const [shiftRates, setShiftRates] = useState({
+        'Ca 1': 460,
+        'Ca 2': 460,
+        'Ca 3': 136,
+        'Ca 4': 136,
+        'Ca 5': 164,
+        'Ca 6': 177
+    });
+    const [issueRates, setIssueRates] = useState({
+        'Level 0': 4,
+        'Level 1': 8,
+        'Level 2': 15,
+        'Level 3': 30,
+        'Level 4': 45
+    });
+    const [isRateConfigOpen, setIsRateConfigOpen] = useState(false);
     const [appGroups, setAppGroups] = useState(() => {
         // Khởi tạo nhóm app từ appData
         const groups = {
@@ -32,11 +48,18 @@ const PlanTsTeam = () => {
     const shiftScheduleTS1 = ts1Schedule.TS1;
     const shiftScheduleTS2 = ts2Schedule.TS2;
 
+    // Thêm hàm tính KPI dựa trên level
+    const calculateLevelPoints = (levels) => {
+        return Object.entries(levels).reduce((total, [level, count]) => {
+            return total + (issueRates[level] || 0) * count;
+        }, 0);
+    };
+
     // Tính tổng số card và KPI cho mỗi tháng
     const calculateMonthlyTotals = (data) => {
         return data.reduce((acc, app) => ({
             totalCards: acc.totalCards + app.totalCards,
-            totalPoints: acc.totalPoints + app.totalPoints
+            totalPoints: acc.totalPoints + calculateLevelPoints(app.levels)
         }), { totalCards: 0, totalPoints: 0 });
     };
 
@@ -47,10 +70,25 @@ const PlanTsTeam = () => {
 
         allData.forEach(app => {
             if (!appTotals[app.app]) {
-                appTotals[app.app] = { totalCards: 0, totalPoints: 0 };
+                appTotals[app.app] = { 
+                    totalCards: 0, 
+                    totalPoints: 0,
+                    levels: {
+                        'Level 0': 0,
+                        'Level 1': 0,
+                        'Level 2': 0,
+                        'Level 3': 0,
+                        'Level 4': 0
+                    }
+                };
             }
             appTotals[app.app].totalCards += app.totalCards;
-            appTotals[app.app].totalPoints += app.totalPoints;
+            appTotals[app.app].totalPoints += calculateLevelPoints(app.levels);
+            
+            // Cập nhật số lượng card cho từng level
+            Object.entries(app.levels).forEach(([level, count]) => {
+                appTotals[app.app].levels[level] += count;
+            });
         });
 
         return appTotals;
@@ -67,15 +105,25 @@ const PlanTsTeam = () => {
         // Sử dụng appGroups thay vì appData
         Object.entries(appGroups).forEach(([team, apps]) => {
             apps.forEach(app => {
-                const appStats = appTotals[app.label_trello] || { totalCards: 0, totalPoints: 0 };
+                const appStats = appTotals[app.label_trello] || { 
+                    totalCards: 0, 
+                    totalPoints: 0,
+                    levels: {
+                        'Level 0': 0,
+                        'Level 1': 0,
+                        'Level 2': 0,
+                        'Level 3': 0,
+                        'Level 4': 0
+                    }
+                };
                 
                 // Lấy dữ liệu theo tháng cho app này
                 const monthlyData = {
-                    month1: data1.find(d => d.app === app.label_trello) || { totalCards: 0, totalPoints: 0 },
-                    month2: data2.find(d => d.app === app.label_trello) || { totalCards: 0, totalPoints: 0 },
-                    month3: data3.find(d => d.app === app.label_trello) || { totalCards: 0, totalPoints: 0 },
-                    month4: data4.find(d => d.app === app.label_trello) || { totalCards: 0, totalPoints: 0 },
-                    month5: data5.find(d => d.app === app.label_trello) || { totalCards: 0, totalPoints: 0 }
+                    month1: data1.find(d => d.app === app.label_trello) || { totalCards: 0, levels: {} },
+                    month2: data2.find(d => d.app === app.label_trello) || { totalCards: 0, levels: {} },
+                    month3: data3.find(d => d.app === app.label_trello) || { totalCards: 0, levels: {} },
+                    month4: data4.find(d => d.app === app.label_trello) || { totalCards: 0, levels: {} },
+                    month5: data5.find(d => d.app === app.label_trello) || { totalCards: 0, levels: {} }
                 };
 
                 // Tính toán tổng số liệu dựa trên tháng được chọn
@@ -88,7 +136,7 @@ const PlanTsTeam = () => {
                 } else {
                     const monthData = monthlyData[`month${selectedMonth}`];
                     totalCards = monthData.totalCards;
-                    totalPoints = monthData.totalPoints;
+                    totalPoints = calculateLevelPoints(monthData.levels);
                 }
 
                 teamStats[team].apps.push({
@@ -176,6 +224,21 @@ const PlanTsTeam = () => {
         // This function is now empty as the shiftSchedule is read-only
     };
 
+    // Thêm hàm xử lý thay đổi rate
+    const handleShiftRateChange = (shift, value) => {
+        setShiftRates(prev => ({
+            ...prev,
+            [shift]: Number(value)
+        }));
+    };
+
+    const handleIssueRateChange = (level, value) => {
+        setIssueRates(prev => ({
+            ...prev,
+            [level]: Number(value)
+        }));
+    };
+
     const monthlyTotals = {
         month1: calculateMonthlyTotals(data1),
         month2: calculateMonthlyTotals(data2),
@@ -190,10 +253,8 @@ const PlanTsTeam = () => {
 
     const allTSStats = calculateAllTSStats();
 
-    // Hàm tính số ca trực và tổng KPI cho từng người
-    const shiftPoints = [460, 460, 136, 136, 164, 177];
+    // Cập nhật hàm calculateShiftStats để sử dụng shiftRates
     function calculateShiftStats(shiftSchedule, teamMembers) {
-        // Tạo object lưu số ca và KPI cho từng người
         const stats = {};
         teamMembers.forEach(m => {
             stats[m.fullName] = { shifts: 0, kpi: 0 };
@@ -203,7 +264,8 @@ const PlanTsTeam = () => {
                 shiftArr.forEach(person => {
                     if (person && stats[person]) {
                         stats[person].shifts += 1;
-                        stats[person].kpi += shiftPoints[shiftIdx];
+                        const shiftName = `Ca ${shiftIdx + 1}`;
+                        stats[person].kpi += shiftRates[shiftName];
                     }
                 });
             });
@@ -235,6 +297,13 @@ const PlanTsTeam = () => {
                         Thống kê theo nhóm TS
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 2 }}>
+                        <Button
+                            variant="contained"
+                            onClick={() => setIsRateConfigOpen(true)}
+                            sx={{ mr: 2 }}
+                        >
+                            Cấu hình Rate
+                        </Button>
                         <FormControl sx={{ minWidth: 200 }}>
                             <InputLabel>Chọn tháng</InputLabel>
                             <Select
@@ -255,28 +324,73 @@ const PlanTsTeam = () => {
                             exclusive
                             onChange={(e, newValue) => newValue && setTeamSize(newValue)}
                             aria-label="team size"
-                            sx={{
-                                '& .MuiToggleButton-root': {
-                                    border: '1px solid rgba(0, 0, 0, 0.12)',
-                                    '&.Mui-selected': {
-                                        backgroundColor: '#1976d2',
-                                        color: 'white',
-                                        '&:hover': {
-                                            backgroundColor: '#1565c0',
-                                        },
-                                    },
-                                },
-                            }}
                         >
-                            <ToggleButton value="5" aria-label="5 members">
-                                5 thành viên
-                            </ToggleButton>
-                            <ToggleButton value="6" aria-label="6 members">
-                                6 thành viên
-                            </ToggleButton>
+                            <ToggleButton value="5">5 thành viên</ToggleButton>
+                            <ToggleButton value="6">6 thành viên</ToggleButton>
                         </ToggleButtonGroup>
                     </Box>
                 </Box>
+
+                {/* Dialog cấu hình Rate */}
+                <Dialog
+                    open={isRateConfigOpen}
+                    onClose={() => setIsRateConfigOpen(false)}
+                    maxWidth="md"
+                    fullWidth
+                >
+                    <DialogTitle>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                            Cấu hình Rate
+                        </Typography>
+                    </DialogTitle>
+                    <DialogContent>
+                        <Box sx={{ mt: 2 }}>
+                            <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+                                Rate ca trực
+                            </Typography>
+                            <Grid container spacing={2}>
+                                {Object.entries(shiftRates).map(([shift, rate]) => (
+                                    <Grid item xs={12} sm={6} md={4} key={shift}>
+                                        <TextField
+                                            label={shift}
+                                            type="number"
+                                            value={rate}
+                                            onChange={(e) => handleShiftRateChange(shift, e.target.value)}
+                                            fullWidth
+                                            InputProps={{
+                                                startAdornment: <InputAdornment position="start">Points</InputAdornment>,
+                                            }}
+                                        />
+                                    </Grid>
+                                ))}
+                            </Grid>
+                        </Box>
+                        <Box sx={{ mt: 4 }}>
+                            <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+                                Rate Issues
+                            </Typography>
+                            <Grid container spacing={2}>
+                                {Object.entries(issueRates).map(([level, rate]) => (
+                                    <Grid item xs={12} sm={6} md={4} key={level}>
+                                        <TextField
+                                            label={level}
+                                            type="number"
+                                            value={rate}
+                                            onChange={(e) => handleIssueRateChange(level, e.target.value)}
+                                            fullWidth
+                                            InputProps={{
+                                                startAdornment: <InputAdornment position="start">Points</InputAdornment>,
+                                            }}
+                                        />
+                                    </Grid>
+                                ))}
+                            </Grid>
+                        </Box>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setIsRateConfigOpen(false)}>Đóng</Button>
+                    </DialogActions>
+                </Dialog>
 
                 {/* Hiển thị tổng số card và KPI cho mỗi tháng */}
                 <Grid container spacing={3} sx={{ mb: 4 }}>

@@ -3,58 +3,58 @@
     "Monday": [
         [],
         [],
-        ["Nguyễn Ngọc Anh", "Trần Thế Cương"],
+        ["Đỗ Minh Quân", "Nguyễn Ngọc Anh"],
         ["Nguyễn Thị Hiền"],
-        ["TS 4", "TS 5"],
-        ["Trần Thế Cương", "Nguyễn Thị Hiền"]
+        ["Trần Thế Cương", "Đỗ Minh Quân"],
+        ["Nguyễn Ngọc Anh", "Nguyễn Thị Hiền"]
     ],
     "Tuesday": [
-        ["Nguyễn Ngọc Anh"],
         [],
-        ["TS 4", "TS 5"],
-        ["Trần Thế Cương"],
-        ["TS 4", "Nguyễn Ngọc Anh"],
-        ["Trần Thế Cương", "Nguyễn Thị Hiền"]
+        [],
+        ["Đỗ Minh Quân", "Trần Thế Cương"],
+        ["Nguyễn Ngọc Anh"],
+        ["Nguyễn Thị Hiền", "Đỗ Minh Quân"],
+        ["Trần Thế Cương", "Nguyễn Ngọc Anh"]
     ],
     "Wednesday": [
-        ["TS 5"],
         [],
-        ["Trần Thế Cương", "TS 4"],
-        ["Nguyễn Ngọc Anh"],
-        ["TS 5", "Nguyễn Thị Hiền"],
-        ["TS 4", "Nguyễn Ngọc Anh"]
+        [],
+        ["Đỗ Minh Quân", "Nguyễn Thị Hiền"],
+        ["Trần Thế Cương"],
+        ["Nguyễn Ngọc Anh", "Đỗ Minh Quân"],
+        ["Trần Thế Cương", "Nguyễn Thị Hiền"]
     ],
     "Thursday": [
-        ["Trần Thế Cương"],
         [],
-        ["Nguyễn Thị Hiền", "Nguyễn Ngọc Anh"],
-        ["TS 4"],
-        ["Nguyễn Ngọc Anh", "TS 5"],
-        ["Trần Thế Cương", "Nguyễn Thị Hiền"]
+        [],
+        ["Đỗ Minh Quân", "Nguyễn Ngọc Anh"],
+        ["Trần Thế Cương"],
+        ["Nguyễn Thị Hiền", "Đỗ Minh Quân"],
+        ["Nguyễn Ngọc Anh", "Trần Thế Cương"]
     ],
     "Friday": [
-        ["TS 4"],
         [],
-        ["TS 5", "Trần Thế Cương"],
-        ["Trần Thế Cương"],
-        ["Nguyễn Thị Hiền", "Nguyễn Ngọc Anh"],
-        ["TS 5", "TS 4"]
+        [],
+        ["Đỗ Minh Quân", "Nguyễn Thị Hiền"],
+        ["Nguyễn Ngọc Anh"],
+        ["Nguyễn Thị Hiền", "Đỗ Minh Quân"],
+        ["Nguyễn Ngọc Anh", "Trần Thế Cương"]
     ],
     "Saturday": [
-        ["Nguyễn Ngọc Anh"],
         [],
-        ["TS 5"],
+        [],
+        ["Nguyễn Thị Hiền", "Trần Thế Cương"],
+        ["Nguyễn Ngọc Anh"],
         ["Nguyễn Thị Hiền"],
-        ["TS 5", "TS 4"],
-        ["Trần Thế Cương", "Nguyễn Thị Hiền"]
+        ["Trần Thế Cương"]
     ],
     "Sunday": [
         [],
         [],
-        ["TS 5"],
-        ["TS 4"],
+        ["Nguyễn Ngọc Anh"],
+        ["Trần Thế Cương"],
         ["Nguyễn Thị Hiền"],
-        ["Nguyễn Ngọc Anh, Trần Thế Cương"]
+        ["Đỗ Minh Quân"]
     ]
     }
 }
