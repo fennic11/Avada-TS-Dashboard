@@ -677,7 +677,7 @@ export async function getCreateCardByCard(cardId) {
     }
 }
 
-export async function getCardsByBoardWithDateFilter(since, before) {
+export async function getCardsByBoardWithDateFilter(since, before, enableGetActions=false) {
     try {
         console.log(since, before);
         const { key, token } = getCredentials();
@@ -692,9 +692,11 @@ export async function getCardsByBoardWithDateFilter(since, before) {
         }
 
         // Add member filter if provided
-
+        if (enableGetActions) {
+            url += '&actions=removeMemberFromCard';
+        }
         // Add additional useful fields
-        url += '&fields=id,name,idList,idMembers,labels,url,due&filter=all';
+        url += '&fields=id,name,idList,idMembers,labels,url,due';
         const resp = await fetch(url, {
             headers: {
                 Accept: "application/json"
