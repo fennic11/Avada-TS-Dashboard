@@ -24,6 +24,7 @@ import BaPage from './pages/BaPage';
 import Slack from './pages/Slack';
 import LeaderboardPage from './pages/Leaderboard';
 import PlanTsTeam from './pages/PlanTsTeam';
+import PerformanceTS from './pages/PerformanceTS';
 
 const theme = createTheme({
     palette: {
@@ -200,6 +201,16 @@ const App = () => {
                                         <Layout>
                                             <LeaderboardPage /> 
                                         </Layout>
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path="/performance-ts"
+                                element={
+                                    <PrivateRoute>
+                                        <Layout>
+                                            <PerformanceTS />
+                                        </Layout>   
                                     </PrivateRoute>
                                 }
                             />

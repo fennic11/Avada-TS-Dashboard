@@ -248,7 +248,7 @@ const SlackNotification = () => {
     }
 
     return (
-        <Box className="slack-notification">
+        <Box className="slack-notification" sx={{ pl: { xs: 0, md: 8 }, pr: { xs: 0, md: 4 }, pt: 2 }}>
             <Typography variant="h5" sx={{ mb: 3 }}>Cards Overview</Typography>
             {renderMemberSelector()}
             {renderCardsTable(column1Cards, 'List 1 Cards')}

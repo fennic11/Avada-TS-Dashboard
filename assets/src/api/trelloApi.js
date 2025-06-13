@@ -677,6 +677,7 @@ export async function getCreateCardByCard(cardId) {
     }
 }
 
+
 export async function getCardsByBoardWithDateFilter(since, before, enableGetActions=false) {
     try {
         console.log(since, before);
@@ -733,6 +734,41 @@ export async function searchCards(query) {
         return await resp.json();
     } catch (error) {
         console.error('Error searching cards:', error);
+        return null;
+    }
+}
+
+export async function getCardsByBoardForPerformanceTS(since, before) {
+    try {
+        console.log(since, before);
+        const { key, token } = getCredentials();
+        let url = `${API_URL}/boards/${BOARD_ID}/cards?key=${key}&token=${token}`;
+        
+        // Add date filters if provided
+        if (since) {
+            url += `&since=${since}`; // ISO-formatted date or Mongo ID
+        }
+        if (before) {
+            url += `&before=${before}`; // ISO-formatted date or Mongo ID
+        }
+        // Add additional useful fields
+        url += '&fields=id,name,idList,idMembers,labels,url,due&actions=createCard';
+        const resp = await fetch(url, {
+            headers: {
+                Accept: "application/json"
+            }
+        });
+
+        if (!resp.ok) {
+            throw new Error(`Failed to fetch cards: ${resp.statusText}`);
+        }
+
+        const cards = await resp.json();
+        console.log(cards[cards.length - 1]);
+        console.log(`Found ${cards.length} cards with date: ''}`);
+        return cards;
+    } catch (error) {
+        console.error('Error getting cards with date filters:', error);
         return null;
     }
 }

@@ -12,7 +12,7 @@ const TSLead = ({ children }) => {
             <Box>
 
                 {/* Bố cục Sidebar + Main Content */}
-                <Box sx={{padding: '2rem' }}> {/* Thêm margin-top bằng chiều cao Header */}
+                <Box sx={{paddingLeft: '2rem' }}> {/* Thêm margin-top bằng chiều cao Header */}
                     {/* Main content: Thêm padding để tránh bị tràn */}
                     <TSLeadSummary />
                 </Box>

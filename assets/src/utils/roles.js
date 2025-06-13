@@ -10,7 +10,8 @@ export const TABS = {
     DEV_ZONE: 'dev-zone',
     SLACK_CHANNEL: 'slack-channel',
     LEADERBOARD: 'leaderboard',
-    PLAN_TS_TEAM: 'plan-ts-team'
+    PLAN_TS_TEAM: 'plan-ts-team',
+    PERFORMANCE_TS: 'performance-ts'
 };
 
 // Define roles and their permissions
