@@ -79,15 +79,38 @@ const Layout = ({ children }) => {
     const [sidebarOpen, setSidebarOpen] = React.useState(true);
     const drawerWidth = 220;
     return (
-        <Box sx={{ minHeight: '100vh', width: '100%' }}>
+        <Box sx={{ 
+            minHeight: '100vh', 
+            width: '100%',
+            overflow: 'hidden' // Prevent horizontal scroll
+        }}>
             {sidebarOpen && <Header drawerWidth={drawerWidth} sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen(o => !o)} />}
             {!sidebarOpen && <Header drawerWidth={drawerWidth} sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen(o => !o)} />}
             {sidebarOpen ? (
-                <Container component="main" maxWidth="xxl" sx={{ flex: 1, py: 3, ml: `${drawerWidth}px`, width: '93%', marginLeft: '10rem', marginRight: 'auto' }}>
+                <Container 
+                    component="main" 
+                    maxWidth={false} 
+                    sx={{ 
+                        flex: 1, 
+                        py: 3, 
+                        ml: `${drawerWidth}px`, 
+                        width: `calc(100% - ${drawerWidth}px)`,
+                        maxWidth: 'none',
+                        px: { xs: 2, sm: 3, md: 4 }
+                    }}
+                >
                     {children}
                 </Container>
             ) : (
-                <Container component="main" maxWidth="xxl" sx={{ flex: 1, py: 3 }}>
+                <Container 
+                    component="main" 
+                    maxWidth={false}
+                    sx={{ 
+                        flex: 1, 
+                        py: 3,
+                        px: { xs: 2, sm: 3, md: 4 }
+                    }}
+                >
                     {children}
                 </Container>
             )}

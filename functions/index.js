@@ -11,7 +11,7 @@ const api = require('./routes/api');
 const notionRoutes = require('./routes/notionRoutes');
 const webhookRoutes = require('./routes/webhook');
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 5001;
 
 // CORS configuration
 const corsOptions = {

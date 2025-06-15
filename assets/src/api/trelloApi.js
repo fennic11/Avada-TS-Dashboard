@@ -752,7 +752,7 @@ export async function getCardsByBoardForPerformanceTS(since, before) {
             url += `&before=${before}`; // ISO-formatted date or Mongo ID
         }
         // Add additional useful fields
-        url += '&fields=id,name,idList,idMembers,labels,url,due&actions=createCard';
+        url += '&fields=id,name,idList,idMembers,labels,url,due&actions=createCard,removeMemberFromCard';
         const resp = await fetch(url, {
             headers: {
                 Accept: "application/json"
