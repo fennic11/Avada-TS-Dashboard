@@ -752,7 +752,7 @@ export async function getCardsByBoardForPerformanceTS(since, before) {
             url += `&before=${before}`; // ISO-formatted date or Mongo ID
         }
         // Add additional useful fields
-        url += '&fields=id,name,idList,idMembers,labels,url,due&actions=createCard,removeMemberFromCard';
+        url += '&fields=id,name,idList,idMembers,labels,dueComplete&actions=createCard,removeMemberFromCard,updateCard,addMemberToCard';
         const resp = await fetch(url, {
             headers: {
                 Accept: "application/json"
@@ -770,5 +770,33 @@ export async function getCardsByBoardForPerformanceTS(since, before) {
     } catch (error) {
         console.error('Error getting cards with date filters:', error);
         return null;
+    }
+}
+
+/**
+ * Lấy tất cả actions của 1 member trên toàn board trong khoảng thời gian (dùng trực tiếp endpoint actions của board)
+ * @param {string} memberId - id của member
+ * @param {string} since - ISO string bắt đầu
+ * @param {string} before - ISO string kết thúc
+ * @param {string} filter - loại action (all, hoặc comma-separated types)
+ * @param {number} limit - số lượng action tối đa (max 1000/lần gọi)
+ * @returns {Promise<Array>} - Mảng actions của member này trong khoảng thời gian đó
+ */
+export async function getBoardActionsByMemberAndDate(memberId, since, before, filter = 'all', limit = 1000) {
+    try {
+        const { key, token } = getCredentials();
+        let url = `${API_URL}/boards/${BOARD_ID}/actions?key=${key}&token=${token}`;
+        url += `&filter=${filter}`;
+        url += `&limit=${limit}`;
+        if (since) url += `&since=${since}`;
+        if (before) url += `&before=${before}`;
+        const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (!resp.ok) throw new Error(`Failed to fetch board actions: ${resp.statusText}`);
+        const actions = await resp.json();
+        // Lọc theo memberId
+        return actions.filter(a => a.idMemberCreator === memberId);
+    } catch (error) {
+        console.error('Error getBoardActionsByMemberAndDate:', error);
+        return [];
     }
 }
