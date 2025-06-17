@@ -786,7 +786,7 @@ export async function getBoardActionsByMemberAndDate(memberId, since, before, fi
     try {
         const { key, token } = getCredentials();
         let url = `${API_URL}/boards/${BOARD_ID}/actions?key=${key}&token=${token}`;
-        url += `&filter=${filter}`;
+        url += `&filter=`;
         url += `&limit=${limit}`;
         if (since) url += `&since=${since}`;
         if (before) url += `&before=${before}`;

@@ -45,6 +45,8 @@ const PerformanceTS = () => {
     const [actionHourFilter, setActionHourFilter] = useState({ start: '00:00', end: '23:59' });
     const [actionTypeFilter, setActionTypeFilter] = useState([]);
     const [selectedCardId, setSelectedCardId] = useState(null);
+    const [selectedCardDetail, setSelectedCardDetail] = useState(null);
+    const [isCardDetailModalOpen, setIsCardDetailModalOpen] = useState(false);
 
     // Filter TS and TS-lead members
     const tsMembers = members.filter(member => 
@@ -820,17 +822,6 @@ const PerformanceTS = () => {
                                         (action.type === 'removeMemberFromCard' && action.member?.id === member.id)
                                     );
                                     const sortedActions = sortActionsByTimeline(memberActions);
-                                    // Tính AVG resolution time (phút)
-                                    const memberCards = filteredCards.filter(card => Array.isArray(card.idMembers) && card.idMembers.includes(member.id));
-                                    const memberResolutionTimes = memberCards
-                                        .filter(card => card.dueComplete && resolutionTimes[card.id])
-                                        .map(card => resolutionTimes[card.id].resolutionTime);
-                                    const avgResolution = memberResolutionTimes.length > 0
-                                        ? Math.round(memberResolutionTimes.reduce((a, b) => a + b, 0) / memberResolutionTimes.length)
-                                        : null;
-                                    // Giờ action đầu tiên và cuối cùng
-                                    const firstAction = sortedActions[0];
-                                    const lastAction = sortedActions[sortedActions.length - 1];
                                     // Lọc action theo filter giờ
                                     const filteredActions = sortedActions.filter(action => {
                                         if (!action.date) return false;
@@ -846,15 +837,32 @@ const PerformanceTS = () => {
                                         return inTime && inType;
                                     });
                                     if (filteredActions.length === 0) return null;
-                                    // Trong map tsMembers, sau khi có sortedActions, tính thêm các thống kê:
-                                    const assignCount = sortedActions.filter(a => a.type === 'addMemberToCard' && a.member?.id === member.id).length;
-                                    const leftCount = sortedActions.filter(
+                                    // Tính AVG resolution time (phút) chỉ với các card có action trong filteredActions
+                                    const filteredCardIds = Array.from(new Set(filteredActions.map(a => a.cardId)));
+                                    const memberCards = filteredCards.filter(card => Array.isArray(card.idMembers) && card.idMembers.includes(member.id) && filteredCardIds.includes(card.id));
+                                    const memberResolutionTimes = memberCards
+                                        .filter(card => card.dueComplete && resolutionTimes[card.id])
+                                        .map(card => resolutionTimes[card.id].resolutionTime);
+                                    const avgResolution = memberResolutionTimes.length > 0
+                                        ? Math.round(memberResolutionTimes.reduce((a, b) => a + b, 0) / memberResolutionTimes.length)
+                                        : null;
+                                    // Giờ action đầu tiên và cuối cùng
+                                    const firstAction = filteredActions[0];
+                                    const lastAction = filteredActions[filteredActions.length - 1];
+                                    // Các chỉ số theo filter thời gian
+                                    const assignCount = filteredActions.filter(a => a.type === 'addMemberToCard' && a.member?.id === member.id).length;
+                                    const leftCount = filteredActions.filter(
                                         a => a.type === 'removeMemberFromCard' && a.member?.id === member.id && a.idMemberCreator === member.id
                                     ).length;
-                                    const moveToDevPendingCount = sortedActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.id === STATUS_LISTS.DEV_PENDING).length;
-                                    const moveToWaitingPermissionCount = sortedActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.id === STATUS_LISTS.WAITING_PERMISSION).length;
-                                    const moveToDoneCount = sortedActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.id === STATUS_LISTS.TS_DONE).length;
-                                    const moveToDevDoneCount = sortedActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.id === STATUS_LISTS.DEV_DONE).length;
+                                    const moveToDevPendingCount = filteredActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.id === STATUS_LISTS.DEV_PENDING).length;
+                                    const moveToWaitingPermissionCount = filteredActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.id === STATUS_LISTS.WAITING_PERMISSION).length;
+                                    const moveToDoneCount = filteredActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.id === STATUS_LISTS.TS_DONE).length;
+                                    const moveToDevDoneCount = filteredActions.filter(a =>
+                                        a.type === 'updateCard' &&
+                                        a.data?.listAfter?.id === STATUS_LISTS.DEV_DONE &&
+                                        a.idMemberCreator === member.id
+                                    ).length;
+                                    const markDueCompleteCount = filteredActions.filter(a => a.type === 'updateCard' && a.data?.card?.dueComplete === true).length;
                                     return (
                                         <Grid item xs={12} key={member.id}>
                                             <Paper sx={{ p: 2.5, borderRadius: 3, boxShadow: 2, mb: 2, minHeight: 120 }}>
@@ -902,6 +910,9 @@ const PerformanceTS = () => {
                                                             </Box>
                                                             <Box sx={{ fontSize: 14, color: '#ff9800', fontWeight: 600 }}>
                                                                 Kéo sang Fix done from dev: <b>{moveToDevDoneCount}</b> lần
+                                                            </Box>
+                                                            <Box sx={{ fontSize: 14, color: '#388e3c', fontWeight: 600 }}>
+                                                                Mark due date complete: <b>{markDueCompleteCount}</b> lần
                                                             </Box>
                                                         </Box>
                                                     </Grid>
@@ -963,8 +974,13 @@ const PerformanceTS = () => {
                                                                         maxWidth: '100%',
                                                                         minWidth: 0,
                                                                         width: '100%',
-                                                                        boxSizing: 'border-box'
-                                                                    }}>
+                                                                        boxSizing: 'border-box',
+                                                                        cursor: 'pointer',
+                                                                        transition: 'box-shadow 0.15s',
+                                                                        '&:hover': { boxShadow: '0 2px 12px 0 #b6c2d9', background: '#e3e8ee' }
+                                                                    }}
+                                                                        onClick={() => { setSelectedCardDetail({ id: action.cardId }); setIsCardDetailModalOpen(true); }}
+                                                                    >
                                                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
                                                                             <Box sx={{
                                                                                 fontSize: 13,
@@ -1086,7 +1102,7 @@ const PerformanceTS = () => {
                                                     },
                                                     display: 'flex', flexDirection: 'column', gap: 1.2
                                                 }}
-                                                onClick={() => setSelectedCardId(card.id)}
+                                                onClick={() => { setSelectedCardDetail(card); setIsCardDetailModalOpen(true); }}
                                             >
                                                 <Typography variant="h6" noWrap title={card.name} sx={{ fontWeight: 800, color: '#1976d2', mb: 0.5, fontSize: 19, letterSpacing: 0.2 }}>
                                                     {card.name}
@@ -1144,6 +1160,12 @@ const PerformanceTS = () => {
                     </>
                 )}
             </Box>
+            {/* Card Detail Modal */}
+            <CardDetailModal
+                open={isCardDetailModalOpen}
+                onClose={() => setIsCardDetailModalOpen(false)}
+                cardId={selectedCardDetail?.id}
+            />
         </>
     );
 };
