@@ -69,7 +69,8 @@ export const ROLE_PERMISSIONS = {
             TABS.ISSUES,
             TABS.TS_LEAD,
             TABS.TS_WORKSPACE,
-            TABS.SLACK_CHANNEL
+            TABS.SLACK_CHANNEL,
+            TABS.PERFORMANCE_TS
         ],
         description: 'Access to TS Lead related features'
         },
