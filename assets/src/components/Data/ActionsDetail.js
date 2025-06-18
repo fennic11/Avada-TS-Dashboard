@@ -236,6 +236,7 @@ const ActionsDetail = () => {
                         leftCard: memberActions.filter(a => a.type === 'removeMemberFromCard' && a.idMemberCreator === a.data?.idMember).length,
                         commentCard: memberActions.filter(a => a.type === 'commentCard').length,
                         addTsToCard: memberActions.filter(a => a.type === 'addMemberToCard' && tsMembers.some(m => m.id === a.data?.idMember)).length,
+                        moveToFixDoneFromDev: memberActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.name && a.data.listAfter.name.toLowerCase().includes('fix done from dev')).length,
                     };
                     return (
                         <Paper key={member.id} sx={{ mb: 3, p: 2, borderRadius: 3, boxShadow: 1 }}>
@@ -271,6 +272,9 @@ const ActionsDetail = () => {
                                     {coloredActionCounts.addTsToCard > 0 && (
                                         <Chip label={`Assigned: ${coloredActionCounts.addTsToCard}`} size="small" sx={{ fontWeight: 700, fontSize: 13, bgcolor: '#e0f2f1', color: '#00897b', border: '1.5px solid #00897b' }} />
                                     )}
+                                    {coloredActionCounts.moveToFixDoneFromDev > 0 && (
+                                        <Chip label={`Move to Fix done from dev: ${coloredActionCounts.moveToFixDoneFromDev}`} color="success" size="small" sx={{ fontWeight: 700, fontSize: 13 }} />
+                                    )}
                                 </Box>
                             </Box>
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -286,13 +290,14 @@ const ActionsDetail = () => {
                                         action.data.listAfter.name.toLowerCase().includes('update workflow required') ||
                                         action.data.listAfter.name.toLowerCase().includes('waiting for access')
                                     );
+                                    const isMoveToFixDoneFromDev = action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('fix done from dev');
                                     // Nếu là assigned (addMemberToCard và member được add là TS)
                                     const isAssigned = action.type === 'addMemberToCard' && tsMembers.some(m => m.id === action.data?.idMember);
                                     const isCommentCard = action.type === 'commentCard';
                                     let bg = '#f8fafc';
                                     let border = 'none';
                                     let textColor = '#333';
-                                    if (isMarkDueComplete || isMoveToDone) {
+                                    if (isMarkDueComplete || isMoveToDone || isMoveToFixDoneFromDev) {
                                         bg = 'rgba(34,197,94,0.13)'; // green background
                                         border = '2px solid #43a047'; // green border
                                     } else if (isMoveToDoing) {
@@ -324,7 +329,7 @@ const ActionsDetail = () => {
                                     if (isMarkDueComplete) {
                                         label = 'Complete card';
                                         chipColor = 'success';
-                                    } else if (isMoveToDone) {
+                                    } else if (isMoveToDone || isMoveToFixDoneFromDev) {
                                         chipColor = 'success';
                                     } else if (isMoveToDoing) {
                                         chipColor = 'warning';
