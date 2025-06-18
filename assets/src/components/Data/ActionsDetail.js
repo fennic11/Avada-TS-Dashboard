@@ -59,6 +59,7 @@ const ActionsDetail = () => {
     const [actionGroupFilter, setActionGroupFilter] = useState('all');
     // Scroll to top button
     const [showScroll, setShowScroll] = useState(false);
+    const [selectedTSMember, setSelectedTSMember] = useState('all');
 
     const fetchActions = async () => {
         setLoading(true);
@@ -177,6 +178,19 @@ const ActionsDetail = () => {
                         ))}
                     </Select>
                 </FormControl>
+                <FormControl size="small" sx={{ minWidth: 180, bgcolor: 'white', borderRadius: 2, boxShadow: '0 1px 4px 0 #e0e7ef' }}>
+                    <InputLabel>TS Member</InputLabel>
+                    <Select
+                        value={selectedTSMember}
+                        label="TS Member"
+                        onChange={e => setSelectedTSMember(e.target.value)}
+                    >
+                        <MenuItem value="all">All</MenuItem>
+                        {tsMembers.map(m => (
+                            <MenuItem key={m.id} value={m.id}>{m.fullName}</MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
                 <Button
                     variant="outlined"
                     size="small"
@@ -207,6 +221,7 @@ const ActionsDetail = () => {
             {/* Hiển thị actions theo member TS */}
             <Box>
                 {tsMembers.map(member => {
+                    if (selectedTSMember !== 'all' && member.id !== selectedTSMember) return null;
                     let memberActions = actionsByMember[member.id] || [];
                     if (memberActions.length === 0) return null;
                     // Sort actions by date ascending
