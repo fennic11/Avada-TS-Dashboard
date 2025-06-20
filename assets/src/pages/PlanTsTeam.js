@@ -273,6 +273,196 @@ const PlanTsTeam = () => {
         return stats;
     }
 
+    // Thêm XLSX library
+    React.useEffect(() => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        script.onload = () => {
+            // eslint-disable-next-line no-undef
+            window.XLSX = XLSX;
+        };
+        document.head.appendChild(script);
+        return () => {
+            if (document.head.contains(script)) {
+                document.head.removeChild(script);
+            }
+        };
+    }, []);
+
+    // Hàm export Excel
+    const exportToExcel = () => {
+        // eslint-disable-next-line no-undef
+        if (typeof XLSX === 'undefined' && !window.XLSX) {
+            alert('Đang tải thư viện Excel... Vui lòng thử lại sau vài giây.');
+            return;
+        }
+
+        const ts1MemberStats = calculateMemberStats('TS1');
+        const ts2MemberStats = calculateMemberStats('TS2');
+
+        // Tạo workbook và worksheet
+        const workbook = {
+            SheetNames: ['Rate KPI', 'Thống kê ca trực', 'Lịch trực TS1', 'Lịch trực TS2'],
+            Sheets: {}
+        };
+
+        // Sheet 1: Rate KPI
+        const rateKpiData = [
+            ['Rate ca trực'],
+            ['Ca', 'Points'],
+            ...Object.entries(shiftRates).map(([shift, rate]) => [shift, rate]),
+            [''],
+            ['Rate Issues'],
+            ['Level', 'Points'],
+            ...Object.entries(issueRates).map(([level, rate]) => [level, rate])
+        ];
+
+        workbook.Sheets['Rate KPI'] = {
+            '!ref': `A1:B${rateKpiData.length}`,
+            ...rateKpiData.reduce((acc, row, rowIndex) => {
+                row.forEach((cell, colIndex) => {
+                    const cellRef = String.fromCharCode(65 + colIndex) + (rowIndex + 1);
+                    acc[cellRef] = { v: cell };
+                });
+                return acc;
+            }, {})
+        };
+
+        // Sheet 2: Thống kê ca trực
+        const shiftStatsData = [
+            ['Thống kê ca trực & KPI'],
+            [''],
+            ['Team TS1'],
+            ['Thành viên', 'Số ca trực (tháng)', 'KPI ca trực (tháng)', 'KPI Issue (tháng)', 'Tổng KPI'],
+            ...getFilteredMembers('TS1').map(member => {
+                const stats = calculateShiftStats(shiftScheduleTS1, getFilteredMembers('TS1'))[member.fullName];
+                const monthlyShifts = stats.shifts * 4;
+                const monthlyKPI = stats.kpi * 4;
+                const avgKPI = ts1MemberStats.avgPointsPerMember;
+                const totalKPI = monthlyKPI + avgKPI;
+                return [member.fullName, monthlyShifts, monthlyKPI, avgKPI, totalKPI];
+            }),
+            [''],
+            ['Team TS2'],
+            ['Thành viên', 'Số ca trực (tháng)', 'KPI ca trực (tháng)', 'KPI Issue (tháng)', 'Tổng KPI'],
+            ...getFilteredMembers('TS2').map(member => {
+                const stats = calculateShiftStats(shiftScheduleTS2, getFilteredMembers('TS2'))[member.fullName];
+                const monthlyShifts = stats.shifts * 4;
+                const monthlyKPI = stats.kpi * 4;
+                const avgKPI = ts2MemberStats.avgPointsPerMember;
+                const totalKPI = monthlyKPI + avgKPI;
+                return [member.fullName, monthlyShifts, monthlyKPI, avgKPI, totalKPI];
+            })
+        ];
+
+        workbook.Sheets['Thống kê ca trực'] = {
+            '!ref': `A1:E${shiftStatsData.length}`,
+            ...shiftStatsData.reduce((acc, row, rowIndex) => {
+                row.forEach((cell, colIndex) => {
+                    const cellRef = String.fromCharCode(65 + colIndex) + (rowIndex + 1);
+                    acc[cellRef] = { v: cell };
+                });
+                return acc;
+            }, {})
+        };
+
+        // Sheet 3: Lịch trực TS1
+        const ts1ScheduleData = [
+            ['Lịch trực TS1'],
+            [''],
+            ['Ca', 'Thời gian', ...Object.keys(shiftScheduleTS1 || {})],
+            ...['Ca 1', 'Ca 2', 'Ca 3', 'Ca 4', 'Ca 5', 'Ca 6'].map((ca, shiftIndex) => {
+                const timeSlots = [
+                    '00:00 - 04:00',
+                    '04:00 - 08:00',
+                    '08:00 - 12:00',
+                    '12:00 - 16:00',
+                    '16:00 - 20:00',
+                    '20:00 - 00:00'
+                ];
+                const row = [ca, timeSlots[shiftIndex]];
+                
+                if (shiftScheduleTS1) {
+                    Object.keys(shiftScheduleTS1).forEach(day => {
+                        const people = shiftScheduleTS1[day][shiftIndex];
+                        row.push(people && people.length > 0 ? people.join(', ') : '-');
+                    });
+                }
+                
+                return row;
+            })
+        ];
+
+        workbook.Sheets['Lịch trực TS1'] = {
+            '!ref': `A1:${String.fromCharCode(65 + (Object.keys(shiftScheduleTS1 || {}).length + 1))}${ts1ScheduleData.length}`,
+            ...ts1ScheduleData.reduce((acc, row, rowIndex) => {
+                row.forEach((cell, colIndex) => {
+                    const cellRef = String.fromCharCode(65 + colIndex) + (rowIndex + 1);
+                    acc[cellRef] = { v: cell };
+                });
+                return acc;
+            }, {})
+        };
+
+        // Sheet 4: Lịch trực TS2
+        const ts2ScheduleData = [
+            ['Lịch trực TS2'],
+            [''],
+            ['Ca', 'Thời gian', ...Object.keys(shiftScheduleTS2 || {})],
+            ...['Ca 1', 'Ca 2', 'Ca 3', 'Ca 4', 'Ca 5', 'Ca 6'].map((ca, shiftIndex) => {
+                const timeSlots = [
+                    '00:00 - 04:00',
+                    '04:00 - 08:00',
+                    '08:00 - 12:00',
+                    '12:00 - 16:00',
+                    '16:00 - 20:00',
+                    '20:00 - 00:00'
+                ];
+                const row = [ca, timeSlots[shiftIndex]];
+                
+                if (shiftScheduleTS2) {
+                    Object.keys(shiftScheduleTS2).forEach(day => {
+                        const people = shiftScheduleTS2[day][shiftIndex];
+                        row.push(people && people.length > 0 ? people.join(', ') : '-');
+                    });
+                }
+                
+                return row;
+            })
+        ];
+
+        workbook.Sheets['Lịch trực TS2'] = {
+            '!ref': `A1:${String.fromCharCode(65 + (Object.keys(shiftScheduleTS2 || {}).length + 1))}${ts2ScheduleData.length}`,
+            ...ts2ScheduleData.reduce((acc, row, rowIndex) => {
+                row.forEach((cell, colIndex) => {
+                    const cellRef = String.fromCharCode(65 + colIndex) + (rowIndex + 1);
+                    acc[cellRef] = { v: cell };
+                });
+                return acc;
+            }, {})
+        };
+
+        // Tạo file và download
+        // eslint-disable-next-line no-undef
+        const xlsxLib = window.XLSX || XLSX;
+        const wbout = xlsxLib.write(workbook, { bookType: 'xlsx', type: 'binary' });
+        const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `PlanTS_Team_${new Date().toISOString().split('T')[0]}.xlsx`;
+        link.click();
+        window.URL.revokeObjectURL(url);
+    };
+
+    // Helper function để convert string sang ArrayBuffer
+    const s2ab = (s) => {
+        const buf = new ArrayBuffer(s.length);
+        const view = new Uint8Array(buf);
+        for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
+        return buf;
+    };
+
     return (
         <Container maxWidth="xl">
             <Box sx={{ 
@@ -297,6 +487,14 @@ const PlanTsTeam = () => {
                         Thống kê theo nhóm TS
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 2 }}>
+                        <Button
+                            variant="contained"
+                            color="success"
+                            onClick={exportToExcel}
+                            sx={{ mr: 2 }}
+                        >
+                            Export Excel
+                        </Button>
                         <Button
                             variant="contained"
                             onClick={() => setIsRateConfigOpen(true)}
