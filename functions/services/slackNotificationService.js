@@ -42,7 +42,7 @@ const extractSlackLink = (description) => {
 };
 
 const formatSlackMessage = (member, cards) => {
-    let message = `*Check những card cần fu này trước khi làm việc nhé <@${member.slackId}>*\n\n`;
+    let message = `*Trong ca này hãy fu những card này <@${member.slackId}>*\n\n`;
     
     if (cards.length > 0) {
         // Group cards by list
@@ -50,7 +50,7 @@ const formatSlackMessage = (member, cards) => {
         const list2Cards = cards.filter(card => card.idList === LIST_2_ID);
 
         if (list1Cards.length > 0) {
-            message += `*Waiting to fix (from dev)(${list1Cards.length} cards):*\n`;
+            message += `*Waiting to fix (from dev): ${list1Cards.length} cards*\n`;
             list1Cards.forEach(card => {
                 const slackLink = extractSlackLink(card.desc);
                 if (slackLink) {
@@ -65,7 +65,7 @@ const formatSlackMessage = (member, cards) => {
         }
 
         if (list2Cards.length > 0) {
-            message += `*Update workflow required (SLA: 2 days)(${list2Cards.length} cards):*\n`;
+            message += `*Update workflow required (SLA: 2 days): ${list2Cards.length} cards*\n`;
             list2Cards.forEach(card => {
                 const slackLink = extractSlackLink(card.desc);
                 if (slackLink) {
