@@ -109,7 +109,8 @@ const DevZone = () => {
         year: new Date().getFullYear(),
         points: members.filter(member => 
             member.role?.toLowerCase() === 'ts' || 
-            member.role?.toLowerCase() === 'ts-lead'
+            member.role?.toLowerCase() === 'ts-lead' ||
+            member.role?.toLowerCase() === 'cs'
         ).map(member => ({
             memberId: member.id,
             points: 1000
@@ -128,10 +129,11 @@ const DevZone = () => {
         label: `${member.name} (${member.id})`
     }));
 
-    // Filter TS members from members.json
+    // Filter TS and CS members from members.json
     const tsMembers = members.filter(member => 
         member.role?.toLowerCase() === 'ts' || 
-        member.role?.toLowerCase() === 'ts-lead'
+        member.role?.toLowerCase() === 'ts-lead' ||
+        member.role?.toLowerCase() === 'cs'
     );
 
     // Format members for Autocomplete
@@ -1108,7 +1110,7 @@ const DevZone = () => {
                 {/* Work Shift Management Section */}
                 <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
                     <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
-                        Quản lý ca làm việc
+                        Quản lý ca làm việc (TS & CS)
                     </Typography>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                         {/* Date Selection */}
@@ -1169,9 +1171,9 @@ const DevZone = () => {
                                     renderInput={(params) => (
                                         <TextField
                                             {...params}
-                                            label="Chọn TS"
+                                            label="Chọn TS & CS"
                                             fullWidth
-                                            placeholder="Chọn TS cho ca trực"
+                                            placeholder="Chọn TS & CS cho ca trực"
                                         />
                                     )}
                                     renderOption={(props, option) => (
@@ -1223,7 +1225,7 @@ const DevZone = () => {
                 {/* Leaderboard Input Section */}
                 <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
                     <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
-                        Quản lý điểm Leaderboard
+                        Quản lý điểm Leaderboard (TS & CS)
                     </Typography>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                         {/* Month and Year Selection */}

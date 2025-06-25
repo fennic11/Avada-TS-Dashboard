@@ -463,6 +463,195 @@ const PlanTsTeam = () => {
         return buf;
     };
 
+    // Thêm hàm exportTeamAndAppLists
+    const exportTeamAndAppLists = () => {
+        // eslint-disable-next-line no-undef
+        if (typeof XLSX === 'undefined' && !window.XLSX) {
+            alert('Đang tải thư viện Excel... Vui lòng thử lại sau vài giây.');
+            return;
+        }
+
+        const teamStats = calculateTeamStats();
+        const ts1MemberStats = calculateMemberStats('TS1');
+        const ts2MemberStats = calculateMemberStats('TS2');
+
+        // Tạo workbook và worksheet
+        const workbook = {
+            SheetNames: ['TS1 Team & Apps', 'TS2 Team & Apps', 'Tổng hợp'],
+            Sheets: {}
+        };
+
+        // Sheet 1: TS1 Team & Apps
+        const ts1Data = [
+            ['TEAM TS1 - THÔNG TIN CHI TIẾT'],
+            [''],
+            ['THÔNG TIN THÀNH VIÊN'],
+            ['Số thành viên', ts1MemberStats.totalMembers],
+            ['Trung bình cards/người', ts1MemberStats.avgCardsPerMember],
+            ['Trung bình points/người', ts1MemberStats.avgPointsPerMember],
+            ['Trung bình cards/ngày', ts1MemberStats.avgCardsPerDay],
+            ['Trung bình points/ngày', ts1MemberStats.avgPointsPerDay],
+            ['Trung bình cards/tuần', ts1MemberStats.avgCardsPerWeek],
+            ['Trung bình points/tuần', ts1MemberStats.avgPointsPerWeek],
+            [''],
+            ['DANH SÁCH THÀNH VIÊN'],
+            ['STT', 'Họ và tên', 'Vai trò'],
+            ...ts1MemberStats.members.map((member, index) => [
+                index + 1,
+                member.fullName,
+                member.role || 'TS Member'
+            ]),
+            [''],
+            ['THỐNG KÊ APPS'],
+            ['Tổng số apps', teamStats.TS1.apps.length],
+            ['Tổng số cards', teamStats.TS1.totalCards],
+            ['Tổng số points', teamStats.TS1.totalPoints],
+            [''],
+            ['CHI TIẾT TỪNG APP'],
+            ['STT', 'Tên App', 'Label Trello', 'Tổng Cards', 'Tổng Points'],
+            ...teamStats.TS1.apps.map((app, index) => [
+                index + 1,
+                app.name,
+                app.label,
+                app.totalCards,
+                app.totalPoints
+            ])
+        ];
+
+        workbook.Sheets['TS1 Team & Apps'] = {
+            '!ref': `A1:E${ts1Data.length}`,
+            ...ts1Data.reduce((acc, row, rowIndex) => {
+                row.forEach((cell, colIndex) => {
+                    const cellRef = String.fromCharCode(65 + colIndex) + (rowIndex + 1);
+                    acc[cellRef] = { v: cell };
+                });
+                return acc;
+            }, {})
+        };
+
+        // Sheet 2: TS2 Team & Apps
+        const ts2Data = [
+            ['TEAM TS2 - THÔNG TIN CHI TIẾT'],
+            [''],
+            ['THÔNG TIN THÀNH VIÊN'],
+            ['Số thành viên', ts2MemberStats.totalMembers],
+            ['Trung bình cards/người', ts2MemberStats.avgCardsPerMember],
+            ['Trung bình points/người', ts2MemberStats.avgPointsPerMember],
+            ['Trung bình cards/ngày', ts2MemberStats.avgCardsPerDay],
+            ['Trung bình points/ngày', ts2MemberStats.avgPointsPerDay],
+            ['Trung bình cards/tuần', ts2MemberStats.avgCardsPerWeek],
+            ['Trung bình points/tuần', ts2MemberStats.avgPointsPerWeek],
+            [''],
+            ['DANH SÁCH THÀNH VIÊN'],
+            ['STT', 'Họ và tên', 'Vai trò'],
+            ...ts2MemberStats.members.map((member, index) => [
+                index + 1,
+                member.fullName,
+                member.role || 'TS Member'
+            ]),
+            [''],
+            ['THỐNG KÊ APPS'],
+            ['Tổng số apps', teamStats.TS2.apps.length],
+            ['Tổng số cards', teamStats.TS2.totalCards],
+            ['Tổng số points', teamStats.TS2.totalPoints],
+            [''],
+            ['CHI TIẾT TỪNG APP'],
+            ['STT', 'Tên App', 'Label Trello', 'Tổng Cards', 'Tổng Points'],
+            ...teamStats.TS2.apps.map((app, index) => [
+                index + 1,
+                app.name,
+                app.label,
+                app.totalCards,
+                app.totalPoints
+            ])
+        ];
+
+        workbook.Sheets['TS2 Team & Apps'] = {
+            '!ref': `A1:E${ts2Data.length}`,
+            ...ts2Data.reduce((acc, row, rowIndex) => {
+                row.forEach((cell, colIndex) => {
+                    const cellRef = String.fromCharCode(65 + colIndex) + (rowIndex + 1);
+                    acc[cellRef] = { v: cell };
+                });
+                return acc;
+            }, {})
+        };
+
+        // Sheet 3: Tổng hợp
+        const summaryData = [
+            ['TỔNG HỢP THÔNG TIN TEAMS'],
+            [''],
+            ['THÔNG TIN TỔNG QUAN'],
+            ['Tổng số thành viên', allTSStats.totalMembers],
+            ['Tổng số cards', allTSStats.totalCards],
+            ['Tổng số points', allTSStats.totalPoints],
+            ['Trung bình cards/người', allTSStats.avgCardsPerMember],
+            ['Trung bình points/người', allTSStats.avgPointsPerMember],
+            [''],
+            ['SO SÁNH TEAMS'],
+            ['Chỉ số', 'TS1', 'TS2', 'Tổng'],
+            ['Số thành viên', ts1MemberStats.totalMembers, ts2MemberStats.totalMembers, allTSStats.totalMembers],
+            ['Số apps', teamStats.TS1.apps.length, teamStats.TS2.apps.length, teamStats.TS1.apps.length + teamStats.TS2.apps.length],
+            ['Tổng cards', teamStats.TS1.totalCards, teamStats.TS2.totalCards, allTSStats.totalCards],
+            ['Tổng points', teamStats.TS1.totalPoints, teamStats.TS2.totalPoints, allTSStats.totalPoints],
+            ['Trung bình cards/người', ts1MemberStats.avgCardsPerMember, ts2MemberStats.avgCardsPerMember, allTSStats.avgCardsPerMember],
+            ['Trung bình points/người', ts1MemberStats.avgPointsPerMember, ts2MemberStats.avgPointsPerMember, allTSStats.avgPointsPerMember],
+            [''],
+            ['DANH SÁCH TẤT CẢ THÀNH VIÊN'],
+            ['STT', 'Họ và tên', 'Team', 'Vai trò'],
+            ...allTSStats.members.map((member, index) => [
+                index + 1,
+                member.fullName,
+                GroupTS1.find(m => m.fullName === member.fullName) ? 'TS1' : 'TS2',
+                member.role || 'TS Member'
+            ]),
+            [''],
+            ['DANH SÁCH TẤT CẢ APPS'],
+            ['STT', 'Tên App', 'Team', 'Label Trello', 'Tổng Cards', 'Tổng Points'],
+            ...[
+                ...teamStats.TS1.apps.map((app, index) => [
+                    index + 1,
+                    app.name,
+                    'TS1',
+                    app.label,
+                    app.totalCards,
+                    app.totalPoints
+                ]),
+                ...teamStats.TS2.apps.map((app, index) => [
+                    teamStats.TS1.apps.length + index + 1,
+                    app.name,
+                    'TS2',
+                    app.label,
+                    app.totalCards,
+                    app.totalPoints
+                ])
+            ]
+        ];
+
+        workbook.Sheets['Tổng hợp'] = {
+            '!ref': `A1:F${summaryData.length}`,
+            ...summaryData.reduce((acc, row, rowIndex) => {
+                row.forEach((cell, colIndex) => {
+                    const cellRef = String.fromCharCode(65 + colIndex) + (rowIndex + 1);
+                    acc[cellRef] = { v: cell };
+                });
+                return acc;
+            }, {})
+        };
+
+        // Tạo file và download
+        // eslint-disable-next-line no-undef
+        const xlsxLib = window.XLSX || XLSX;
+        const wbout = xlsxLib.write(workbook, { bookType: 'xlsx', type: 'binary' });
+        const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Team_App_Lists_${new Date().toISOString().split('T')[0]}.xlsx`;
+        link.click();
+        window.URL.revokeObjectURL(url);
+    };
+
     return (
         <Container maxWidth="xl">
             <Box sx={{ 
@@ -494,6 +683,14 @@ const PlanTsTeam = () => {
                             sx={{ mr: 2 }}
                         >
                             Export Excel
+                        </Button>
+                        <Button
+                            variant="contained"
+                            color="info"
+                            onClick={exportTeamAndAppLists}
+                            sx={{ mr: 2 }}
+                        >
+                            Export Team & App Lists
                         </Button>
                         <Button
                             variant="contained"

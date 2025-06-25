@@ -2,7 +2,7 @@ const key = process.env.TRELLO_API_KEY;
 const token = process.env.TRELLO_TOKEN;
 
 const getCardsByList = async (listId) => {
-    const response = await fetch(`https://api.trello.com/1/lists/${listId}/cards?key=${key}&token=${token}&fields=name,idMembers,shortUrl,idList`, {
+    const response = await fetch(`https://api.trello.com/1/lists/${listId}/cards?key=${key}&token=${token}&fields=name,idMembers,shortUrl,idList,desc`, {
         headers: {
             Accept: "application/json"
         }

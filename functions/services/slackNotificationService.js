@@ -6,6 +6,41 @@ const slackService = require('./slackService');
 const LIST_1_ID = '63c7b1a68e5576001577d65c';
 const LIST_2_ID = '63c7d18b4fe38a004885aadf';
 
+// Hàm trích xuất link Slack từ description
+const extractSlackLink = (description) => {
+    if (!description) return null;
+    
+    console.log('Original Description:', description);
+    
+    // Decode URL first to handle %5D and other encoded characters
+    let decodedDescription = description;
+    try {
+        decodedDescription = decodeURIComponent(description);
+        console.log('Decoded Description:', decodedDescription);
+    } catch (e) {
+        console.log('Failed to decode URL, using original');
+    }
+    
+    // Regex để tìm link Slack với nhiều format khác nhau
+    // Bắt được cả: slack.com, app.slack.com, và các subdomain như avadaio.slack.com
+    // Cũng xử lý cả format markdown [text](url)
+    const slackRegex = /https?:\/\/(?:[a-zA-Z0-9-]+\.)?slack\.com\/[^\s\n\)\]%]+/g;
+    const matches = decodedDescription.match(slackRegex);
+    
+    console.log('Slack regex matches:', matches);
+    
+    if (matches && matches.length > 0) {
+        // Clean up the URL by removing any trailing characters
+        let cleanUrl = matches[0];
+        // Remove trailing characters that might be part of markdown or encoding
+        cleanUrl = cleanUrl.replace(/[\)\]%].*$/, '');
+        console.log('Clean URL:', cleanUrl);
+        return cleanUrl;
+    }
+    
+    return null;
+};
+
 const formatSlackMessage = (member, cards) => {
     let message = `*Check những card cần fu này trước khi làm việc nhé <@${member.slackId}>*\n\n`;
     
@@ -15,20 +50,34 @@ const formatSlackMessage = (member, cards) => {
         const list2Cards = cards.filter(card => card.idList === LIST_2_ID);
 
         if (list1Cards.length > 0) {
-            message += `*Waiting to fix (from dev):*\n`;
+            message += `*Waiting to fix (from dev)(${list1Cards.length} cards):*\n`;
             list1Cards.forEach(card => {
-                message += `• ${card.name} - ${card.shortUrl}\n`;
+                const slackLink = extractSlackLink(card.desc);
+                if (slackLink) {
+                    message += `• ${card.name}`;
+                    message += `  - <${card.shortUrl}|Link Trello>`;
+                    message += `  - <${slackLink}|Link Slack>\n`;
+                } else {
+                    message += `• ${card.name} - <${card.shortUrl}|Link Trello>\n`;
+                }
             });
             message += '\n';
         }
 
         if (list2Cards.length > 0) {
-            message += `*Update workflow required (SLA: 2 days):*\n`;
+            message += `*Update workflow required (SLA: 2 days)(${list2Cards.length} cards):*\n`;
             list2Cards.forEach(card => {
-                message += `• ${card.name} - ${card.shortUrl}\n`;
+                const slackLink = extractSlackLink(card.desc);
+                if (slackLink) {
+                    message += `• ${card.name}`;
+                    message += `  - <${card.shortUrl}|Link Trello>`;
+                    message += `  - <${slackLink}|Link Slack>\n`;
+                } else {
+                    message += `• ${card.name} - <${card.shortUrl}|Link Trello>\n`;
+                }
             });
         }
-        message += '----------------------------------------------------';
+        message += '\n----------------------------------------------------';
     } else {
         message += "You don't have any cards at the moment.";
     }

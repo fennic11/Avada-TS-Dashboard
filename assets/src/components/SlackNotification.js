@@ -15,10 +15,12 @@ const SlackNotification = () => {
     const LIST_1_ID = '63c7b1a68e5576001577d65c';
     const LIST_2_ID = '63c7d18b4fe38a004885aadf';
 
-    // Filter TS members
-    const tsMembers = members.filter(member => 
+    // Filter team members (TS, CS, Admin)
+    const teamMembers = members.filter(member => 
         member.role?.toLowerCase() === 'ts' || 
-        member.role?.toLowerCase() === 'ts-lead'
+        member.role?.toLowerCase() === 'ts-lead' ||
+        member.role?.toLowerCase() === 'cs' ||
+        member.role?.toLowerCase() === 'admin'
     );
 
     const formatSlackMessage = (member, cards) => {
@@ -30,25 +32,99 @@ const SlackNotification = () => {
             const list2Cards = cards.filter(card => card.idList === LIST_2_ID);
 
             if (list1Cards.length > 0) {
-                message += `*Waiting to fix (from dev):*\n`;
+                message += `*Waiting to fix (from dev)(${list1Cards.length} cards):*\n`;
                 list1Cards.forEach(card => {
-                    message += `• ${card.name} - ${card.shortUrl}\n`;
+                    const slackLink = extractSlackLink(card.desc);
+                    if (slackLink) {
+                        message += `• ${card.name}`;
+                        message += `  - <${card.shortUrl}|Link Trello>`;
+                        message += `  - <${slackLink}|Link Slack>\n`;
+                    } else {
+                        message += `• ${card.name} - <${card.shortUrl}|Link Trello>\n`;
+                    }
                 });
                 message += '\n';
             }
 
             if (list2Cards.length > 0) {
-                message += `*Update workflow required (SLA: 2 days):*\n`;
+                message += `*Update workflow required (SLA: 2 days)(${list2Cards.length} cards):*\n`;
                 list2Cards.forEach(card => {
-                    message += `• ${card.name} - ${card.shortUrl}\n`;
+                    const slackLink = extractSlackLink(card.desc);
+                    if (slackLink) {
+                        message += `• ${card.name}`;
+                        message += `  - <${card.shortUrl}|Link Trello>`;
+                        message += `  - <${slackLink}|Link Slack>\n`;
+                    } else {
+                        message += `• ${card.name} - <${card.shortUrl}|Link Trello>\n`;
+                    }
                 });
             }
-            message += '----------------------------------------------------';
+            message += '\n----------------------------------------------------';
         } else {
             message += "You don't have any cards at the moment.";
         }
 
         return message;
+    };
+
+    // Hàm trích xuất link Slack từ description
+    const extractSlackLink = (description) => {
+        if (!description) return null;
+        
+        console.log('Original Description:', description);
+        
+        // Decode URL first to handle %5D and other encoded characters
+        let decodedDescription = description;
+        try {
+            decodedDescription = decodeURIComponent(description);
+            console.log('Decoded Description:', decodedDescription);
+        } catch (e) {
+            console.log('Failed to decode URL, using original');
+        }
+        
+        // Regex để tìm link Slack với nhiều format khác nhau
+        // Bắt được cả: slack.com, app.slack.com, và các subdomain như avadaio.slack.com
+        // Cũng xử lý cả format markdown [text](url)
+        const slackRegex = /https?:\/\/(?:[a-zA-Z0-9-]+\.)?slack\.com\/[^\s\n\)\]%]+/g;
+        const matches = decodedDescription.match(slackRegex);
+        
+        console.log('Slack regex matches:', matches);
+        
+        if (matches && matches.length > 0) {
+            // Clean up the URL by removing any trailing characters
+            let cleanUrl = matches[0];
+            // Remove trailing characters that might be part of markdown or encoding
+            cleanUrl = cleanUrl.replace(/[\)\]%].*$/, '');
+            console.log('Clean URL:', cleanUrl);
+            return cleanUrl;
+        }
+        
+        return null;
+    };
+
+    // Hàm trích xuất link Trello từ description
+    const extractTrelloLink = (description) => {
+        if (!description) return null;
+        
+        // Regex để tìm link Trello
+        const trelloRegex = /https?:\/\/trello\.com\/[^\s\n]+/g;
+        const matches = description.match(trelloRegex);
+        
+        return matches && matches.length > 0 ? matches[0] : null;
+    };
+
+    // Hàm tính số ngày từ last activity đến hiện tại
+    const calculateLastActivityDays = (dateLastActivity) => {
+        if (!dateLastActivity) return 'Unknown';
+        
+        const lastActivity = new Date(dateLastActivity);
+        const now = new Date();
+        const diffTime = Math.abs(now - lastActivity);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 0) return 'Today';
+        if (diffDays === 1) return '1 day ago';
+        return `${diffDays} days ago`;
     };
 
     const handleSendSlackMessage = async () => {
@@ -115,14 +191,14 @@ const SlackNotification = () => {
     const renderMemberSelector = () => (
         <Box sx={{ mb: 4, display: 'flex', gap: 2, alignItems: 'center' }}>
             <FormControl fullWidth>
-                <InputLabel>Select TS Member</InputLabel>
+                <InputLabel>Select Team Member</InputLabel>
                 <Select
                     value={selectedMember?.id || ''}
                     onChange={(e) => {
-                        const member = tsMembers.find(m => m.id === e.target.value);
+                        const member = teamMembers.find(m => m.id === e.target.value);
                         setSelectedMember(member);
                     }}
-                    label="Select TS Member"
+                    label="Select Team Member"
                     sx={{
                         '& .MuiSelect-select': {
                             py: 1.5
@@ -132,9 +208,21 @@ const SlackNotification = () => {
                     <MenuItem value="">
                         <em>All Members</em>
                     </MenuItem>
-                    {tsMembers.map((member) => (
+                    {teamMembers.map((member) => (
                         <MenuItem key={member.id} value={member.id}>
-                            <Typography sx={{ fontWeight: 500 }}>{member.username}</Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography sx={{ fontWeight: 500 }}>{member.username}</Typography>
+                                <Chip 
+                                    label={member.role?.toUpperCase() || 'MEMBER'} 
+                                    size="small" 
+                                    sx={{ 
+                                        fontSize: '0.6rem',
+                                        height: '20px',
+                                        backgroundColor: getRoleColor(member.role),
+                                        color: 'white'
+                                    }}
+                                />
+                            </Box>
                         </MenuItem>
                     ))}
                 </Select>
@@ -160,6 +248,22 @@ const SlackNotification = () => {
             </Button>
         </Box>
     );
+
+    // Hàm để lấy màu cho từng role
+    const getRoleColor = (role) => {
+        switch (role?.toLowerCase()) {
+            case 'ts':
+                return '#1976d2'; // Blue
+            case 'ts-lead':
+                return '#1565c0'; // Darker blue
+            case 'cs':
+                return '#388e3c'; // Green
+            case 'admin':
+                return '#d32f2f'; // Red
+            default:
+                return '#757575'; // Gray
+        }
+    };
 
     const renderMemberAvatars = (cardMembers) => {
         if (!cardMembers || cardMembers.length === 0) return 'No members';
@@ -211,21 +315,72 @@ const SlackNotification = () => {
                                 <TableCell>Card Name</TableCell>
                                 <TableCell>Due Date</TableCell>
                                 <TableCell>Members</TableCell>
+                                <TableCell>Links</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {filteredCards.map((card) => (
-                                <TableRow key={card.id}>
-                                    <TableCell>{card.name}</TableCell>
-                                    <TableCell>{card.due ? new Date(card.due).toLocaleDateString() : 'No due date'}</TableCell>
-                                    <TableCell>
-                                        {renderMemberAvatars(card.members)}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                            {filteredCards.map((card) => {
+                                const slackLink = extractSlackLink(card.desc);
+                                const trelloLink = extractTrelloLink(card.desc);
+                                
+                                return (
+                                    <TableRow key={card.id}>
+                                        <TableCell>{card.name}</TableCell>
+                                        <TableCell>{card.due ? new Date(card.due).toLocaleDateString() : 'No due date'}</TableCell>
+                                        <TableCell>
+                                            {renderMemberAvatars(card.members)}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                                <Button
+                                                    variant="outlined"
+                                                    size="small"
+                                                    href={card.shortUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    sx={{ 
+                                                        textTransform: 'none',
+                                                        fontSize: '0.75rem',
+                                                        py: 0.5,
+                                                        px: 1,
+                                                        minWidth: 'auto'
+                                                    }}
+                                                >
+                                                    Link Trello
+                                                </Button>
+                                                {slackLink && (
+                                                    <Button
+                                                        variant="outlined"
+                                                        size="small"
+                                                        href={slackLink}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        sx={{ 
+                                                            textTransform: 'none',
+                                                            fontSize: '0.75rem',
+                                                            py: 0.5,
+                                                            px: 1,
+                                                            minWidth: 'auto',
+                                                            backgroundColor: '#4A154B',
+                                                            color: 'white',
+                                                            borderColor: '#4A154B',
+                                                            '&:hover': {
+                                                                backgroundColor: '#2E0F2F',
+                                                                borderColor: '#2E0F2F'
+                                                            }
+                                                        }}
+                                                    >
+                                                        Link Slack
+                                                    </Button>
+                                                )}
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
                             {filteredCards.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={3} align="center">
+                                    <TableCell colSpan={4} align="center">
                                         {selectedMember 
                                             ? `No cards for ${selectedMember.fullName}`
                                             : 'No cards'}
@@ -249,7 +404,7 @@ const SlackNotification = () => {
 
     return (
         <Box className="slack-notification" sx={{ pl: { xs: 0, md: 8 }, pr: { xs: 0, md: 4 }, pt: 2 }}>
-            <Typography variant="h5" sx={{ mb: 3 }}>Cards Overview</Typography>
+            <Typography variant="h5" sx={{ mb: 3 }}>Team Cards Overview</Typography>
             {renderMemberSelector()}
             {renderCardsTable(column1Cards, 'List 1 Cards')}
             {renderCardsTable(column2Cards, 'List 2 Cards')}
