@@ -98,7 +98,8 @@ const DevZone = () => {
     const [workShifts, setWorkShifts] = useState([
         {
             shiftName: "",
-            tsMembers: []
+            tsMembers: [],
+            csMembers: []
         }
     ]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -129,15 +130,28 @@ const DevZone = () => {
         label: `${member.name} (${member.id})`
     }));
 
-    // Filter TS and CS members from members.json
+    // Filter TS members from members.json
     const tsMembers = members.filter(member => 
         member.role?.toLowerCase() === 'ts' || 
-        member.role?.toLowerCase() === 'ts-lead' ||
+        member.role?.toLowerCase() === 'ts-lead'
+    );
+
+    // Filter CS members from members.json
+    const csMembers = members.filter(member => 
         member.role?.toLowerCase() === 'cs'
     );
 
-    // Format members for Autocomplete
+    // Format TS members for Autocomplete
     const tsMemberOptions = tsMembers.map(member => ({
+        id: member.id,
+        label: `${member.username} (${member.role})`,
+        name: member.username,
+        role: member.role,
+        slackId: member.slackId
+    }));
+
+    // Format CS members for Autocomplete
+    const csMemberOptions = csMembers.map(member => ({
         id: member.id,
         label: `${member.username} (${member.role})`,
         name: member.username,
@@ -642,7 +656,8 @@ const DevZone = () => {
             ...workShifts,
             {
                 shiftName: "",
-                tsMembers: []
+                tsMembers: [],
+                csMembers: []
             }
         ]);
     };
@@ -656,6 +671,14 @@ const DevZone = () => {
     const handleShiftChange = (index, field, value) => {
         const newShifts = [...workShifts];
         if (field === 'tsMembers') {
+            const validMembers = Array.isArray(value) 
+                ? value.filter(member => member && member.id)
+                : [];
+            newShifts[index] = {
+                ...newShifts[index],
+                [field]: validMembers
+            };
+        } else if (field === 'csMembers') {
             const validMembers = Array.isArray(value) 
                 ? value.filter(member => member && member.id)
                 : [];
@@ -680,7 +703,8 @@ const DevZone = () => {
             const validShifts = workShifts.filter(shift => 
                 shift.shiftName && 
                 Array.isArray(shift.tsMembers) && 
-                shift.tsMembers.length > 0
+                Array.isArray(shift.csMembers) && 
+                (shift.tsMembers.length > 0 || shift.csMembers.length > 0)
             );
 
             if (validShifts.length === 0) {
@@ -691,10 +715,24 @@ const DevZone = () => {
             const workShiftData = validShifts.map(shift => ({
                 date: selectedDate,
                 shiftName: shift.shiftName,
-                tsMembers: shift.tsMembers.map(member => ({
-                    slackId: member.slackId,
-                    trelloId: member.id
-                }))
+                tsMembers: shift.tsMembers.map(member => {
+                    // Lấy group từ members.json nếu có
+                    const memberData = members.find(m => m.id === member.id);
+                    return {
+                        slackId: member.slackId,
+                        trelloId: member.id,
+                        group: memberData && memberData.group ? memberData.group : undefined
+                    };
+                }),
+                csMembers: shift.csMembers.map(member => {
+                    // Lấy group từ members.json nếu có
+                    const memberData = members.find(m => m.id === member.id);
+                    return {
+                        slackId: member.slackId,
+                        trelloId: member.id,
+                        group: memberData && memberData.group ? memberData.group : undefined
+                    };
+                })
             }));
 
             console.log('Sending data:', workShiftData);
@@ -709,7 +747,8 @@ const DevZone = () => {
             // Reset form but keep the date
             setWorkShifts([{
                 shiftName: "",
-                tsMembers: []
+                tsMembers: [],
+                csMembers: []
             }]);
         } catch (error) {
             console.error('Error saving work shift:', error);
@@ -1108,115 +1147,346 @@ const DevZone = () => {
         <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 {/* Work Shift Management Section */}
-                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
-                    <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
-                        Quản lý ca làm việc (TS & CS)
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                        {/* Date Selection */}
-                        <TextField
-                            type="date"
-                            label="Chọn ngày"
-                            value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
-                            fullWidth
-                            InputLabelProps={{
-                                shrink: true,
+                <Paper sx={{
+                    p: 4,
+                    borderRadius: 3,
+                    boxShadow: '0 8px 32px rgba(25,118,210,0.10)',
+                    background: 'linear-gradient(135deg, #fafdff 0%, #e3f0ff 100%)',
+                    border: '1px solid #e3eafc',
+                    mb: 2
+                }}>
+                    <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        mb: 4,
+                        pb: 2,
+                        borderBottom: '2px solid #1976d2',
+                        background: 'linear-gradient(90deg, #e3f0ff 0%, #fafdff 100%)',
+                        borderRadius: 2
+                    }}>
+                        <Typography variant="h5" sx={{
+                            color: '#1976d2',
+                            fontWeight: 'bold',
+                            textShadow: '0 1px 2px rgba(25,118,210,0.08)'
+                        }}>
+                            Quản lý ca làm việc (TS & CS)
+                        </Typography>
+                        <Chip
+                            label="Work Shift Management"
+                            size="small"
+                            sx={{
+                                backgroundColor: 'rgba(25, 118, 210, 0.12)',
+                                color: '#1976d2',
+                                fontWeight: 'bold',
+                                letterSpacing: 1
                             }}
                         />
+                    </Box>
+
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {/* Date Selection */}
+                        <Box sx={{
+                            p: 3,
+                            borderRadius: 2,
+                            backgroundColor: 'rgba(25, 118, 210, 0.04)',
+                            border: '1px solid #e3eafc',
+                            boxShadow: '0 2px 8px rgba(25,118,210,0.04)'
+                        }}>
+                            <Typography variant="subtitle1" sx={{
+                                mb: 2,
+                                fontWeight: 'bold',
+                                color: '#1976d2',
+                                letterSpacing: 0.5
+                            }}>
+                                📅 Chọn ngày làm việc
+                            </Typography>
+                            <TextField
+                                type="date"
+                                label="Ngày"
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                fullWidth
+                                InputLabelProps={{ shrink: true }}
+                                sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                        borderRadius: 2,
+                                        backgroundColor: 'white',
+                                        '&:hover': {
+                                            backgroundColor: 'rgba(25, 118, 210, 0.02)'
+                                        }
+                                    }
+                                }}
+                            />
+                        </Box>
 
                         {/* Shifts */}
                         {workShifts.map((shift, index) => (
-                            <Box key={index} sx={{ 
-                                p: 2, 
-                                border: '1px solid',
-                                borderColor: 'divider',
-                                borderRadius: 1,
-                                position: 'relative'
+                            <Box key={index} sx={{
+                                p: 3,
+                                border: '2px solid',
+                                borderColor: index % 2 === 0 ? '#b6d0fa' : '#b9f6ca',
+                                borderRadius: 3,
+                                position: 'relative',
+                                background: index % 2 === 0
+                                    ? 'linear-gradient(135deg, #e3f0ff 0%, #fafdff 100%)'
+                                    : 'linear-gradient(135deg, #e8f5e9 0%, #fafdff 100%)',
+                                boxShadow: '0 4px 20px rgba(25,118,210,0.06)',
+                                transition: 'all 0.3s',
+                                '&:hover': {
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: '0 8px 25px rgba(25,118,210,0.12)'
+                                },
+                                mb: 2
                             }}>
                                 {workShifts.length > 1 && (
                                     <IconButton
                                         onClick={() => handleRemoveShift(index)}
                                         sx={{
                                             position: 'absolute',
-                                            right: 8,
-                                            top: 8,
-                                            color: 'error.main'
+                                            right: 12,
+                                            top: 12,
+                                            color: 'error.main',
+                                            backgroundColor: 'rgba(244, 67, 54, 0.08)',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(244, 67, 54, 0.18)'
+                                            }
                                         }}
                                     >
                                         <CloseIcon />
                                     </IconButton>
                                 )}
-                                <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
-                                    Ca trực {index + 1}
-                                </Typography>
-                                <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+
+                                <Box sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 2,
+                                    mb: 3,
+                                    pb: 2,
+                                    borderBottom: '1px solid #e3eafc'
+                                }}>
+                                    <Box sx={{
+                                        width: 40,
+                                        height: 40,
+                                        borderRadius: '50%',
+                                        backgroundColor: index % 2 === 0 ? '#1976d2' : '#4caf50',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'white',
+                                        fontWeight: 'bold',
+                                        fontSize: '1.2rem',
+                                        boxShadow: '0 2px 8px rgba(25,118,210,0.10)'
+                                    }}>
+                                        {index + 1}
+                                    </Box>
+                                    <Typography variant="h6" sx={{
+                                        fontWeight: 'bold',
+                                        color: index % 2 === 0 ? '#1976d2' : '#4caf50',
+                                        letterSpacing: 0.5
+                                    }}>
+                                        Ca trực {index + 1}
+                                    </Typography>
+                                </Box>
+
+                                <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
                                     <TextField
                                         label="Tên ca trực"
                                         value={shift.shiftName}
                                         onChange={(e) => handleShiftChange(index, 'shiftName', e.target.value)}
                                         fullWidth
-                                        placeholder="Nhập tên ca trực"
+                                        placeholder="Nhập tên ca trực (VD: Ca sáng, Ca chiều, Ca đêm)"
+                                        sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                                borderRadius: 2,
+                                                backgroundColor: 'white',
+                                                '&:hover': {
+                                                    backgroundColor: 'rgba(0,0,0,0.02)'
+                                                }
+                                            }
+                                        }}
                                     />
                                 </Box>
 
-                                <Autocomplete
-                                    multiple
-                                    options={tsMemberOptions}
-                                    getOptionLabel={(option) => option.label}
-                                    value={shift.tsMembers}
-                                    onChange={(event, newValue) => {
-                                        handleShiftChange(index, 'tsMembers', newValue);
-                                    }}
-                                    renderInput={(params) => (
-                                        <TextField
-                                            {...params}
-                                            label="Chọn TS & CS"
-                                            fullWidth
-                                            placeholder="Chọn TS & CS cho ca trực"
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                    <Box sx={{
+                                        p: 2,
+                                        borderRadius: 2,
+                                        backgroundColor: 'rgba(25, 118, 210, 0.07)',
+                                        border: '1px solid #e3eafc'
+                                    }}>
+                                        <Typography variant="subtitle2" sx={{
+                                            mb: 2,
+                                            fontWeight: 'bold',
+                                            color: '#1976d2',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1
+                                        }}>
+                                            🔧 Technical Support (TS)
+                                        </Typography>
+                                        <Autocomplete
+                                            multiple
+                                            options={tsMemberOptions}
+                                            getOptionLabel={(option) => option.label}
+                                            value={shift.tsMembers}
+                                            onChange={(event, newValue) => {
+                                                handleShiftChange(index, 'tsMembers', newValue);
+                                            }}
+                                            renderInput={(params) => (
+                                                <TextField
+                                                    {...params}
+                                                    label="Chọn TS"
+                                                    fullWidth
+                                                    placeholder="Chọn TS cho ca trực"
+                                                    sx={{
+                                                        '& .MuiOutlinedInput-root': {
+                                                            borderRadius: 2,
+                                                            backgroundColor: 'white'
+                                                        }
+                                                    }}
+                                                />
+                                            )}
+                                            renderOption={(props, option) => (
+                                                <li {...props}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                        <Box sx={{
+                                                            width: 8,
+                                                            height: 8,
+                                                            borderRadius: '50%',
+                                                            backgroundColor: '#1976d2'
+                                                        }} />
+                                                        <Box>
+                                                            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                                                {option.name}
+                                                            </Typography>
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                {option.role}
+                                                            </Typography>
+                                                        </Box>
+                                                    </Box>
+                                                </li>
+                                            )}
                                         />
-                                    )}
-                                    renderOption={(props, option) => (
-                                        <li {...props}>
-                                            <Box>
-                                                <Typography variant="body1">{option.name}</Typography>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    {option.role}
-                                                </Typography>
-                                            </Box>
-                                        </li>
-                                    )}
-                                />
+                                    </Box>
+
+                                    <Box sx={{
+                                        p: 2,
+                                        borderRadius: 2,
+                                        backgroundColor: 'rgba(76, 175, 80, 0.07)',
+                                        border: '1px solid #e3eafc'
+                                    }}>
+                                        <Typography variant="subtitle2" sx={{
+                                            mb: 2,
+                                            fontWeight: 'bold',
+                                            color: '#4caf50',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1
+                                        }}>
+                                            💬 Customer Support (CS)
+                                        </Typography>
+                                        <Autocomplete
+                                            multiple
+                                            options={csMemberOptions}
+                                            getOptionLabel={(option) => option.label}
+                                            value={shift.csMembers}
+                                            onChange={(event, newValue) => {
+                                                handleShiftChange(index, 'csMembers', newValue);
+                                            }}
+                                            renderInput={(params) => (
+                                                <TextField
+                                                    {...params}
+                                                    label="Chọn CS"
+                                                    fullWidth
+                                                    placeholder="Chọn CS cho ca trực"
+                                                    sx={{
+                                                        '& .MuiOutlinedInput-root': {
+                                                            borderRadius: 2,
+                                                            backgroundColor: 'white'
+                                                        }
+                                                    }}
+                                                />
+                                            )}
+                                            renderOption={(props, option) => (
+                                                <li {...props}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                        <Box sx={{
+                                                            width: 8,
+                                                            height: 8,
+                                                            borderRadius: '50%',
+                                                            backgroundColor: '#4caf50'
+                                                        }} />
+                                                        <Box>
+                                                            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                                                {option.name}
+                                                            </Typography>
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                {option.role}
+                                                            </Typography>
+                                                        </Box>
+                                                    </Box>
+                                                </li>
+                                            )}
+                                        />
+                                    </Box>
+                                </Box>
                             </Box>
                         ))}
 
-                        <Box sx={{ display: 'flex', gap: 2 }}>
-                            <Button 
-                                variant="outlined" 
+                        <Box sx={{
+                            display: 'flex',
+                            gap: 3,
+                            pt: 2,
+                            borderTop: '2px solid #e3eafc'
+                        }}>
+                            <Button
+                                variant="outlined"
                                 onClick={handleAddShift}
                                 startIcon={<AddIcon />}
-                                sx={{ 
-                                    minWidth: 120,
-                                    borderRadius: 1,
+                                sx={{
+                                    minWidth: 150,
+                                    height: 48,
+                                    borderRadius: 2,
                                     textTransform: 'none',
-                                    fontWeight: 'bold'
+                                    fontWeight: 'bold',
+                                    fontSize: '1rem',
+                                    borderColor: '#1976d2',
+                                    color: '#1976d2',
+                                    background: 'white',
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                                        borderColor: '#1565c0'
+                                    }
                                 }}
                             >
-                                Thêm ca trực
+                                ➕ Thêm ca trực
                             </Button>
 
-                            <Button 
-                                variant="contained" 
+                            <Button
+                                variant="contained"
                                 onClick={handleSaveWorkShift}
                                 disabled={isLoading}
-                                sx={{ 
-                                    minWidth: 120,
-                                    borderRadius: 1,
+                                sx={{
+                                    minWidth: 150,
+                                    height: 48,
+                                    borderRadius: 2,
                                     textTransform: 'none',
-                                    fontWeight: 'bold'
+                                    fontWeight: 'bold',
+                                    fontSize: '1rem',
+                                    background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
+                                    boxShadow: '0 4px 15px rgba(25, 118, 210, 0.13)',
+                                    '&:hover': {
+                                        background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)',
+                                        boxShadow: '0 6px 20px rgba(25, 118, 210, 0.18)'
+                                    },
+                                    '&:disabled': {
+                                        background: '#e0e0e0',
+                                        boxShadow: 'none'
+                                    }
                                 }}
                             >
-                                Lưu ca làm việc
+                                {isLoading ? '⏳ Đang lưu...' : '💾 Lưu ca làm việc'}
                             </Button>
                         </Box>
                     </Box>
@@ -1816,9 +2086,9 @@ const DevZone = () => {
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                             {listIds.map((listId, index) => (
                                 <Box key={index} sx={{ 
-                                    display: 'flex', 
+                        display: 'flex', 
                                     gap: 2, 
-                                    alignItems: 'center',
+                        alignItems: 'center', 
                                     position: 'relative'
                                 }}>
                                     <TextField
@@ -1972,19 +2242,19 @@ const DevZone = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Typography variant="h6">
                                 Card Actions
-                            </Typography>
+                        </Typography>
                             {cardActions && (
-                                <Chip 
+                        <Chip 
                                     label={`${cardActions.length} actions`}
-                                    size="small"
-                                    sx={{ 
+                            size="small" 
+                            sx={{ 
                                         backgroundColor: alpha(theme.palette.primary.main, 0.1),
                                         color: 'primary.main',
                                         fontWeight: 500
                                     }}
                                 />
                             )}
-                        </Box>
+                    </Box>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             {cardActions && (
                                 <Tooltip title="Copy JSON">
@@ -2047,7 +2317,7 @@ const DevZone = () => {
                 fullWidth
             >
                 <DialogTitle>
-                    <Box sx={{ 
+                        <Box sx={{ 
                         display: 'flex', 
                         justifyContent: 'space-between', 
                         alignItems: 'center' 
@@ -2196,7 +2466,7 @@ const DevZone = () => {
                 open={isLabelsModalOpen}
                 onClose={handleCloseLabelsModal}
                 maxWidth="md"
-                fullWidth
+                                fullWidth
             >
                 <DialogTitle>
                     <Box sx={{ 
@@ -2225,9 +2495,9 @@ const DevZone = () => {
                                 <Tooltip title="Copy JSON">
                                     <IconButton 
                                         onClick={handleCopyLabelsJSON}
-                                        sx={{ 
+                                sx={{
                                             color: 'primary.main',
-                                            '&:hover': {
+                                        '&:hover': {
                                                 backgroundColor: alpha(theme.palette.primary.main, 0.1)
                                             }
                                         }}
@@ -2442,7 +2712,7 @@ const DevZone = () => {
                                         onClick={handleCopySearchResultsJSON}
                                         sx={{ 
                                             color: 'primary.main',
-                                            '&:hover': {
+                                '&:hover': {
                                                 backgroundColor: alpha(theme.palette.primary.main, 0.1)
                                             }
                                         }}
@@ -2593,7 +2863,7 @@ const DevZone = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             {appStats && (
                                 <Tooltip title="Copy JSON">
-                                    <IconButton 
+                                    <IconButton
                                         onClick={handleCopyStatsJSON}
                                         sx={{ 
                                             color: 'primary.main',

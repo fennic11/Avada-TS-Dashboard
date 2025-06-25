@@ -3,8 +3,8 @@ const slackNotificationService = require('../services/slackNotificationService')
 
 
 const sendMessageToChannelController = async (req, res) => {
-    const { message } = req.body;
-    const result = await slackService.sendMessageToChannel(message);
+    const { message, group } = req.body;
+    const result = await slackService.sendMessageToChannel(message, group);
     res.json(result);
 }
 

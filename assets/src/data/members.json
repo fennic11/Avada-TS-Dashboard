@@ -7,7 +7,8 @@
       "initials": "A",
       "kpiName": "NganDT",
       "slackId": "U07GD3PHXKP",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS2"
     },
     {
       "id": "66fbc0ccf242ee6afd7f0005",
@@ -26,7 +27,8 @@
       "initials": "A",
       "kpiName": "LyPK",
       "slackId": "U073WRYK763",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS2"
     },
     {
       "id": "66557fb36a637c6c5535b081",
@@ -36,7 +38,8 @@
       "initials": "NA",
       "kpiName": "AnNVH",
       "role": "TS",
-      "slackId": "U07604WT3L0"
+      "slackId": "U07604WT3L0",
+      "group": "TS2"
     },
     {
       "id": "63b3a60ff51ce601421b0dd3",
@@ -46,7 +49,8 @@
       "initials": "NA",
       "kpiName": "AnhNN",
       "role": "TS",
-      "slackId": "U04HAAWA3DJ"
+      "slackId": "U04HAAWA3DJ",
+      "group": "TS1"
     },
     {
       "id": "67605043222bfecee6896646",
@@ -65,7 +69,8 @@
       "initials": "V",
       "kpiName": "VanCT",
       "slackId": "U0605TGBC2H",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS2"
     },
     {
       "id": "677b4f8cb6d6d9e17388245b",
@@ -75,7 +80,8 @@
       "initials": "B",
       "kpiName": "BangDT",
       "slackId": "U087C8L4ZMH",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS1"
     },
     {
       "id": "67d0160fba5ed2157b47e738",
@@ -94,7 +100,8 @@
       "initials": "CT",
       "role": "TS",
       "kpiName": "CuongTT",
-      "slackId": "U06PW1UQVUM"
+      "slackId": "U06PW1UQVUM",
+      "group": "TS1"
     },
     {
       "id": "61a886478176518087f3e853",
@@ -133,7 +140,8 @@
       "initials": "H",
       "kpiName": "HangHM",
       "slackId": "U07GG0A8NDQ",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS2"
     },
     {
       "id": "6464a42e5b7efc346aeeec3d",
@@ -161,12 +169,13 @@
     {
       "id": "6695f9b8a2b3c9d3421309b4",
       "fullName": "Jade_avada",
-      "username": "phuongnt01",
+      "username": "jade_avada",
       "avatarUrl": "https://trello-members.s3.amazonaws.com/6695f9b8a2b3c9d3421309b4/eee5eabbed436adcd5eba7254788e322",
       "initials": "J",
       "kpiName": "PhuongNT",
       "slackId": "U07CGHSHNMB",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS2"
     },
     {
       "id": "620244182de1ad0c50185372",
@@ -176,7 +185,8 @@
       "initials": "J",
       "kpiName": "HienNT1",
       "slackId": "U01N5DULHV4",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS2"
     },
     {
       "id": "663308d0358eee256908233f",
@@ -218,7 +228,8 @@
       "initials": "K",
       "kpiName": "KienNA",
       "slackId": "U06VBAQPKC0",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS1"
     },
     {
       "id": "6421423a728faf1f708e2151",
@@ -247,7 +258,8 @@
       "initials": "TL",
       "kpiName": "LinhTK",
       "slackId": "U04C4RE382V",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS3"
     },
     {
       "id": "656d701d6284fef10b3b4677",
@@ -264,7 +276,8 @@
       "initials": "M",
       "role": "TS",
       "kpiName": "HienNT2",
-      "slackId": "U0608R8FLKC"
+      "slackId": "U0608R8FLKC",
+      "group": "TS1"
     },
     {
       "id": "66d7c4e0bee239293b90cc16",
@@ -274,7 +287,8 @@
       "initials": "M",
       "kpiName": "DuongPT",
       "slackId": "U07KCQ08DFH",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS1"
     },
     {
       "id": "660a3953482f1c895810056d",
@@ -320,7 +334,8 @@
       "initials": "NV",
       "kpiName": "VuNH",
       "slackId": "U04HQ5GRWEL",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS1"
     },
     {
       "id": "6577de9acf8562918aacf488",
@@ -411,7 +426,8 @@
       "initials": "N",
       "kpiName": "ChiPL",
       "slackId": "U07U8JC4563",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS1"
     },
     {
       "id": "65e54892bc447bf2a6216265",
@@ -450,7 +466,8 @@
       "initials": "P",
       "kpiName": "MinhNTM",
       "slackId": "U078R6F2X5X",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS1"
     },
     {
       "id": "67b2aff1ba80e817fe8149eb",
@@ -503,7 +520,8 @@
       "initials": "S",
       "kpiName": "HuyTC",
       "slackId": "U07HTBW4CRX",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS2"
     },
     {
       "id": "651a39d6f837c8d90a40e715",
@@ -558,7 +576,8 @@
       "initials": "LT",
       "kpiName": "ThaoLP",
       "slackId": "U069LL5RBA9",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS1"
     },
     {
       "id": "64be307798183a11c8fe12f1",
@@ -625,7 +644,8 @@
       "initials": "TP",
       "role": "TS",
       "kpiName": "PhuongTTB",
-      "slackId": "U071WA0K0UW"
+      "slackId": "U071WA0K0UW",
+      "group": "TS2"
     },
     {
       "id": "64d070a2fdfec7de5fb327c7",
@@ -701,7 +721,8 @@
       "initials": "W",
       "role": "TS",
       "kpiName": "TungTD",
-      "slackId": "U04HAAWL352"
+      "slackId": "U04HAAWL352",
+      "group": "TS2"
     },
     {
       "id": "62f9c29c03e59937e0063fd8",
@@ -718,7 +739,8 @@
       "initials": "D",
       "kpiName": "ĐatPT",
       "slackId": "U07AJ4NT2KX",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS1"
     },
     {
       "id": "62d7ad85c9d2d00d12937b9c",
@@ -746,7 +768,8 @@
       "initials": "ĐQ",
       "role": "ts-lead",
       "kpiName": "QuanDM",
-      "slackId": "U06LNG16WG1"
+      "slackId": "U06LNG16WG1",
+      "group": "TS1"
     },
     {
       "id": "68185d03b9ba1c56c3ed3de9",
@@ -755,7 +778,8 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/68185d03b9ba1c56c3ed3de9/81bc6f23817e31eb9298158c4ca23033",
       "initials": "DT",
       "role": "TS",
-      "slackId": "U08QY50KNFL"
+      "slackId": "U08QY50KNFL",
+      "group": "TS2"
     },
     {
       "id": "68185ad36513ead08dc11eb1",
@@ -764,7 +788,8 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/68185ad36513ead08dc11eb1/da2bcb163a385b1ebbbd3c74db5594d7",
       "initials": "K",
       "role": "TS",
-      "slackId": "U08QY51UNLS"
+      "slackId": "U08QY51UNLS",
+      "group": "TS2"
     },
     {
       "id": "68185ad36513ead08dc11eb1",
@@ -777,12 +802,13 @@
     },
     {
       "id": "681857c0ad19d39f0ee0e78e",
-      "fullName": "Tiffany_Avada",
+      "fullName": "Ngô Thị Thu Thủy",
       "username": "tiffany_avada",
       "avatarUrl": "https://trello-members.s3.amazonaws.com/681857c0ad19d39f0ee0e78e/d15cf29d0f314fe2bfb9743b682e2655",
       "initials": "T",
       "slackId": "U08QY52JK8A",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS3"
     },
     {
       "id": "682175c3e94e4f5644a59d3d",
@@ -791,7 +817,8 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/682175c3e94e4f5644a59d3d/282079abe60d8c016c10feece428506b",
       "initials": "S",
       "slackId": "U08RFT315T9",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS1"
     },
     {
       "id": "68219121e0c5d6cf93205fe4",
@@ -800,7 +827,8 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/68219121e0c5d6cf93205fe4/14f50353c92b589b15addd7e1a8894a4",
       "initials": "PS",
       "slackId": "U08RFT43NCF",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS3"
     },
     {
       "id": "6821929c5ec3709b731a2f80",
@@ -809,7 +837,8 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/6821929c5ec3709b731a2f80/43c860019946a941051dec955ab66819",
       "initials": "NL",
       "slackId": "U08RFT1KWBZ",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS3"
     },
     {
       "id": "6821786d902bc9ef54452b24",
@@ -818,7 +847,8 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/6821786d902bc9ef54452b24/b31ca546a1d2d8c5d998f6e8500997f1",
       "initials": "F",
       "slackId": "U08RFT095UP",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS4"
     },
     {
       "id": "6833e973f4e0c00790f5a4b5",
@@ -826,7 +856,9 @@
       "username": "hela_avada",
       "avatarUrl": "https://trello-members.s3.amazonaws.com/6833e973f4e0c00790f5a4b5/a2fa5e9e62389ac20072ccfa71138e75",
       "initials": "H",
-      "slackId": "U08TZM5SF7U"
+      "slackId": "U08TZM5SF7U",
+      "role": "CS",
+      "group": "CS4"
     },
     {
       "id": "682acf5b54697f025107d7d5",
@@ -835,7 +867,8 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/682acf5b54697f025107d7d5/7d6d00ff75828889e66a84dae2467b01",
       "initials": "AP",
       "slackId": "U08TAJ1T9UZ",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS4"
     },
     {
       "id": "6833e891406b5906e83481cb",
@@ -844,7 +877,8 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/6833e891406b5906e83481cb/3378b79cac28fc17f156182107503b53",
       "initials": "T",
       "slackId": "U08TZM4551Q",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS1"
     },
     {
       "id": "682acda74abe5baae821b52a",
@@ -853,7 +887,8 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/682acda74abe5baae821b52a/27b7706de0aa8607661e6ca5350fe0b6",
       "initials": "H",
       "slackId": "U08T11T6GDA",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS4"
     },
     {
       "id": "682ab78028a7ac043be33dca",
@@ -862,7 +897,8 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/682ab78028a7ac043be33dca/50a7ace973b93f4e0e5c1fb2a2a55733",
       "initials": "NT",
       "slackId": "U08TAHXTV4Z",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS4"
     },
     {
       "id": "68340cff129299b89d70bae6",
@@ -871,7 +907,8 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/68340cff129299b89d70bae6/1c0396f317b290079f4d675619eaac64",
       "initials": "C",
       "slackId": "U08TZM2LL74",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS2"
     },
     {
       "id": "683d27cb3fdd69ddec8f8169",
@@ -880,6 +917,7 @@
       "avatarUrl": "https://trello-members.s3.amazonaws.com/683d27cb3fdd69ddec8f8169/3d7d4e8000e1b94d18aec5fa6fa7f4bf",
       "initials": "I",
       "slackId": "U0906HQUZTJ",
-      "role": "CS"
+      "role": "CS",
+      "group": "CS1"
     }
   ]

@@ -132,7 +132,7 @@ const processCards = async (cards, member) => {
 
         // Format và gửi message
         const message = formatSlackMessage(member, memberCards);
-        const response = await slackService.sendMessageToChannel(message);
+        const response = await slackService.sendMessageToChannel(message, member.group);
 
         if (!response || !response.ok) {
             throw new Error(`Failed to send Slack message: ${response?.error || 'Unknown error'}`);
@@ -177,7 +177,8 @@ const sendNotificationsToTSMembers = async (date, shiftName) => {
         
         // Xử lý cards cho từng thành viên trong ca
         const processedMembers = await Promise.all(
-            workShift.tsMembers.map(member => processCards(allCards, member))
+            workShift.tsMembers.map(member => processCards(allCards, member)),
+            workShift.csMembers.map(member => processCards(allCards, member))
         );
 
         console.log('Processed members:', processedMembers);

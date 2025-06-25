@@ -12,6 +12,10 @@ const workShiftSchema = new mongoose.Schema({
     tsMembers: {
         type: Array,
         required: true,
+    },
+    csMembers: {
+        type: Array,
+        required: true,
     }
 }, {
     collection: 'workShifts',

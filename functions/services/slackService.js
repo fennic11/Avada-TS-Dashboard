@@ -1,4 +1,10 @@
-const WEBHOOK_URL = process.env.WEBHOOK_URL;
+const WEBHOOK_URL_TS = process.env.WEBHOOK_URL;
+const WEBHOOK_URL_CS1 = process.env.WEBHOOK_URL_CS1;
+const WEBHOOK_URL_CS2 = process.env.WEBHOOK_URL_CS2;
+const WEBHOOK_URL_CS3 = process.env.WEBHOOK_URL_CS3;
+const WEBHOOK_URL_CS4 = process.env.WEBHOOK_URL_CS4;
+
+
 
 const sendMessage = async (message) => {
     try {
@@ -23,10 +29,32 @@ const sendMessage = async (message) => {
     }
 }
 
-const sendMessageToChannel = async (message) => {
+const sendMessageToChannel = async (message, group = 'ts') => {
     try {
-        console.log(WEBHOOK_URL);
-        const response = await fetch(WEBHOOK_URL, {
+        let webhookUrl;
+        
+        // Chọn webhook URL dựa trên group
+        switch (group?.toUpperCase()) {
+            case 'CS1':
+                webhookUrl = WEBHOOK_URL_CS1;
+                break;
+            case 'CS2':
+                webhookUrl = WEBHOOK_URL_CS2;
+                break;
+            case 'CS3':
+                webhookUrl = WEBHOOK_URL_CS3;
+                break;
+            case 'CS4':
+                webhookUrl = WEBHOOK_URL_CS4;
+                break;
+            default:
+                webhookUrl = WEBHOOK_URL_TS;
+                break;
+        }
+        
+        console.log(`Using webhook URL for group: ${group}`, webhookUrl);
+        
+        const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

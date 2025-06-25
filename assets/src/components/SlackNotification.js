@@ -138,7 +138,7 @@ const SlackNotification = () => {
             );
             
             const message = formatSlackMessage(selectedMember, memberCards);
-            await sendMessageToChannel(message);
+            await sendMessageToChannel(message, selectedMember.group);
             alert('Message sent successfully!');
         } catch (error) {
             console.error('Error sending message:', error);

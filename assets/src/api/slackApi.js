@@ -1,13 +1,13 @@
 import { API_URL } from './apiConfig';
 
-export const sendMessageToChannel = async (message) => {
+export const sendMessageToChannel = async (message, group) => {
     try {
         const response = await fetch(`${API_URL}/slack/sendMessageToChannel`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ message })
+            body: JSON.stringify({ message, group })
         });
 
         if (!response.ok) {
