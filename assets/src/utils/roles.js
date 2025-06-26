@@ -11,7 +11,8 @@ export const TABS = {
     SLACK_CHANNEL: 'slack-channel',
     LEADERBOARD: 'leaderboard',
     PLAN_TS_TEAM: 'plan-ts-team',
-    PERFORMANCE_TS: 'performance-ts'
+    PERFORMANCE_TS: 'performance-ts',
+    CHECKOUT: 'checkout'
 };
 
 // Define roles and their permissions
@@ -35,7 +36,8 @@ export const ROLE_PERMISSIONS = {
             TABS.BUGS,
             TABS.ISSUES,
             TABS.RESOLUTION_TIME,
-            TABS.TS_WORKSPACE
+            TABS.TS_WORKSPACE,
+            TABS.CHECKOUT
         ],
         description: 'Access to TS related features'
     },
@@ -70,7 +72,8 @@ export const ROLE_PERMISSIONS = {
             TABS.TS_LEAD,
             TABS.TS_WORKSPACE,
             TABS.SLACK_CHANNEL,
-            TABS.PERFORMANCE_TS
+            TABS.PERFORMANCE_TS,
+            TABS.CHECKOUT
         ],
         description: 'Access to TS Lead related features'
         },

@@ -25,6 +25,7 @@ import Slack from './pages/Slack';
 import LeaderboardPage from './pages/Leaderboard';
 import PlanTsTeam from './pages/PlanTsTeam';
 import PerformanceTS from './pages/PerformanceTS';
+import CheckoutPage from './pages/CheckoutPage';
 
 const theme = createTheme({
     palette: {
@@ -256,6 +257,16 @@ const App = () => {
                                     <PrivateRoute>
                                         <Layout>
                                             <PlanTsTeam />  
+                                        </Layout>
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path="/checkout"
+                                element={
+                                    <PrivateRoute>
+                                        <Layout>
+                                            <CheckoutPage />
                                         </Layout>
                                     </PrivateRoute>
                                 }

@@ -7,6 +7,7 @@ import {
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CheckIcon from '@mui/icons-material/Check';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import AssignmentIcon from '@mui/icons-material/Assignment';
@@ -47,6 +48,7 @@ const getTabIcon = (path) => {
   if (path.includes('slack')) return <ChatIcon />;
   if (path.includes('leaderboard')) return <EmojiEventsIcon />;
   if (path.includes('plan-ts-team')) return <GroupIcon />;
+  if (path.includes('checkout')) return <CheckCircleIcon />;
   return <DashboardIcon />;
 };
 
