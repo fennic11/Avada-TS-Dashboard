@@ -1,4 +1,4 @@
-const WEBHOOK_URL_TS = process.env.WEBHOOK_URL;
+const WEBHOOK_URL_TS = process.env.WEBHOOK_URL_TS;
 const WEBHOOK_URL_CS1 = process.env.WEBHOOK_URL_CS1;
 const WEBHOOK_URL_CS2 = process.env.WEBHOOK_URL_CS2;
 const WEBHOOK_URL_CS3 = process.env.WEBHOOK_URL_CS3;
