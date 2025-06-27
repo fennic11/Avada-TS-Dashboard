@@ -60,6 +60,8 @@ const ActionsDetail = () => {
     // Scroll to top button
     const [showScroll, setShowScroll] = useState(false);
     const [selectedTSMember, setSelectedTSMember] = useState('all');
+    const [viewMode, setViewMode] = useState('action'); // 'action' or 'card'
+    const [expandedCards, setExpandedCards] = useState(new Set());
 
     const fetchActions = async () => {
         setLoading(true);
@@ -109,6 +111,22 @@ const ActionsDetail = () => {
             if (!actionsByMember[action.data.idMember].some(a => a.id === action.id)) {
                 actionsByMember[action.data.idMember].push(action);
             }
+        }
+    });
+
+    // Group actions theo cardId
+    const actionsByCard = {};
+    actions.forEach(action => {
+        const cardId = action.data?.card?.id;
+        if (cardId) {
+            if (!actionsByCard[cardId]) {
+                actionsByCard[cardId] = {
+                    cardId,
+                    cardName: action.data.card.name || 'Unknown Card',
+                    actions: []
+                };
+            }
+            actionsByCard[cardId].actions.push(action);
         }
     });
 
@@ -234,7 +252,56 @@ const ActionsDetail = () => {
                 <Typography variant="body2" color="primary" mb={2}>
                     Ngày đã chọn: {selectedDate} | Ca trực: {selectedShift}
                 </Typography>
+                
+                {/* Switch Mode Button */}
+                <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 2, 
+                    mb: 3, 
+                    p: 2, 
+                    bgcolor: '#f0f4f8', 
+                    borderRadius: 3, 
+                    boxShadow: '0 2px 8px 0 #e0e7ef' 
+                }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#1976d2' }}>
+                        Chế độ xem:
+                    </Typography>
+                    
+                    <Button
+                        variant={viewMode === 'action' ? 'contained' : 'outlined'}
+                        onClick={() => setViewMode('action')}
+                        sx={{
+                            fontWeight: 600,
+                            bgcolor: viewMode === 'action' ? '#1976d2' : 'white',
+                            color: viewMode === 'action' ? 'white' : '#1976d2',
+                            borderColor: '#1976d2',
+                            '&:hover': {
+                                bgcolor: viewMode === 'action' ? '#1565c0' : '#e3f2fd',
+                            },
+                        }}
+                    >
+                        📋 Action View
+                    </Button>
+                    
+                    <Button
+                        variant={viewMode === 'card' ? 'contained' : 'outlined'}
+                        onClick={() => setViewMode('card')}
+                        sx={{
+                            fontWeight: 600,
+                            bgcolor: viewMode === 'card' ? '#1976d2' : 'white',
+                            color: viewMode === 'card' ? 'white' : '#1976d2',
+                            borderColor: '#1976d2',
+                            '&:hover': {
+                                bgcolor: viewMode === 'card' ? '#1565c0' : '#e3f2fd',
+                            },
+                        }}
+                    >
+                        🃏 Card View
+                    </Button>
+                </Box>
                 {/* Hiển thị actions theo member TS */}
+                {viewMode === 'action' && (
                 <Box>
                     {tsMembers.map(member => {
                         if (selectedTSMember !== 'all' && member.id !== selectedTSMember) return null;
@@ -623,6 +690,353 @@ const ActionsDetail = () => {
                         );
                     })}
                 </Box>
+                )}
+                
+                {viewMode === 'card' && (
+                    <Box>
+                        <Typography variant="h5" sx={{ mb: 3, color: '#1976d2', fontWeight: 700 }}>
+                            🃏 Card View - {selectedDate} - {selectedShift}
+                        </Typography>
+                        
+                        {/* Card View */}
+                        <Box>
+                            {Object.values(actionsByCard).map(cardData => {
+                                let cardActions = cardData.actions;
+                                if (cardActions.length === 0) return null;
+                                
+                                // Sort actions by date ascending
+                                cardActions = [...cardActions].sort((a, b) => new Date(a.date) - new Date(b.date));
+                                
+                                // Lọc theo actionGroupFilter
+                                cardActions = cardActions.filter(action => {
+                                    if (actionGroupFilter === 'all') return true;
+                                    if (actionGroupFilter === 'complete') return action.type === 'updateCard' && action.data?.card?.dueComplete === true;
+                                    if (actionGroupFilter === 'moveToDone') return action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('done') && !action.data.listAfter.name.toLowerCase().includes('fix done from dev');
+                                    if (actionGroupFilter === 'moveToDoing') return action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('doing');
+                                    if (actionGroupFilter === 'moveToWaitingToFixFromDev') return action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('waiting to fix (from dev)');
+                                    if (actionGroupFilter === 'moveToWaitingToFix') return action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('waiting to fix');
+                                    if (actionGroupFilter === 'moveToUpdateWorkflowOrWaitingAccess') return action.type === 'updateCard' && action.data?.listAfter?.name && (action.data.listAfter.name.toLowerCase().includes('update workflow required') || action.data.listAfter.name.toLowerCase().includes('waiting for access'));
+                                    if (actionGroupFilter === 'moveToFixDoneFromDev') return action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('fix done from dev');
+                                    if (actionGroupFilter === 'leftCard') return action.type === 'removeMemberFromCard' && action.idMemberCreator === action.data?.idMember;
+                                    if (actionGroupFilter === 'commentCard') return action.type === 'commentCard';
+                                    if (actionGroupFilter === 'assigned') return action.type === 'addMemberToCard' && tsMembers.some(m => m.id === action.data?.idMember);
+                                    return true;
+                                });
+
+                                if (cardActions.length === 0) return null;
+
+                                // Tổng hợp số lượng từng loại action cho card
+                                const cardActionCounts = {
+                                    complete: cardActions.filter(a => a.type === 'updateCard' && a.data?.card?.dueComplete === true).length,
+                                    moveToDone: cardActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.name && a.data.listAfter.name.toLowerCase().includes('done') && !a.data.listAfter.name.toLowerCase().includes('fix done from dev')).length,
+                                    moveToDoing: cardActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.name && a.data.listAfter.name.toLowerCase().includes('doing')).length,
+                                    moveToWaitingToFixFromDev: cardActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.name && a.data.listAfter.name.toLowerCase().includes('waiting to fix (from dev)')).length,
+                                    moveToWaitingToFix: cardActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.name && a.data.listAfter.name.toLowerCase().includes('waiting to fix')).length,
+                                    moveToUpdateWorkflowOrWaitingAccess: cardActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.name && (a.data.listAfter.name.toLowerCase().includes('update workflow required') || a.data.listAfter.name.toLowerCase().includes('waiting for access'))).length,
+                                    leftCard: cardActions.filter(a => a.type === 'removeMemberFromCard' && a.idMemberCreator === a.data?.idMember).length,
+                                    commentCard: cardActions.filter(a => a.type === 'commentCard').length,
+                                    addTsToCard: cardActions.filter(a => a.type === 'addMemberToCard' && tsMembers.some(m => m.id === a.data?.idMember)).length,
+                                    moveToFixDoneFromDev: cardActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.name && a.data.listAfter.name.toLowerCase().includes('fix done from dev')).length,
+                                };
+
+                                // Highlight if card has completeCard action
+                                const hasCompleteCard = cardData.actions.some(a => a.type === 'updateCard' && a.data?.card?.dueComplete === true);
+                                const isExpanded = expandedCards.has(cardData.cardId);
+
+                                return (
+                                    <Paper key={cardData.cardId} sx={{ mb: 3, borderRadius: 3, boxShadow: 1, overflow: 'hidden',
+                                        bgcolor: hasCompleteCard ? 'rgba(34,197,94,0.13)' : 'white',
+                                        border: hasCompleteCard ? '2px solid #43a047' : undefined
+                                    }}>
+                                        {/* Card Header - Clickable to expand/collapse */}
+                                        <Box 
+                                            sx={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                justifyContent: 'space-between', 
+                                                p: 2,
+                                                cursor: 'pointer',
+                                                bgcolor: '#f8fafc',
+                                                borderBottom: isExpanded ? '1px solid #e0e0e0' : 'none',
+                                                transition: 'background-color 0.2s',
+                                                '&:hover': { 
+                                                    bgcolor: '#e3f2fd' 
+                                                }
+                                            }}
+                                            onClick={() => {
+                                                const newExpanded = new Set(expandedCards);
+                                                if (isExpanded) {
+                                                    newExpanded.delete(cardData.cardId);
+                                                } else {
+                                                    newExpanded.add(cardData.cardId);
+                                                }
+                                                setExpandedCards(newExpanded);
+                                            }}
+                                        >
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                <IconButton size="small" sx={{ color: '#1976d2' }}>
+                                                    {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                                                </IconButton>
+                                                <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 700 }}>
+                                                    🃏 {cardData.cardName}
+                                                </Typography>
+                                                <Chip 
+                                                    label={`${cardActions.length} actions`} 
+                                                    size="small" 
+                                                    color="primary" 
+                                                    variant="outlined"
+                                                    sx={{ fontWeight: 600 }}
+                                                />
+                                            </Box>
+                                            
+                                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                                {cardActionCounts.complete > 0 && (
+                                                    <Chip 
+                                                        label={`Complete: ${cardActionCounts.complete}`} 
+                                                        color="success" 
+                                                        size="small" 
+                                                        sx={{ fontWeight: 700, fontSize: 12 }}
+                                                    />
+                                                )}
+                                                {cardActionCounts.moveToDone > 0 && (
+                                                    <Chip 
+                                                        label={`Done: ${cardActionCounts.moveToDone}`} 
+                                                        color="success" 
+                                                        size="small" 
+                                                        sx={{ fontWeight: 700, fontSize: 12 }}
+                                                    />
+                                                )}
+                                                {cardActionCounts.moveToDoing > 0 && (
+                                                    <Chip 
+                                                        label={`Doing: ${cardActionCounts.moveToDoing}`} 
+                                                        color="warning" 
+                                                        size="small" 
+                                                        sx={{ fontWeight: 700, fontSize: 12 }}
+                                                    />
+                                                )}
+                                                {cardActionCounts.addTsToCard > 0 && (
+                                                    <Chip 
+                                                        label={`Assigned: ${cardActionCounts.addTsToCard}`} 
+                                                        size="small" 
+                                                        sx={{ fontWeight: 700, fontSize: 12, bgcolor: '#e0f2f1', color: '#00897b', border: '1.5px solid #00897b' }}
+                                                    />
+                                                )}
+                                            </Box>
+                                        </Box>
+                                        
+                                        {/* Collapsible Actions Content */}
+                                        <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                                            <Box sx={{ p: 2, bgcolor: 'white' }}>
+                                                <Typography variant="subtitle2" sx={{ mb: 2, color: '#666', fontWeight: 600 }}>
+                                                    📋 Actions Timeline:
+                                                </Typography>
+                                                
+                                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                                    {cardActions.map(action => {
+                                                        // Determine action types and styling (same logic as Action View)
+                                                        const isMarkDueComplete = action.type === 'updateCard' && action.data?.card?.dueComplete === true;
+                                                        const isMoveToDone = action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('done') && !action.data.listAfter.name.toLowerCase().includes('fix done from dev');
+                                                        const isMoveToDoing = action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('doing');
+                                                        const isMoveToWaitingToFixFromDev = action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('waiting to fix (from dev)');
+                                                        const isMoveToWaitingToFix = action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('waiting to fix');
+                                                        const isSelfLeftCard = action.type === 'removeMemberFromCard' && action.idMemberCreator === action.data?.idMember;
+                                                        const isMoveToUpdateWorkflowOrWaitingAccess = action.type === 'updateCard' && action.data?.listAfter?.name && (
+                                                            action.data.listAfter.name.toLowerCase().includes('update workflow required') ||
+                                                            action.data.listAfter.name.toLowerCase().includes('waiting for access')
+                                                        );
+                                                        const isMoveToFixDoneFromDev = action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('fix done from dev');
+                                                        const isAssigned = action.type === 'addMemberToCard' && tsMembers.some(m => m.id === action.data?.idMember);
+                                                        const isCommentCard = action.type === 'commentCard';
+                                                        
+                                                        let bg = '#f8fafc';
+                                                        let border = 'none';
+                                                        let textColor = '#333';
+                                                        if (isMarkDueComplete) {
+                                                            bg = 'rgba(34,197,94,0.13)';
+                                                            border = '2px solid #43a047';
+                                                        } else if (isMoveToDone) {
+                                                            bg = 'rgba(34,197,94,0.13)';
+                                                            border = '2px solid #43a047';
+                                                        } else if (isMoveToFixDoneFromDev) {
+                                                            bg = 'rgba(76,175,80,0.13)';
+                                                            border = '2px solid #2e7d32';
+                                                        } else if (isMoveToDoing) {
+                                                            bg = 'rgba(255,193,7,0.13)';
+                                                            border = '2px solid #ffb300';
+                                                        } else if (isMoveToWaitingToFixFromDev) {
+                                                            bg = 'rgba(156,39,176,0.13)';
+                                                            border = '2px solid #9c27b0';
+                                                        } else if (isMoveToWaitingToFix) {
+                                                            bg = 'rgba(255,152,0,0.13)';
+                                                            border = '2px solid #ff9800';
+                                                        } else if (isSelfLeftCard) {
+                                                            bg = 'rgba(239,68,68,0.13)';
+                                                            border = '2px solid #ef4444';
+                                                        } else if (isMoveToUpdateWorkflowOrWaitingAccess) {
+                                                            bg = 'rgba(121,85,72,0.13)';
+                                                            border = '2px solid #795548';
+                                                        } else if (isAssigned) {
+                                                            bg = '#e0f2f1';
+                                                            border = '2px solid #00897b';
+                                                            textColor = '#00897b';
+                                                        } else if (isCommentCard) {
+                                                            bg = '#e3f2fd';
+                                                            border = '2px solid #1976d2';
+                                                            textColor = '#1976d2';
+                                                        }
+                                                        
+                                                        let label = action.type;
+                                                        let chipColor = 'primary';
+                                                        if (isMarkDueComplete) {
+                                                            label = 'Complete card';
+                                                            chipColor = 'success';
+                                                        } else if (isMoveToDone) {
+                                                            label = 'Move to Done';
+                                                            chipColor = 'success';
+                                                        } else if (isMoveToFixDoneFromDev) {
+                                                            label = 'Move to Fix done from dev';
+                                                            chipColor = 'success';
+                                                        } else if (isMoveToDoing) {
+                                                            label = 'Move to Doing';
+                                                            chipColor = 'warning';
+                                                        } else if (isMoveToWaitingToFixFromDev) {
+                                                            label = 'Move to Waiting to fix (from dev)';
+                                                            chipColor = 'secondary';
+                                                        } else if (isMoveToWaitingToFix) {
+                                                            label = 'Move to Waiting to fix';
+                                                            chipColor = 'warning';
+                                                        } else if (isSelfLeftCard) {
+                                                            label = 'Left card';
+                                                            chipColor = 'error';
+                                                        } else if (isMoveToUpdateWorkflowOrWaitingAccess) {
+                                                            label = 'Move to Update workflow/Waiting for access';
+                                                            chipColor = 'default';
+                                                        } else if (action.type === 'addMemberToCard' && tsMembers.some(m => m.id === action.data?.idMember)) {
+                                                            label = 'Assigned';
+                                                            chipColor = undefined;
+                                                        }
+                                                        
+                                                        const formattedTime = dayjs(action.date).tz('Asia/Ho_Chi_Minh').format('HH:mm:ss DD/MM/YYYY');
+                                                        const member = members.find(m => m.id === action.idMemberCreator);
+                                                        const memberName = member ? member.fullName : 'Unknown';
+                                                        
+                                                        let extraInfo = null;
+                                                        if (action.type === 'addMemberToCard') {
+                                                            let addedMemberName = '';
+                                                            let adderName = '';
+                                                            const addedMember = members.find(m => m.id === action.data?.idMember);
+                                                            const adder = members.find(m => m.id === action.idMemberCreator);
+                                                            addedMemberName = addedMember ? addedMember.fullName : (action.data?.idMember || 'Unknown');
+                                                            adderName = adder ? adder.fullName : (action.idMemberCreator || 'Unknown');
+                                                            extraInfo = (
+                                                                <Box sx={{ fontSize: 13, color: '#1565c0', fontWeight: 600, mt: 0.5 }}>
+                                                                    Added <b>{addedMemberName}</b> by <b>{adderName}</b>
+                                                                </Box>
+                                                            );
+                                                        } else if (action.type === 'removeMemberFromCard') {
+                                                            let removedMemberName = '';
+                                                            let removerName = '';
+                                                            const removedMember = members.find(m => m.id === action.data?.idMember);
+                                                            const remover = members.find(m => m.id === action.idMemberCreator);
+                                                            removedMemberName = removedMember ? removedMember.fullName : (action.data?.idMember || 'Unknown');
+                                                            removerName = remover ? remover.fullName : (action.idMemberCreator || 'Unknown');
+                                                            extraInfo = (
+                                                                <Box sx={{ fontSize: 13, color: '#d32f2f', fontWeight: 600, mt: 0.5 }}>
+                                                                    Removed <b>{removedMemberName}</b> by <b>{removerName}</b>
+                                                                </Box>
+                                                            );
+                                                        }
+                                                        
+                                                        return (
+                                                            <Box
+                                                                key={action.id}
+                                                                sx={{
+                                                                    fontSize: 15,
+                                                                    color: textColor,
+                                                                    background: bg,
+                                                                    borderRadius: 2,
+                                                                    p: 1,
+                                                                    mb: 0.5,
+                                                                    cursor: action.data?.card?.id ? 'pointer' : 'default',
+                                                                    transition: 'background 0.2s, box-shadow 0.2s',
+                                                                    border: border,
+                                                                    position: 'relative',
+                                                                    '&:hover': action.data?.card?.id && !isAssigned ? {
+                                                                        background: '#e3e8ee',
+                                                                        boxShadow: '0 2px 12px 0 #b6c2d9',
+                                                                    } : {},
+                                                                }}
+                                                                onClick={e => {
+                                                                    if (e.target.closest('.expand-action-btn')) return;
+                                                                    if (action.data?.card?.id) {
+                                                                        setSelectedCardId(action.data.card.id);
+                                                                        setIsCardDetailModalOpen(true);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                    <Box>
+                                                                        <Box sx={{ color: '#d32f2f', fontWeight: 700, fontSize: 14, mb: 0.5 }}>{formattedTime}</Box>
+                                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                                                            {label === 'Assigned' ? (
+                                                                                <Chip label={label} size="small" sx={{ fontWeight: 700, fontSize: 12, bgcolor: '#e0f2f1', color: '#00897b', border: '1.5px solid #00897b' }} />
+                                                                            ) : label === 'commentCard' ? (
+                                                                                <Chip label={label} size="small" sx={{ fontWeight: 700, fontSize: 12, bgcolor: '#e3f2fd', color: '#1976d2', border: '1.5px solid #1976d2' }} />
+                                                                            ) : (
+                                                                                <Chip label={label} color={chipColor} size="small" sx={{ fontWeight: 700, fontSize: 12 }} />
+                                                                            )}
+                                                                            <Typography variant="body2" sx={{ color: '#1976d2', fontWeight: 600, fontSize: 13 }}>
+                                                                                👤 {memberName}
+                                                                            </Typography>
+                                                                        </Box>
+                                                                        {extraInfo}
+                                                                    </Box>
+                                                                    <IconButton
+                                                                        className="expand-action-btn"
+                                                                        size="small"
+                                                                        onClick={e => {
+                                                                            e.stopPropagation();
+                                                                            setExpandedActionId(expandedActionId === action.id ? null : action.id);
+                                                                        }}
+                                                                    >
+                                                                        {expandedActionId === action.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                                                                    </IconButton>
+                                                                </Box>
+                                                                
+                                                                {action.data?.listBefore?.name || action.data?.listAfter?.name ? (
+                                                                    <Box sx={{ mt: 1 }}>
+                                                                        <Typography variant="body2" sx={{ color: '#789262', fontSize: 13 }}>
+                                                                            {action.data?.listBefore?.name ? `Từ: ${action.data.listBefore.name}` : ''}
+                                                                            {action.data?.listAfter?.name ? ` → ${action.data.listAfter.name}` : ''}
+                                                                        </Typography>
+                                                                    </Box>
+                                                                ) : null}
+                                                                
+                                                                {action.data?.text && (
+                                                                    <Box sx={{ mt: 1 }}>
+                                                                        <Typography variant="body2" sx={{ color: '#7e57c2', fontStyle: 'italic', fontSize: 13 }}>
+                                                                            💬 {action.data.text}
+                                                                        </Typography>
+                                                                    </Box>
+                                                                )}
+                                                                
+                                                                <Collapse in={expandedActionId === action.id} timeout="auto" unmountOnExit>
+                                                                    <Box sx={{ mt: 1, bgcolor: '#f3f4f6', borderRadius: 2, p: 1, fontSize: 13, overflowX: 'auto' }}>
+                                                                        <pre style={{ margin: 0, fontSize: 12, color: '#222', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{JSON.stringify(action, null, 2)}</pre>
+                                                                    </Box>
+                                                                </Collapse>
+                                                            </Box>
+                                                        );
+                                                    })}
+                                                </Box>
+                                            </Box>
+                                        </Collapse>
+                                    </Paper>
+                                );
+                            })}
+                        </Box>
+                    </Box>
+                )}
             </Paper>
             <CardDetailModal
                 open={isCardDetailModalOpen}

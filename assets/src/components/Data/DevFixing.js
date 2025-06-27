@@ -36,6 +36,9 @@ export default function DevFixingDashboard() {
         createDate = new Date(dueDate.getTime() - (2 * 24 * 60 * 60 * 1000)); // Subtract 2 days
       }
 
+      // Extract Slack links from description
+      const slackLink = extractSlackLink(card.desc || '');
+
       return {
         id: card.id,
         shortUrl: card.shortUrl,
@@ -43,9 +46,45 @@ export default function DevFixingDashboard() {
         due: card.due,
         app: appLabel ? appLabel.name : 'Không có app',
         idMembers: card.idMembers || [],
-        createDate: createDate
+        createDate: createDate,
+        slackLink: slackLink
       };
     });
+  };
+
+  // Function to extract Slack links from description
+  const extractSlackLink = (description) => {
+    if (!description) return null;
+    
+    console.log('Original Description:', description);
+    
+    // Decode URL first to handle %5D and other encoded characters
+    let decodedDescription = description;
+    try {
+      decodedDescription = decodeURIComponent(description);
+      console.log('Decoded Description:', decodedDescription);
+    } catch (e) {
+      console.log('Failed to decode URL, using original');
+    }
+    
+    // Regex để tìm link Slack với nhiều format khác nhau
+    // Bắt được cả: slack.com, app.slack.com, và các subdomain như avadaio.slack.com
+    // Cũng xử lý cả format markdown [text](url)
+    const slackRegex = /https?:\/\/(?:[a-zA-Z0-9-]+\.)?slack\.com\/[^\s\n\)\]%]+/g;
+    const matches = decodedDescription.match(slackRegex);
+    
+    console.log('Slack regex matches:', matches);
+    
+    if (matches && matches.length > 0) {
+      // Clean up the URL by removing any trailing characters
+      let cleanUrl = matches[0];
+      // Remove trailing characters that might be part of markdown or encoding
+      cleanUrl = cleanUrl.replace(/[\)\]%].*$/, '');
+      console.log('Clean URL:', cleanUrl);
+      return cleanUrl;
+    }
+    
+    return null;
   };
 
   const fetchData = async () => {
@@ -530,6 +569,7 @@ export default function DevFixingDashboard() {
                 </TableCell>
                 <TableCell>Create Date</TableCell>
                 <TableCell>Trễ</TableCell>
+                <TableCell>Slack Link</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -587,6 +627,38 @@ export default function DevFixingDashboard() {
                     <TableCell>{formatDate(card.due)}</TableCell>
                     <TableCell>{formatDate(card.createDate)}</TableCell>
                     <TableCell>{getOverdueDays(card.due) ?? '-'}</TableCell>
+                    <TableCell>{card.slackLink ? (
+                      <a 
+                        href={card.slackLink} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        style={{
+                          color: theme.palette.primary.main,
+                          textDecoration: 'none',
+                          fontWeight: 500,
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                          transition: 'all 0.2s ease',
+                          display: 'inline-block'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.backgroundColor = alpha(theme.palette.primary.main, 0.2);
+                          e.target.style.textDecoration = 'underline';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.backgroundColor = alpha(theme.palette.primary.main, 0.1);
+                          e.target.style.textDecoration = 'none';
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Mở Slack
+                      </a>
+                    ) : (
+                      <span style={{ color: theme.palette.text.secondary, fontStyle: 'italic' }}>
+                        Không có
+                      </span>
+                    )}</TableCell>
                   </TableRow>
                 );
               })}

@@ -65,13 +65,6 @@ export function calculateResolutionTime(actions) {
     const resolutionTime = Number(differenceInMinutes(lastDueCompleteTime, moveToDoingTime));
     const totalResolutionTime = Number(differenceInMinutes(lastDueCompleteTime, createTime));
 
-    console.log(`⏱️ Thời gian từ lúc tạo card đến khi chuyển vào Doing: ${firstActionTime} phút`);
-    console.log(`⏱️ Thời gian từ lúc chuyển vào Doing đến khi hoàn thành: ${resolutionTime} phút`);
-    console.log(`⏱️ Tổng thời gian từ lúc tạo card đến khi hoàn thành: ${totalResolutionTime} phút`);
-    console.log(`📅 Thời gian tạo card: ${createTime}`);
-    console.log(`📅 Thời gian chuyển vào Doing: ${moveToDoingTime}`);
-    console.log(`📅 Thời gian hoàn thành: ${lastDueCompleteTime}`);
-
     return {
         resolutionTime: totalResolutionTime,
         TSResolutionTime: resolutionTime,
