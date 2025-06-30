@@ -22,6 +22,7 @@ import dayjs from 'dayjs';
 import { getBoardActionsByMemberAndDate } from '../api/trelloApi';
 import { getCurrentUser } from '../api/usersApi';
 import { calculateResolutionTime } from '../utils/resolutionTime';
+import CardDetailModal from './CardDetailModal';
 
 const CheckoutShift = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -33,6 +34,9 @@ const CheckoutShift = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [cardResolutionDetails, setCardResolutionDetails] = useState([]);
   const [averageResolutionTime, setAverageResolutionTime] = useState(0);
+  const [selectedActionType, setSelectedActionType] = useState(null);
+  const [selectedCardId, setSelectedCardId] = useState(null);
+  const [isCardDetailModalOpen, setIsCardDetailModalOpen] = useState(false);
 
   // Định nghĩa các ca trực
   const shifts = [
@@ -134,18 +138,19 @@ const CheckoutShift = () => {
       return;
     }
 
-    // 1. Card đã complete
+    // 1. Card đã complete bởi current user
     const completedCardIds = new Set();
     actions.forEach(action => {
       if (
         action.type === 'updateCard' &&
         action.data?.card?.dueComplete === true &&
-        action.data?.card?.id
+        action.data?.card?.id &&
+        action.idMemberCreator === currentUser?.trelloId // Chỉ tính card mà current user complete
       ) {
         completedCardIds.add(action.data.card.id);
       }
     });
-    console.log('completedCardIds', completedCardIds.size, completedCardIds);
+    console.log('completedCardIds by current user', completedCardIds.size, completedCardIds);
 
     const cardDetails = [];
     let totalResolutionTime = 0;
@@ -247,6 +252,51 @@ const CheckoutShift = () => {
   };
 
   const actionCounts = getActionCounts();
+
+  // Get filtered actions based on selected action type
+  const getFilteredActions = () => {
+    if (!selectedActionType || !actions.length || !currentUser?.trelloId) {
+      return [];
+    }
+
+    // Filter actions for only the current user
+    const userActions = actions.filter(action => {
+      // For addMemberToCard, only count if currentUser is the member being added
+      if (action.type === 'addMemberToCard') {
+        return action.data?.idMember === currentUser?.trelloId;
+      }
+      // For other actions, only count if currentUser is the creator
+      return action.idMemberCreator === currentUser?.trelloId;
+    });
+
+    // Filter by action type
+    return userActions.filter(action => {
+      switch (selectedActionType) {
+        case 'updateCard':
+          return action.type === 'updateCard';
+        case 'commentCard':
+          return action.type === 'commentCard';
+        case 'addMemberToCard':
+          return action.type === 'addMemberToCard' && action.data?.idMember === currentUser?.trelloId;
+        case 'removeMemberFromCard':
+          return action.type === 'removeMemberFromCard' && action.data?.idMember === currentUser?.trelloId && action.idMemberCreator === currentUser?.trelloId;
+        case 'completeCard':
+          return action.type === 'updateCard' && action.data?.card?.dueComplete === true;
+        case 'moveToDone':
+          return action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('done');
+        case 'moveToDoing':
+          return action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('doing');
+        case 'moveToWaitingToFix':
+          return action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('waiting to fix');
+        case 'moveToFixDoneFromDev':
+          return action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('fix done from dev');
+        case 'moveToUpdateWorkflowOrWaitingAccess':
+          return action.type === 'updateCard' && action.data?.listAfter?.name && (action.data.listAfter.name.toLowerCase().includes('update workflow required') || action.data.listAfter.name.toLowerCase().includes('waiting for access'));
+        default:
+          return false;
+      }
+    });
+  };
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -488,16 +538,30 @@ const CheckoutShift = () => {
               
               return (
                 <Grid item xs={12} sm={6} md={3} lg={2} key={key}>
-                  <Paper sx={{
-                    p: 2.5,
-                    borderRadius: 2.5,
-                    height: 190,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                    border: '1px solid #f1f5f9',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                  }}>
+                  <Paper 
+                    sx={{
+                      p: 2.5,
+                      borderRadius: 2.5,
+                      height: 190,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                      border: '1px solid #f1f5f9',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      ...(selectedActionType === key && {
+                        border: '2px solid #1976d2',
+                        boxShadow: '0 4px 12px rgba(25, 118, 210, 0.15)',
+                        transform: 'translateY(-2px)'
+                      }),
+                      '&:hover': {
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        transform: 'translateY(-2px)'
+                      }
+                    }}
+                    onClick={() => setSelectedActionType(selectedActionType === key ? null : key)}
+                  >
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                       {/* Icon box */}
                       <Box sx={{
@@ -547,8 +611,190 @@ const CheckoutShift = () => {
         )}
       </Box>
 
-      {/* Card Resolution Details */}
-      {cardResolutionDetails.length > 0 && (
+      {/* Action Details */}
+      {selectedActionType && getFilteredActions().length > 0 && (
+        <Box sx={{ mt: 4 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              {getActionLabel(selectedActionType)} Details ({getFilteredActions().length} actions)
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setSelectedActionType(null)}
+              sx={{ fontWeight: 600 }}
+            >
+              Close
+            </Button>
+          </Box>
+          <Grid container spacing={2}>
+            {getFilteredActions().map((action, index) => (
+              <Grid item xs={12} md={6} lg={4} key={`${action.id}-${index}`}>
+                <Paper sx={{
+                  p: 2.5,
+                  borderRadius: 2.5,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                  border: '1px solid #f1f5f9',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    transform: 'translateY(-2px)',
+                    borderColor: '#1976d2'
+                  }
+                }}
+                onClick={() => {
+                  if (action.data?.card?.id) {
+                    setSelectedCardId(action.data.card.id);
+                    setIsCardDetailModalOpen(true);
+                  }
+                }}
+                >
+                  <Box>
+                    <Typography 
+                      variant="subtitle1" 
+                      sx={{ 
+                        fontWeight: 600, 
+                        mb: 1,
+                        color: '#1e293b',
+                        lineHeight: 1.4
+                      }}
+                    >
+                      {action.data?.card?.name || `Card ${action.data?.card?.id?.slice(-8) || 'Unknown'}`}
+                    </Typography>
+                    
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        p: 1,
+                        background: '#f8fafc',
+                        borderRadius: 1
+                      }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: '50%',
+                            background: '#e3e9f7',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 12
+                          }}>
+                            🕐
+                          </Box>
+                          <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
+                            Time
+                          </Typography>
+                        </Box>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#3b82f6' }}>
+                          {dayjs(action.date).format('HH:mm DD/MM')}
+                        </Typography>
+                      </Box>
+                      
+                      {action.data?.listBefore && action.data?.listAfter && (
+                        <Box sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center',
+                          p: 1,
+                          background: '#f8fafc',
+                          borderRadius: 1
+                        }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: '50%',
+                              background: '#fff7e3',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 12
+                            }}>
+                              ➡️
+                            </Box>
+                            <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
+                              Move
+                            </Typography>
+                          </Box>
+                          <Typography variant="body2" sx={{ fontWeight: 700, color: '#f59e0b' }}>
+                            {action.data.listBefore.name} → {action.data.listAfter.name}
+                          </Typography>
+                        </Box>
+                      )}
+                      
+                      {action.data?.text && (
+                        <Box sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'flex-start',
+                          p: 1,
+                          background: '#f8fafc',
+                          borderRadius: 1
+                        }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: '50%',
+                              background: '#e3f7e3',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 12
+                            }}>
+                              💬
+                            </Box>
+                            <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
+                              Comment
+                            </Typography>
+                          </Box>
+                          <Typography variant="body2" sx={{ fontWeight: 500, color: '#059669', maxWidth: '60%', textAlign: 'right' }}>
+                            {action.data.text.length > 50 ? `${action.data.text.substring(0, 50)}...` : action.data.text}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </Box>
+                  
+                  <Box sx={{ 
+                    mt: 2, 
+                    pt: 2, 
+                    borderTop: '1px solid #e2e8f0',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <Chip 
+                      label={getActionLabel(selectedActionType).toUpperCase()} 
+                      size="small" 
+                      sx={{ 
+                        background: getActionMeta(selectedActionType).chipBg, 
+                        color: getActionMeta(selectedActionType).chipColor,
+                        fontWeight: 600,
+                        fontSize: 11
+                      }} 
+                    />
+                    <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 500 }}>
+                      ID: {action.id?.slice(-8) || 'Unknown'}
+                    </Typography>
+                  </Box>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      )}
+
+      {/* Card Resolution Details - only show when no action type is selected */}
+      {!selectedActionType && cardResolutionDetails.length > 0 && (
         <Box sx={{ mt: 4 }}>
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
             Card Resolution Details ({cardResolutionDetails.length} cards)
@@ -699,6 +945,16 @@ const CheckoutShift = () => {
           </Grid>
         </Box>
       )}
+
+      {/* Card Detail Modal */}
+      <CardDetailModal
+        open={isCardDetailModalOpen}
+        onClose={() => {
+          setIsCardDetailModalOpen(false);
+          setSelectedCardId(null);
+        }}
+        cardId={selectedCardId}
+      />
     </Box>
   );
 };
