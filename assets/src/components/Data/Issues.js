@@ -192,6 +192,24 @@ const Issues = () => {
       .sort((a, b) => a.date.localeCompare(b.date));
   };
 
+  // Hàm lấy dữ liệu Issues theo App
+  const getIssuesByAppData = () => {
+    const appMap = {};
+    filteredCards.forEach(card => {
+      const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+      if (appLabels.length === 0) {
+        appMap['No App'] = (appMap['No App'] || 0) + 1;
+      } else {
+        appLabels.forEach(l => {
+          appMap[l.name] = (appMap[l.name] || 0) + 1;
+        });
+      }
+    });
+    return Object.entries(appMap)
+      .map(([app, count]) => ({ app, count }))
+      .sort((a, b) => b.count - a.count); // Sort by count descending
+  };
+
   const handleRowClick = (card) => {
     setSelectedCardId(card.id);
     setIsModalOpen(true);
@@ -773,6 +791,20 @@ const Issues = () => {
                 <RechartsTooltip />
                 <Legend />
               </PieChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Paper elevation={0} sx={{ p: 3, borderRadius: 2, height: 340 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>Issues by App</Typography>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={getIssuesByAppData()} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="app" interval={0} angle={-20} textAnchor="end" height={60} />
+                <YAxis allowDecimals={false} />
+                <RechartsTooltip />
+                <Bar dataKey="count" fill="#1976d2" name="Issues" radius={[4, 4, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           </Paper>
         </Grid>
