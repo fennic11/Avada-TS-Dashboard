@@ -777,9 +777,14 @@ const ActionsDetail = () => {
                                                 <IconButton size="small" sx={{ color: '#1976d2' }}>
                                                     {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                                                 </IconButton>
-                                                <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 700 }}>
-                                                    🃏 {cardData.cardName}
-                                                </Typography>
+                                                <Box>
+                                                    <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 700 }}>
+                                                        🃏 {cardData.cardName}
+                                                    </Typography>
+                                                    <Typography variant="caption" sx={{ color: '#666', fontSize: 12 }}>
+                                                        Latest action: {dayjs(cardActions[cardActions.length - 1]?.date).tz('Asia/Ho_Chi_Minh').format('HH:mm:ss DD/MM/YYYY')}
+                                                    </Typography>
+                                                </Box>
                                                 <Chip 
                                                     label={`${cardActions.length} actions`} 
                                                     size="small" 

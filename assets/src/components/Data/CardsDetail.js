@@ -3,6 +3,7 @@ import { Box, Typography, Grid, TextField, Paper, FormControl, InputLabel, Selec
 import dayjs from 'dayjs';
 import members from '../../data/members.json';
 import lists from '../../data/listsId.json';
+import appData from '../../data/app.json';
 import { getCardsByBoardForPerformanceTS } from '../../api/trelloApi';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { calculateResolutionTime } from '../../utils/resolutionTime';
@@ -49,6 +50,7 @@ const CardsDetail = () => {
     const [selectedCardDetail, setSelectedCardDetail] = useState(null);
     const [isCardDetailModalOpen, setIsCardDetailModalOpen] = useState(false);
     const [selectedShiftFilter, setSelectedShiftFilter] = useState('');
+    const [selectedApp, setSelectedApp] = useState('');
 
     // Filter TS and TS-lead members
     const tsMembers = members.filter(member => 
@@ -64,7 +66,7 @@ const CardsDetail = () => {
 
     // Get count of cards by list ID
     const getCardCountByList = (listId) => {
-        return filteredCards.filter(card => card.idList === listId).length;
+        return filteredByApp.filter(card => card.idList === listId).length;
     };
 
     // Status list IDs
@@ -192,17 +194,25 @@ const CardsDetail = () => {
         ? getSelfRemovedCards(selectedRemovalTS, filteredByShift)
         : filteredByShift;
 
+    // Filter by app if selected
+    const filteredByApp = selectedApp
+        ? filteredCards.filter(card => {
+            const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+            return appLabels.some(label => label.name === selectedApp);
+        })
+        : filteredCards;
+
     // Pie chart data: number of cards per TS (from filteredCards)
     const pieData = tsMembers
         .map(ts => {
-            const count = filteredCards.filter(card => Array.isArray(card.idMembers) && card.idMembers.includes(ts.id)).length;
+            const count = filteredByApp.filter(card => Array.isArray(card.idMembers) && card.idMembers.includes(ts.id)).length;
             return { name: ts.fullName, value: count };
         })
         .filter(d => d.value > 0);
 
     // Bar chart data: number of cards per 4-hour shift (from filteredCards)
     const shiftMap = Object.fromEntries(shiftLabels.map(label => [label, 0]));
-    filteredCards.forEach(card => {
+    filteredByApp.forEach(card => {
         if (Array.isArray(card.actions)) {
             const createAction = card.actions.find(a => a.type === 'createCard');
             if (createAction && createAction.date) {
@@ -213,13 +223,65 @@ const CardsDetail = () => {
     });
     const barData = shiftLabels.map(label => ({ shift: label, count: shiftMap[label] }));
 
+    // Hàm lấy dữ liệu Issues theo App cho TS1
+    const getIssuesByAppTS1Data = () => {
+        const ts1Apps = appData.filter(app => app.group_ts === 'TS1');
+        const appMap = {};
+        
+        // Khởi tạo tất cả app TS1 với count = 0
+        ts1Apps.forEach(app => {
+            appMap[app.app_name] = 0;
+        });
+        
+        // Đếm cards cho từng app
+        filteredByApp.forEach(card => {
+            const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+            appLabels.forEach(label => {
+                const app = appData.find(a => a.label_trello === label.name);
+                if (app && app.group_ts === 'TS1') {
+                    appMap[app.app_name] = (appMap[app.app_name] || 0) + 1;
+                }
+            });
+        });
+        
+        return Object.entries(appMap)
+            .map(([app, count]) => ({ app, count }))
+            .sort((a, b) => b.count - a.count);
+    };
+
+    // Hàm lấy dữ liệu Issues theo App cho TS2
+    const getIssuesByAppTS2Data = () => {
+        const ts2Apps = appData.filter(app => app.group_ts === 'TS2');
+        const appMap = {};
+        
+        // Khởi tạo tất cả app TS2 với count = 0
+        ts2Apps.forEach(app => {
+            appMap[app.app_name] = 0;
+        });
+        
+        // Đếm cards cho từng app
+        filteredByApp.forEach(card => {
+            const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+            appLabels.forEach(label => {
+                const app = appData.find(a => a.label_trello === label.name);
+                if (app && app.group_ts === 'TS2') {
+                    appMap[app.app_name] = (appMap[app.app_name] || 0) + 1;
+                }
+            });
+        });
+        
+        return Object.entries(appMap)
+            .map(([app, count]) => ({ app, count }))
+            .sort((a, b) => b.count - a.count);
+    };
+
     const pieColors = [
         '#1976d2', '#42a5f5', '#66bb6a', '#ffa726', '#d32f2f', '#7e57c2', '#26a69a', '#fbc02d', '#8d6e63', '#ec407a',
         '#ab47bc', '#26c6da', '#9ccc65', '#ff7043', '#5c6bc0', '#cfd8dc', '#789262', '#bdbdbd', '#ffb300', '#8e24aa'
     ];
 
     // Sort cards by create date (oldest first)
-    const sortedCards = [...filteredCards].sort((a, b) => {
+    const sortedCards = [...filteredByApp].sort((a, b) => {
         const getCreateDate = card => {
             if (Array.isArray(card.actions)) {
                 const createAction = card.actions.find(act => act.type === 'createCard');
@@ -416,9 +478,70 @@ const CardsDetail = () => {
                                 </Select>
                             </FormControl>
                         </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <FormControl fullWidth size="small" sx={{
+                                background: 'white',
+                                borderRadius: 2,
+                                '& .MuiOutlinedInput-root': {
+                                    fontSize: 16,
+                                    fontWeight: 500,
+                                    background: 'white',
+                                    borderRadius: 2,
+                                    '& fieldset': { borderColor: '#e3e8ee' },
+                                    '&:hover fieldset': { borderColor: '#1976d2' },
+                                    '&.Mui-focused fieldset': { borderColor: '#1976d2', borderWidth: 2 }
+                                },
+                                '& .MuiInputLabel-root': {
+                                    color: '#1976d2',
+                                    fontWeight: 600,
+                                    fontSize: 15,
+                                    '&.Mui-focused': { color: '#1565c0' }
+                                }
+                            }}>
+                                <InputLabel>App</InputLabel>
+                                <Select
+                                    value={selectedApp}
+                                    onChange={e => setSelectedApp(e.target.value)}
+                                    label="App"
+                                    MenuProps={{
+                                        PaperProps: {
+                                            sx: {
+                                                borderRadius: 2,
+                                                boxShadow: '0 4px 24px 0 #b6c2d933',
+                                                mt: 1
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <MenuItem value="">
+                                        <em>All</em>
+                                    </MenuItem>
+                                    {appData.map(app => (
+                                        <MenuItem key={app.label_trello} value={app.label_trello} sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 2,
+                                            py: 1.2,
+                                            px: 1.5,
+                                            borderRadius: 2,
+                                            fontWeight: 500,
+                                            backgroundColor: selectedApp === app.label_trello ? '#e3f2fd' : 'inherit',
+                                            '&:hover': {
+                                                backgroundColor: '#e3e8ee'
+                                            }
+                                        }}>
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                                <Typography sx={{ fontWeight: 700, fontSize: 15, color: '#1976d2', lineHeight: 1 }}>{app.app_name}</Typography>
+                                                <Typography sx={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>{app.group_ts}</Typography>
+                                            </Box>
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Grid>
                     </Grid>
                     {/* Active filter chips */}
-                    {(selectedTS || selectedShift || selectedList) && (
+                    {(selectedTS || selectedShift || selectedList || selectedApp) && (
                         <Box sx={{
                             mt: 3,
                             display: 'flex',
@@ -466,6 +589,24 @@ const CardsDetail = () => {
                                 <Chip
                                     label={`Status: ${getListName(selectedList)}`}
                                     onDelete={() => setSelectedList('')}
+                                    color="primary"
+                                    size="small"
+                                    sx={{ 
+                                        fontWeight: 600, 
+                                        fontSize: 14,
+                                        '& .MuiChip-deleteIcon': {
+                                            color: 'white',
+                                            '&:hover': {
+                                                color: '#e3e8ee'
+                                            }
+                                        }
+                                    }}
+                                />
+                            )}
+                            {selectedApp && (
+                                <Chip
+                                    label={`App: ${appData.find(a => a.label_trello === selectedApp)?.app_name || selectedApp}`}
+                                    onDelete={() => setSelectedApp('')}
                                     color="primary"
                                     size="small"
                                     sx={{ 
@@ -539,7 +680,7 @@ const CardsDetail = () => {
                                     }
                                 }}>
                                     <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 700, mb: 1 }}>Total Cards</Typography>
-                                    <Typography variant="h4" sx={{ color: '#1976d2', fontWeight: 800 }}>{filteredCards.length}</Typography>
+                                    <Typography variant="h4" sx={{ color: '#1976d2', fontWeight: 800 }}>{filteredByApp.length}</Typography>
                                 </Paper>
                             </Box>
 
@@ -683,6 +824,97 @@ const CardsDetail = () => {
                             </Paper>
                         </Box>
 
+                        {/* Issues by App Charts */}
+                        <Box sx={{ 
+                            display: 'flex', 
+                            flexDirection: { xs: 'column', lg: 'row' }, 
+                            gap: 4, 
+                            maxWidth: 1400,
+                            margin: '0 auto',
+                            width: '100%',
+                            mb: 4
+                        }}>
+                            {/* TS1 Apps Chart */}
+                            <Paper elevation={0} sx={{ 
+                                p: 3, 
+                                borderRadius: 2, 
+                                background: 'white', 
+                                boxShadow: '0 1px 4px 0 #e0e7ef', 
+                                flex: 1,
+                                minWidth: 0
+                            }}>
+                                <Typography variant="h6" sx={{ 
+                                    fontWeight: 700, 
+                                    mb: 3, 
+                                    color: '#1976d2',
+                                    borderBottom: '2px solid #e3e8ee',
+                                    pb: 2
+                                }}>
+                                    Issues by App - TS1 ({getIssuesByAppTS1Data().reduce((sum, item) => sum + item.count, 0)} total)
+                                </Typography>
+                                <ResponsiveContainer width="100%" height={320}>
+                                    <BarChart 
+                                        data={getIssuesByAppTS1Data()} 
+                                        margin={{ top: 16, right: 16, left: 0, bottom: 16 }}
+                                        layout="horizontal"
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis 
+                                            dataKey="app" 
+                                            interval={0} 
+                                            angle={-20} 
+                                            textAnchor="end" 
+                                            height={80}
+                                            tick={{ fontSize: 12 }}
+                                        />
+                                        <YAxis allowDecimals={false} />
+                                        <RechartsTooltip />
+                                        <Bar dataKey="count" fill="#1976d2" name="Issues" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </Paper>
+
+                            {/* TS2 Apps Chart */}
+                            <Paper elevation={0} sx={{ 
+                                p: 3, 
+                                borderRadius: 2, 
+                                background: 'white', 
+                                boxShadow: '0 1px 4px 0 #e0e7ef', 
+                                flex: 1,
+                                minWidth: 0
+                            }}>
+                                <Typography variant="h6" sx={{ 
+                                    fontWeight: 700, 
+                                    mb: 3, 
+                                    color: '#1976d2',
+                                    borderBottom: '2px solid #e3e8ee',
+                                    pb: 2
+                                }}>
+                                    Issues by App - TS2 ({getIssuesByAppTS2Data().reduce((sum, item) => sum + item.count, 0)} total)
+                                </Typography>
+                                <ResponsiveContainer width="100%" height={320}>
+                                    <BarChart 
+                                        data={getIssuesByAppTS2Data()} 
+                                        margin={{ top: 16, right: 16, left: 0, bottom: 16 }}
+                                        layout="horizontal"
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis 
+                                            dataKey="app" 
+                                            interval={0} 
+                                            angle={-20} 
+                                            textAnchor="end" 
+                                            height={80}
+                                            tick={{ fontSize: 12 }}
+                                        />
+                                        <YAxis allowDecimals={false} />
+                                        <RechartsTooltip />
+                                        <Bar dataKey="count" fill="#ff9800" name="Issues" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </Paper>
+                        </Box>
+
                         {/* Self Removal Chart */}
                         <Paper elevation={0} sx={{ 
                             p: 3, 
@@ -764,320 +996,6 @@ const CardsDetail = () => {
                             </ResponsiveContainer>
                         </Paper>
 
-                        {/* Hiển thị timeline actions của từng member TS (chia box thành 2 phần rõ ràng: 1/3 AVG, 2/3 timeline) */}
-                        <Box sx={{ mt: 6 }}>
-                            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1976d2' }}>
-                                Timeline Actions của từng thành viên TS
-                            </Typography>
-                            {/* Filter mini chọn ca trực */}
-                            <Paper elevation={1} sx={{ p: 2, mb: 3, borderRadius: 2, boxShadow: '0 2px 8px 0 #e0e7ef', display: 'inline-block' }}>
-                                <Stack direction="row" spacing={2} alignItems="center" justifyContent="center">
-                                    <Typography sx={{ fontWeight: 700, color: '#1976d2', fontSize: 15 }}>Lọc action theo ca trực:</Typography>
-                                    <FormControl size="small" sx={{ minWidth: 140 }}>
-                                        <InputLabel>Ca trực</InputLabel>
-                                        <Select
-                                            value={selectedShiftFilter}
-                                            label="Ca trực"
-                                            onChange={e => setSelectedShiftFilter(e.target.value)}
-                                            MenuProps={{
-                                                PaperProps: {
-                                                    sx: {
-                                                        borderRadius: 2,
-                                                        boxShadow: '0 4px 24px 0 #b6c2d933',
-                                                        mt: 1
-                                                    }
-                                                }
-                                            }}
-                                        >
-                                            <MenuItem value=""><em>Tất cả</em></MenuItem>
-                                            {shiftLabels.map(label => (
-                                                <MenuItem key={label} value={label}>{label}</MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
-                                    <Autocomplete
-                                        multiple
-                                        size="small"
-                                        options={allActionTypes}
-                                        value={actionTypeFilter}
-                                        onChange={(_, v) => setActionTypeFilter(v)}
-                                        renderInput={params => <TextField {...params} label="Loại action" placeholder="Chọn loại" sx={{ minWidth: 180 }} />}
-                                        sx={{ minWidth: 180 }}
-                                    />
-                                    <Button
-                                        variant={markCompleteFilter ? "contained" : "outlined"}
-                                        color="success"
-                                        size="small"
-                                        onClick={() => setMarkCompleteFilter(!markCompleteFilter)}
-                                        sx={{ 
-                                            fontWeight: 700, 
-                                            borderRadius: 2, 
-                                            minWidth: 80, 
-                                            boxShadow: markCompleteFilter ? '0 2px 8px 0 #b6c2d933' : 'none',
-                                            borderColor: '#43a047',
-                                            color: markCompleteFilter ? 'white' : '#43a047',
-                                            '&:hover': {
-                                                borderColor: '#388e3c',
-                                                backgroundColor: markCompleteFilter ? '#388e3c' : 'rgba(67, 160, 71, 0.04)'
-                                            }
-                                        }}
-                                    >
-                                        Mark Complete
-                                    </Button>
-                                    <Button
-                                        variant="contained"
-                                        color="secondary"
-                                        size="small"
-                                        sx={{ fontWeight: 700, borderRadius: 2, minWidth: 80, boxShadow: '0 2px 8px 0 #b6c2d933' }}
-                                        onClick={() => { 
-                                            setSelectedShiftFilter('');
-                                            setActionTypeFilter([]); 
-                                            setMarkCompleteFilter(false);
-                                        }}
-                                    >
-                                        Clear
-                                    </Button>
-                                </Stack>
-                            </Paper>
-                            <Grid container spacing={3}>
-                                {tsMembers.map(member => {
-                                    const memberActions = allCardActions.filter(action =>
-                                        action.idMemberCreator === member.id ||
-                                        (action.type === 'addMemberToCard' && action.member?.id === member.id) ||
-                                        (action.type === 'removeMemberFromCard' && action.member?.id === member.id)
-                                    );
-                                    if (memberActions.length === 0) return null;
-                                    // Tổng hợp số lượng từng loại action
-                                    const actionTypeCount = memberActions.reduce((acc, action) => {
-                                        acc[action.type] = (acc[action.type] || 0) + 1;
-                                        return acc;
-                                    }, {});
-                                    // Lọc action theo filter giờ
-                                    const hourRange = getHourRange();
-                                    const filteredActions = memberActions.filter(action => {
-                                        if (!action.date) return false;
-                                        const hour = dayjs(action.date).hour();
-                                        const minute = dayjs(action.date).minute();
-                                        const actionMinutes = hour * 60 + minute;
-                                        const [startH, startM] = hourRange.start.split(':').map(Number);
-                                        const [endH, endM] = hourRange.end.split(':').map(Number);
-                                        const startMinutes = startH * 60 + startM;
-                                        const endMinutes = endH * 60 + endM;
-                                        const inTime = actionMinutes >= startMinutes && actionMinutes <= endMinutes;
-                                        const inType = actionTypeFilter.length === 0 || actionTypeFilter.includes(action.type);
-                                        const isMarkComplete = action.type === 'updateCard' && action.data?.card?.dueComplete === true;
-                                        const inMarkComplete = !markCompleteFilter || isMarkComplete;
-                                        return inTime && inType && inMarkComplete;
-                                    });
-                                    if (filteredActions.length === 0) return null;
-                                    // Tính AVG resolution time (phút) chỉ với các card có action trong filteredActions
-                                    const filteredCardIds = Array.from(new Set(filteredActions.map(a => a.cardId)));
-                                    const memberCards = filteredCards.filter(card => Array.isArray(card.idMembers) && card.idMembers.includes(member.id) && filteredCardIds.includes(card.id));
-                                    const memberResolutionTimes = memberCards
-                                        .filter(card => card.dueComplete && resolutionTimes[card.id])
-                                        .map(card => resolutionTimes[card.id].resolutionTime);
-                                    const avgResolution = memberResolutionTimes.length > 0
-                                        ? Math.round(memberResolutionTimes.reduce((a, b) => a + b, 0) / memberResolutionTimes.length)
-                                        : null;
-                                    // Giờ action đầu tiên và cuối cùng
-                                    const firstAction = filteredActions[0];
-                                    const lastAction = filteredActions[filteredActions.length - 1];
-                                    // Các chỉ số theo filter thời gian
-                                    const assignCount = filteredActions.filter(a => a.type === 'addMemberToCard' && a.member?.id === member.id).length;
-                                    const leftCount = filteredActions.filter(
-                                        a => a.type === 'removeMemberFromCard' && a.member?.id === member.id && a.idMemberCreator === member.id
-                                    ).length;
-                                    const moveToDevPendingCount = filteredActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.id === STATUS_LISTS.DEV_PENDING).length;
-                                    const moveToWaitingPermissionCount = filteredActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.id === STATUS_LISTS.WAITING_PERMISSION).length;
-                                    const moveToDoneCount = filteredActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.id === STATUS_LISTS.TS_DONE).length;
-                                    const moveToDevDoneCount = filteredActions.filter(a =>
-                                        a.type === 'updateCard' &&
-                                        a.data?.listAfter?.id === STATUS_LISTS.DEV_DONE &&
-                                        a.idMemberCreator === member.id
-                                    ).length;
-                                    const markDueCompleteCount = filteredActions.filter(a => a.type === 'updateCard' && a.data?.card?.dueComplete === true).length;
-                                    return (
-                                        <Grid item xs={12} key={member.id}>
-                                            <Paper sx={{ p: 2.5, borderRadius: 3, boxShadow: 2, mb: 2, minHeight: 120 }}>
-                                                <Grid container spacing={2} alignItems="flex-start">
-                                                    {/* Phần 1/3: Thông số AVG */}
-                                                    <Grid item xs={12} md={4}>
-                                                        <Box sx={{
-                                                            background: 'linear-gradient(135deg, #e3e8ee 0%, #f8fafc 100%)',
-                                                            borderRadius: 2,
-                                                            p: 2,
-                                                            mb: { xs: 2, md: 0 },
-                                                            minHeight: 120,
-                                                            display: 'flex', flexDirection: 'column', gap: 1.5,
-                                                            alignItems: 'flex-start',
-                                                            boxShadow: '0 1px 4px 0 #e0e7ef',
-                                                            border: '1.5px solid #e3e8ee',
-                                                            height: '100%'
-                                                        }}>
-                                                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                                                                <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 700 }}>
-                                                                    👤 {member.fullName} ({memberActions.length} actions)
-                                                                </Typography>
-                                                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                                                    {Object.entries(actionTypeCount).map(([type, count]) => (
-                                                                        <Box key={type} sx={{ px: 1.2, py: 0.3, borderRadius: 2, background: '#e3e8ee', color: '#1976d2', fontWeight: 700, fontSize: 13 }}>
-                                                                            {type}: {count}
-                                                                        </Box>
-                                                                    ))}
-                                                                </Box>
-                                                            </Box>
-                                                            <Box sx={{ fontSize: 14, color: '#64748b', fontWeight: 600 }}>
-                                                                AVG Resolution: {avgResolution !== null ? `${Math.floor(avgResolution / 60)}h ${avgResolution % 60}m` : '-'}
-                                                            </Box>
-                                                            <Box sx={{ fontSize: 14, color: '#1976d2', fontWeight: 600 }}>
-                                                                First action: {firstAction?.date ? dayjs(firstAction.date).format('HH:mm DD/MM') : '-'}
-                                                            </Box>
-                                                            <Box sx={{ fontSize: 14, color: '#d32f2f', fontWeight: 600 }}>
-                                                                Last action: {lastAction?.date ? dayjs(lastAction.date).format('HH:mm DD/MM') : '-'}
-                                                            </Box>
-                                                            <Box sx={{ fontSize: 14, color: '#388e3c', fontWeight: 600, mt: 1 }}>
-                                                                Được assign vào card: <b>{assignCount}</b> lần
-                                                            </Box>
-                                                            <Box sx={{ fontSize: 14, color: '#ef4444', fontWeight: 600 }}>
-                                                                Rời card: <b>{leftCount}</b> lần
-                                                            </Box>
-                                                            <Box sx={{ fontSize: 14, color: '#1976d2', fontWeight: 600 }}>
-                                                                Kéo sang Waiting to fix (from dev): <b>{moveToDevPendingCount}</b> lần
-                                                            </Box>
-                                                            <Box sx={{ fontSize: 14, color: '#7e57c2', fontWeight: 600 }}>
-                                                                Kéo sang Update workflow required or Waiting for access: <b>{moveToWaitingPermissionCount}</b> lần
-                                                            </Box>
-                                                            <Box sx={{ fontSize: 14, color: '#43a047', fontWeight: 600 }}>
-                                                                Kéo Done: <b>{moveToDoneCount}</b> lần
-                                                            </Box>
-                                                            <Box sx={{ fontSize: 14, color: '#ff9800', fontWeight: 600 }}>
-                                                                Kéo sang Fix done from dev: <b>{moveToDevDoneCount}</b> lần
-                                                            </Box>
-                                                            <Box sx={{ fontSize: 14, color: '#388e3c', fontWeight: 600 }}>
-                                                                Mark due date complete: <b>{markDueCompleteCount}</b> lần
-                                                            </Box>
-                                                        </Box>
-                                                    </Grid>
-                                                    {/* Phần 2/3: Timeline actions */}
-                                                    <Grid item xs={12} md={8}>
-                                                        <Box sx={{ maxHeight: 340, overflowY: 'auto', pr: 1 }}>
-                                                            {filteredActions.map((action, idx) => {
-                                                                // Logic phân loại action
-                                                                let label = action.type;
-                                                                let labelColor = '#1976d2';
-                                                                let bg = '#f8fafc';
-                                                                let border = '1.5px solid #e3e8ee';
-                                                                let extraInfo = null;
-                                                                // Join card (tự add mình)
-                                                                if (action.type === 'addMemberToCard' && action.member?.id === member.id) {
-                                                                    if (action.idMemberCreator === member.id) {
-                                                                        label = 'Join card';
-                                                                        labelColor = '#7e57c2';
-                                                                        bg = 'rgba(126,87,194,0.13)';
-                                                                        border = '2px solid #7e57c2';
-                                                                    } else {
-                                                                        label = 'Được thêm vào card';
-                                                                        labelColor = '#1976d2';
-                                                                        bg = 'rgba(33, 150, 243, 0.10)';
-                                                                        border = '2px solid #1976d2';
-                                                                        extraInfo = (
-                                                                            <Box sx={{ fontSize: 13, color: '#1565c0', fontWeight: 600 }}>
-                                                                                {action.member && action.member.fullName && action.idMemberCreator && action.idMemberCreator !== member.id
-                                                                                    ? `Được thêm bởi: ${(() => {
-                                                                                        // Tìm tên người add
-                                                                                        const adder = tsMembers.find(m => m.id === action.idMemberCreator);
-                                                                                        return adder ? adder.fullName : action.idMemberCreator;
-                                                                                      })()}`
-                                                                                    : ''}
-                                                                            </Box>
-                                                                        );
-                                                                    }
-                                                                }
-                                                                // Left card (tự xóa mình)
-                                                                else if (action.type === 'removeMemberFromCard' && action.member?.id === member.id && action.idMemberCreator === member.id) {
-                                                                    label = 'Left card';
-                                                                    labelColor = '#ef4444';
-                                                                    bg = 'rgba(239,68,68,0.13)';
-                                                                    border = '2px solid #ef4444';
-                                                                }
-                                                                // Mark complete
-                                                                else if (action.type === 'updateCard' && action.data?.card?.dueComplete === true) {
-                                                                    label = 'Mark complete due date';
-                                                                    labelColor = '#388e3c';
-                                                                    bg = 'rgba(34,197,94,0.13)';
-                                                                    border = '2px solid #43a047';
-                                                                }
-                                                                // Các trường hợp khác giữ nguyên
-                                                                return (
-                                                                    <Box key={idx} sx={{
-                                                                        display: 'flex', flexDirection: 'column', gap: 0.5, mb: 1.5, p: 1.2, borderRadius: 2,
-                                                                        background: bg,
-                                                                        border: border,
-                                                                        maxWidth: '100%',
-                                                                        minWidth: 0,
-                                                                        width: '100%',
-                                                                        boxSizing: 'border-box',
-                                                                        cursor: 'pointer',
-                                                                        transition: 'box-shadow 0.15s',
-                                                                        '&:hover': { boxShadow: '0 2px 12px 0 #b6c2d9', background: '#e3e8ee' }
-                                                                    }}
-                                                                        onClick={() => { setSelectedCardDetail({ id: action.cardId }); setIsCardDetailModalOpen(true); }}
-                                                                    >
-                                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-                                                                            <Box sx={{
-                                                                                fontSize: 13,
-                                                                                fontWeight: 700,
-                                                                                color: '#ef4444',
-                                                                                background: 'rgba(239,68,68,0.10)',
-                                                                                borderRadius: '8px',
-                                                                                px: 1.2,
-                                                                                py: 0.3,
-                                                                                mr: 1,
-                                                                                letterSpacing: 0.5,
-                                                                                boxShadow: '0 1px 4px 0 #e0e7ef',
-                                                                                display: 'inline-block',
-                                                                                minWidth: 90,
-                                                                                textAlign: 'center'
-                                                                            }}>{action.date ? dayjs(action.date).format('HH:mm DD/MM') : '-'}</Box>
-                                                                            <Box sx={{ fontSize: 13, fontWeight: 700, minWidth: 90, color: labelColor }}>{label}</Box>
-                                                                            <Box sx={{ fontSize: 13, color: '#222', fontWeight: 600, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 320 }}>{action.cardName}</Box>
-                                                                        </Box>
-                                                                        {extraInfo}
-                                                                        <Box sx={{ fontSize: 12, color: '#bdbdbd', fontWeight: 500 }}>ID: {action.id}</Box>
-                                                                        {action.data?.text && (
-                                                                            <Box sx={{ fontSize: 13, color: '#7e57c2', fontStyle: 'italic', whiteSpace: 'pre-line', wordBreak: 'break-all', maxWidth: 800 }}>{action.data.text}</Box>
-                                                                        )}
-                                                                        {(action.data?.listBefore || action.data?.listAfter) && (
-                                                                            <Box sx={{ fontSize: 13, color: '#789262' }}>{action.data?.listBefore?.name ? `Từ: ${action.data.listBefore.name}` : ''}{action.data?.listAfter?.name ? ` → ${action.data.listAfter.name}` : ''}</Box>
-                                                                        )}
-                                                                        {action.member && !(
-                                                                            (action.type === 'addMemberToCard' && action.member?.id === member.id) ||
-                                                                            (action.type === 'removeMemberFromCard' && action.member?.id === member.id && action.idMemberCreator === member.id)
-                                                                        ) && (
-                                                                            <Box sx={{ fontSize: 13, color: '#ff9800' }}>Thành viên bị ảnh hưởng: {action.member.fullName || action.member.id}</Box>
-                                                                        )}
-                                                                        {/* Hiển thị các thay đổi data khác nếu có */}
-                                                                        {action.data && Object.keys(action.data).length > 0 && (
-                                                                            <Box sx={{ fontSize: 12, color: '#607d8b', mt: 0.5, wordBreak: 'break-all', maxWidth: 800 }}>
-                                                                                <b>Data:</b> {Object.entries(action.data).map(([k, v]) => {
-                                                                                    if (['text', 'listBefore', 'listAfter', 'card'].includes(k)) return null;
-                                                                                    if (typeof v === 'object') return null;
-                                                                                    return `${k}: ${v}`;
-                                                                                }).filter(Boolean).join(' | ')}
-                                                                            </Box>
-                                                                        )}
-                                                                    </Box>
-                                                                );
-                                                            })}
-                                                        </Box>
-                                                    </Grid>
-                                                </Grid>
-                                            </Paper>
-                                        </Grid>
-                                    );
-                                })}
-                            </Grid>
-                        </Box>
                         {/* Card Grid Section - Hiển thị dưới bảng */}
                         <Box sx={{ mt: 5 }}>
                             <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1976d2' }}>

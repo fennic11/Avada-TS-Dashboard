@@ -121,7 +121,7 @@ export async function getListsByBoardId() {
 export async function getActionsByCard(cardId) {
     try {
         const { key, token } = getCredentials();
-        const resp = await fetch(`${API_URL}/cards/${cardId}/actions?filter=all&key=${key}&token=${token}`, {
+        const resp = await fetch(`${API_URL}/cards/${cardId}/actions?filter=all&key=${key}&token=${token}&limit=100`, {
             headers: {
                 Accept: "application/json"
             }
@@ -752,7 +752,7 @@ export async function getCardsByBoardForPerformanceTS(since, before) {
             url += `&before=${before}`; // ISO-formatted date or Mongo ID
         }
         // Add additional useful fields
-        url += '&fields=id,name,idList,idMembers,labels,dueComplete&actions=createCard,removeMemberFromCard,updateCard,addMemberToCard';
+        url += '&fields=id,name,idList,idMembers,labels,dueComplete&actions=createCard,removeMemberFromCard';
         const resp = await fetch(url, {
             headers: {
                 Accept: "application/json"

@@ -80,60 +80,12 @@
     "name": "Speedup Old"
   },
   {
-    "id": "66271114639d3bbfd4f976db",
-    "name": "New Issues"
-  },
-  {
-    "id": "650bb04296503982ea484e98",
-    "name": "New Issues (SLA: 2d)"
-  },
-  {
-    "id": "67ab163be4c92b116a8a4582",
-    "name": "New List"
-  },
-  {
     "id": "638d769884c52b05235a231c",
     "name": "Pending (SLA: 2 days)"
   },
   {
     "id": "656fc5727fde491fb022eefc",
     "name": "Refund"
-  },
-  {
-    "id": "63c7b1dc1130ec0097bca68d",
-    "name": "Investigating"
-  },
-  {
-    "id": "64f97f3d08d563ffb754c0a3",
-    "name": "Speed Up Pro"
-  },
-  {
-    "id": "64f97d2080b654c50e6871ba",
-    "name": "Speed up Free"
-  },
-  {
-    "id": "638d77cd4440ee0132e6fe4b",
-    "name": "Need Help"
-  },
-  {
-    "id": "646a3f42d07339e142433265",
-    "name": "Help Provided"
-  },
-  {
-    "id": "638d769884c52b05235a231d",
-    "name": "In Review"
-  },
-  {
-    "id": "63c7b4bff268aa00dcc2d9d0",
-    "name": "Review Speed up"
-  },
-  {
-    "id": "64f6afae34e81107a3631488",
-    "name": "Review"
-  },
-  {
-    "id": "63bd2fb9ddc9ec00a7070b35",
-    "name": "Review"
   },
   {
     "id": "638d769884c52b05235a231e",
@@ -218,10 +170,6 @@
   {
     "id": "63ef280384fefc0154d45ea0",
     "name": "Pending On Solution"
-  },
-  {
-    "id": "6627184ebf7a0202295b4fee",
-    "name": "New Issues"
   },
   {
     "id": "65424c29072f12dc1a83d321",

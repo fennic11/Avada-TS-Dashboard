@@ -169,6 +169,7 @@ const CheckoutShift = () => {
             totalTime: Math.round(resolution.resolutionTime * 100) / 100,
             firstActionTime: Math.round(resolution.firstActionTime * 100) / 100
           });
+
         }
       });
     }
@@ -186,17 +187,17 @@ const CheckoutShift = () => {
   const getActionCounts = () => {
     if (!actions.length) return {};
     const actionCounts = {
-      updateCard: 0,
-      commentCard: 0,
+      resolutionTime: 0,
       addMemberToCard: 0,
-      removeMemberFromCard: 0,
       completeCard: 0,
       moveToDone: 0,
+      removeMemberFromCard: 0,
+      updateCard: 0,
+      commentCard: 0,
       moveToDoing: 0,
       moveToWaitingToFix: 0,
       moveToFixDoneFromDev: 0,
       moveToUpdateWorkflowOrWaitingAccess: 0,
-      resolutionTime: 0
     };
     
     // Filter actions for only the current user as member being added
@@ -273,6 +274,7 @@ const CheckoutShift = () => {
   }
   function getActionLabel(type) {
     switch (type) {
+      case 'resolutionTime': return 'Avg Resolution Time';
       case 'updateCard': return 'Update Card';
       case 'commentCard': return 'Comment Card';
       case 'addMemberToCard': return 'Assigned';
@@ -283,13 +285,14 @@ const CheckoutShift = () => {
       case 'moveToWaitingToFix': return 'Move Card to Waiting to fix';
       case 'moveToFixDoneFromDev': return 'Move Card to Fix done from dev';
       case 'moveToUpdateWorkflowOrWaitingAccess': return 'Move to Update workflow/Waiting for access';
-      case 'resolutionTime': return 'Avg Resolution Time';
       default: return type;
     }
   }
 
   function getActionMeta(type) {
     switch (type) {
+      case 'resolutionTime':
+        return { icon: '⏱️', chipLabel: 'TIME', chipBg: '#fce4ec', chipColor: '#c2185b', bgColor: '#fce4ec', color: '#c2185b' };
       case 'updateCard':
         return { icon: '📝', chipLabel: 'UPDATE', chipBg: '#e3f0ff', chipColor: '#1976d2', bgColor: '#e3f0ff', color: '#1976d2' };
       case 'commentCard':
@@ -312,8 +315,6 @@ const CheckoutShift = () => {
         return { icon: '⚙️', chipLabel: 'PERMISSION', chipBg: '#fff3e0', chipColor: '#f57c00', bgColor: '#fff3e0', color: '#f57c00' };
       case 'assigned':
         return { icon: '📌', chipLabel: 'TAG', chipBg: '#e3e9f7', chipColor: '#1976d2', bgColor: '#e3e9f7', color: '#1976d2' };
-      case 'resolutionTime':
-        return { icon: '⏱️', chipLabel: 'TIME', chipBg: '#fce4ec', chipColor: '#c2185b', bgColor: '#fce4ec', color: '#c2185b' };
       default:
         return { icon: '📄', chipLabel: 'OTHER', chipBg: '#f3f4f6', chipColor: '#64748b', bgColor: '#f3f4f6', color: '#64748b' };
     }
