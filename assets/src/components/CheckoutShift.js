@@ -46,7 +46,10 @@ const CheckoutShift = () => {
     { id: 'shift4', name: 'Ca 4 (12:00 - 16:00)', startHour: 12, endHour: 16 },
     { id: 'shift5.1', name: 'Ca 5.1 (16:00 - 18:00)', startHour: 16, endHour: 18 },
     { id: 'shift5.2', name: 'Ca 5.2 (18:00 - 20:00)', startHour: 18, endHour: 20 },
-    { id: 'shift6', name: 'Ca 6 (20:00 - 0:00)', startHour: 20, endHour: 0 }
+    { id: 'shift6', name: 'Ca 6 (20:00 - 0:00)', startHour: 20, endHour: 0 },
+    { id: 'shift5', name: 'Ca 5 (16:00 - 20:00)', startHour: 16, endHour: 20 },
+    { id: 'shift4+5.1', name: 'Ca 4 + 5.1 (12:00 - 18:00)', startHour: 12, endHour: 18 },
+    { id: 'shift5.2+6', name: 'Ca 5.2 + 6 (18:00 - 0:00)', startHour: 18, endHour: 0 }
   ];
 
   // Xác định ca trực mặc định dựa trên giờ hiện tại
@@ -57,7 +60,8 @@ const CheckoutShift = () => {
     if (hour >= 12 && hour < 16) return 'shift4';
     if (hour >= 16 && hour < 18) return 'shift5.1';
     if (hour >= 18 && hour < 20) return 'shift5.2';
-    return 'shift6';
+    if (hour >= 20 && hour < 24) return 'shift6';
+    return 'shift1';
   };
 
   useEffect(() => {
@@ -107,7 +111,8 @@ const CheckoutShift = () => {
       if (shift.endHour === 0) {
         endDate = selectedDate.add(1, 'day').hour(shift.endHour).minute(0).second(0).millisecond(0);
       } else {
-        endDate = selectedDate.hour(shift.endHour).minute(0).second(0).millisecond(0);
+        const endMinute = shift.endMinute || 0;
+        endDate = selectedDate.hour(shift.endHour).minute(endMinute).second(0).millisecond(0);
       }
       // Điều chỉnh since sớm hơn 10 phút, before muộn hơn 30 phút
       const since = startDate.subtract(10, 'minute').toISOString();
