@@ -56,13 +56,11 @@ export default function DevFixingDashboard() {
   const extractSlackLink = (description) => {
     if (!description) return null;
     
-    console.log('Original Description:', description);
-    
     // Decode URL first to handle %5D and other encoded characters
     let decodedDescription = description;
     try {
       decodedDescription = decodeURIComponent(description);
-      console.log('Decoded Description:', decodedDescription);
+
     } catch (e) {
       console.log('Failed to decode URL, using original');
     }
@@ -73,14 +71,12 @@ export default function DevFixingDashboard() {
     const slackRegex = /https?:\/\/(?:[a-zA-Z0-9-]+\.)?slack\.com\/[^\s\n\)\]%]+/g;
     const matches = decodedDescription.match(slackRegex);
     
-    console.log('Slack regex matches:', matches);
     
     if (matches && matches.length > 0) {
       // Clean up the URL by removing any trailing characters
       let cleanUrl = matches[0];
       // Remove trailing characters that might be part of markdown or encoding
       cleanUrl = cleanUrl.replace(/[\)\]%].*$/, '');
-      console.log('Clean URL:', cleanUrl);
       return cleanUrl;
     }
     

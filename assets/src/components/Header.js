@@ -193,7 +193,6 @@ function ResponsiveAppBar({ sidebarOpen = true, onToggleSidebar, drawerWidth = 2
   const handleNotificationClick = async (cardId, notificationId, isUnread) => {
     if (isUnread) {
       try {
-        console.log(notificationId);
         const updatedNotification = await updateNotificationStatus(notificationId, true);
         if (updatedNotification) {
           setNotifications(prevNotifications => 

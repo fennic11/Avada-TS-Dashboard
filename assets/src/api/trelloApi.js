@@ -28,7 +28,6 @@ export async function getCardsByList(listId) {
             throw new Error(`Failed to fetch cards for list ${listId}: ${resp.statusText}`);
         }
         const cards = await resp.json();
-        console.log(cards[cards.length - 1]);
         return cards;
     } catch (error) {
         console.error(`Error getting cards for list ${listId}:`, error);
@@ -50,7 +49,6 @@ export async function getDevFixingCards(listId) {
             throw new Error(`Failed to fetch cards for list ${listId}: ${resp.statusText}`);
         }
         const cards = await resp.json();
-        console.log(cards[0]);
         return cards;
     } catch (error) {
         console.error(`Error getting cards for list ${listId}:`, error);
@@ -76,8 +74,6 @@ export async function getCardsByListandMember(listId, idMember) {
         const memberCards = allCards.filter(card => 
             card.idMembers && card.idMembers.includes(idMember)
         );
-        
-        console.log(`Found ${memberCards.length} cards for member ${idMember} in list ${listId}`);
         return memberCards;
     } catch (error) {
         console.error(`Error getting cards for list ${listId}:`, error);
@@ -165,7 +161,6 @@ export async function getCreateCardAction(cardId) {
 export async function removeMemberByID(cardId, idMember) {
     try {
         const { key, token } = getCredentials();
-        console.log(`Removing member ${idMember} from card ${cardId}...`);
 
         const resp = await fetch(`${API_URL}/cards/${cardId}/idMembers/${idMember}?key=${key}&token=${token}`, {
             method: "DELETE",
@@ -188,7 +183,6 @@ export async function removeMemberByID(cardId, idMember) {
 export async function removeLabelByID(cardId, idLabel) {
     try {
         const { key, token } = getCredentials();
-        console.log(`Removing label ${idLabel} from card ${cardId}...`);
 
         const resp = await fetch(`${API_URL}/cards/${cardId}/idLabels/${idLabel}?key=${key}&token=${token}`, {
             method: "DELETE",
@@ -277,7 +271,6 @@ export async function moveCardToList(cardId, newListId) {
         }
 
         const data = await response.json();
-        console.log('Card đã được chuyển thành công:', data);
         return data;
     } catch (error) {
         console.error('Lỗi khi chuyển card:', error.message);
@@ -302,7 +295,6 @@ export async function addCommentToCard(cardId, text) {
         }
 
         const data = await response.json();
-        console.log('Complete Comment:', data);
         return data;
     } catch (error) {
         console.error('Error:', error.message);
@@ -324,7 +316,6 @@ export async function getCardsByBoardAndMember(idMember) {
         }
 
         const cards = await resp.json();
-        console.log(`Found ${cards.length} cards for member ${idMember}`);
         return cards;
     } catch (error) {
         console.error(`Error getting cards for member ${idMember}:`, error);
@@ -387,7 +378,6 @@ export async function addAttachmentToCard(cardId, file) {
         }
 
         const data = await response.json();
-        console.log('Attachment uploaded successfully:', data);
         return data;
     } catch (error) {
         console.error('Error uploading attachment:', error);
@@ -563,7 +553,6 @@ export async function getMemberNotifications() {
         }
 
         const notifications = await resp.json();
-        console.log(notifications);
         return notifications;
     } catch (error) {
         console.error('Error fetching member notifications:', error);
@@ -680,7 +669,6 @@ export async function getCreateCardByCard(cardId) {
 
 export async function getCardsByBoardWithDateFilter(since, before, enableGetActions=false) {
     try {
-        console.log(since, before);
         const { key, token } = getCredentials();
         let url = `${API_URL}/boards/${BOARD_ID}/cards?key=${key}&token=${token}`;
         
@@ -709,8 +697,6 @@ export async function getCardsByBoardWithDateFilter(since, before, enableGetActi
         }
 
         const cards = await resp.json();
-        console.log(cards[cards.length - 1]);
-        console.log(`Found ${cards.length} cards with date: ''}`);
         return cards;
     } catch (error) {
         console.error('Error getting cards with date filters:', error);
@@ -740,7 +726,6 @@ export async function searchCards(query) {
 
 export async function getCardsByBoardForPerformanceTS(since, before) {
     try {
-        console.log(since, before);
         const { key, token } = getCredentials();
         let url = `${API_URL}/boards/${BOARD_ID}/cards?key=${key}&token=${token}`;
         
@@ -764,8 +749,6 @@ export async function getCardsByBoardForPerformanceTS(since, before) {
         }
 
         const cards = await resp.json();
-        console.log(cards[cards.length - 1]);
-        console.log(`Found ${cards.length} cards with date: ''}`);
         return cards;
     } catch (error) {
         console.error('Error getting cards with date filters:', error);

@@ -3,7 +3,6 @@ import { differenceInMinutes, parseISO, compareAsc } from "date-fns";
 export function calculateResolutionTime(actions) {
     console.log("🔍 Actions:", actions);
     if (!actions || actions.length === 0) {
-        console.log("❌ Không có actions để tính thời gian");
         return null;
     }
 
@@ -34,17 +33,14 @@ export function calculateResolutionTime(actions) {
         );
 
     if (!createCardAction) {
-        console.log("❌ Không tìm thấy action tạo card");
         return null;
     }
 
     if (!moveToDoingAction) {
-        console.log("❌ Không tìm thấy action chuyển vào Doing (Inshift)");
         return null;
     }
 
     if (!lastDueCompleteAction) {
-        console.log("❌ Không tìm thấy action đánh dấu dueComplete");
         return null;
     }
 

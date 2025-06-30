@@ -117,10 +117,7 @@ const CheckoutShift = () => {
       // Điều chỉnh since sớm hơn 10 phút, before muộn hơn 30 phút
       const since = startDate.subtract(10, 'minute').toISOString();
       const before = endDate.add(30, 'minute').toISOString();
-      console.log('since', since);
-      console.log('before', before);
       const actionsData = await getBoardActionsByMemberAndDate(since, before);
-      console.log('Fetched actionsData:', actionsData);
       setActions(actionsData || []);
     } catch (err) {
       setError('Có lỗi khi tải dữ liệu actions');
@@ -155,7 +152,6 @@ const CheckoutShift = () => {
         completedCardIds.add(action.data.card.id);
       }
     });
-    console.log('completedCardIds by current user', completedCardIds.size, completedCardIds);
 
     const cardDetails = [];
     let totalResolutionTime = 0;
@@ -165,7 +161,6 @@ const CheckoutShift = () => {
       completedCardIds.forEach(cardId => {
         const cardActionList = actions.filter(action => action.data?.card?.id === cardId);
         const resolution = calculateResolutionTime(cardActionList);
-        console.log(`Resolution for card ${cardId}:`, resolution);
         if (resolution && resolution.TSResolutionTime) {
           totalResolutionTime += resolution.TSResolutionTime;
           cardCount++;
