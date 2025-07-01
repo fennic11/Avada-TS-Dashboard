@@ -786,7 +786,8 @@
       "initials": "DT",
       "role": "TS",
       "slackId": "U08QY50KNFL",
-      "group": "TS2"
+      "group": "TS2",
+      "kpiName": "DungNT"
     },
     {
       "id": "68185ad36513ead08dc11eb1",
@@ -796,7 +797,8 @@
       "initials": "K",
       "role": "TS",
       "slackId": "U08QY51UNLS",
-      "group": "TS2"
+      "group": "TS2",
+      "kpiName": "HaiMH"
     },
     {
       "id": "68185ad36513ead08dc11eb1",
@@ -815,7 +817,8 @@
       "initials": "T",
       "slackId": "U08QY52JK8A",
       "role": "CS",
-      "group": "CS3"
+      "group": "CS3",
+      "kpiName": "ThuyNNT"
     },
     {
       "id": "682175c3e94e4f5644a59d3d",
@@ -835,7 +838,8 @@
       "initials": "PS",
       "slackId": "U08RFT43NCF",
       "role": "CS",
-      "group": "CS3"
+      "group": "CS3",
+      "kpiName": "SuongPTN"
     },
     {
       "id": "6821929c5ec3709b731a2f80",
@@ -845,7 +849,8 @@
       "initials": "NL",
       "slackId": "U08RFT1KWBZ",
       "role": "CS",
-      "group": "CS3"
+      "group": "CS3",
+      "kpiName": "LinhNT"
     },
     {
       "id": "6821786d902bc9ef54452b24",
@@ -855,7 +860,8 @@
       "initials": "F",
       "slackId": "U08RFT095UP",
       "role": "CS",
-      "group": "CS4"
+      "group": "CS4",
+      "kpiName": "PhươngPM"
     },
     {
       "id": "6833e973f4e0c00790f5a4b5",
@@ -865,7 +871,8 @@
       "initials": "H",
       "slackId": "U08TZM5SF7U",
       "role": "CS",
-      "group": "CS4"
+      "group": "CS4",
+      "kpiName": "LinhVK"
     },
     {
       "id": "682acf5b54697f025107d7d5",
@@ -875,7 +882,8 @@
       "initials": "AP",
       "slackId": "U08TAJ1T9UZ",
       "role": "CS",
-      "group": "CS4"
+      "group": "CS4",
+      "kpiName": "AnhPM"
     },
     {
       "id": "6833e891406b5906e83481cb",
@@ -885,7 +893,8 @@
       "initials": "T",
       "slackId": "U08TZM4551Q",
       "role": "CS",
-      "group": "CS1"
+      "group": "CS1",
+      "kpiName": "TruongND"
     },
     {
       "id": "682acda74abe5baae821b52a",
@@ -905,7 +914,8 @@
       "initials": "NT",
       "slackId": "U08TAHXTV4Z",
       "role": "CS",
-      "group": "CS4"
+      "group": "CS4",
+      "kpiName": "ThuNK"
     },
     {
       "id": "68340cff129299b89d70bae6",
@@ -915,7 +925,8 @@
       "initials": "C",
       "slackId": "U08TZM2LL74",
       "role": "CS",
-      "group": "CS2"
+      "group": "CS2",
+      "kpiName": "ChauHM"
     },
     {
       "id": "683d27cb3fdd69ddec8f8169",

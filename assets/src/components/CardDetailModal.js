@@ -207,7 +207,6 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
             try {
                 // Fetch card details
                 const cardData = await getCardById(cardId);
-                console.log('cardData', cardData);
                 
                 if (cardData) {
                     setCard(cardData);
@@ -300,7 +299,6 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
         
         const member = members.find(m => m.id === newAgentId);
         if (!member) {
-            console.log('Member not found:', newAgentId);
             setSnackbar({
                 open: true,
                 message: 'Member not found',
@@ -309,11 +307,9 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
             return;
         }
 
-        console.log('Found member:', member);
 
         try {
             const result = await addMemberByID(card.id, newAgentId);
-            console.log('Add member result:', result);
             
             const avatarUrl = member.avatarUrl || member.avatarHash ? 
                 `https://trello-members.s3.amazonaws.com/${member.id}/${member.avatarHash}/170.png` : 
@@ -327,7 +323,6 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                 avatarUrl: avatarUrl
             };
 
-            console.log('Adding new member to state:', newMember);
             setAgents(prev => [...prev, newMember]);
             setNewAgentId('');
 
@@ -368,9 +363,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
         }
 
         try {
-            console.log('Adding member:', { selectedId, cardId: card?.id });
             const result = await addMemberByID(card.id, selectedId);
-            console.log('Add member result:', result);
             
             const avatarUrl = member.avatarUrl || member.avatarHash ? 
                 `https://trello-members.s3.amazonaws.com/${member.id}/${member.avatarHash}/170.png` : 
