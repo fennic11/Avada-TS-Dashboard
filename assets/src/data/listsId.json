@@ -56,36 +56,28 @@
     "name": "Trial Shop"
   },
   {
+    "id": "6864a8d5480cdc7b1609f1a3",
+    "name": "Speedup-T6-2025"
+  },
+  {
     "id": "638d769884c52b05235a2317",
     "name": "Backlog"
-  },
-  {
-    "id": "638d769884c52b05235a2318",
-    "name": "Upcoming"
-  },
-  {
-    "id": "638d769884c52b05235a231f",
-    "name": "Template-Copy only, do not edit"
-  },
-  {
-    "id": "642e1e7b40275233631b01d1",
-    "name": "Template-Copy only, do not edit"
-  },
-  {
-    "id": "638d769884c52b05235a231a",
-    "name": "Mockup"
   },
   {
     "id": "6628e4e01ab5a0eae1df5c67",
     "name": "Speedup Old"
   },
   {
-    "id": "638d769884c52b05235a231c",
-    "name": "Pending (SLA: 2 days)"
-  },
-  {
     "id": "656fc5727fde491fb022eefc",
     "name": "Refund"
+  },
+  {
+    "id": "64f97f3d08d563ffb754c0a3",
+    "name": "Speed Up Pro"
+  },
+  {
+    "id": "63c7b4bff268aa00dcc2d9d0",
+    "name": "Review Speed up"
   },
   {
     "id": "638d769884c52b05235a231e",
@@ -108,20 +100,8 @@
     "name": "KPI-T6"
   },
   {
-    "id": "652c9f342049e33f76842b9f",
-    "name": "Done Temporary"
-  },
-  {
     "id": "67e9fcc8af85bd97f5130b35",
     "name": "Done-T4-2025"
-  },
-  {
-    "id": "638d769884c52b05235a2320",
-    "name": "Pending"
-  },
-  {
-    "id": "638d77da2c206503cb73df18",
-    "name": "Cannot Resolve"
   },
   {
     "id": "6556cb8e89b5433f441325f4",
@@ -150,14 +130,6 @@
   {
     "id": "661c94051e7f89fc01c22e67",
     "name": "Done-T4/2024"
-  },
-  {
-    "id": "6425105a875fc9de95e81bd4",
-    "name": "Feature request (manual)"
-  },
-  {
-    "id": "646f136bac545c98fd0799b8",
-    "name": "Feature Request"
   },
   {
     "id": "64a783e3fa5e69dcb894f4cf",
@@ -200,10 +172,6 @@
     "name": "Done-T5-2024"
   },
   {
-    "id": "6646c06ef92dcecfc8df916f",
-    "name": "Cương speed thu viec"
-  },
-  {
     "id": "666fb3c99a5e532e0cd996db",
     "name": "Done-T6-2024"
   },
@@ -224,16 +192,8 @@
     "name": "Done-T10-2024"
   },
   {
-    "id": "66ab3ead4afa398ea70ac212",
-    "name": "Issues level"
-  },
-  {
     "id": "66fa1fd67d574ad857f99c7b",
     "name": "Speed-up-t9-2024"
-  },
-  {
-    "id": "6538e1a7476990599ae7fd09",
-    "name": "Template"
   },
   {
     "id": "66fbaeb9dc2452f4d23f30ae",
@@ -282,10 +242,6 @@
   {
     "id": "66d95e7e51f05268def3a7cb",
     "name": "fixDoneFromDev-t8-2024"
-  },
-  {
-    "id": "674d363260e83e243ae727e3",
-    "name": "Bug-t11-2024"
   },
   {
     "id": "674d3a70d6afaca3dcc085e7",
@@ -348,10 +304,6 @@
     "name": "Done-T6-2025"
   },
   {
-    "id": "654b5e99c80549deb43505d0",
-    "name": "Cannot Speed up"
-  },
-  {
     "id": "65cb73c6808298930c0b7fd1",
     "name": "Done 13/2/2024"
   },
@@ -374,10 +326,6 @@
   {
     "id": "67b297d9788d3e7d985323c7",
     "name": "FixDoneFromDev-T2-2025"
-  },
-  {
-    "id": "6540a50cd8d8d7c0f27e9da6",
-    "name": "Kenny test list"
   },
   {
     "id": "654c57f9550a71bfa9609c6a",

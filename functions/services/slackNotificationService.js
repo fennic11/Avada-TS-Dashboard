@@ -151,20 +151,8 @@ const processCards = async (cards, member) => {
     }
 };
 
-const sendNotificationsToTSMembers = async (date, shiftName) => {
+const sendNotificationsToTSMembers = async (workShift) => {
     try {
-        // Tìm ca trực theo date và shiftName
-        const workShift = await WorkShift.findOne({ 
-            date: date,
-            shiftName: shiftName
-        });
-
-        if (!workShift) {
-            console.log(`No work shift found for date ${date} and shift ${shiftName}`);
-            return null;
-        }
-        
-        console.log('Found work shift:', workShift);
         
         // Lấy cards từ cả 2 list
         const [list1Cards, list2Cards] = await Promise.all([

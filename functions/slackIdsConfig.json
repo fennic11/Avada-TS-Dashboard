@@ -1,0 +1,380 @@
+[
+    {
+      "id": "66bce381e55b8d2d3ccb8135",
+      "fullName": "Abby",
+      "username": "abby_avada",
+      "kpiName": "NganDT",
+      "slackId": "U07GD3PHXKP",
+      "role": "CS",
+      "group": "CS2"
+    },
+    {
+      "id": "664d93558358e7bf9f4a421a",
+      "fullName": "Alyssa",
+      "username": "alyssa_avada",
+      "kpiName": "LyPK",
+      "slackId": "U073WRYK763",
+      "role": "CS",
+      "group": "CS2"
+    },
+    {
+      "id": "66557fb36a637c6c5535b081",
+      "fullName": "Nguyễn Văn Hoài An",
+      "email": "annvh@avadagroup.com",
+      "username": "andrew_avada",
+      "kpiName": "AnNVH",
+      "role": "TS",
+      "slackId": "U07604WT3L0",
+      "group": "TS2"
+    },
+    {
+      "id": "63b3a60ff51ce601421b0dd3",
+      "fullName": "Nguyễn Ngọc Anh",
+      "email": "anivia@avadagroup.com",
+      "username": "anivia_avada",
+      "kpiName": "AnhNN",
+      "role": "TS",
+      "slackId": "U04HAAWA3DJ",
+      "group": "TS1"
+    },
+    {
+      "id": "65239d0b203ebdc55872fb9b",
+      "fullName": "vanct",
+      "username": "audrey_avada",
+      "kpiName": "VanCT",
+      "slackId": "U0605TGBC2H",
+      "role": "CS",
+      "group": "CS2"
+    },
+    {
+      "id": "677b4f8cb6d6d9e17388245b",
+      "fullName": "Brian",
+      "username": "brian_avada",
+      "kpiName": "BangDT",
+      "slackId": "U087C8L4ZMH",
+      "role": "CS",
+      "group": "CS1"
+    },
+    {
+      "id": "65f7bdde58e8e0a6ba703027",
+      "fullName": "Trần Thế Cương",
+      "username": "max_avada",
+      "email": "cuongtt@avadagroup.com",
+      "role": "TS",
+      "kpiName": "CuongTT",
+      "slackId": "U06PW1UQVUM",
+      "group": "TS1"
+    },
+    {
+      "id": "61a886478176518087f3e853",
+      "fullName": "Daisy Vo",
+      "username": "daisy_avada",
+      "email": "daisy@avada.io",
+      "role": "admin",
+      "kpiName": "ThuyVTP",
+      "slackId": "U01NQNRG35F"
+    },
+    {
+      "id": "6254f958985acf5b41a0d3f5",
+      "fullName": "Emily",
+      "username": "emily_avada",
+      "avatarUrl": "https://trello-members.s3.amazonaws.com/6254f958985acf5b41a0d3f5/695d45cdb0812998bb631962afe41696",
+      "initials": "E"
+    },
+    {
+      "id": "6200bad14cad35022a4e4677",
+      "fullName": "Esther",
+      "username": "esther_avada",
+      "email": "anhbl@avada.io",
+      "kpiName": "AnhBL",
+      "slackId": "U02RT6QV57G",
+      "role": "CS"
+    },
+    {
+      "id": "62551dca9448af8ecea5ece8",
+      "fullName": "Hana",
+      "username": "hana_avada",
+      "kpiName": "HangHM",
+      "slackId": "U07GG0A8NDQ",
+      "role": "CS",
+      "group": "CS2"
+    },
+    {
+      "id": "6695f9b8a2b3c9d3421309b4",
+      "fullName": "Jade_avada",
+      "username": "jade_avada",
+      "kpiName": "PhuongNT",
+      "slackId": "U07CGHSHNMB",
+      "role": "CS",
+      "group": "CS2"
+    },
+    {
+      "id": "620244182de1ad0c50185372",
+      "fullName": "Jasmine",
+      "username": "jasmine_avada",
+      "kpiName": "HienNT1",
+      "slackId": "U01N5DULHV4",
+      "role": "CS",
+      "group": "CS2"
+    },
+    {
+      "id": "661f4ae73a0b54e66afd437b",
+      "fullName": "Kevin",
+      "username": "kevin_avada",
+      "kpiName": "KienNA",
+      "slackId": "U06VBAQPKC0",
+      "role": "CS",
+      "group": "CS1"
+    },
+    {
+      "id": "6377be0b552c7102c1b3a923",
+      "fullName": "Liz",
+      "username": "liz_avada",
+      "email": "lyht@avada.io",
+      "kpiName": "LyHT",
+      "slackId": "U02GT4PC6RH",
+      "role": "CS"
+    },
+    {
+      "id": "637af755c32e9d00297e0e14",
+      "fullName": "Trần Khánh Linh",
+      "username": "lydia_avada",
+      "kpiName": "LinhTK",
+      "slackId": "U04C4RE382V",
+      "role": "CS",
+      "group": "CS3"
+    },
+    {
+      "id": "652379ca67556a7b753dd6d3",
+      "fullName": "Nguyễn Thị Hiền",
+      "username": "maison_avada",
+      "email": "hiennt1@avadagroup.com",
+      "role": "TS",
+      "kpiName": "HienNT2",
+      "slackId": "U0608R8FLKC",
+      "group": "TS1"
+    },
+    {
+      "id": "66d7c4e0bee239293b90cc16",
+      "fullName": "Melody",
+      "username": "melody_avada",
+      "kpiName": "DuongPT",
+      "slackId": "U07KCQ08DFH",
+      "role": "CS",
+      "group": "CS1"
+    },
+    {
+      "id": "6641ba4ad264da0e9ba5819c",
+      "fullName": "Nguyễn Hải Vũ",
+      "username": "ricky_avada",
+      "kpiName": "VuNH",
+      "slackId": "U04HQ5GRWEL",
+      "role": "CS",
+      "group": "CS1"
+    },
+    {
+      "id": "672aed3f1918e32f59415867",
+      "fullName": "Nim",
+      "username": "nim_avada",
+      "kpiName": "ChiPL",
+      "slackId": "U07U8JC4563",
+      "role": "CS",
+      "group": "CS1"
+    },
+    {
+      "id": "6308e9353f075502098ff04b",
+      "fullName": "Quang NQ",
+      "username": "fennic_avada",
+      "email": "quangnq@avada.io",
+      "role": "admin",
+      "kpiName": "QuangNQ",
+      "slackId": "U01N91HCC3F"
+    },
+    {
+      "id": "66c2c54cec9c32b23f77c580",
+      "fullName": "Sonny_Avada",
+      "username": "sonny_avada",
+      "kpiName": "HuyTC",
+      "slackId": "U07HTBW4CRX",
+      "role": "CS",
+      "group": "CS2"
+    },
+    {
+      "id": "6577e030dfe18d53f8128566",
+      "fullName": "Lê Phương Thảo",
+      "username": "tiana_avada",
+      "kpiName": "ThaoLP",
+      "slackId": "U069LL5RBA9",
+      "role": "CS",
+      "group": "CS1"
+    },
+    {
+      "id": "66385f83fe51bce2bd707ff6",
+      "fullName": "Trần Thị Bích Phương",
+      "username": "doris_avada",
+      "email": "phuongttb@avadagroup.com",
+      "role": "TS",
+      "kpiName": "PhuongTTB",
+      "slackId": "U071WA0K0UW",
+      "group": "TS2"
+    },
+    {
+      "id": "6296e0963b6dd82348753a8c",
+      "fullName": "Vũ Trọng Nghĩa",
+      "email": "nghiavt@avadagroup.com",
+      "username": "vutrngnghia9",
+      "role": "pm"
+    },
+    {
+      "id": "63b3a589a05c1801101fd5d2",
+      "fullName": "Trần Đức Tùng",
+      "username": "william_avada",
+      "email": "William@avadagroup.com",
+      "role": "TS",
+      "kpiName": "TungTD",
+      "slackId": "U04HAAWL352",
+      "group": "TS2"
+    },
+    {
+      "id": "6683802e7422222239efe885",
+      "fullName": "datpt",
+      "username": "christian_avada",
+      "kpiName": "ĐatPT",
+      "slackId": "U07AJ4NT2KX",
+      "role": "CS",
+      "group": "CS1"
+    },
+    {
+      "id": "64586bc3e4fb5e43136979bf",
+      "email": "dongnv@avadagroup.com",
+      "fullName": "Đông Nguyễn Văn",
+      "username": "dong1207",
+      "role": "dev",
+      "kpiName": "DongNV"
+    },
+    {
+      "id": "65dc1670ae5414d1dd11a26d",
+      "fullName": "Đỗ Minh Quân",
+      "username": "raymond_avada",
+      "email": "quandm@avadagroup.com",
+      "role": "TS",
+      "kpiName": "QuanDM",
+      "slackId": "U06LNG16WG1",
+      "group": "TS1"
+    },
+    {
+      "id": "68185d03b9ba1c56c3ed3de9",
+      "fullName": "Nguyễn Tiến Dũng",
+      "email": "dungnt01@avadagroup.com",
+      "username": "heni_avada",
+      "role": "TS",
+      "slackId": "U08QY50KNFL",
+      "group": "TS2",
+      "kpiName": "DungNT"
+    },
+    {
+      "id": "681857c0ad19d39f0ee0e78e",
+      "fullName": "Ngô Thị Thu Thủy",
+      "username": "tiffany_avada",
+      "slackId": "U08QY52JK8A",
+      "role": "CS",
+      "group": "CS3",
+      "kpiName": "ThuyNNT"
+    },
+    {
+      "id": "682175c3e94e4f5644a59d3d",
+      "fullName": "Skylar",
+      "username": "skylar_avada",
+      "slackId": "U08RFT315T9",
+      "role": "CS",
+      "group": "CS1"
+    },
+    {
+      "id": "68219121e0c5d6cf93205fe4",
+      "fullName": "Phạm Thị Nhật Sương",
+      "username": "susan_avada",
+      "slackId": "U08RFT43NCF",
+      "role": "CS",
+      "group": "CS3",
+      "kpiName": "SuongPTN"
+    },
+    {
+      "id": "6821929c5ec3709b731a2f80",
+      "fullName": "Nguyễn Tuấn Linh",
+      "username": "kyle_avada",
+      "slackId": "U08RFT1KWBZ",
+      "role": "CS",
+      "group": "CS3",
+      "kpiName": "LinhNT"
+    },
+    {
+      "id": "6821786d902bc9ef54452b24",
+      "fullName": "felicity_avada",
+      "username": "felicity_avada",
+      "slackId": "U08RFT095UP",
+      "role": "CS",
+      "group": "CS4",
+      "kpiName": "PhươngPM"
+    },
+    {
+      "id": "6833e973f4e0c00790f5a4b5",
+      "fullName": "Hela",
+      "username": "hela_avada",
+      "slackId": "U08TZM5SF7U",
+      "role": "CS",
+      "group": "CS4",
+      "kpiName": "LinhVK"
+    },
+    {
+      "id": "682acf5b54697f025107d7d5",
+      "fullName": "Avery Pham",
+      "username": "avery_avada",
+      "slackId": "U08TAJ1T9UZ",
+      "role": "CS",
+      "group": "CS4",
+      "kpiName": "AnhPM"
+    },
+    {
+      "id": "6833e891406b5906e83481cb",
+      "fullName": "Tobias",
+      "username": "tobias_avada",
+      "slackId": "U08TZM4551Q",
+      "role": "CS",
+      "group": "CS1",
+      "kpiName": "TruongND"
+    },
+    {
+      "id": "682acda74abe5baae821b52a",
+      "fullName": "hiennt03",
+      "username": "iris_avada",
+      "slackId": "U08T11T6GDA",
+      "role": "CS",
+      "group": "CS4"
+    },
+    {
+      "id": "682ab78028a7ac043be33dca",
+      "fullName": "Nguyễn Kiều Thu",
+      "username": "julie_avada",
+      "slackId": "U08TAHXTV4Z",
+      "role": "CS",
+      "group": "CS4",
+      "kpiName": "ThuNK"
+    },
+    {
+      "id": "68340cff129299b89d70bae6",
+      "fullName": "cody_avada",
+      "username": "cody_avada",
+      "slackId": "U08TZM2LL74",
+      "role": "CS",
+      "group": "CS2",
+      "kpiName": "ChauHM"
+    },
+    {
+      "id": "683d27cb3fdd69ddec8f8169",
+      "fullName": "Ian",
+      "username": "ian_avada",
+      "slackId": "U0906HQUZTJ",
+      "role": "CS",
+      "group": "CS1"
+    }
+  ]
