@@ -3,8 +3,8 @@ const { sendNotificationsToTSMembers } = require('../services/slackNotificationS
 const { getWorkShiftByDateRange } = require('../services/workShiftService');
 
 // Chạy vào 0h, 4h, 8h, 12h, 16h, 18h, 20h mỗi ngày
-// const schedule = '10 17,21,1,5,9,11,13 * * *';
-const schedule = '33 0,4,8,12,16,18,20,15 * * *';
+const schedule = '10 17,21,1,5,9,11,13 * * *';
+// const schedule = '33 0,4,8,12,16,18,20,15 * * *';
 
 const startSlackNotificationCron = () => {
     console.log('Starting Slack notification cron job...');
