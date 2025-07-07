@@ -332,16 +332,19 @@ function ResolutionTimeHeatmap({ cards, field = 'resolutionTime', onCellClick, h
         }
     }
     return (
-        <Paper sx={{
-            p: 3,
-            mb: 4,
-            width: '100vw',
-            position: 'relative',
-            borderRadius: 3,
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            overflowX: 'auto',
-            boxSizing: 'border-box',
-        }}>
+        <Paper
+            sx={{
+                p: 3,
+                mb: 4,
+                width: '100%',
+                maxWidth: '100vw',
+                minWidth: 0,
+                borderRadius: 3,
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                overflowX: 'auto',
+                boxSizing: 'border-box',
+            }}
+        >
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: '#1e293b', textAlign: 'left', fontSize: 22 }}>
                 Resolution Time Heatmap
             </Typography>
