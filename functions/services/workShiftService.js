@@ -51,7 +51,7 @@ const getWorkShiftByDateRange = async (startDate, adjustedHour) => {
             const email = row[6]; // Email column
             
             // Tìm trong slackIdsConfig.json
-            const member = members.find(m => m.kpiName === name);
+            const member = members.find(m => m.email === email);
             
             if (member) {
                 const memberInfo = {
