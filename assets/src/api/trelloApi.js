@@ -682,7 +682,7 @@ export async function getCardsByBoardWithDateFilter(since, before, enableGetActi
 
         // Add member filter if provided
         if (enableGetActions) {
-            url += '&actions=removeMemberFromCard';
+            url += '&actions=removeMemberFromCard,updateCard';
         }
         // Add additional useful fields
         url += '&fields=id,name,idList,idMembers,labels,url,due';
@@ -737,7 +737,7 @@ export async function getCardsByBoardForPerformanceTS(since, before) {
             url += `&before=${before}`; // ISO-formatted date or Mongo ID
         }
         // Add additional useful fields
-        url += '&fields=id,name,idList,idMembers,labels,dueComplete&actions=createCard,addMemberToCard,removeMemberFromCard';
+        url += '&fields=id,name,idList,idMembers,labels,dueComplete&actions=createCard,addMemberToCard,removeMemberFromCard,updateCard';
         const resp = await fetch(url, {
             headers: {
                 Accept: "application/json"

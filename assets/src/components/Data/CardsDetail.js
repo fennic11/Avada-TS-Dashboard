@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Grid, TextField, Paper, FormControl, InputLabel, Select, MenuItem, Chip, Button, Stack, Autocomplete } from '@mui/material';
+import { Box, Typography, Grid, TextField, Paper, FormControl, InputLabel, Select, MenuItem, Chip, Button, Stack, Autocomplete, Tooltip } from '@mui/material';
 import dayjs from 'dayjs';
 import members from '../../data/members.json';
 import lists from '../../data/listsId.json';
@@ -51,6 +51,7 @@ const CardsDetail = () => {
     const [isCardDetailModalOpen, setIsCardDetailModalOpen] = useState(false);
     const [selectedShiftFilter, setSelectedShiftFilter] = useState('');
     const [selectedApp, setSelectedApp] = useState('');
+    const [heatmapFilter, setHeatmapFilter] = useState(null);
 
     // Filter TS and TS-lead members
     const tsMembers = members.filter(member => 
@@ -66,7 +67,7 @@ const CardsDetail = () => {
 
     // Get count of cards by list ID
     const getCardCountByList = (listId) => {
-        return filteredByApp.filter(card => card.idList === listId).length;
+        return filteredByHeatmap.filter(card => card.idList === listId).length;
     };
 
     // Status list IDs
@@ -202,17 +203,46 @@ const CardsDetail = () => {
         })
         : filteredCards;
 
+    // Filter by heatmap hour if selected
+    const filteredByHeatmap = heatmapFilter !== null
+        ? filteredByApp.filter(card => {
+            if (Array.isArray(card.actions) && card.dueComplete) {
+                const completeAction = [...card.actions].reverse().find(action => 
+                    action.type === 'updateCard' && 
+                    action.data?.old?.dueComplete === false &&
+                    action.data?.card?.dueComplete === true && 
+                    action.date
+                );
+                
+                // Fallback: if no old.dueComplete found, look for any updateCard with dueComplete: true
+                const fallbackAction = !completeAction ? [...card.actions].reverse().find(action => 
+                    action.type === 'updateCard' && 
+                    action.data?.card?.dueComplete === true && 
+                    action.date
+                ) : null;
+                
+                const finalAction = completeAction || fallbackAction;
+                
+                if (finalAction && finalAction.date) {
+                    const hour = dayjs(finalAction.date).hour();
+                    return hour === heatmapFilter;
+                }
+            }
+            return false;
+        })
+        : filteredByApp;
+
     // Pie chart data: number of cards per TS (from filteredCards)
     const pieData = tsMembers
         .map(ts => {
-            const count = filteredByApp.filter(card => Array.isArray(card.idMembers) && card.idMembers.includes(ts.id)).length;
+            const count = filteredByHeatmap.filter(card => Array.isArray(card.idMembers) && card.idMembers.includes(ts.id)).length;
             return { name: ts.fullName, value: count };
         })
         .filter(d => d.value > 0);
 
     // Bar chart data: number of cards per 4-hour shift (from filteredCards)
     const shiftMap = Object.fromEntries(shiftLabels.map(label => [label, 0]));
-    filteredByApp.forEach(card => {
+    filteredByHeatmap.forEach(card => {
         if (Array.isArray(card.actions)) {
             const createAction = card.actions.find(a => a.type === 'createCard');
             if (createAction && createAction.date) {
@@ -234,7 +264,7 @@ const CardsDetail = () => {
         });
         
         // Đếm cards cho từng app
-        filteredByApp.forEach(card => {
+        filteredByHeatmap.forEach(card => {
             const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
             appLabels.forEach(label => {
                 const app = appData.find(a => a.label_trello === label.name);
@@ -260,7 +290,7 @@ const CardsDetail = () => {
         });
         
         // Đếm cards cho từng app
-        filteredByApp.forEach(card => {
+        filteredByHeatmap.forEach(card => {
             const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
             appLabels.forEach(label => {
                 const app = appData.find(a => a.label_trello === label.name);
@@ -281,7 +311,7 @@ const CardsDetail = () => {
     ];
 
     // Sort cards by create date (oldest first)
-    const sortedCards = [...filteredByApp].sort((a, b) => {
+    const sortedCards = [...filteredByHeatmap].sort((a, b) => {
         const getCreateDate = card => {
             if (Array.isArray(card.actions)) {
                 const createAction = card.actions.find(act => act.type === 'createCard');
@@ -359,6 +389,218 @@ const CardsDetail = () => {
             return patchedAction;
         });
     });
+
+    // Function to get completed cards heatmap data
+    const getCompletedCardsHeatmap = () => {
+        const heatmap = Array.from({ length: 24 }, () => ({ count: 0, cards: [] }));
+        const cardsToProcess = filteredByApp;
+        cardsToProcess.forEach(card => {
+            if (card.dueComplete) {
+                let completeDate = null;
+                if (Array.isArray(card.actions)) {
+                    const completeAction = [...card.actions].reverse().find(action =>
+                        action.type === 'updateCard' &&
+                        action.data?.card?.dueComplete === true &&
+                        action.date
+                    );
+                    if (completeAction) {
+                        completeDate = completeAction.date;
+                    }
+                }
+                if (!completeDate) {
+                    completeDate = card.dateCompleted || card.due || null;
+                }
+                if (completeDate) {
+                    const hour = dayjs(completeDate).hour();
+                    heatmap[hour].count += 1;
+                    heatmap[hour].cards.push({
+                        id: card.id,
+                        name: card.name,
+                        completedAt: completeDate,
+                        memberNames: Array.isArray(card.idMembers)
+                            ? card.idMembers.map(id => {
+                                const m = tsMembers.find(mem => mem.id === id);
+                                return m ? m.fullName : null;
+                            }).filter(Boolean)
+                            : []
+                    });
+                }
+            }
+        });
+        return heatmap;
+    };
+
+    // Function to get cell color based on count
+    const getHeatmapCellColor = (count) => {
+        if (count === 0) return '#f1f5f9'; // gray-100
+        if (count <= 2) return '#bbf7d0'; // green-200
+        if (count <= 5) return '#86efac'; // green-300
+        if (count <= 10) return '#4ade80'; // green-400
+        if (count <= 15) return '#22c55e'; // green-500
+        if (count <= 20) return '#16a34a'; // green-600
+        return '#15803d'; // green-700
+    };
+
+    // Completed Cards Heatmap Component
+    const CompletedCardsHeatmap = () => {
+        const heatmapData = getCompletedCardsHeatmap();
+        const maxCount = Math.max(...heatmapData.map(h => h.count));
+        const totalCompletedCards = heatmapData.reduce((sum, h) => sum + h.count, 0);
+        
+        return (
+            <Paper elevation={0} sx={{ 
+                p: 3, 
+                borderRadius: 2, 
+                background: 'white', 
+                boxShadow: '0 1px 4px 0 #e0e7ef', 
+                maxWidth: 1400, 
+                margin: '0 auto',
+                width: '100%',
+                mb: 4
+            }}>
+                <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    mb: 3,
+                    borderBottom: '2px solid #e3e8ee',
+                    pb: 2
+                }}>
+                    <Typography variant="h6" sx={{ 
+                        fontWeight: 700, 
+                        color: '#1976d2'
+                    }}>Completed Cards Heatmap - {dayjs(selectedDate).format('DD/MM/YYYY')} ({totalCompletedCards} total)</Typography>
+                    {heatmapFilter && (
+                        <Chip
+                            label={`Filter: ${heatmapFilter}h (${heatmapData[heatmapFilter].count} cards)`}
+                            onDelete={() => setHeatmapFilter(null)}
+                            color="primary"
+                            size="small"
+                            sx={{ 
+                                fontWeight: 600, 
+                                fontSize: 14,
+                                '& .MuiChip-deleteIcon': {
+                                    color: 'white',
+                                    '&:hover': {
+                                        color: '#e3e8ee'
+                                    }
+                                }
+                            }}
+                        />
+                    )}
+                </Box>
+                
+                {/* Color legend */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3, ml: 1 }}>
+                    <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#f1f5f9', border: '1.5px solid #cbd5e1', mr: 1 }} />
+                    <Typography sx={{ fontSize: 15, color: '#334155', mr: 2 }}>0</Typography>
+                    <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#bbf7d0', border: '1.5px solid #cbd5e1', mr: 1 }} />
+                    <Typography sx={{ fontSize: 15, color: '#334155', mr: 2 }}>1-2</Typography>
+                    <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#86efac', border: '1.5px solid #cbd5e1', mr: 1 }} />
+                    <Typography sx={{ fontSize: 15, color: '#334155', mr: 2 }}>3-5</Typography>
+                    <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#4ade80', border: '1.5px solid #cbd5e1', mr: 1 }} />
+                    <Typography sx={{ fontSize: 15, color: '#334155', mr: 2 }}>6-10</Typography>
+                    <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#22c55e', border: '1.5px solid #cbd5e1', mr: 1 }} />
+                    <Typography sx={{ fontSize: 15, color: '#334155', mr: 2 }}>11-15</Typography>
+                    <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#16a34a', border: '1.5px solid #cbd5e1', mr: 1 }} />
+                    <Typography sx={{ fontSize: 15, color: '#334155', mr: 2 }}>16-20</Typography>
+                    <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#15803d', border: '1.5px solid #cbd5e1', mr: 1 }} />
+                    <Typography sx={{ fontSize: 15, color: '#334155' }}>&gt;20</Typography>
+                </Box>
+
+                {/* Heatmap grid */}
+                <Box sx={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(6, 1fr)', 
+                    gap: 2,
+                    maxWidth: 800,
+                    margin: '0 auto',
+                    minHeight: 400 // Add minimum height to ensure visibility
+                }}>
+                    {heatmapData.map((hourData, hour) => (
+                        <Tooltip 
+                            key={hour}
+                            title={
+                                hourData.count > 0 ? (
+                                    <Box>
+                                        <Typography sx={{ fontWeight: 600, mb: 1 }}>
+                                            {hour}h: {hourData.count} completed cards
+                                        </Typography>
+                                        <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
+                                            {hourData.cards.slice(0, 5).map(card => (
+                                                <Box key={card.id} sx={{ fontSize: 12, mb: 0.5 }}>
+                                                    • {card.name}
+                                                    <Typography sx={{ fontSize: 11, color: '#94a3b8', ml: 1 }}>
+                                                        by {card.memberNames.join(', ')}
+                                                    </Typography>
+                                                </Box>
+                                            ))}
+                                            {hourData.cards.length > 5 && (
+                                                <Typography sx={{ fontSize: 12, color: '#64748b' }}>
+                                                    ... and {hourData.cards.length - 5} more
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                    </Box>
+                                ) : `No cards completed at ${hour}h`
+                            }
+                            arrow
+                            slotProps={{ 
+                                tooltip: { 
+                                    sx: { 
+                                        fontSize: 14, 
+                                        px: 2, 
+                                        py: 1,
+                                        maxWidth: 300,
+                                        backgroundColor: 'rgba(0,0,0,0.9)',
+                                        color: 'white'
+                                    } 
+                                } 
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    aspectRatio: '1',
+                                    borderRadius: 2,
+                                    background: getHeatmapCellColor(hourData.count),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: 18,
+                                    fontWeight: 700,
+                                    color: hourData.count > 0 ? '#fff' : '#64748b',
+                                    cursor: hourData.count > 0 ? 'pointer' : 'default',
+                                    border: heatmapFilter === hour ? '3px solid #6366f1' : '1.5px solid #cbd5e1',
+                                    boxShadow: heatmapFilter === hour ? '0 0 0 2px #6366f155' : 'none',
+                                    transition: 'all 0.18s cubic-bezier(.4,2,.6,1)',
+                                    '&:hover': hourData.count > 0 ? {
+                                        border: '3px solid #6366f1',
+                                        boxShadow: '0 2px 8px 0 #6366f133',
+                                        transform: 'scale(1.05)',
+                                        zIndex: 2,
+                                    } : {},
+                                }}
+                                onClick={() => {
+                                    if (hourData.count > 0) {
+                                        setHeatmapFilter(heatmapFilter === hour ? null : hour);
+                                    }
+                                }}
+                            >
+                                <Box sx={{ textAlign: 'center' }}>
+                                    <Typography sx={{ fontSize: 16, fontWeight: 800, lineHeight: 1 }}>
+                                        {hour}h
+                                    </Typography>
+                                    <Typography sx={{ fontSize: 14, fontWeight: 700, lineHeight: 1 }}>
+                                        {hourData.count}
+                                    </Typography>
+                                </Box>
+                            </Box>
+                        </Tooltip>
+                    ))}
+                </Box>
+            </Paper>
+        );
+    };
 
     return (
         <>
@@ -541,7 +783,7 @@ const CardsDetail = () => {
                         </Grid>
                     </Grid>
                     {/* Active filter chips */}
-                    {(selectedTS || selectedShift || selectedList || selectedApp) && (
+                    {(selectedTS || selectedShift || selectedList || selectedApp || heatmapFilter !== null) && (
                         <Box sx={{
                             mt: 3,
                             display: 'flex',
@@ -621,6 +863,24 @@ const CardsDetail = () => {
                                     }}
                                 />
                             )}
+                            {heatmapFilter !== null && (
+                                <Chip
+                                    label={`Completed at ${heatmapFilter}h`}
+                                    onDelete={() => setHeatmapFilter(null)}
+                                    color="secondary"
+                                    size="small"
+                                    sx={{ 
+                                        fontWeight: 600, 
+                                        fontSize: 14,
+                                        '& .MuiChip-deleteIcon': {
+                                            color: 'white',
+                                            '&:hover': {
+                                                color: '#e3e8ee'
+                                            }
+                                        }
+                                    }}
+                                />
+                            )}
                         </Box>
                     )}
                 </Paper>
@@ -664,24 +924,24 @@ const CardsDetail = () => {
                                 justifyContent: 'center',
                                 mb: 1
                             }}>
-                                <Paper elevation={0} sx={{ 
-                                    p: 3, 
-                                    borderRadius: 2, 
-                                    background: 'white', 
-                                    boxShadow: '0 1px 4px 0 #e0e7ef',
-                                    border: '1px solid #1976d2',
-                                    minWidth: 200,
-                                    textAlign: 'center',
-                                    width: 'fit-content',
-                                    transition: 'all 0.2s ease-in-out',
-                                    '&:hover': {
-                                        boxShadow: '0 4px 12px 0 rgba(0,0,0,0.1)',
-                                        transform: 'translateY(-2px)'
-                                    }
-                                }}>
-                                    <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 700, mb: 1 }}>Total Cards</Typography>
-                                    <Typography variant="h4" sx={{ color: '#1976d2', fontWeight: 800 }}>{filteredByApp.length}</Typography>
-                                </Paper>
+                                                            <Paper elevation={0} sx={{ 
+                                p: 3, 
+                                borderRadius: 2, 
+                                background: 'white', 
+                                boxShadow: '0 1px 4px 0 #e0e7ef',
+                                border: '1px solid #1976d2',
+                                minWidth: 200,
+                                textAlign: 'center',
+                                width: 'fit-content',
+                                transition: 'all 0.2s ease-in-out',
+                                '&:hover': {
+                                    boxShadow: '0 4px 12px 0 rgba(0,0,0,0.1)',
+                                    transform: 'translateY(-2px)'
+                                }
+                            }}>
+                                <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 700, mb: 1 }}>Total Cards</Typography>
+                                <Typography variant="h4" sx={{ color: '#1976d2', fontWeight: 800 }}>{filteredByHeatmap.length}</Typography>
+                            </Paper>
                             </Box>
 
                             {/* First Row */}
@@ -996,6 +1256,9 @@ const CardsDetail = () => {
                             </ResponsiveContainer>
                         </Paper>
 
+                        {/* Completed Cards Heatmap */}
+                        <CompletedCardsHeatmap />
+
                         {/* Card Grid Section - Hiển thị dưới bảng */}
                         <Box sx={{ mt: 5 }}>
                             <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1976d2' }}>
@@ -1006,6 +1269,7 @@ const CardsDetail = () => {
                                     let createDate = '';
                                     let moveToDoingDate = '';
                                     let dueCompleteDate = '';
+                                    let completedBy = '';
                                     let resolutionTime = null;
                                     let memberNames = [];
                                     if (Array.isArray(card.actions)) {
@@ -1021,10 +1285,22 @@ const CardsDetail = () => {
                                             moveToDoingDate = dayjs(moveToDoingAction.date).format('HH:mm DD/MM');
                                         }
                                         const dueCompleteAction = [...card.actions].reverse().find(a =>
-                                            a.type === 'updateCard' && a.data?.card?.dueComplete === true && a.date
+                                            a.type === 'updateCard' && 
+                                            a.data?.old?.dueComplete === false &&
+                                            a.data?.card?.dueComplete === true && 
+                                            a.date
                                         );
-                                        if (dueCompleteAction && dueCompleteAction.date) {
-                                            dueCompleteDate = dayjs(dueCompleteAction.date).format('HH:mm DD/MM');
+                                        
+                                        // Fallback: if no old.dueComplete found, look for any updateCard with dueComplete: true
+                                        const fallbackAction = !dueCompleteAction ? [...card.actions].reverse().find(a =>
+                                            a.type === 'updateCard' && a.data?.card?.dueComplete === true && a.date
+                                        ) : null;
+                                        
+                                        const finalAction = dueCompleteAction || fallbackAction;
+                                        
+                                        if (finalAction && finalAction.date) {
+                                            dueCompleteDate = dayjs(finalAction.date).format('HH:mm DD/MM');
+                                            completedBy = finalAction.memberCreator?.fullName || 'Unknown';
                                         }
                                     }
                                     if (card.dueComplete) {
@@ -1094,6 +1370,12 @@ const CardsDetail = () => {
                                                     <Box sx={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Due Complete:</Box>
                                                     <Box sx={{ fontSize: 13, color: '#222', fontWeight: 500 }}>{dueCompleteDate || '-'}</Box>
                                                 </Box>
+                                                {completedBy && (
+                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                                        <Box sx={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Completed by:</Box>
+                                                        <Box sx={{ fontSize: 13, color: '#22c55e', fontWeight: 600 }}>{completedBy}</Box>
+                                                    </Box>
+                                                )}
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
                                                     <Box sx={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Resolution:</Box>
                                                     <Box sx={{
