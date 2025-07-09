@@ -682,7 +682,7 @@ export async function getCardsByBoardWithDateFilter(since, before, enableGetActi
 
         // Add member filter if provided
         if (enableGetActions) {
-            url += '&actions=removeMemberFromCard,updateCard';
+            url += '&actions=updateCard';
         }
         // Add additional useful fields
         url += '&fields=id,name,idList,idMembers,labels,url,due';

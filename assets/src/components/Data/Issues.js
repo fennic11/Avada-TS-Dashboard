@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useTransition } from 'react';
 import {
   Box,
   FormControl,
@@ -11,16 +11,18 @@ import {
   Chip,
   TextField,
   Button,
+  CircularProgress,
+  Fade,
 } from '@mui/material';
-import members from '../../data/members.json';
 import listsId from '../../data/listsId.json';
 import { getCardsByBoardWithDateFilter } from '../../api/trelloApi';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';
 import CardDetailModal from '../CardDetailModal';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import appData from '../../data/app.json';
+import membersData from '../../data/members.json';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -50,19 +52,74 @@ const Issues = () => {
   const [endDate, setEndDate] = useState(() => dayjs().format('YYYY-MM-DD'));
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedShift, setSelectedShift] = useState(null);
+  const [viewMode, setViewMode] = useState('ts'); // 'ts' | 'product'
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
-  // Helper: Map label_trello to group_ts
-  const appLabelToGroup = {};
-  appData.forEach(app => {
-    appLabelToGroup[app.label_trello] = app.group_ts;
-  });
+  // Đảm bảo appData được load
+  useEffect(() => {
+    console.log('Checking appData import:', typeof appData, appData);
+    if (appData && Array.isArray(appData) && appData.length > 0) {
+      console.log('appData successfully loaded:', appData.length, 'items');
+      console.log('First few items:', appData.slice(0, 3));
+      setDataLoaded(true);
+    } else {
+      console.error('appData not loaded properly:', appData);
+      // Fallback: set dataLoaded anyway to prevent infinite loading
+      setDataLoaded(true);
+    }
+  }, []);
 
-  // Helper: Get group_ts for a card
-  const getGroupTSByCard = (card) => {
-    const appLabel = (card.labels || []).find(l => l.name.startsWith('App:'))?.name;
-    if (!appLabel) return 'No App';
-    return appLabelToGroup[appLabel] || 'No App';
-  };
+  // Helper: Map label_trello to group_ts & product_team - sử dụng useMemo để cache
+  const { appLabelToGroup, appLabelToProduct } = useMemo(() => {
+    console.log('Initializing mappings, appData:', appData);
+    
+    const groupMap = {};
+    const productMap = {};
+    
+    try {
+      // Safety check: đảm bảo appData tồn tại và là array
+      if (appData && Array.isArray(appData)) {
+        appData.forEach(app => {
+          if (app && app.label_trello) {
+            groupMap[app.label_trello] = app.group_ts || 'No App';
+            productMap[app.label_trello] = app.product_team || 'No App';
+          }
+        });
+      } else {
+        console.error('appData is not valid:', appData);
+        // Fallback: add some default mappings
+        groupMap['App: SEO'] = 'TS1';
+        productMap['App: SEO'] = 'Falcon';
+      }
+    } catch (error) {
+      console.error('Error initializing mappings:', error);
+    }
+    
+    console.log('appData loaded:', appData?.length, 'items');
+    console.log('groupMap:', groupMap);
+    console.log('productMap:', productMap);
+    
+    return { appLabelToGroup: groupMap, appLabelToProduct: productMap };
+  }, [dataLoaded]); // Thêm dependency dataLoaded
+
+  // Helper: Get group_ts or product_team for a card - sử dụng useCallback
+  const getGroupByCard = useCallback((card) => {
+    try {
+      if (!card || !card.labels) return 'No App';
+      
+      const appLabel = (card.labels || []).find(l => l.name && l.name.startsWith('App:'))?.name;
+      if (!appLabel) return 'No App';
+      
+      const result = viewMode === 'ts' 
+        ? (appLabelToGroup[appLabel] || 'No App') 
+        : (appLabelToProduct[appLabel] || 'No App');      
+      return result;
+    } catch (error) {
+      console.error('Error in getGroupByCard:', error, { card, viewMode });
+      return 'No App';
+    }
+  }, [viewMode, appLabelToGroup, appLabelToProduct]);
 
   // Hàm lấy create date = due - 2 ngày (đã convert về GMT+7)
   const getCreateDate = (card) => {
@@ -89,6 +146,7 @@ const Issues = () => {
     setLoading(true);
     try {
       const cards = await getCardsByBoardWithDateFilter(start, end);
+      console.log('cards', cards[cards.length - 2].actions);
       if (cards) {
         setFilteredCards(cards);
 
@@ -151,9 +209,24 @@ const Issues = () => {
   const statusOptions = Object.values(STATUS_MAP).map(s => s.label);
   const appOptions = Array.from(new Set(allCards.flatMap(card => (card.labels || []).filter(l => l.name.startsWith('App:')).map(l => l.name))));
 
-  // Lấy danh sách app cho từng nhóm
-  const ts1Apps = appData.filter(a => a.group_ts === 'TS1').map(a => a.label_trello);
-  const ts2Apps = appData.filter(a => a.group_ts === 'TS2').map(a => a.label_trello);
+  // Lấy danh sách app cho từng nhóm - sử dụng useMemo để cache
+  const { ts1Apps, ts2Apps, productTeams } = useMemo(() => {
+    if (viewMode === 'ts') {
+      return {
+        ts1Apps: appData.filter(a => a.group_ts === 'TS1').map(a => a.label_trello),
+        ts2Apps: appData.filter(a => a.group_ts === 'TS2').map(a => a.label_trello),
+        productTeams: []
+      };
+    } else {
+      // Lấy tất cả product teams unique từ app.json
+      const teams = [...new Set(appData.map(a => a.product_team))];
+      return {
+        ts1Apps: appData.filter(a => a.product_team === teams[0]).map(a => a.label_trello),
+        ts2Apps: appData.filter(a => a.product_team === teams[1]).map(a => a.label_trello),
+        productTeams: teams
+      };
+    }
+  }, [viewMode]);
 
   // Hàm tính tỉ lệ card có label Bug: level 2
   const getBugLevel2Ratio = () => {
@@ -168,28 +241,59 @@ const Issues = () => {
     return { count: bugLevel2Cards, ratio };
   };
 
-  // Refactor: Issues by App (grouped)
+  // Refactor: Issues by App (grouped) - hỗ trợ cả TS và Product Team
   const getIssuesByAppDataGrouped = () => {
-    const groupMap = { TS1: {}, TS2: {}, 'No App': {} };
-    filteredCards.forEach(card => {
-      const group = getGroupTSByCard(card);
-      const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
-      if (appLabels.length === 0) {
-        groupMap[group]['No App'] = (groupMap[group]['No App'] || 0) + 1;
-      } else {
-        appLabels.forEach(l => {
-          groupMap[group][l.name] = (groupMap[group][l.name] || 0) + 1;
+    if (viewMode === 'ts') {
+      // Logic cũ cho TS Team
+      const groupMap = { TS1: {}, TS2: {}, 'No App': {} };
+      filteredCards.forEach(card => {
+        const group = getGroupByCard(card);
+        const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+        if (appLabels.length === 0) {
+          groupMap[group]['No App'] = (groupMap[group]['No App'] || 0) + 1;
+        } else {
+          appLabels.forEach(l => {
+            groupMap[group][l.name] = (groupMap[group][l.name] || 0) + 1;
+          });
+        }
+      });
+      const allApps = Array.from(new Set(appData.map(a => a.label_trello).concat(['No App'])));
+      return allApps.map(app => ({
+        app,
+        TS1: groupMap.TS1[app] || 0,
+        TS2: groupMap.TS2[app] || 0,
+        'No App': groupMap['No App'][app] || 0
+      }));
+    } else {
+      // Logic mới cho Product Team
+      const groupMap = {};
+      productTeams.forEach(team => {
+        groupMap[team] = {};
+      });
+      groupMap['No App'] = {};
+      
+      filteredCards.forEach(card => {
+        const group = getGroupByCard(card);
+        const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+        if (appLabels.length === 0) {
+          groupMap[group]['No App'] = (groupMap[group]['No App'] || 0) + 1;
+        } else {
+          appLabels.forEach(l => {
+            groupMap[group][l.name] = (groupMap[group][l.name] || 0) + 1;
+          });
+        }
+      });
+      
+      const allApps = Array.from(new Set(appData.map(a => a.label_trello).concat(['No App'])));
+      return allApps.map(app => {
+        const result = { app };
+        productTeams.forEach(team => {
+          result[team] = groupMap[team][app] || 0;
         });
-      }
-    });
-    // Convert to array for recharts
-    const allApps = Array.from(new Set(appData.map(a => a.label_trello).concat(['No App'])));
-    return allApps.map(app => ({
-      app,
-      TS1: groupMap.TS1[app] || 0,
-      TS2: groupMap.TS2[app] || 0,
-      'No App': groupMap['No App'][app] || 0
-    }));
+        result['No App'] = groupMap['No App'][app] || 0;
+        return result;
+      });
+    }
   };
 
   const handleRowClick = (card) => {
@@ -202,7 +306,7 @@ const Issues = () => {
     setSelectedCardId(null);
   };
 
-  // Refactor: Issues by Day (grouped)
+  // Refactor: Issues by Day (grouped) - hỗ trợ cả TS và Product Team
   const getIssuesByDayDataGrouped = () => {
     const dayMap = {};
     filteredCards.forEach(card => {
@@ -210,8 +314,20 @@ const Issues = () => {
         ? dayjs(getCreateDate(card)).tz('Asia/Ho_Chi_Minh').format('YYYY-MM-DD')
         : null;
       if (date) {
-        const group = getGroupTSByCard(card);
-        if (!dayMap[date]) dayMap[date] = { date, TS1: 0, TS2: 0, 'No App': 0 };
+        const group = getGroupByCard(card);
+        if (!dayMap[date]) {
+          dayMap[date] = { date };
+          if (viewMode === 'ts') {
+            dayMap[date].TS1 = 0;
+            dayMap[date].TS2 = 0;
+            dayMap[date]['No App'] = 0;
+          } else {
+            productTeams.forEach(team => {
+              dayMap[date][team] = 0;
+            });
+            dayMap[date]['No App'] = 0;
+          }
+        }
         dayMap[date][group]++;
       }
     });
@@ -232,7 +348,7 @@ const Issues = () => {
     return null;
   };
 
-  // Refactor: Issues by Shift (grouped)
+  // Refactor: Issues by Shift (grouped) - hỗ trợ cả TS và Product Team
   const getIssuesByShiftDataGrouped = () => {
     const shiftLabels = [
       'Ca 1 (0-3h59)', 'Ca 2 (4-7h59)', 'Ca 3 (8-11h59)',
@@ -240,14 +356,25 @@ const Issues = () => {
     ];
     const shiftMap = {};
     shiftLabels.forEach(shift => {
-      shiftMap[shift] = { shift, TS1: 0, TS2: 0, 'No App': 0 };
+      shiftMap[shift] = { shift };
+      if (viewMode === 'ts') {
+        shiftMap[shift].TS1 = 0;
+        shiftMap[shift].TS2 = 0;
+        shiftMap[shift]['No App'] = 0;
+      } else {
+        productTeams.forEach(team => {
+          shiftMap[shift][team] = 0;
+        });
+        shiftMap[shift]['No App'] = 0;
+      }
     });
+    
     filteredCards.forEach(card => {
       if (card.due) {
         const createDate = new Date(card.due);
         createDate.setDate(createDate.getDate() - 2);
         const shift = getShift(createDate.toISOString());
-        const group = getGroupTSByCard(card);
+        const group = getGroupByCard(card);
         if (shift && shiftMap[shift]) shiftMap[shift][group]++;
       }
     });
@@ -276,63 +403,119 @@ const Issues = () => {
     }
   }, [selectedShift]);
 
-  // Refactor: App Stats Table (grouped)
+  // Refactor: App Stats Table (grouped) - hỗ trợ cả TS và Product Team
   const getAppStatsTableDataGrouped = () => {
     const appNames = Array.from(new Set(filteredCards.flatMap(card => (card.labels || []).filter(l => l.name.startsWith('App:')).map(l => l.name))));
     if (filteredCards.some(card => !(card.labels || []).some(l => l.name.startsWith('App:')))) {
       appNames.push('No App');
     }
+    
     const stats = appNames.map(appName => {
       const cardsOfApp = filteredCards.filter(card => {
         const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
         if (appLabels.length === 0) return appName === 'No App';
         return appLabels.some(l => l.name === appName);
       });
-      const issuesCountTS1 = cardsOfApp.filter(card => getGroupTSByCard(card) === 'TS1').length;
-      const issuesCountTS2 = cardsOfApp.filter(card => getGroupTSByCard(card) === 'TS2').length;
-      const bugLevel2CountTS1 = cardsOfApp.filter(card => getGroupTSByCard(card) === 'TS1' && (card.labels || []).some(l => l.name === 'Bug: level 2')).length;
-      const bugLevel2CountTS2 = cardsOfApp.filter(card => getGroupTSByCard(card) === 'TS2' && (card.labels || []).some(l => l.name === 'Bug: level 2')).length;
-      const bugPercentTS1 = issuesCountTS1 > 0 ? ((bugLevel2CountTS1 / issuesCountTS1) * 100).toFixed(1) : '0.0';
-      const bugPercentTS2 = issuesCountTS2 > 0 ? ((bugLevel2CountTS2 / issuesCountTS2) * 100).toFixed(1) : '0.0';
-      return {
-        app: appName,
-        issuesCountTS1,
-        issuesCountTS2,
-        bugPercentTS1,
-        bugPercentTS2,
-        bugLevel2CountTS1,
-        bugLevel2CountTS2
-      };
-    });
-    return stats.sort((a, b) => (b.issuesCountTS1 + b.issuesCountTS2) - (a.issuesCountTS1 + a.issuesCountTS2));
-  };
-
-  // Bug Level 2 by App (grouped)
-  const getBugLevel2ByAppDataGrouped = () => {
-    const groupMap = { TS1: {}, TS2: {}, 'No App': {} };
-    filteredCards.forEach(card => {
-      if (card.labels && card.labels.some(label => label.name === 'Bug: level 2')) {
-        const group = getGroupTSByCard(card);
-        const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
-        if (appLabels.length === 0) {
-          groupMap[group]['No App'] = (groupMap[group]['No App'] || 0) + 1;
-        } else {
-          appLabels.forEach(l => {
-            groupMap[group][l.name] = (groupMap[group][l.name] || 0) + 1;
-          });
-        }
+      
+      if (viewMode === 'ts') {
+        const issuesCountTS1 = cardsOfApp.filter(card => getGroupByCard(card) === 'TS1').length;
+        const issuesCountTS2 = cardsOfApp.filter(card => getGroupByCard(card) === 'TS2').length;
+        const bugLevel2CountTS1 = cardsOfApp.filter(card => getGroupByCard(card) === 'TS1' && (card.labels || []).some(l => l.name === 'Bug: level 2')).length;
+        const bugLevel2CountTS2 = cardsOfApp.filter(card => getGroupByCard(card) === 'TS2' && (card.labels || []).some(l => l.name === 'Bug: level 2')).length;
+        const bugPercentTS1 = issuesCountTS1 > 0 ? ((bugLevel2CountTS1 / issuesCountTS1) * 100).toFixed(1) : '0.0';
+        const bugPercentTS2 = issuesCountTS2 > 0 ? ((bugLevel2CountTS2 / issuesCountTS2) * 100).toFixed(1) : '0.0';
+        return {
+          app: appName,
+          issuesCountTS1,
+          issuesCountTS2,
+          bugPercentTS1,
+          bugPercentTS2,
+          bugLevel2CountTS1,
+          bugLevel2CountTS2
+        };
+      } else {
+        const result = { app: appName };
+        productTeams.forEach(team => {
+          const issuesCount = cardsOfApp.filter(card => getGroupByCard(card) === team).length;
+          const bugLevel2Count = cardsOfApp.filter(card => getGroupByCard(card) === team && (card.labels || []).some(l => l.name === 'Bug: level 2')).length;
+          const bugPercent = issuesCount > 0 ? ((bugLevel2Count / issuesCount) * 100).toFixed(1) : '0.0';
+          result[`issuesCount${team}`] = issuesCount;
+          result[`bugPercent${team}`] = bugPercent;
+          result[`bugLevel2Count${team}`] = bugLevel2Count;
+        });
+        return result;
       }
     });
-    const allApps = Array.from(new Set(appData.map(a => a.label_trello).concat(['No App'])));
-    return allApps.map(app => ({
-      app,
-      TS1: groupMap.TS1[app] || 0,
-      TS2: groupMap.TS2[app] || 0,
-      'No App': groupMap['No App'][app] || 0
-    }));
+    
+    if (viewMode === 'ts') {
+      return stats.sort((a, b) => (b.issuesCountTS1 + b.issuesCountTS2) - (a.issuesCountTS1 + a.issuesCountTS2));
+    } else {
+      return stats.sort((a, b) => {
+        const sumA = productTeams.reduce((sum, team) => sum + (a[`issuesCount${team}`] || 0), 0);
+        const sumB = productTeams.reduce((sum, team) => sum + (b[`issuesCount${team}`] || 0), 0);
+        return sumB - sumA;
+      });
+    }
   };
 
-  // Bug Level 2 by Day (grouped)
+  // Bug Level 2 by App (grouped) - hỗ trợ cả TS và Product Team
+  const getBugLevel2ByAppDataGrouped = () => {
+    if (viewMode === 'ts') {
+      const groupMap = { TS1: {}, TS2: {}, 'No App': {} };
+      filteredCards.forEach(card => {
+        if (card.labels && card.labels.some(label => label.name === 'Bug: level 2')) {
+          const group = getGroupByCard(card);
+          const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+          if (appLabels.length === 0) {
+            groupMap[group]['No App'] = (groupMap[group]['No App'] || 0) + 1;
+          } else {
+            appLabels.forEach(l => {
+              groupMap[group][l.name] = (groupMap[group][l.name] || 0) + 1;
+            });
+          }
+        }
+      });
+      const allApps = Array.from(new Set(appData.map(a => a.label_trello).concat(['No App'])));
+      return allApps.map(app => ({
+        app,
+        TS1: groupMap.TS1[app] || 0,
+        TS2: groupMap.TS2[app] || 0,
+        'No App': groupMap['No App'][app] || 0
+      }));
+    } else {
+      const groupMap = {};
+      productTeams.forEach(team => {
+        groupMap[team] = {};
+      });
+      groupMap['No App'] = {};
+      
+      filteredCards.forEach(card => {
+        if (card.labels && card.labels.some(label => label.name === 'Bug: level 2')) {
+          const group = getGroupByCard(card);
+          const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+          if (appLabels.length === 0) {
+            groupMap[group]['No App'] = (groupMap[group]['No App'] || 0) + 1;
+          } else {
+            appLabels.forEach(l => {
+              groupMap[group][l.name] = (groupMap[group][l.name] || 0) + 1;
+            });
+          }
+        }
+      });
+      
+      const allApps = Array.from(new Set(appData.map(a => a.label_trello).concat(['No App'])));
+      return allApps.map(app => {
+        const result = { app };
+        productTeams.forEach(team => {
+          result[team] = groupMap[team][app] || 0;
+        });
+        result['No App'] = groupMap['No App'][app] || 0;
+        return result;
+      });
+    }
+  };
+
+  // Bug Level 2 by Day (grouped) - hỗ trợ cả TS và Product Team
   const getBugLevel2ByDayDataGrouped = () => {
     const dayMap = {};
     filteredCards.forEach(card => {
@@ -341,14 +524,31 @@ const Issues = () => {
           ? dayjs(getCreateDate(card)).tz('Asia/Ho_Chi_Minh').format('YYYY-MM-DD')
           : null;
         if (date) {
-          const group = getGroupTSByCard(card);
-          if (!dayMap[date]) dayMap[date] = { date, TS1: 0, TS2: 0, 'No App': 0 };
+          const group = getGroupByCard(card);
+          if (!dayMap[date]) {
+            dayMap[date] = { date };
+            if (viewMode === 'ts') {
+              dayMap[date].TS1 = 0;
+              dayMap[date].TS2 = 0;
+              dayMap[date]['No App'] = 0;
+            } else {
+              productTeams.forEach(team => {
+                dayMap[date][team] = 0;
+              });
+              dayMap[date]['No App'] = 0;
+            }
+          }
           dayMap[date][group]++;
         }
       }
     });
     return Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date));
   };
+
+  // Get TS team members
+  const tsMembers = useMemo(() => {
+    return membersData.filter(member => member.role === 'TS' && (member.group === 'TS1' || member.group === 'TS2'));
+  }, []);
 
   return (
     <Box sx={{
@@ -386,7 +586,68 @@ const Issues = () => {
           }}>
             Filters
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            {isPending && (
+              <CircularProgress 
+                size={16} 
+                sx={{ 
+                  color: '#1976d2',
+                  mr: 1
+                }} 
+              />
+            )}
+            <Button
+              variant={viewMode === 'ts' ? 'contained' : 'outlined'}
+              onClick={() => startTransition(() => setViewMode('ts'))}
+              disabled={isPending}
+              size="small"
+              sx={{ 
+                textTransform: 'none',
+                color: viewMode === 'ts' ? 'white' : '#64748b',
+                borderColor: '#e2e8f0',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                transform: viewMode === 'ts' ? 'scale(1.05)' : 'scale(1)',
+                boxShadow: viewMode === 'ts' ? '0 4px 12px rgba(25,118,210,0.3)' : '0 2px 4px rgba(0,0,0,0.1)',
+                '&:hover': {
+                  borderColor: '#1976d2',
+                  backgroundColor: viewMode === 'ts' ? 'rgba(25,118,210,0.9)' : 'rgba(25,118,210,0.04)',
+                  transform: 'scale(1.05)',
+                  boxShadow: '0 6px 16px rgba(25,118,210,0.4)'
+                },
+                '&:active': {
+                  transform: 'scale(0.98)',
+                  transition: 'transform 0.1s'
+                }
+              }}
+            >
+              TS Team
+            </Button>
+            <Button
+              variant={viewMode === 'product' ? 'contained' : 'outlined'}
+              onClick={() => startTransition(() => setViewMode('product'))}
+              disabled={isPending}
+              size="small"
+              sx={{ 
+                textTransform: 'none',
+                color: viewMode === 'product' ? 'white' : '#64748b',
+                borderColor: '#e2e8f0',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                transform: viewMode === 'product' ? 'scale(1.05)' : 'scale(1)',
+                boxShadow: viewMode === 'product' ? '0 4px 12px rgba(25,118,210,0.3)' : '0 2px 4px rgba(0,0,0,0.1)',
+                '&:hover': {
+                  borderColor: '#1976d2',
+                  backgroundColor: viewMode === 'product' ? 'rgba(25,118,210,0.9)' : 'rgba(25,118,210,0.04)',
+                  transform: 'scale(1.05)',
+                  boxShadow: '0 6px 16px rgba(25,118,210,0.4)'
+                },
+                '&:active': {
+                  transform: 'scale(0.98)',
+                  transition: 'transform 0.1s'
+                }
+              }}
+            >
+              Product Team
+            </Button>
             <Button
               variant="outlined"
               size="small"
@@ -396,13 +657,23 @@ const Issues = () => {
                 setSelectedDay(null);
                 handleGetData(startDate, endDate);
               }}
+              disabled={isPending}
               sx={{
                 textTransform: 'none',
                 color: '#64748b',
                 borderColor: '#e2e8f0',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                transform: 'scale(1)',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                 '&:hover': {
                   borderColor: '#1976d2',
-                  backgroundColor: 'rgba(25,118,210,0.04)'
+                  backgroundColor: 'rgba(25,118,210,0.04)',
+                  transform: 'scale(1.05)',
+                  boxShadow: '0 4px 12px rgba(25,118,210,0.2)'
+                },
+                '&:active': {
+                  transform: 'scale(0.98)',
+                  transition: 'transform 0.1s'
                 }
               }}
             >
@@ -664,7 +935,8 @@ const Issues = () => {
       </Paper>
 
       {/* Status Boxes */}
-      <Grid container spacing={1.5} sx={{ mb: 2 }}>
+      <Fade in={!isPending} timeout={300}>
+        <Grid container spacing={1.5} sx={{ mb: 2 }}>
         {[ // 2 dòng, mỗi dòng 3 box
           [
             { key: 'total-cards', label: 'Total Cards', color: '#1976d2', value: totalCards },
@@ -719,212 +991,454 @@ const Issues = () => {
           </React.Fragment>
         ))}
       </Grid>
+      </Fade>
 
-      {/* Issues by Day Chart - 2 charts side by side */}
-      <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
-        <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 2 }}>Issues by Day - TS1</Typography>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={getIssuesByDayDataGrouped().map(d => ({ date: d.date, count: d.TS1 }))} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis allowDecimals={false} />
-              <RechartsTooltip />
-              <Bar dataKey="count" fill="#1976d2" name="Issues" />
-            </BarChart>
-          </ResponsiveContainer>
-        </Paper>
-        <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#ff9800', mb: 2 }}>Issues by Day - TS2</Typography>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={getIssuesByDayDataGrouped().map(d => ({ date: d.date, count: d.TS2 }))} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis allowDecimals={false} />
-              <RechartsTooltip />
-              <Bar dataKey="count" fill="#ff9800" name="Issues" />
-            </BarChart>
-          </ResponsiveContainer>
-        </Paper>
-      </Box>
+      {/* Issues by Day Chart - Dynamic based on view mode */}
+      <Fade in={!isPending} timeout={400}>
+        {viewMode === 'ts' ? (
+        <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
+          <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 2 }}>
+              Issues by Day - TS1 ({getIssuesByDayDataGrouped().reduce((sum, d) => sum + d.TS1, 0)} cards)
+            </Typography>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={getIssuesByDayDataGrouped().map(d => ({ date: d.date, count: d.TS1 }))} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis allowDecimals={false} />
+                <RechartsTooltip />
+                <Bar dataKey="count" fill="#1976d2" name="Issues" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Paper>
+          <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#ff9800', mb: 2 }}>
+              Issues by Day - TS2 ({getIssuesByDayDataGrouped().reduce((sum, d) => sum + d.TS2, 0)} cards)
+            </Typography>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={getIssuesByDayDataGrouped().map(d => ({ date: d.date, count: d.TS2 }))} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis allowDecimals={false} />
+                <RechartsTooltip />
+                <Bar dataKey="count" fill="#ff9800" name="Issues" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Box>
+      ) : (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: '#1a237e', mb: 2, textAlign: 'center' }}>
+            Issues by Day - Product Teams
+          </Typography>
+          <Grid container spacing={3}>
+            {productTeams.map((team, index) => {
+              const colors = ['#1976d2', '#ff9800', '#d32f2f', '#388e3c', '#7b1fa2'];
+              return (
+                <Grid item xs={12} md={6} lg={4} key={team}>
+                  <Paper elevation={0} sx={{ p: 3, borderRadius: 2, height: '100%' }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700, color: colors[index % colors.length], mb: 2, textAlign: 'center' }}>
+                      {team} ({getIssuesByDayDataGrouped().reduce((sum, d) => sum + (d[team] || 0), 0)} cards)
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={getIssuesByDayDataGrouped().map(d => ({ date: d.date, count: d[team] || 0 }))} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" />
+                        <YAxis allowDecimals={false} />
+                        <RechartsTooltip />
+                        <Bar dataKey="count" fill={colors[index % colors.length]} name="Issues" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Paper>
+                </Grid>
+              );
+            })}
+          </Grid>
+        </Box>
+      )}
+      </Fade>
 
-      {/* Issues by Shift Chart - 2 charts side by side */}
-      <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
-        <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 2 }}>Issues by Shift - TS1</Typography>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={getIssuesByShiftDataGrouped().map(d => ({ shift: d.shift, count: d.TS1 }))} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="shift" />
-              <YAxis allowDecimals={false} />
-              <RechartsTooltip />
-              <Bar dataKey="count" fill="#1976d2" name="Issues" />
-            </BarChart>
-          </ResponsiveContainer>
-        </Paper>
-        <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#ff9800', mb: 2 }}>Issues by Shift - TS2</Typography>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={getIssuesByShiftDataGrouped().map(d => ({ shift: d.shift, count: d.TS2 }))} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="shift" />
-              <YAxis allowDecimals={false} />
-              <RechartsTooltip />
-              <Bar dataKey="count" fill="#ff9800" name="Issues" />
-            </BarChart>
-          </ResponsiveContainer>
-        </Paper>
-      </Box>
+      {/* Issues by Shift Chart - Dynamic based on view mode */}
+      {viewMode === 'ts' ? (
+        <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
+          <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 2 }}>
+              Issues by Shift - TS1 ({getIssuesByShiftDataGrouped().reduce((sum, d) => sum + d.TS1, 0)} cards)
+            </Typography>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={getIssuesByShiftDataGrouped().map(d => ({ shift: d.shift, count: d.TS1 }))} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="shift" />
+                <YAxis allowDecimals={false} />
+                <RechartsTooltip />
+                <Bar dataKey="count" fill="#1976d2" name="Issues" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Paper>
+          <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#ff9800', mb: 2 }}>
+              Issues by Shift - TS2 ({getIssuesByShiftDataGrouped().reduce((sum, d) => sum + d.TS2, 0)} cards)
+            </Typography>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={getIssuesByShiftDataGrouped().map(d => ({ shift: d.shift, count: d.TS2 }))} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="shift" />
+                <YAxis allowDecimals={false} />
+                <RechartsTooltip />
+                <Bar dataKey="count" fill="#ff9800" name="Issues" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Box>
+      ) : (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: '#1a237e', mb: 2, textAlign: 'center' }}>
+            Issues by Shift - Product Teams
+          </Typography>
+          <Grid container spacing={3}>
+            {productTeams.map((team, index) => {
+              const colors = ['#1976d2', '#ff9800', '#d32f2f', '#388e3c', '#7b1fa2'];
+              return (
+                <Grid item xs={12} md={6} lg={4} key={team}>
+                  <Paper elevation={0} sx={{ p: 3, borderRadius: 2, height: '100%' }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700, color: colors[index % colors.length], mb: 2, textAlign: 'center' }}>
+                      {team} ({getIssuesByShiftDataGrouped().reduce((sum, d) => sum + (d[team] || 0), 0)} cards)
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={getIssuesByShiftDataGrouped().map(d => ({ shift: d.shift, count: d[team] || 0 }))} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="shift" />
+                        <YAxis allowDecimals={false} />
+                        <RechartsTooltip />
+                        <Bar dataKey="count" fill={colors[index % colors.length]} name="Issues" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Paper>
+                </Grid>
+              );
+            })}
+          </Grid>
+        </Box>
+      )}
 
-      {/* Issues by App Chart - 2 charts side by side */}
-      <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
-        <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 2 }}>Issues by App - TS1</Typography>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={getIssuesByAppDataGrouped()
-              .filter(d => (ts1Apps.includes(d.app) || d.app === 'No App') && d.TS1 > 0)
-              .map(d => ({ app: d.app, count: d.TS1 }))}
-              margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="app" interval={0} angle={-20} textAnchor="end" height={60} />
-              <YAxis allowDecimals={false} />
-              <RechartsTooltip />
-              <Bar dataKey="count" fill="#1976d2" name="Issues" />
-            </BarChart>
-          </ResponsiveContainer>
-        </Paper>
-        <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#ff9800', mb: 2 }}>Issues by App - TS2</Typography>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={getIssuesByAppDataGrouped()
-              .filter(d => (ts2Apps.includes(d.app) || d.app === 'No App') && d.TS2 > 0)
-              .map(d => ({ app: d.app, count: d.TS2 }))}
-              margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="app" interval={0} angle={-20} textAnchor="end" height={60} />
-              <YAxis allowDecimals={false} />
-              <RechartsTooltip />
-              <Bar dataKey="count" fill="#ff9800" name="Issues" />
-            </BarChart>
-          </ResponsiveContainer>
-        </Paper>
-      </Box>
+      {/* Issues by App Chart - Dynamic based on view mode */}
+      {viewMode === 'ts' ? (
+        <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
+          <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 2 }}>
+              Issues by App - TS1 ({getIssuesByAppDataGrouped()
+                .filter(d => (ts1Apps.includes(d.app) || d.app === 'No App') && d.TS1 > 0)
+                .reduce((sum, d) => sum + d.TS1, 0)} cards)
+            </Typography>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={getIssuesByAppDataGrouped()
+                .filter(d => (ts1Apps.includes(d.app) || d.app === 'No App') && d.TS1 > 0)
+                .map(d => ({ app: d.app, count: d.TS1 }))}
+                margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="app" interval={0} angle={-20} textAnchor="end" height={60} />
+                <YAxis allowDecimals={false} />
+                <RechartsTooltip />
+                <Bar dataKey="count" fill="#1976d2" name="Issues" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Paper>
+          <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#ff9800', mb: 2 }}>
+              Issues by App - TS2 ({getIssuesByAppDataGrouped()
+                .filter(d => (ts2Apps.includes(d.app) || d.app === 'No App') && d.TS2 > 0)
+                .reduce((sum, d) => sum + d.TS2, 0)} cards)
+            </Typography>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={getIssuesByAppDataGrouped()
+                .filter(d => (ts2Apps.includes(d.app) || d.app === 'No App') && d.TS2 > 0)
+                .map(d => ({ app: d.app, count: d.TS2 }))}
+                margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="app" interval={0} angle={-20} textAnchor="end" height={60} />
+                <YAxis allowDecimals={false} />
+                <RechartsTooltip />
+                <Bar dataKey="count" fill="#ff9800" name="Issues" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Box>
+      ) : (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: '#1a237e', mb: 2, textAlign: 'center' }}>
+            Issues by App - Product Teams
+          </Typography>
+          <Grid container spacing={3}>
+            {productTeams.map((team, index) => {
+              const teamApps = appData.filter(a => a.product_team === team).map(a => a.label_trello);
+              const colors = ['#1976d2', '#ff9800', '#d32f2f', '#388e3c', '#7b1fa2'];
+              return (
+                <Grid item xs={12} md={6} lg={4} key={team}>
+                  <Paper elevation={0} sx={{ p: 3, borderRadius: 2, height: '100%' }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700, color: colors[index % colors.length], mb: 2, textAlign: 'center' }}>
+                      {team} ({getIssuesByAppDataGrouped()
+                        .filter(d => (teamApps.includes(d.app) || d.app === 'No App') && d[team] > 0)
+                        .reduce((sum, d) => sum + (d[team] || 0), 0)} cards)
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={getIssuesByAppDataGrouped()
+                        .filter(d => (teamApps.includes(d.app) || d.app === 'No App') && d[team] > 0)
+                        .map(d => ({ app: d.app, count: d[team] || 0 }))}
+                        margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="app" interval={0} angle={-20} textAnchor="end" height={60} />
+                        <YAxis allowDecimals={false} />
+                        <RechartsTooltip />
+                        <Bar dataKey="count" fill={colors[index % colors.length]} name="Issues" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Paper>
+                </Grid>
+              );
+            })}
+          </Grid>
+        </Box>
+      )}
 
-      {/* Bug Level 2 by App Chart - 2 charts side by side */}
-      <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
-        <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#d32f2f', mb: 2 }}>Bugs by App - TS1</Typography>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={getBugLevel2ByAppDataGrouped()
-              .filter(d => (ts1Apps.includes(d.app) || d.app === 'No App') && d.TS1 > 0)
-              .map(d => ({ app: d.app, count: d.TS1 }))}
-              margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="app" interval={0} angle={-20} textAnchor="end" height={60} />
-              <YAxis allowDecimals={false} />
-              <RechartsTooltip />
-              <Bar dataKey="count" fill="#d32f2f" name="Bug Level 2" />
-            </BarChart>
-          </ResponsiveContainer>
-        </Paper>
-        <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#ff9800', mb: 2 }}>Bugs by App - TS2</Typography>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={getBugLevel2ByAppDataGrouped()
-              .filter(d => (ts2Apps.includes(d.app) || d.app === 'No App') && d.TS2 > 0)
-              .map(d => ({ app: d.app, count: d.TS2 }))}
-              margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="app" interval={0} angle={-20} textAnchor="end" height={60} />
-              <YAxis allowDecimals={false} />
-              <RechartsTooltip />
-              <Bar dataKey="count" fill="#ff9800" name="Bug Level 2" />
-            </BarChart>
-          </ResponsiveContainer>
-        </Paper>
-      </Box>
+      {/* Bug Level 2 by App Chart - Dynamic based on view mode */}
+      {viewMode === 'ts' ? (
+        <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
+          <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#d32f2f', mb: 2 }}>
+              Bugs by App - TS1 ({getBugLevel2ByAppDataGrouped()
+                .filter(d => (ts1Apps.includes(d.app) || d.app === 'No App') && d.TS1 > 0)
+                .reduce((sum, d) => sum + d.TS1, 0)} cards)
+            </Typography>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={getBugLevel2ByAppDataGrouped()
+                .filter(d => (ts1Apps.includes(d.app) || d.app === 'No App') && d.TS1 > 0)
+                .map(d => ({ app: d.app, count: d.TS1 }))}
+                margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="app" interval={0} angle={-20} textAnchor="end" height={60} />
+                <YAxis allowDecimals={false} />
+                <RechartsTooltip />
+                <Bar dataKey="count" fill="#d32f2f" name="Bug Level 2" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Paper>
+          <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#ff9800', mb: 2 }}>
+              Bugs by App - TS2 ({getBugLevel2ByAppDataGrouped()
+                .filter(d => (ts2Apps.includes(d.app) || d.app === 'No App') && d.TS2 > 0)
+                .reduce((sum, d) => sum + d.TS2, 0)} cards)
+            </Typography>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={getBugLevel2ByAppDataGrouped()
+                .filter(d => (ts2Apps.includes(d.app) || d.app === 'No App') && d.TS2 > 0)
+                .map(d => ({ app: d.app, count: d.TS2 }))}
+                margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="app" interval={0} angle={-20} textAnchor="end" height={60} />
+                <YAxis allowDecimals={false} />
+                <RechartsTooltip />
+                <Bar dataKey="count" fill="#ff9800" name="Bug Level 2" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Box>
+      ) : (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: '#1a237e', mb: 2, textAlign: 'center' }}>
+            Bugs by App - Product Teams
+          </Typography>
+          <Grid container spacing={3}>
+            {productTeams.map((team, index) => {
+              const teamApps = appData.filter(a => a.product_team === team).map(a => a.label_trello);
+              const colors = ['#d32f2f', '#ff9800', '#1976d2', '#388e3c', '#7b1fa2'];
+              return (
+                <Grid item xs={12} md={6} lg={4} key={team}>
+                  <Paper elevation={0} sx={{ p: 3, borderRadius: 2, height: '100%' }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700, color: colors[index % colors.length], mb: 2, textAlign: 'center' }}>
+                      {team} ({getBugLevel2ByAppDataGrouped()
+                        .filter(d => (teamApps.includes(d.app) || d.app === 'No App') && d[team] > 0)
+                        .reduce((sum, d) => sum + (d[team] || 0), 0)} cards)
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={getBugLevel2ByAppDataGrouped()
+                        .filter(d => (teamApps.includes(d.app) || d.app === 'No App') && d[team] > 0)
+                        .map(d => ({ app: d.app, count: d[team] || 0 }))}
+                        margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="app" interval={0} angle={-20} textAnchor="end" height={60} />
+                        <YAxis allowDecimals={false} />
+                        <RechartsTooltip />
+                        <Bar dataKey="count" fill={colors[index % colors.length]} name="Bug Level 2" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Paper>
+                </Grid>
+              );
+            })}
+          </Grid>
+        </Box>
+      )}
 
-      {/* Bug Level 2 by Day Line Chart - 2 charts side by side */}
-      <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
-        <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#d32f2f', mb: 2 }}>Bug by Day - TS1</Typography>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={getBugLevel2ByDayDataGrouped().map(d => ({ date: d.date, count: d.TS1 }))} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis allowDecimals={false} />
-              <RechartsTooltip />
-              <Line type="monotone" dataKey="count" stroke="#d32f2f" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Bug Level 2" />
-            </LineChart>
-          </ResponsiveContainer>
-        </Paper>
-        <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#ff9800', mb: 2 }}>Bug by Day - TS2</Typography>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={getBugLevel2ByDayDataGrouped().map(d => ({ date: d.date, count: d.TS2 }))} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis allowDecimals={false} />
-              <RechartsTooltip />
-              <Line type="monotone" dataKey="count" stroke="#ff9800" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Bug Level 2" />
-            </LineChart>
-          </ResponsiveContainer>
-        </Paper>
-      </Box>
+      {/* Bug Level 2 by Day Line Chart - Dynamic based on view mode */}
+      {viewMode === 'ts' ? (
+        <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
+          <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#d32f2f', mb: 2 }}>
+              Bug by Day - TS1 ({getBugLevel2ByDayDataGrouped().reduce((sum, d) => sum + d.TS1, 0)} cards)
+            </Typography>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={getBugLevel2ByDayDataGrouped().map(d => ({ date: d.date, count: d.TS1 }))} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis allowDecimals={false} />
+                <RechartsTooltip />
+                <Line type="monotone" dataKey="count" stroke="#d32f2f" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Bug Level 2" />
+              </LineChart>
+            </ResponsiveContainer>
+          </Paper>
+          <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#ff9800', mb: 2 }}>
+              Bug by Day - TS2 ({getBugLevel2ByDayDataGrouped().reduce((sum, d) => sum + d.TS2, 0)} cards)
+            </Typography>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={getBugLevel2ByDayDataGrouped().map(d => ({ date: d.date, count: d.TS2 }))} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis allowDecimals={false} />
+                <RechartsTooltip />
+                <Line type="monotone" dataKey="count" stroke="#ff9800" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Bug Level 2" />
+              </LineChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Box>
+      ) : (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: '#1a237e', mb: 2, textAlign: 'center' }}>
+            Bug by Day - Product Teams
+          </Typography>
+          <Grid container spacing={3}>
+            {productTeams.map((team, index) => {
+              const colors = ['#d32f2f', '#ff9800', '#1976d2', '#388e3c', '#7b1fa2'];
+              return (
+                <Grid item xs={12} md={6} lg={4} key={team}>
+                  <Paper elevation={0} sx={{ p: 3, borderRadius: 2, height: '100%' }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700, color: colors[index % colors.length], mb: 2, textAlign: 'center' }}>
+                      {team} ({getBugLevel2ByDayDataGrouped().reduce((sum, d) => sum + (d[team] || 0), 0)} cards)
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <LineChart data={getBugLevel2ByDayDataGrouped().map(d => ({ date: d.date, count: d[team] || 0 }))} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" />
+                        <YAxis allowDecimals={false} />
+                        <RechartsTooltip />
+                        <Line type="monotone" dataKey="count" stroke={colors[index % colors.length]} strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Bug Level 2" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </Paper>
+                </Grid>
+              );
+            })}
+          </Grid>
+        </Box>
+      )}
 
-      {/* App Stats Table - 2 tables side by side */}
-      <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
-        <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1976d2' }}>App Issues & Bugs - TS1</Typography>
-          <Box sx={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, background: '#f8fafc', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 8px 0 #e0e7ef', marginBottom: 0 }}>
-              <thead>
-                <tr style={{ background: '#e3e8ee' }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 15, color: '#1a237e', borderBottom: '2px solid #e0e7ef' }}>App</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 15, color: '#1a237e', borderBottom: '2px solid #e0e7ef' }}>Tổng số issues</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 15, color: '#d32f2f', borderBottom: '2px solid #e0e7ef' }}>Bug</th>
-                </tr>
-              </thead>
-              <tbody>
-                {getAppStatsTableDataGrouped()
-                  .filter(row => row.issuesCountTS1 > 0)
-                  .map((row, idx) => (
-                    <tr key={row.app} style={{ background: idx % 2 === 0 ? '#fff' : '#f1f5f9', transition: 'background 0.2s', cursor: 'pointer' }}>
-                      <td style={{ padding: '10px 16px', fontWeight: 500, color: '#1976d2', borderBottom: '1px solid #e0e7ef' }}>{row.app}</td>
-                      <td style={{ padding: '10px 16px', fontWeight: 500, color: '#334155', borderBottom: '1px solid #e0e7ef' }}>{row.issuesCountTS1}</td>
-                      <td style={{ padding: '10px 16px', fontWeight: 600, color: '#d32f2f', borderBottom: '1px solid #e0e7ef' }}>{row.bugPercentTS1}% <span style={{ color: '#64748b', fontWeight: 400 }}>({row.bugLevel2CountTS1})</span></td>
-                    </tr>
+      {/* App Stats Table - Dynamic based on view mode */}
+      {viewMode === 'ts' ? (
+        <Box sx={{ display: 'flex', gap: 3, mb: 3 }}>
+          <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1976d2' }}>App Issues & Bugs - TS1</Typography>
+            <Box sx={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, background: '#f8fafc', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 8px 0 #e0e7ef', marginBottom: 0 }}>
+                <thead>
+                  <tr style={{ background: '#e3e8ee' }}>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 15, color: '#1a237e', borderBottom: '2px solid #e0e7ef' }}>App</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 15, color: '#1a237e', borderBottom: '2px solid #e0e7ef' }}>Tổng số issues</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 15, color: '#d32f2f', borderBottom: '2px solid #e0e7ef' }}>Bug</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getAppStatsTableDataGrouped()
+                    .filter(row => row.issuesCountTS1 > 0)
+                    .map((row, idx) => (
+                      <tr key={row.app} style={{ background: idx % 2 === 0 ? '#fff' : '#f1f5f9', transition: 'background 0.2s', cursor: 'pointer' }}>
+                        <td style={{ padding: '10px 16px', fontWeight: 500, color: '#1976d2', borderBottom: '1px solid #e0e7ef' }}>{row.app}</td>
+                        <td style={{ padding: '10px 16px', fontWeight: 500, color: '#334155', borderBottom: '1px solid #e0e7ef' }}>{row.issuesCountTS1}</td>
+                        <td style={{ padding: '10px 16px', fontWeight: 600, color: '#d32f2f', borderBottom: '1px solid #e0e7ef' }}>{row.bugPercentTS1}% <span style={{ color: '#64748b', fontWeight: 400 }}>({row.bugLevel2CountTS1})</span></td>
+                      </tr>
                   ))}
-              </tbody>
-            </table>
-          </Box>
-        </Paper>
-        <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#ff9800' }}>App Issues & Bugs - TS2</Typography>
-          <Box sx={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, background: '#f8fafc', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 8px 0 #e0e7ef', marginBottom: 0 }}>
-              <thead>
-                <tr style={{ background: '#e3e8ee' }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 15, color: '#1a237e', borderBottom: '2px solid #e0e7ef' }}>App</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 15, color: '#1a237e', borderBottom: '2px solid #e0e7ef' }}>Tổng số issues</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 15, color: '#d32f2f', borderBottom: '2px solid #e0e7ef' }}>Bug</th>
-                </tr>
-              </thead>
-              <tbody>
-                {getAppStatsTableDataGrouped()
-                  .filter(row => row.issuesCountTS2 > 0)
-                  .map((row, idx) => (
-                    <tr key={row.app} style={{ background: idx % 2 === 0 ? '#fff' : '#f1f5f9', transition: 'background 0.2s', cursor: 'pointer' }}>
-                      <td style={{ padding: '10px 16px', fontWeight: 500, color: '#1976d2', borderBottom: '1px solid #e0e7ef' }}>{row.app}</td>
-                      <td style={{ padding: '10px 16px', fontWeight: 500, color: '#334155', borderBottom: '1px solid #e0e7ef' }}>{row.issuesCountTS2}</td>
-                      <td style={{ padding: '10px 16px', fontWeight: 600, color: '#d32f2f', borderBottom: '1px solid #e0e7ef' }}>{row.bugPercentTS2}% <span style={{ color: '#64748b', fontWeight: 400 }}>({row.bugLevel2CountTS2})</span></td>
-                    </tr>
+                </tbody>
+              </table>
+            </Box>
+          </Paper>
+          <Paper elevation={0} sx={{ flex: 1, p: 3, borderRadius: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#ff9800' }}>App Issues & Bugs - TS2</Typography>
+            <Box sx={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, background: '#f8fafc', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 8px 0 #e0e7ef', marginBottom: 0 }}>
+                <thead>
+                  <tr style={{ background: '#e3e8ee' }}>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 15, color: '#1a237e', borderBottom: '2px solid #e0e7ef' }}>App</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 15, color: '#1a237e', borderBottom: '2px solid #e0e7ef' }}>Tổng số issues</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, fontSize: 15, color: '#d32f2f', borderBottom: '2px solid #e0e7ef' }}>Bug</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getAppStatsTableDataGrouped()
+                    .filter(row => row.issuesCountTS2 > 0)
+                    .map((row, idx) => (
+                      <tr key={row.app} style={{ background: idx % 2 === 0 ? '#fff' : '#f1f5f9', transition: 'background 0.2s', cursor: 'pointer' }}>
+                        <td style={{ padding: '10px 16px', fontWeight: 500, color: '#1976d2', borderBottom: '1px solid #e0e7ef' }}>{row.app}</td>
+                        <td style={{ padding: '10px 16px', fontWeight: 500, color: '#334155', borderBottom: '1px solid #e0e7ef' }}>{row.issuesCountTS2}</td>
+                        <td style={{ padding: '10px 16px', fontWeight: 600, color: '#d32f2f', borderBottom: '1px solid #e0e7ef' }}>{row.bugPercentTS2}% <span style={{ color: '#64748b', fontWeight: 400 }}>({row.bugLevel2CountTS2})</span></td>
+                      </tr>
                   ))}
-              </tbody>
-            </table>
-          </Box>
-        </Paper>
-      </Box>
+                </tbody>
+              </table>
+            </Box>
+          </Paper>
+        </Box>
+      ) : (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: '#1a237e', mb: 2, textAlign: 'center' }}>
+            App Issues & Bugs - Product Teams
+          </Typography>
+          <Grid container spacing={3}>
+            {productTeams.map((team, index) => {
+              const colors = ['#1976d2', '#ff9800', '#d32f2f', '#388e3c', '#7b1fa2'];
+              return (
+                <Grid item xs={12} md={6} lg={4} key={team}>
+                  <Paper elevation={0} sx={{ p: 3, borderRadius: 2, height: '100%' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: colors[index % colors.length], textAlign: 'center' }}>
+                      {team}
+                    </Typography>
+                    <Box sx={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, background: '#f8fafc', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 8px 0 #e0e7ef', marginBottom: 0 }}>
+                        <thead>
+                          <tr style={{ background: '#e3e8ee' }}>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, fontSize: 13, color: '#1a237e', borderBottom: '2px solid #e0e7ef' }}>App</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, fontSize: 13, color: '#1a237e', borderBottom: '2px solid #e0e7ef' }}>Issues</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, fontSize: 13, color: '#d32f2f', borderBottom: '2px solid #e0e7ef' }}>Bug</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {getAppStatsTableDataGrouped()
+                            .filter(row => row[`issuesCount${team}`] > 0)
+                            .map((row, idx) => (
+                              <tr key={row.app} style={{ background: idx % 2 === 0 ? '#fff' : '#f1f5f9', transition: 'background 0.2s', cursor: 'pointer' }}>
+                                <td style={{ padding: '6px 12px', fontWeight: 500, color: '#1976d2', borderBottom: '1px solid #e0e7ef', fontSize: 12 }}>{row.app}</td>
+                                <td style={{ padding: '6px 12px', fontWeight: 500, color: '#334155', borderBottom: '1px solid #e0e7ef', fontSize: 12 }}>{row[`issuesCount${team}`]}</td>
+                                <td style={{ padding: '6px 12px', fontWeight: 600, color: '#d32f2f', borderBottom: '1px solid #e0e7ef', fontSize: 12 }}>{row[`bugPercent${team}`]}% <span style={{ color: '#64748b', fontWeight: 400 }}>({row[`bugLevel2Count${team}`]})</span></td>
+                              </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </Box>
+                  </Paper>
+                </Grid>
+              );
+            })}
+          </Grid>
+        </Box>
+      )}
 
       {/* Card Detail Modal */}
       <CardDetailModal

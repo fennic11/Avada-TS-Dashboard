@@ -2,132 +2,158 @@
     {
         "label_trello": "App: SEO",
         "app_name": "SEO",
-        "group_ts": "TS1"
+        "group_ts": "TS1",
+        "product_team": "Falcon"
     },
     {
         "label_trello": "App: Blog",
         "app_name": "Blog",
-        "group_ts": "TS1"
+        "group_ts": "TS1",
+        "product_team": "Falcon"
     },
     {
         "label_trello": "App: Image Optimizer",
         "app_name": "Image Optimizer",
-        "group_ts": "TS1"
+        "group_ts": "TS1",
+        "product_team": "Falcon"
     },
     {
         "label_trello": "App: AI product description",
         "app_name": "AI product description",
-        "group_ts": "TS1"
+        "group_ts": "TS1",
+        "product_team": "Falcon"
     },
     {   
         "label_trello": "App: Joy",
         "app_name": "Joy",
-        "group_ts": "TS2"
+        "group_ts": "TS2",
+        "product_team": "Starlink"
     },
     {
         "label_trello": "App: Chatty",
         "app_name": "Chatty",
-        "group_ts": "TS2"
+        "group_ts": "TS2",
+        "product_team": "Tesla"
     },
     {
         "label_trello": "App: Email Marketing",
         "app_name": "AEM",
-        "group_ts": "TS2"
+        "group_ts": "TS2",
+        "product_team": "Solar"
     },
     {
         "label_trello": "App: Cookie Bar",
         "app_name": "Cookie Bar",
-        "group_ts": "TS1"
+        "group_ts": "TS1",
+        "product_team": "Solar"
     },
     {
         "label_trello": "App: Order Limit",
         "app_name": "Order Limit",
-        "group_ts": "TS1"
+        "group_ts": "TS1",
+        "product_team": "Solar"
     },
     {
         "label_trello": "App: PDF Invoice",
         "app_name": "PDF",
-        "group_ts": "TS1"
+        "group_ts": "TS1",
+        "product_team": "Solar"
     },
     {
         "label_trello": "App: Booking",
         "app_name": "Booking",
-        "group_ts": "TS1"
+        "group_ts": "TS1",
+        "product_team": "Solar"
     },
     {
         "label_trello": "App: WhatsApp",
         "app_name": "Whatsapp",
-        "group_ts": "TS1"
+        "group_ts": "TS1",
+        "product_team": "Solar"
     },
     {
         "label_trello": "App: Accessibility",
         "app_name": "Accessibility",
-        "group_ts": "TS1"
+        "group_ts": "TS1",
+        "product_team": "Solar"
     },
     {
         "label_trello": "App: survey",
         "app_name": "Survey",
-        "group_ts": "TS1"
+        "group_ts": "TS1",
+        "product_team": "Solar"
     },
     {
         "label_trello": "App: Air Reviews",
         "app_name": "Air Review",
-        "group_ts": "TS2"
+        "group_ts": "TS2",
+        "product_team": "Solar"
     },
     {
         "label_trello": "App: Joy Subscriptions",
         "app_name": "Subscription",
-        "group_ts": "TS2"
+        "group_ts": "TS2",
+        "product_team": "Solar"
     },
     {
         "label_trello": "App: SPOS",
         "app_name": "SPOS",
-        "group_ts": "TS2"
+        "group_ts": "TS2",
+        "product_team": "Solar"
     },
     {
         "label_trello": "App: UpMagic",
         "app_name": "UpMagic",
-        "group_ts": "TS2"
+        "group_ts": "TS2",
+        "product_team": "Solar"
     },
     {
         "label_trello": "App: Wishlist",
         "app_name": "Wishlist",
-        "group_ts": "TS2"
+        "group_ts": "TS2",
+        "product_team": "Solar"
     },
     {
         "label_trello": "App: Form",
         "app_name": "Form",
-        "group_ts": "TS2"
+        "group_ts": "TS2",
+        "product_team": "Solar"
     },
     {
         "label_trello": "App: Bundle",
         "app_name": "Bundle",
-        "group_ts": "TS2"
+        "group_ts": "TS2",
+        "product_team": "Team X"
     },
     {
         "label_trello": "App: COD",
         "app_name": "COD",
-        "group_ts": "TS1"
+        "group_ts": "TS1",
+        "product_team": "Team X"
     },
     {
         "label_trello": "App: Free Gift",
         "app_name": "Free Gift",
-        "group_ts": "TS2"
+        "group_ts": "TS2",
+        "product_team": "Team X"
     },
     {
         "label_trello": "App: Cart Drawer",
         "app_name": "Cart Drawer",
-        "group_ts": "TS2"
+        "group_ts": "TS2",
+        "product_team": "Team X"
     },
     {
         "label_trello": "App: Boost Sales",
         "app_name": "UpSell",
-        "group_ts": "TS2"
+        "group_ts": "TS2",
+        "product_team": "Team X"
     },
     {
         "label_trello": "App: Post Purchase Upsell",
         "app_name": "Post Purchase",
-        "group_ts": "TS2"
+        "group_ts": "TS2",
+        "product_team": "Team X"
     }
     
 ]
