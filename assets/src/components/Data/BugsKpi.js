@@ -70,9 +70,9 @@ const BugsKpiSummary = ({ selectedList = DEFAULT_LIST_ID }) => {
                             };
                         }
 
-                        kpiData[id].points += 15;
+                        kpiData[id].points += 20;
                         kpiData[id].cardCount += 1;
-                        kpiData[id].cards.push({ ...card, point: 15 });
+                        kpiData[id].cards.push({ ...card, point: 20});
                     } else if (memberIds.length === 2) {
                         for (let id of memberIds) {
                             if (!kpiData[id]) {
@@ -83,9 +83,9 @@ const BugsKpiSummary = ({ selectedList = DEFAULT_LIST_ID }) => {
                                 };
                             }
 
-                            kpiData[id].points += 7.5;
+                            kpiData[id].points += 10;
                             kpiData[id].cardCount += 1;
-                            kpiData[id].cards.push({ ...card, point: 7.5 });
+                            kpiData[id].cards.push({ ...card, point: 10 });
                         }
                     }
                 }

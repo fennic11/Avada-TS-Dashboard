@@ -22,14 +22,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import members from '../../data/members.json';
 import { getCardsByList, getListsByBoardId } from '../../api/trelloApi';
 import CardDetailModal from '../CardDetailModal';
-
-const ISSUE_POINTS = {
-    'Issue: level 0': 4,
-    'Issue: level 1': 13,
-    'Issue: level 2': 20,
-    'Issue: level 3': 35,
-    'Issues: Level 4': 45,
-};
+import ISSUE_POINTS from '../../data/issuePoints';
 
 const BOARD_ID = '638d769884c52b05235a2310';
 const DEFAULT_ISSUES_LIST_ID = '66d7d254bdad4fb0a354495a';

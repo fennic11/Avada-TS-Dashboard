@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Grid, TextField, Paper, FormControl, InputLabel, Select, MenuItem, Chip, Button, Stack, Autocomplete, Tooltip } from '@mui/material';
+import { Box, Typography, Grid, TextField, Paper, FormControl, InputLabel, Select, MenuItem, Chip, Button, Stack, Autocomplete, Tooltip, Fade } from '@mui/material';
 import dayjs from 'dayjs';
 import members from '../../data/members.json';
 import lists from '../../data/listsId.json';
@@ -7,17 +7,15 @@ import appData from '../../data/app.json';
 import { getCardsByBoardForPerformanceTS } from '../../api/trelloApi';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { calculateResolutionTime } from '../../utils/resolutionTime';
-import { sortActionsByTimeline } from '../../utils/actionsCardsSort';
 import CardDetailModal from '../CardDetailModal';
 
 const shiftLabels = [
-    'Ca 1',
-    'Ca 2',
-    'Ca 3',
-    'Ca 4',
-    'Ca 5.1',
-    'Ca 5.2',
-    'Ca 6'
+    { label: 'Ca 1', hours: [0,1,2,3] },
+    { label: 'Ca 2', hours: [4,5,6,7] },
+    { label: 'Ca 3', hours: [8,9,10,11] },
+    { label: 'Ca 4', hours: [12,13,14,15] },
+    { label: 'Ca 5', hours: [16,17,18,19] }, // gộp 5.1 và 5.2
+    { label: 'Ca 6', hours: [20,21,22,23] },
 ];
 
 function getShift(dateString) {
@@ -43,10 +41,6 @@ const CardsDetail = () => {
     const [selectedShift, setSelectedShift] = useState('');
     const [selectedRemovalTS, setSelectedRemovalTS] = useState('');
     const [resolutionTimes, setResolutionTimes] = useState({});
-    const [actionHourFilter, setActionHourFilter] = useState({ start: '00:00', end: '23:59' });
-    const [actionTypeFilter, setActionTypeFilter] = useState([]);
-    const [markCompleteFilter, setMarkCompleteFilter] = useState(false);
-    const [selectedCardId, setSelectedCardId] = useState(null);
     const [selectedCardDetail, setSelectedCardDetail] = useState(null);
     const [isCardDetailModalOpen, setIsCardDetailModalOpen] = useState(false);
     const [selectedShiftFilter, setSelectedShiftFilter] = useState('');
@@ -241,7 +235,7 @@ const CardsDetail = () => {
         .filter(d => d.value > 0);
 
     // Bar chart data: number of cards per 4-hour shift (from filteredCards)
-    const shiftMap = Object.fromEntries(shiftLabels.map(label => [label, 0]));
+    const shiftMap = Object.fromEntries(shiftLabels.map(label => [label.label, 0]));
     filteredByHeatmap.forEach(card => {
         if (Array.isArray(card.actions)) {
             const createAction = card.actions.find(a => a.type === 'createCard');
@@ -251,7 +245,7 @@ const CardsDetail = () => {
             }
         }
     });
-    const barData = shiftLabels.map(label => ({ shift: label, count: shiftMap[label] }));
+    const barData = shiftLabels.map(label => ({ shift: label.label, count: shiftMap[label.label] }));
 
     // Hàm lấy dữ liệu Issues theo App cho TS1
     const getIssuesByAppTS1Data = () => {
@@ -444,18 +438,16 @@ const CardsDetail = () => {
     // Completed Cards Heatmap Component
     const CompletedCardsHeatmap = () => {
         const heatmapData = getCompletedCardsHeatmap();
-        const maxCount = Math.max(...heatmapData.map(h => h.count));
         const totalCompletedCards = heatmapData.reduce((sum, h) => sum + h.count, 0);
-        
         return (
-            <Paper elevation={0} sx={{ 
-                p: 3, 
-                borderRadius: 2, 
+            <Paper elevation={2} sx={{ 
+                p: 5,
+                borderRadius: 3, 
                 background: 'white', 
-                boxShadow: '0 1px 4px 0 #e0e7ef', 
-                maxWidth: 1400, 
-                margin: '0 auto',
+                boxShadow: '0 6px 32px 0 #b6c2d955',
                 width: '100%',
+                maxWidth: 'none',
+                margin: '0 auto',
                 mb: 4
             }}>
                 <Box sx={{ 
@@ -489,7 +481,6 @@ const CardsDetail = () => {
                         />
                     )}
                 </Box>
-                
                 {/* Color legend */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3, ml: 1 }}>
                     <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#f1f5f9', border: '1.5px solid #cbd5e1', mr: 1 }} />
@@ -507,95 +498,106 @@ const CardsDetail = () => {
                     <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#15803d', border: '1.5px solid #cbd5e1', mr: 1 }} />
                     <Typography sx={{ fontSize: 15, color: '#334155' }}>&gt;20</Typography>
                 </Box>
-
-                {/* Heatmap grid */}
+                {/* Heatmap grid theo ca trực */}
                 <Box sx={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: 'repeat(6, 1fr)', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
                     gap: 2,
-                    maxWidth: 800,
+                    maxWidth: 1900,
                     margin: '0 auto',
-                    minHeight: 400 // Add minimum height to ensure visibility
+                    minHeight: 300
                 }}>
-                    {heatmapData.map((hourData, hour) => (
-                        <Tooltip 
-                            key={hour}
-                            title={
-                                hourData.count > 0 ? (
-                                    <Box>
-                                        <Typography sx={{ fontWeight: 600, mb: 1 }}>
-                                            {hour}h: {hourData.count} completed cards
-                                        </Typography>
-                                        <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
-                                            {hourData.cards.slice(0, 5).map(card => (
-                                                <Box key={card.id} sx={{ fontSize: 12, mb: 0.5 }}>
-                                                    • {card.name}
-                                                    <Typography sx={{ fontSize: 11, color: '#94a3b8', ml: 1 }}>
-                                                        by {card.memberNames.join(', ')}
-                                                    </Typography>
-                                                </Box>
-                                            ))}
-                                            {hourData.cards.length > 5 && (
-                                                <Typography sx={{ fontSize: 12, color: '#64748b' }}>
-                                                    ... and {hourData.cards.length - 5} more
-                                                </Typography>
-                                            )}
-                                        </Box>
-                                    </Box>
-                                ) : `No cards completed at ${hour}h`
-                            }
-                            arrow
-                            slotProps={{ 
-                                tooltip: { 
-                                    sx: { 
-                                        fontSize: 14, 
-                                        px: 2, 
-                                        py: 1,
-                                        maxWidth: 300,
-                                        backgroundColor: 'rgba(0,0,0,0.9)',
-                                        color: 'white'
-                                    } 
-                                } 
-                            }}
-                        >
-                            <Box
-                                sx={{
-                                    aspectRatio: '1',
-                                    borderRadius: 2,
-                                    background: getHeatmapCellColor(hourData.count),
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: 18,
-                                    fontWeight: 700,
-                                    color: hourData.count > 0 ? '#fff' : '#64748b',
-                                    cursor: hourData.count > 0 ? 'pointer' : 'default',
-                                    border: heatmapFilter === hour ? '3px solid #6366f1' : '1.5px solid #cbd5e1',
-                                    boxShadow: heatmapFilter === hour ? '0 0 0 2px #6366f155' : 'none',
-                                    transition: 'all 0.18s cubic-bezier(.4,2,.6,1)',
-                                    '&:hover': hourData.count > 0 ? {
-                                        border: '3px solid #6366f1',
-                                        boxShadow: '0 2px 8px 0 #6366f133',
-                                        transform: 'scale(1.05)',
-                                        zIndex: 2,
-                                    } : {},
-                                }}
-                                onClick={() => {
-                                    if (hourData.count > 0) {
-                                        setHeatmapFilter(heatmapFilter === hour ? null : hour);
-                                    }
-                                }}
-                            >
-                                <Box sx={{ textAlign: 'center' }}>
-                                    <Typography sx={{ fontSize: 16, fontWeight: 800, lineHeight: 1 }}>
-                                        {hour}h
-                                    </Typography>
-                                    <Typography sx={{ fontSize: 14, fontWeight: 700, lineHeight: 1 }}>
-                                        {hourData.count}
-                                    </Typography>
-                                </Box>
+                    {shiftLabels.map((shift, idx) => (
+                        <Box key={shift.label} sx={{ display: 'flex', width: '100%', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{ width: 60, textAlign: 'right', pr: 1 }}>
+                                <Typography sx={{ fontWeight: 700, color: '#1976d2', fontSize: 15 }}>{shift.label}</Typography>
                             </Box>
-                        </Tooltip>
+                            {shift.hours.map(hour => {
+                                const hourData = heatmapData[hour];
+                                return (
+                                    <Tooltip 
+                                        key={hour}
+                                        title={
+                                            hourData.count > 0 ? (
+                                                <Box>
+                                                    <Typography sx={{ fontWeight: 600, mb: 1 }}>
+                                                        {hour}h: {hourData.count} completed cards
+                                                    </Typography>
+                                                    <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
+                                                        {hourData.cards.slice(0, 5).map(card => (
+                                                            <Box key={card.id} sx={{ fontSize: 12, mb: 0.5 }}>
+                                                                • {card.name}
+                                                                <Typography sx={{ fontSize: 11, color: '#94a3b8', ml: 1 }}>
+                                                                    by {card.memberNames.join(', ')}
+                                                                </Typography>
+                                                            </Box>
+                                                        ))}
+                                                        {hourData.cards.length > 5 && (
+                                                            <Typography sx={{ fontSize: 12, color: '#64748b' }}>
+                                                                ... and {hourData.cards.length - 5} more
+                                                            </Typography>
+                                                        )}
+                                                    </Box>
+                                                </Box>
+                                            ) : `No cards completed at ${hour}h`
+                                        }
+                                        arrow
+                                        slotProps={{ 
+                                            tooltip: { 
+                                                sx: { 
+                                                    fontSize: 14, 
+                                                    px: 2, 
+                                                    py: 1,
+                                                    maxWidth: 300,
+                                                    backgroundColor: 'rgba(0,0,0,0.9)',
+                                                    color: 'white'
+                                                } 
+                                            } 
+                                        }}
+                                    >
+                                        <Box
+                                            sx={{
+                                                aspectRatio: '1',
+                                                borderRadius: 2,
+                                                background: getHeatmapCellColor(hourData.count),
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: 32,
+                                                fontWeight: 800,
+                                                color: hourData.count > 0 ? '#fff' : '#64748b',
+                                                cursor: hourData.count > 0 ? 'pointer' : 'default',
+                                                border: heatmapFilter === hour ? '3px solid #6366f1' : '2.5px solid #cbd5e1',
+                                                boxShadow: heatmapFilter === hour ? '0 0 0 2px #6366f155' : 'none',
+                                                transition: 'all 0.18s cubic-bezier(.4,2,.6,1)',
+                                                minWidth: 70,
+                                                minHeight: 50,
+                                                '&:hover': hourData.count > 0 ? {
+                                                    border: '3px solid #6366f1',
+                                                    boxShadow: '0 2px 8px 0 #6366f133',
+                                                    transform: 'scale(1.09)',
+                                                    zIndex: 2,
+                                                } : {},
+                                            }}
+                                            onClick={() => {
+                                                if (hourData.count > 0) {
+                                                    setHeatmapFilter(heatmapFilter === hour ? null : hour);
+                                                }
+                                            }}
+                                        >
+                                            <Box sx={{ textAlign: 'center' }}>
+                                                <Typography sx={{ fontSize: 20, fontWeight: 900, lineHeight: 1 }}>
+                                                    {hour}h
+                                                </Typography>
+                                                <Typography sx={{ fontSize: 20, fontWeight: 800, lineHeight: 1 }}>
+                                                    {hourData.count}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                    </Tooltip>
+                                );
+                            })}
+                        </Box>
                     ))}
                 </Box>
             </Paper>
@@ -604,41 +606,64 @@ const CardsDetail = () => {
 
     return (
         <>
-            <Box sx={{ 
-                p: { xs: 2, sm: 3, md: 4 }, 
-                width: '100%',
-                minHeight: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 4
-            }}>
-                {/* Filters Section */}
-                <Paper elevation={0} sx={{ 
-                    p: { xs: 2, md: 4 }, 
-                    borderRadius: 3, 
-                    background: 'rgba(255,255,255,0.85)', 
-                    border: '1.5px solid #e3e8ee', 
-                    boxShadow: '0 2px 8px 0 #e0e7ef'
+            <Fade in={true} timeout={600}>
+                <Box sx={{ 
+                    p: { xs: 2, sm: 3, md: 4 }, 
+                    width: '100%',
+                    minHeight: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4
                 }}>
-                    <Typography variant="h6" sx={{ 
-                        fontWeight: 700, 
-                        mb: 3, 
-                        color: '#1976d2', 
-                        letterSpacing: 1,
-                        borderBottom: '2px solid #e3e8ee',
-                        pb: 2
-                    }}>Filters</Typography>
-                    <Grid container spacing={3} alignItems="center">
-                        <Grid item xs={12} sm={6} md={3}>
-                            <TextField
-                                label="Date"
-                                type="date"
-                                value={selectedDate}
-                                onChange={e => setSelectedDate(e.target.value)}
-                                fullWidth
-                                size="small"
-                                InputLabelProps={{ shrink: true }}
-                                sx={{
+                    {/* Filters Section */}
+                    <Paper elevation={0} sx={{ 
+                        p: { xs: 2, md: 4 }, 
+                        borderRadius: 3, 
+                        background: 'rgba(255,255,255,0.85)', 
+                        border: '1.5px solid #e3e8ee', 
+                        boxShadow: '0 2px 8px 0 #e0e7ef'
+                    }}>
+                        <Typography variant="h6" sx={{ 
+                            fontWeight: 700, 
+                            mb: 3, 
+                            color: '#1976d2', 
+                            letterSpacing: 1,
+                            borderBottom: '2px solid #e3e8ee',
+                            pb: 2
+                        }}>Filters</Typography>
+                        <Grid container spacing={3} alignItems="center">
+                            <Grid item xs={12} sm={6} md={3}>
+                                <TextField
+                                    label="Date"
+                                    type="date"
+                                    value={selectedDate}
+                                    onChange={e => setSelectedDate(e.target.value)}
+                                    fullWidth
+                                    size="small"
+                                    InputLabelProps={{ shrink: true }}
+                                    sx={{
+                                        background: 'white',
+                                        borderRadius: 2,
+                                        '& .MuiOutlinedInput-root': {
+                                            fontSize: 16,
+                                            fontWeight: 500,
+                                            background: 'white',
+                                            borderRadius: 2,
+                                            '& fieldset': { borderColor: '#e3e8ee' },
+                                            '&:hover fieldset': { borderColor: '#1976d2' },
+                                            '&.Mui-focused fieldset': { borderColor: '#1976d2', borderWidth: 2 }
+                                        },
+                                        '& .MuiInputLabel-root': {
+                                            color: '#1976d2',
+                                            fontWeight: 600,
+                                            fontSize: 15,
+                                            '&.Mui-focused': { color: '#1565c0' }
+                                        }
+                                    }}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <FormControl fullWidth size="small" sx={{
                                     background: 'white',
                                     borderRadius: 2,
                                     '& .MuiOutlinedInput-root': {
@@ -656,551 +681,123 @@ const CardsDetail = () => {
                                         fontSize: 15,
                                         '&.Mui-focused': { color: '#1565c0' }
                                     }
-                                }}
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <FormControl fullWidth size="small" sx={{
-                                background: 'white',
-                                borderRadius: 2,
-                                '& .MuiOutlinedInput-root': {
-                                    fontSize: 16,
-                                    fontWeight: 500,
-                                    background: 'white',
-                                    borderRadius: 2,
-                                    '& fieldset': { borderColor: '#e3e8ee' },
-                                    '&:hover fieldset': { borderColor: '#1976d2' },
-                                    '&.Mui-focused fieldset': { borderColor: '#1976d2', borderWidth: 2 }
-                                },
-                                '& .MuiInputLabel-root': {
-                                    color: '#1976d2',
-                                    fontWeight: 600,
-                                    fontSize: 15,
-                                    '&.Mui-focused': { color: '#1565c0' }
-                                }
-                            }}>
-                                <InputLabel>TS</InputLabel>
-                                <Select
-                                    value={selectedTS}
-                                    onChange={e => setSelectedTS(e.target.value)}
-                                    label="TS"
-                                    MenuProps={{
-                                        PaperProps: {
-                                            sx: {
-                                                borderRadius: 2,
-                                                boxShadow: '0 4px 24px 0 #b6c2d933',
-                                                mt: 1
-                                            }
-                                        }
-                                    }}
-                                >
-                                    <MenuItem value="">
-                                        <em>All</em>
-                                    </MenuItem>
-                                    {tsMembers.map(member => (
-                                        <MenuItem key={member.id} value={member.id} sx={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 2,
-                                            py: 1.2,
-                                            px: 1.5,
-                                            borderRadius: 2,
-                                            fontWeight: 500,
-                                            backgroundColor: selectedTS === member.id ? '#e3f2fd' : 'inherit',
-                                            '&:hover': {
-                                                backgroundColor: '#e3e8ee'
-                                            }
-                                        }}>
-                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                                <Typography sx={{ fontWeight: 700, fontSize: 15, color: '#1976d2', lineHeight: 1 }}>{member.fullName}</Typography>
-                                                <Typography sx={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>{member.role}</Typography>
-                                            </Box>
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
-                            <FormControl fullWidth size="small" sx={{
-                                background: 'white',
-                                borderRadius: 2,
-                                '& .MuiOutlinedInput-root': {
-                                    fontSize: 16,
-                                    fontWeight: 500,
-                                    background: 'white',
-                                    borderRadius: 2,
-                                    '& fieldset': { borderColor: '#e3e8ee' },
-                                    '&:hover fieldset': { borderColor: '#1976d2' },
-                                    '&.Mui-focused fieldset': { borderColor: '#1976d2', borderWidth: 2 }
-                                },
-                                '& .MuiInputLabel-root': {
-                                    color: '#1976d2',
-                                    fontWeight: 600,
-                                    fontSize: 15,
-                                    '&.Mui-focused': { color: '#1565c0' }
-                                }
-                            }}>
-                                <InputLabel>App</InputLabel>
-                                <Select
-                                    value={selectedApp}
-                                    onChange={e => setSelectedApp(e.target.value)}
-                                    label="App"
-                                    MenuProps={{
-                                        PaperProps: {
-                                            sx: {
-                                                borderRadius: 2,
-                                                boxShadow: '0 4px 24px 0 #b6c2d933',
-                                                mt: 1
-                                            }
-                                        }
-                                    }}
-                                >
-                                    <MenuItem value="">
-                                        <em>All</em>
-                                    </MenuItem>
-                                    {appData.map(app => (
-                                        <MenuItem key={app.label_trello} value={app.label_trello} sx={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 2,
-                                            py: 1.2,
-                                            px: 1.5,
-                                            borderRadius: 2,
-                                            fontWeight: 500,
-                                            backgroundColor: selectedApp === app.label_trello ? '#e3f2fd' : 'inherit',
-                                            '&:hover': {
-                                                backgroundColor: '#e3e8ee'
-                                            }
-                                        }}>
-                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                                <Typography sx={{ fontWeight: 700, fontSize: 15, color: '#1976d2', lineHeight: 1 }}>{app.app_name}</Typography>
-                                                <Typography sx={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>{app.group_ts}</Typography>
-                                            </Box>
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                    </Grid>
-                    {/* Active filter chips */}
-                    {(selectedTS || selectedShift || selectedList || selectedApp || heatmapFilter !== null) && (
-                        <Box sx={{
-                            mt: 3,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1,
-                            flexWrap: 'wrap'
-                        }}>
-                            {selectedTS && (
-                                <Chip
-                                    label={`TS: ${tsMembers.find(m => m.id === selectedTS)?.fullName || selectedTS}`}
-                                    onDelete={() => setSelectedTS('')}
-                                    color="primary"
-                                    size="small"
-                                    sx={{ 
-                                        fontWeight: 600, 
-                                        fontSize: 14,
-                                        '& .MuiChip-deleteIcon': {
-                                            color: 'white',
-                                            '&:hover': {
-                                                color: '#e3e8ee'
-                                            }
-                                        }
-                                    }}
-                                />
-                            )}
-                            {selectedShift && (
-                                <Chip
-                                    label={`Ca: ${selectedShift}`}
-                                    onDelete={() => setSelectedShift('')}
-                                    color="primary"
-                                    size="small"
-                                    sx={{ 
-                                        fontWeight: 600, 
-                                        fontSize: 14,
-                                        '& .MuiChip-deleteIcon': {
-                                            color: 'white',
-                                            '&:hover': {
-                                                color: '#e3e8ee'
-                                            }
-                                        }
-                                    }}
-                                />
-                            )}
-                            {selectedList && (
-                                <Chip
-                                    label={`Status: ${getListName(selectedList)}`}
-                                    onDelete={() => setSelectedList('')}
-                                    color="primary"
-                                    size="small"
-                                    sx={{ 
-                                        fontWeight: 600, 
-                                        fontSize: 14,
-                                        '& .MuiChip-deleteIcon': {
-                                            color: 'white',
-                                            '&:hover': {
-                                                color: '#e3e8ee'
-                                            }
-                                        }
-                                    }}
-                                />
-                            )}
-                            {selectedApp && (
-                                <Chip
-                                    label={`App: ${appData.find(a => a.label_trello === selectedApp)?.app_name || selectedApp}`}
-                                    onDelete={() => setSelectedApp('')}
-                                    color="primary"
-                                    size="small"
-                                    sx={{ 
-                                        fontWeight: 600, 
-                                        fontSize: 14,
-                                        '& .MuiChip-deleteIcon': {
-                                            color: 'white',
-                                            '&:hover': {
-                                                color: '#e3e8ee'
-                                            }
-                                        }
-                                    }}
-                                />
-                            )}
-                            {heatmapFilter !== null && (
-                                <Chip
-                                    label={`Completed at ${heatmapFilter}h`}
-                                    onDelete={() => setHeatmapFilter(null)}
-                                    color="secondary"
-                                    size="small"
-                                    sx={{ 
-                                        fontWeight: 600, 
-                                        fontSize: 14,
-                                        '& .MuiChip-deleteIcon': {
-                                            color: 'white',
-                                            '&:hover': {
-                                                color: '#e3e8ee'
-                                            }
-                                        }
-                                    }}
-                                />
-                            )}
-                        </Box>
-                    )}
-                </Paper>
-
-                {loading ? (
-                    <Box sx={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
-                        <Box sx={{ textAlign: 'center' }}>
-                            <svg width="80" height="80" viewBox="0 0 40 40" stroke="#1976d2">
-                                <g fill="none" fillRule="evenodd">
-                                    <g transform="translate(2 2)" strokeWidth="3">
-                                        <circle strokeOpacity=".5" cx="18" cy="18" r="18" />
-                                        <path d="M36 18c0-9.94-8.06-18-18-18">
-                                            <animateTransform
-                                                attributeName="transform"
-                                                type="rotate"
-                                                from="0 18 18"
-                                                to="360 18 18"
-                                                dur="1s"
-                                                repeatCount="indefinite" />
-                                        </path>
-                                    </g>
-                                </g>
-                            </svg>
-                            <Typography sx={{ mt: 2, color: '#1976d2', fontWeight: 700, fontSize: 20 }}>Loading data...</Typography>
-                        </Box>
-                    </Box>
-                ) : (
-                    <>
-                        {/* Status Boxes */}
-                        <Box sx={{ 
-                            display: 'flex', 
-                            flexDirection: 'column',
-                            gap: 3, 
-                            maxWidth: 1200,
-                            margin: '0 auto',
-                            width: '100%'
-                        }}>
-                            {/* Total Cards Box */}
-                            <Box sx={{ 
-                                display: 'flex', 
-                                justifyContent: 'center',
-                                mb: 1
-                            }}>
-                                                            <Paper elevation={0} sx={{ 
-                                p: 3, 
-                                borderRadius: 2, 
-                                background: 'white', 
-                                boxShadow: '0 1px 4px 0 #e0e7ef',
-                                border: '1px solid #1976d2',
-                                minWidth: 200,
-                                textAlign: 'center',
-                                width: 'fit-content',
-                                transition: 'all 0.2s ease-in-out',
-                                '&:hover': {
-                                    boxShadow: '0 4px 12px 0 rgba(0,0,0,0.1)',
-                                    transform: 'translateY(-2px)'
-                                }
-                            }}>
-                                <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 700, mb: 1 }}>Total Cards</Typography>
-                                <Typography variant="h4" sx={{ color: '#1976d2', fontWeight: 800 }}>{filteredByHeatmap.length}</Typography>
-                            </Paper>
-                            </Box>
-
-                            {/* First Row */}
-                            <Box sx={{ 
-                                display: 'flex', 
-                                gap: 3,
-                                justifyContent: 'center',
-                                '& > *': { flex: 1 }
-                            }}>
-                                <StatusBox 
-                                    title="Dev Pending" 
-                                    count={getCardCountByList(STATUS_LISTS.DEV_PENDING)} 
-                                    color="#f44336"
-                                    listId={STATUS_LISTS.DEV_PENDING}
-                                />
-                                <StatusBox 
-                                    title="TS Pending" 
-                                    count={getCardCountByList(STATUS_LISTS.TS_PENDING)} 
-                                    color="#ff9800"
-                                    listId={STATUS_LISTS.TS_PENDING}
-                                />
-                                <StatusBox 
-                                    title="Waiting Permission" 
-                                    count={getCardCountByList(STATUS_LISTS.WAITING_PERMISSION)} 
-                                    color="#9c27b0"
-                                    listId={STATUS_LISTS.WAITING_PERMISSION}
-                                />
-                            </Box>
-                            {/* Second Row */}
-                            <Box sx={{ 
-                                display: 'flex', 
-                                gap: 3,
-                                justifyContent: 'center',
-                                '& > *': { flex: 1 }
-                            }}>
-                                <StatusBox 
-                                    title="Waiting Confirmation" 
-                                    count={getCardCountByList(STATUS_LISTS.WAITING_CONFIRMATION)} 
-                                    color="#2196f3"
-                                    listId={STATUS_LISTS.WAITING_CONFIRMATION}
-                                />
-                                <StatusBox 
-                                    title="TS Done" 
-                                    count={getCardCountByList(STATUS_LISTS.TS_DONE)} 
-                                    color="#4caf50"
-                                    listId={STATUS_LISTS.TS_DONE}
-                                />
-                                <StatusBox 
-                                    title="Dev Done" 
-                                    count={getCardCountByList(STATUS_LISTS.DEV_DONE)} 
-                                    color="#009688"
-                                    listId={STATUS_LISTS.DEV_DONE}
-                                />
-                            </Box>
-                        </Box>
-
-                        {/* Charts Section */}
-                        <Box sx={{ 
-                            display: 'flex', 
-                            flexDirection: { xs: 'column', lg: 'row' }, 
-                            gap: 4, 
-                            maxWidth: 1400,
-                            margin: '0 auto',
-                            width: '100%'
-                        }}>
-                            {/* Pie Chart */}
-                            <Paper elevation={0} sx={{ 
-                                p: 3, 
-                                borderRadius: 2, 
-                                background: 'white', 
-                                boxShadow: '0 1px 4px 0 #e0e7ef', 
-                                flex: 1,
-                                minWidth: 0
-                            }}>
-                                <Typography variant="h6" sx={{ 
-                                    fontWeight: 700, 
-                                    mb: 3, 
-                                    color: '#1976d2',
-                                    borderBottom: '2px solid #e3e8ee',
-                                    pb: 2
-                                }}>Cards per TS</Typography>
-                                <ResponsiveContainer width="100%" height={320}>
-                                    <PieChart>
-                                        <Pie
-                                            data={pieData}
-                                            dataKey="value"
-                                            nameKey="name"
-                                            cx="50%"
-                                            cy="50%"
-                                            outerRadius={110}
-                                            label={({ name, value }) => `${name}: ${value}`}
-                                        >
-                                            {pieData.map((entry, idx) => (
-                                                <Cell key={`cell-${idx}`} fill={pieColors[idx % pieColors.length]} />
-                                            ))}
-                                        </Pie>
-                                        <RechartsTooltip />
-                                        <Legend />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </Paper>
-
-                            {/* Bar Chart */}
-                            <Paper elevation={0} sx={{ 
-                                p: 3, 
-                                borderRadius: 2, 
-                                background: 'white', 
-                                boxShadow: '0 1px 4px 0 #e0e7ef', 
-                                flex: 1,
-                                minWidth: 0
-                            }}>
-                                <Typography variant="h6" sx={{ 
-                                    fontWeight: 700, 
-                                    mb: 3, 
-                                    color: '#1976d2',
-                                    borderBottom: '2px solid #e3e8ee',
-                                    pb: 2
-                                }}>Cards per Shift</Typography>
-                                <ResponsiveContainer width="100%" height={320}>
-                                    <BarChart 
-                                        data={barData} 
-                                        margin={{ top: 16, right: 16, left: 0, bottom: 16 }}
-                                        onClick={state => {
-                                            if (state && state.activeLabel) {
-                                                setSelectedShift(state.activeLabel === selectedShift ? '' : state.activeLabel);
+                                }}>
+                                    <InputLabel>TS</InputLabel>
+                                    <Select
+                                        value={selectedTS}
+                                        onChange={e => setSelectedTS(e.target.value)}
+                                        label="TS"
+                                        MenuProps={{
+                                            PaperProps: {
+                                                sx: {
+                                                    borderRadius: 2,
+                                                    boxShadow: '0 4px 24px 0 #b6c2d933',
+                                                    mt: 1
+                                                }
                                             }
                                         }}
                                     >
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="shift" />
-                                        <YAxis allowDecimals={false} />
-                                        <RechartsTooltip />
-                                        <Bar dataKey="count" fill="#1976d2" name="Cards" radius={[4, 4, 0, 0]} cursor="pointer">
-                                            {barData.map((entry, idx) => (
-                                                <Cell key={`cell-${idx}`} fill={entry.shift === selectedShift ? '#1565c0' : '#1976d2'} />
-                                            ))}
-                                        </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </Paper>
-                        </Box>
-
-                        {/* Issues by App Charts */}
-                        <Box sx={{ 
-                            display: 'flex', 
-                            flexDirection: { xs: 'column', lg: 'row' }, 
-                            gap: 4, 
-                            maxWidth: 1400,
-                            margin: '0 auto',
-                            width: '100%',
-                            mb: 4
-                        }}>
-                            {/* TS1 Apps Chart */}
-                            <Paper elevation={0} sx={{ 
-                                p: 3, 
-                                borderRadius: 2, 
-                                background: 'white', 
-                                boxShadow: '0 1px 4px 0 #e0e7ef', 
-                                flex: 1,
-                                minWidth: 0
-                            }}>
-                                <Typography variant="h6" sx={{ 
-                                    fontWeight: 700, 
-                                    mb: 3, 
-                                    color: '#1976d2',
-                                    borderBottom: '2px solid #e3e8ee',
-                                    pb: 2
+                                        <MenuItem value="">
+                                            <em>All</em>
+                                        </MenuItem>
+                                        {tsMembers.map(member => (
+                                            <MenuItem key={member.id} value={member.id} sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 2,
+                                                py: 1.2,
+                                                px: 1.5,
+                                                borderRadius: 2,
+                                                fontWeight: 500,
+                                                backgroundColor: selectedTS === member.id ? '#e3f2fd' : 'inherit',
+                                                '&:hover': {
+                                                    backgroundColor: '#e3e8ee'
+                                                }
+                                            }}>
+                                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                                    <Typography sx={{ fontWeight: 700, fontSize: 15, color: '#1976d2', lineHeight: 1 }}>{member.fullName}</Typography>
+                                                    <Typography sx={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>{member.role}</Typography>
+                                                </Box>
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={3}>
+                                <FormControl fullWidth size="small" sx={{
+                                    background: 'white',
+                                    borderRadius: 2,
+                                    '& .MuiOutlinedInput-root': {
+                                        fontSize: 16,
+                                        fontWeight: 500,
+                                        background: 'white',
+                                        borderRadius: 2,
+                                        '& fieldset': { borderColor: '#e3e8ee' },
+                                        '&:hover fieldset': { borderColor: '#1976d2' },
+                                        '&.Mui-focused fieldset': { borderColor: '#1976d2', borderWidth: 2 }
+                                    },
+                                    '& .MuiInputLabel-root': {
+                                        color: '#1976d2',
+                                        fontWeight: 600,
+                                        fontSize: 15,
+                                        '&.Mui-focused': { color: '#1565c0' }
+                                    }
                                 }}>
-                                    Issues by App - TS1 ({getIssuesByAppTS1Data().reduce((sum, item) => sum + item.count, 0)} total)
-                                </Typography>
-                                <ResponsiveContainer width="100%" height={320}>
-                                    <BarChart 
-                                        data={getIssuesByAppTS1Data()} 
-                                        margin={{ top: 16, right: 16, left: 0, bottom: 16 }}
-                                        layout="horizontal"
+                                    <InputLabel>App</InputLabel>
+                                    <Select
+                                        value={selectedApp}
+                                        onChange={e => setSelectedApp(e.target.value)}
+                                        label="App"
+                                        MenuProps={{
+                                            PaperProps: {
+                                                sx: {
+                                                    borderRadius: 2,
+                                                    boxShadow: '0 4px 24px 0 #b6c2d933',
+                                                    mt: 1
+                                                }
+                                            }
+                                        }}
                                     >
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis 
-                                            dataKey="app" 
-                                            interval={0} 
-                                            angle={-20} 
-                                            textAnchor="end" 
-                                            height={80}
-                                            tick={{ fontSize: 12 }}
-                                        />
-                                        <YAxis allowDecimals={false} />
-                                        <RechartsTooltip />
-                                        <Bar dataKey="count" fill="#1976d2" name="Issues" radius={[4, 4, 0, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </Paper>
-
-                            {/* TS2 Apps Chart */}
-                            <Paper elevation={0} sx={{ 
-                                p: 3, 
-                                borderRadius: 2, 
-                                background: 'white', 
-                                boxShadow: '0 1px 4px 0 #e0e7ef', 
-                                flex: 1,
-                                minWidth: 0
-                            }}>
-                                <Typography variant="h6" sx={{ 
-                                    fontWeight: 700, 
-                                    mb: 3, 
-                                    color: '#1976d2',
-                                    borderBottom: '2px solid #e3e8ee',
-                                    pb: 2
-                                }}>
-                                    Issues by App - TS2 ({getIssuesByAppTS2Data().reduce((sum, item) => sum + item.count, 0)} total)
-                                </Typography>
-                                <ResponsiveContainer width="100%" height={320}>
-                                    <BarChart 
-                                        data={getIssuesByAppTS2Data()} 
-                                        margin={{ top: 16, right: 16, left: 0, bottom: 16 }}
-                                        layout="horizontal"
-                                    >
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis 
-                                            dataKey="app" 
-                                            interval={0} 
-                                            angle={-20} 
-                                            textAnchor="end" 
-                                            height={80}
-                                            tick={{ fontSize: 12 }}
-                                        />
-                                        <YAxis allowDecimals={false} />
-                                        <RechartsTooltip />
-                                        <Bar dataKey="count" fill="#ff9800" name="Issues" radius={[4, 4, 0, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </Paper>
-                        </Box>
-
-                        {/* Self Removal Chart */}
-                        <Paper elevation={0} sx={{ 
-                            p: 3, 
-                            borderRadius: 2, 
-                            background: 'white', 
-                            boxShadow: '0 1px 4px 0 #e0e7ef', 
-                            maxWidth: 1400, 
-                            margin: '0 auto',
-                            width: '100%'
-                        }}>
-                            <Box sx={{ 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
+                                        <MenuItem value="">
+                                            <em>All</em>
+                                        </MenuItem>
+                                        {appData.map(app => (
+                                            <MenuItem key={app.label_trello} value={app.label_trello} sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 2,
+                                                py: 1.2,
+                                                px: 1.5,
+                                                borderRadius: 2,
+                                                fontWeight: 500,
+                                                backgroundColor: selectedApp === app.label_trello ? '#e3f2fd' : 'inherit',
+                                                '&:hover': {
+                                                    backgroundColor: '#e3e8ee'
+                                                }
+                                            }}>
+                                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                                    <Typography sx={{ fontWeight: 700, fontSize: 15, color: '#1976d2', lineHeight: 1 }}>{app.app_name}</Typography>
+                                                    <Typography sx={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>{app.group_ts}</Typography>
+                                                </Box>
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                        </Grid>
+                        {/* Active filter chips */}
+                        {(selectedTS || selectedShift || selectedList || selectedApp || heatmapFilter !== null) && (
+                            <Box sx={{
+                                mt: 3,
+                                display: 'flex',
                                 alignItems: 'center',
-                                mb: 3,
-                                borderBottom: '2px solid #e3e8ee',
-                                pb: 2
+                                gap: 1,
+                                flexWrap: 'wrap'
                             }}>
-                                <Typography variant="h6" sx={{ 
-                                    fontWeight: 700, 
-                                    color: '#1976d2'
-                                }}>Self Removal Count</Typography>
-                                {selectedRemovalTS && (
+                                {selectedTS && (
                                     <Chip
-                                        label={`Selected: ${selectedRemovalTS}`}
-                                        onDelete={() => setSelectedRemovalTS('')}
+                                        label={`TS: ${tsMembers.find(m => m.id === selectedTS)?.fullName || selectedTS}`}
+                                        onDelete={() => setSelectedTS('')}
                                         color="primary"
                                         size="small"
                                         sx={{ 
@@ -1215,194 +812,593 @@ const CardsDetail = () => {
                                         }}
                                     />
                                 )}
-                            </Box>
-                            <ResponsiveContainer width="100%" height={400}>
-                                <BarChart
-                                    data={getSelfRemovalData(filteredByShift)}
-                                    margin={{ top: 16, right: 16, left: 0, bottom: 16 }}
-                                    layout="vertical"
-                                    onClick={state => {
-                                        if (state && state.activeLabel) {
-                                            setSelectedRemovalTS(state.activeLabel === selectedRemovalTS ? '' : state.activeLabel);
-                                        }
-                                    }}
-                                >
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis type="number" allowDecimals={false} />
-                                    <YAxis 
-                                        type="category" 
-                                        dataKey="name" 
-                                        width={150}
-                                        tick={{ fontSize: 14 }}
+                                {selectedShift && (
+                                    <Chip
+                                        label={`Ca: ${selectedShift}`}
+                                        onDelete={() => setSelectedShift('')}
+                                        color="primary"
+                                        size="small"
+                                        sx={{ 
+                                            fontWeight: 600, 
+                                            fontSize: 14,
+                                            '& .MuiChip-deleteIcon': {
+                                                color: 'white',
+                                                '&:hover': {
+                                                    color: '#e3e8ee'
+                                                }
+                                            }
+                                        }}
                                     />
-                                    <RechartsTooltip />
-                                    <Bar 
-                                        dataKey="value" 
-                                        fill="#ff9800" 
-                                        name="Self Removals"
-                                        radius={[0, 4, 4, 0]}
-                                        cursor="pointer"
-                                    >
-                                        {getSelfRemovalData(filteredByShift).map((entry, idx) => (
-                                            <Cell 
-                                                key={`cell-${idx}`} 
-                                                fill={entry.name === selectedRemovalTS ? '#1565c0' : 
-                                                    entry.value > 5 ? '#f44336' : 
-                                                    entry.value > 2 ? '#ff9800' : '#4caf50'} 
-                                            />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </Paper>
+                                )}
+                                {selectedList && (
+                                    <Chip
+                                        label={`Status: ${getListName(selectedList)}`}
+                                        onDelete={() => setSelectedList('')}
+                                        color="primary"
+                                        size="small"
+                                        sx={{ 
+                                            fontWeight: 600, 
+                                            fontSize: 14,
+                                            '& .MuiChip-deleteIcon': {
+                                                color: 'white',
+                                                '&:hover': {
+                                                    color: '#e3e8ee'
+                                                }
+                                            }
+                                        }}
+                                    />
+                                )}
+                                {selectedApp && (
+                                    <Chip
+                                        label={`App: ${appData.find(a => a.label_trello === selectedApp)?.app_name || selectedApp}`}
+                                        onDelete={() => setSelectedApp('')}
+                                        color="primary"
+                                        size="small"
+                                        sx={{ 
+                                            fontWeight: 600, 
+                                            fontSize: 14,
+                                            '& .MuiChip-deleteIcon': {
+                                                color: 'white',
+                                                '&:hover': {
+                                                    color: '#e3e8ee'
+                                                }
+                                            }
+                                        }}
+                                    />
+                                )}
+                                {heatmapFilter !== null && (
+                                    <Chip
+                                        label={`Completed at ${heatmapFilter}h`}
+                                        onDelete={() => setHeatmapFilter(null)}
+                                        color="secondary"
+                                        size="small"
+                                        sx={{ 
+                                            fontWeight: 600, 
+                                            fontSize: 14,
+                                            '& .MuiChip-deleteIcon': {
+                                                color: 'white',
+                                                '&:hover': {
+                                                    color: '#e3e8ee'
+                                                }
+                                            }
+                                        }}
+                                    />
+                                )}
+                            </Box>
+                        )}
+                    </Paper>
 
-                        {/* Completed Cards Heatmap */}
-                        <CompletedCardsHeatmap />
+                    {loading ? (
+                        <Box sx={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+                            <Box sx={{ textAlign: 'center' }}>
+                                <svg width="80" height="80" viewBox="0 0 40 40" stroke="#1976d2">
+                                    <g fill="none" fillRule="evenodd">
+                                        <g transform="translate(2 2)" strokeWidth="3">
+                                            <circle strokeOpacity=".5" cx="18" cy="18" r="18" />
+                                            <path d="M36 18c0-9.94-8.06-18-18-18">
+                                                <animateTransform
+                                                    attributeName="transform"
+                                                    type="rotate"
+                                                    from="0 18 18"
+                                                    to="360 18 18"
+                                                    dur="1s"
+                                                    repeatCount="indefinite" />
+                                            </path>
+                                        </g>
+                                    </g>
+                                </svg>
+                                <Typography sx={{ mt: 2, color: '#1976d2', fontWeight: 700, fontSize: 20 }}>Loading data...</Typography>
+                            </Box>
+                        </Box>
+                    ) : (
+                        <>
+                            {/* Status Boxes */}
+                            <Box sx={{ 
+                                display: 'flex', 
+                                flexDirection: 'column',
+                                gap: 3, 
+                                maxWidth: 1200,
+                                margin: '0 auto',
+                                width: '100%'
+                            }}>
+                                {/* Total Cards Box */}
+                                <Fade in={true} timeout={600}>
+                                    <Box sx={{ 
+                                        display: 'flex', 
+                                        justifyContent: 'center',
+                                        mb: 1
+                                    }}>
+                                        <Paper elevation={0} sx={{ 
+                                            p: 3, 
+                                            borderRadius: 2, 
+                                            background: 'white', 
+                                            boxShadow: '0 1px 4px 0 #e0e7ef',
+                                            border: '1px solid #1976d2',
+                                            minWidth: 200,
+                                            textAlign: 'center',
+                                            width: 'fit-content',
+                                            transition: 'all 0.2s ease-in-out',
+                                            '&:hover': {
+                                                boxShadow: '0 4px 12px 0 rgba(0,0,0,0.1)',
+                                                transform: 'translateY(-2px)'
+                                            }
+                                        }}>
+                                            <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 700, mb: 1 }}>Total Cards</Typography>
+                                            <Typography variant="h4" sx={{ color: '#1976d2', fontWeight: 800 }}>{filteredByHeatmap.length}</Typography>
+                                        </Paper>
+                                    </Box>
+                                </Fade>
+                                {/* First Row */}
+                                <Box sx={{ 
+                                    display: 'flex', 
+                                    gap: 3,
+                                    justifyContent: 'center',
+                                    '& > *': { flex: 1 }
+                                }}>
+                                    {[0,1,2].map(i => (
+                                        <Fade in={true} timeout={600} style={{ transitionDelay: `${i*100}ms` }} key={i}>
+                                            <div>
+                                                {i === 0 && <StatusBox title="Dev Pending" count={getCardCountByList(STATUS_LISTS.DEV_PENDING)} color="#f44336" listId={STATUS_LISTS.DEV_PENDING} />}
+                                                {i === 1 && <StatusBox title="TS Pending" count={getCardCountByList(STATUS_LISTS.TS_PENDING)} color="#ff9800" listId={STATUS_LISTS.TS_PENDING} />}
+                                                {i === 2 && <StatusBox title="Waiting Permission" count={getCardCountByList(STATUS_LISTS.WAITING_PERMISSION)} color="#9c27b0" listId={STATUS_LISTS.WAITING_PERMISSION} />}
+                                            </div>
+                                        </Fade>
+                                    ))}
+                                </Box>
+                                {/* Second Row */}
+                                <Box sx={{ 
+                                    display: 'flex', 
+                                    gap: 3,
+                                    justifyContent: 'center',
+                                    '& > *': { flex: 1 }
+                                }}>
+                                    {[0,1,2].map(i => (
+                                        <Fade in={true} timeout={600} style={{ transitionDelay: `${(i+3)*100}ms` }} key={i}>
+                                            <div>
+                                                {i === 0 && <StatusBox title="Waiting Confirmation" count={getCardCountByList(STATUS_LISTS.WAITING_CONFIRMATION)} color="#2196f3" listId={STATUS_LISTS.WAITING_CONFIRMATION} />}
+                                                {i === 1 && <StatusBox title="TS Done" count={getCardCountByList(STATUS_LISTS.TS_DONE)} color="#4caf50" listId={STATUS_LISTS.TS_DONE} />}
+                                                {i === 2 && <StatusBox title="Dev Done" count={getCardCountByList(STATUS_LISTS.DEV_DONE)} color="#009688" listId={STATUS_LISTS.DEV_DONE} />}
+                                            </div>
+                                        </Fade>
+                                    ))}
+                                </Box>
+                            </Box>
 
-                        {/* Card Grid Section - Hiển thị dưới bảng */}
-                        <Box sx={{ mt: 5 }}>
-                            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1976d2' }}>
-                                Card Grid View (Preview)
-                            </Typography>
-                            <Grid container spacing={3}>
-                                {sortedCards.map(card => {
-                                    let createDate = '';
-                                    let moveToDoingDate = '';
-                                    let dueCompleteDate = '';
-                                    let completedBy = '';
-                                    let resolutionTime = null;
-                                    let memberNames = [];
-                                    if (Array.isArray(card.actions)) {
-                                        const createAction = card.actions.find(a => a.type === 'createCard');
-                                        if (createAction && createAction.date) {
-                                            createDate = dayjs(createAction.date).format('HH:mm DD/MM');
-                                        }
-                                        const moveToDoingAction = card.actions.find(a =>
-                                            a.type === 'updateCard' &&
-                                            a.data?.listAfter?.name === 'Doing (Inshift)'
-                                        );
-                                        if (moveToDoingAction && moveToDoingAction.date) {
-                                            moveToDoingDate = dayjs(moveToDoingAction.date).format('HH:mm DD/MM');
-                                        }
-                                        const dueCompleteAction = [...card.actions].reverse().find(a =>
-                                            a.type === 'updateCard' && 
-                                            a.data?.old?.dueComplete === false &&
-                                            a.data?.card?.dueComplete === true && 
-                                            a.date
-                                        );
-                                        
-                                        // Fallback: if no old.dueComplete found, look for any updateCard with dueComplete: true
-                                        const fallbackAction = !dueCompleteAction ? [...card.actions].reverse().find(a =>
-                                            a.type === 'updateCard' && a.data?.card?.dueComplete === true && a.date
-                                        ) : null;
-                                        
-                                        const finalAction = dueCompleteAction || fallbackAction;
-                                        
-                                        if (finalAction && finalAction.date) {
-                                            dueCompleteDate = dayjs(finalAction.date).format('HH:mm DD/MM');
-                                            completedBy = finalAction.memberCreator?.fullName || 'Unknown';
-                                        }
-                                    }
-                                    if (card.dueComplete) {
-                                        resolutionTime = resolutionTimes[card.id];
-                                    }
-                                    if (Array.isArray(card.idMembers)) {
-                                        memberNames = card.idMembers.map(id => {
-                                            const m = tsMembers.find(mem => mem.id === id);
-                                            return m ? m.fullName : null;
-                                        }).filter(Boolean);
-                                    }
-                                    // Chọn màu border theo trạng thái
-                                    let borderColor = '#e3e8ee';
-                                    if (card.dueComplete) borderColor = '#4caf50';
-                                    else if (getListName(card.idList).toLowerCase().includes('pending')) borderColor = '#ff9800';
-                                    else if (getListName(card.idList).toLowerCase().includes('done')) borderColor = '#1976d2';
-                                    // Badge màu cho resolution
-                                    let resBg = resolutionTime ? (resolutionTime.resolutionTime > 120 ? 'rgba(239,68,68,0.12)' : 'rgba(34,197,94,0.12)') : '#f3f4f6';
-                                    let resColor = resolutionTime ? (resolutionTime.resolutionTime > 120 ? '#ef4444' : '#22c55e') : '#64748b';
-                                    return (
-                                        <Grid item xs={12} sm={6} md={4} lg={3} key={card.id}>
-                                            <Paper
-                                                sx={{
-                                                    p: 2.5,
-                                                    borderRadius: 4,
-                                                    boxShadow: '0 2px 12px 0 #e0e7ef',
-                                                    border: `2.5px solid ${borderColor}`,
-                                                    transition: 'all 0.18s',
-                                                    height: '100%',
-                                                    '&:hover': {
-                                                        boxShadow: '0 8px 32px 0 #b6c2d9',
-                                                        transform: 'translateY(-4px) scale(1.03)',
-                                                        borderColor: '#1976d2',
-                                                        cursor: 'pointer'
-                                                    },
-                                                    display: 'flex', flexDirection: 'column', gap: 1.2
+                            {/* Charts Section */}
+                            <Box sx={{ 
+                                display: 'flex', 
+                                flexDirection: { xs: 'column', lg: 'row' }, 
+                                gap: 4, 
+                                maxWidth: 1400,
+                                margin: '0 auto',
+                                width: '100%'
+                            }}>
+                                {/* Pie Chart */}
+                                <Fade in={true} timeout={700}>
+                                    <Paper elevation={0} sx={{ 
+                                        p: 3, 
+                                        borderRadius: 2, 
+                                        background: 'white', 
+                                        boxShadow: '0 1px 4px 0 #e0e7ef', 
+                                        flex: 1,
+                                        minWidth: 0
+                                    }}>
+                                        <Typography variant="h6" sx={{ 
+                                            fontWeight: 700, 
+                                            mb: 3, 
+                                            color: '#1976d2',
+                                            borderBottom: '2px solid #e3e8ee',
+                                            pb: 2
+                                        }}>Cards per TS</Typography>
+                                        <ResponsiveContainer width="100%" height={320}>
+                                            <PieChart>
+                                                <Pie
+                                                    data={pieData}
+                                                    dataKey="value"
+                                                    nameKey="name"
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    outerRadius={110}
+                                                    label={({ name, value }) => `${name}: ${value}`}
+                                                >
+                                                    {pieData.map((entry, idx) => (
+                                                        <Cell key={`cell-${idx}`} fill={pieColors[idx % pieColors.length]} />
+                                                    ))}
+                                                </Pie>
+                                                <RechartsTooltip />
+                                                <Legend />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </Paper>
+                                </Fade>
+
+                                {/* Bar Chart */}
+                                <Fade in={true} timeout={800}>
+                                    <Paper elevation={0} sx={{ 
+                                        p: 3, 
+                                        borderRadius: 2, 
+                                        background: 'white', 
+                                        boxShadow: '0 1px 4px 0 #e0e7ef', 
+                                        flex: 1,
+                                        minWidth: 0
+                                    }}>
+                                        <Typography variant="h6" sx={{ 
+                                            fontWeight: 700, 
+                                            mb: 3, 
+                                            color: '#1976d2',
+                                            borderBottom: '2px solid #e3e8ee',
+                                            pb: 2
+                                        }}>Cards per Shift</Typography>
+                                        <ResponsiveContainer width="100%" height={320}>
+                                            <BarChart 
+                                                data={barData} 
+                                                margin={{ top: 16, right: 16, left: 0, bottom: 16 }}
+                                                onClick={state => {
+                                                    if (state && state.activeLabel) {
+                                                        setSelectedShift(state.activeLabel === selectedShift ? '' : state.activeLabel);
+                                                    }
                                                 }}
-                                                onClick={() => { setSelectedCardDetail(card); setIsCardDetailModalOpen(true); }}
                                             >
-                                                <Typography variant="h6" noWrap title={card.name} sx={{ fontWeight: 800, color: '#1976d2', mb: 0.5, fontSize: 19, letterSpacing: 0.2 }}>
-                                                    {card.name}
-                                                </Typography>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                                    <Box component="span" sx={{ fontSize: 13, color: '#64748b', fontWeight: 600, mr: 0.5 }}>TS:</Box>
-                                                    {memberNames.length > 0 ? memberNames.map((name, idx) => (
-                                                        <Box key={name} component="span" sx={{
-                                                            display: 'inline-flex', alignItems: 'center', px: 1, py: 0.2, borderRadius: 2, fontSize: 13, fontWeight: 600,
-                                                            background: '#e3e8ee', color: '#1976d2', mr: 0.5
-                                                        }}>
-                                                            <span style={{ fontSize: 15, marginRight: 3 }}>👤</span>{name}
-                                                        </Box>
-                                                    )) : <span style={{ color: '#bdbdbd', fontWeight: 500 }}>-</span>}
-                                                </Box>
-                                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 0.5 }}>
-                                                    <Box sx={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Status:</Box>
-                                                    <Box sx={{ fontSize: 13, color: '#1976d2', fontWeight: 700 }}>{getListName(card.idList)}</Box>
-                                                </Box>
-                                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                                    <Box sx={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Create:</Box>
-                                                    <Box sx={{ fontSize: 13, color: '#222', fontWeight: 500 }}>{createDate || '-'}</Box>
-                                                </Box>
-                                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                                    <Box sx={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Moved to Doing:</Box>
-                                                    <Box sx={{ fontSize: 13, color: '#222', fontWeight: 500 }}>{moveToDoingDate || '-'}</Box>
-                                                </Box>
-                                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                                    <Box sx={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Due Complete:</Box>
-                                                    <Box sx={{ fontSize: 13, color: '#222', fontWeight: 500 }}>{dueCompleteDate || '-'}</Box>
-                                                </Box>
-                                                {completedBy && (
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis dataKey="shift" />
+                                                <YAxis allowDecimals={false} />
+                                                <RechartsTooltip />
+                                                <Bar dataKey="count" fill="#1976d2" name="Cards" radius={[4, 4, 0, 0]} cursor="pointer">
+                                                    {barData.map((entry, idx) => (
+                                                        <Cell key={`cell-${idx}`} fill={entry.shift === selectedShift ? '#1565c0' : '#1976d2'} />
+                                                    ))}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </Paper>
+                                </Fade>
+                            </Box>
+
+                            {/* Issues by App Charts */}
+                            <Box sx={{ 
+                                display: 'flex', 
+                                flexDirection: { xs: 'column', lg: 'row' }, 
+                                gap: 4, 
+                                maxWidth: 1400,
+                                margin: '0 auto',
+                                width: '100%',
+                                mb: 4
+                            }}>
+                                {/* TS1 Apps Chart */}
+                                <Fade in={true} timeout={900}>
+                                    <Paper elevation={0} sx={{ 
+                                        p: 3, 
+                                        borderRadius: 2, 
+                                        background: 'white', 
+                                        boxShadow: '0 1px 4px 0 #e0e7ef', 
+                                        flex: 1,
+                                        minWidth: 0
+                                    }}>
+                                        <Typography variant="h6" sx={{ 
+                                            fontWeight: 700, 
+                                            mb: 3, 
+                                            color: '#1976d2',
+                                            borderBottom: '2px solid #e3e8ee',
+                                            pb: 2
+                                        }}>
+                                            Issues by App - TS1 ({getIssuesByAppTS1Data().reduce((sum, item) => sum + item.count, 0)} total)
+                                        </Typography>
+                                        <ResponsiveContainer width="100%" height={320}>
+                                            <BarChart 
+                                                data={getIssuesByAppTS1Data()} 
+                                                margin={{ top: 16, right: 16, left: 0, bottom: 16 }}
+                                                layout="horizontal"
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis 
+                                                    dataKey="app" 
+                                                    interval={0} 
+                                                    angle={-20} 
+                                                    textAnchor="end" 
+                                                    height={80}
+                                                    tick={{ fontSize: 12 }}
+                                                />
+                                                <YAxis allowDecimals={false} />
+                                                <RechartsTooltip />
+                                                <Bar dataKey="count" fill="#1976d2" name="Issues" radius={[4, 4, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </Paper>
+                                </Fade>
+
+                                {/* TS2 Apps Chart */}
+                                <Fade in={true} timeout={1000}>
+                                    <Paper elevation={0} sx={{ 
+                                        p: 3, 
+                                        borderRadius: 2, 
+                                        background: 'white', 
+                                        boxShadow: '0 1px 4px 0 #e0e7ef', 
+                                        flex: 1,
+                                        minWidth: 0
+                                    }}>
+                                        <Typography variant="h6" sx={{ 
+                                            fontWeight: 700, 
+                                            mb: 3, 
+                                            color: '#1976d2',
+                                            borderBottom: '2px solid #e3e8ee',
+                                            pb: 2
+                                        }}>
+                                            Issues by App - TS2 ({getIssuesByAppTS2Data().reduce((sum, item) => sum + item.count, 0)} total)
+                                        </Typography>
+                                        <ResponsiveContainer width="100%" height={320}>
+                                            <BarChart 
+                                                data={getIssuesByAppTS2Data()} 
+                                                margin={{ top: 16, right: 16, left: 0, bottom: 16 }}
+                                                layout="horizontal"
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis 
+                                                    dataKey="app" 
+                                                    interval={0} 
+                                                    angle={-20} 
+                                                    textAnchor="end" 
+                                                    height={80}
+                                                    tick={{ fontSize: 12 }}
+                                                />
+                                                <YAxis allowDecimals={false} />
+                                                <RechartsTooltip />
+                                                <Bar dataKey="count" fill="#ff9800" name="Issues" radius={[4, 4, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </Paper>
+                                </Fade>
+                            </Box>
+
+                            {/* Self Removal Chart */}
+                            <Fade in={true} timeout={1100}>
+                                <Paper elevation={0} sx={{ 
+                                    p: 3, 
+                                    borderRadius: 2, 
+                                    background: 'white', 
+                                    boxShadow: '0 1px 4px 0 #e0e7ef', 
+                                    maxWidth: 1400, 
+                                    margin: '0 auto',
+                                    width: '100%'
+                                }}>
+                                    <Box sx={{ 
+                                        display: 'flex', 
+                                        justifyContent: 'space-between', 
+                                        alignItems: 'center',
+                                        mb: 3,
+                                        borderBottom: '2px solid #e3e8ee',
+                                        pb: 2
+                                    }}>
+                                        <Typography variant="h6" sx={{ 
+                                            fontWeight: 700, 
+                                            color: '#1976d2'
+                                        }}>Self Removal Count</Typography>
+                                        {selectedRemovalTS && (
+                                            <Chip
+                                                label={`Selected: ${selectedRemovalTS}`}
+                                                onDelete={() => setSelectedRemovalTS('')}
+                                                color="primary"
+                                                size="small"
+                                                sx={{ 
+                                                    fontWeight: 600, 
+                                                    fontSize: 14,
+                                                    '& .MuiChip-deleteIcon': {
+                                                        color: 'white',
+                                                        '&:hover': {
+                                                            color: '#e3e8ee'
+                                                        }
+                                                    }
+                                                }}
+                                            />
+                                        )}
+                                    </Box>
+                                    <ResponsiveContainer width="100%" height={400}>
+                                        <BarChart
+                                            data={getSelfRemovalData(filteredByShift)}
+                                            margin={{ top: 16, right: 16, left: 0, bottom: 16 }}
+                                            layout="vertical"
+                                            onClick={state => {
+                                                if (state && state.activeLabel) {
+                                                    setSelectedRemovalTS(state.activeLabel === selectedRemovalTS ? '' : state.activeLabel);
+                                                }
+                                            }}
+                                        >
+                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <XAxis type="number" allowDecimals={false} />
+                                            <YAxis 
+                                                type="category" 
+                                                dataKey="name" 
+                                                width={150}
+                                                tick={{ fontSize: 14 }}
+                                            />
+                                            <RechartsTooltip />
+                                            <Bar 
+                                                dataKey="value" 
+                                                fill="#ff9800" 
+                                                name="Self Removals"
+                                                radius={[0, 4, 4, 0]}
+                                                cursor="pointer"
+                                            >
+                                                {getSelfRemovalData(filteredByShift).map((entry, idx) => (
+                                                    <Cell 
+                                                        key={`cell-${idx}`} 
+                                                        fill={entry.name === selectedRemovalTS ? '#1565c0' : 
+                                                            entry.value > 5 ? '#f44336' : 
+                                                            entry.value > 2 ? '#ff9800' : '#4caf50'} 
+                                                    />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </Paper>
+                            </Fade>
+
+                            {/* Completed Cards Heatmap */}
+                            <CompletedCardsHeatmap />
+
+                            {/* Card Grid Section - Hiển thị dưới bảng */}
+                            <Box sx={{ mt: 5 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#1976d2' }}>
+                                    Card Grid View (Preview)
+                                </Typography>
+                                <Grid container spacing={3}>
+                                    {sortedCards.map(card => {
+                                        let createDate = '';
+                                        let moveToDoingDate = '';
+                                        let dueCompleteDate = '';
+                                        let completedBy = '';
+                                        let resolutionTime = null;
+                                        let memberNames = [];
+                                        if (Array.isArray(card.actions)) {
+                                            const createAction = card.actions.find(a => a.type === 'createCard');
+                                            if (createAction && createAction.date) {
+                                                createDate = dayjs(createAction.date).format('HH:mm DD/MM');
+                                            }
+                                            const moveToDoingAction = card.actions.find(a =>
+                                                a.type === 'updateCard' &&
+                                                a.data?.listAfter?.name === 'Doing (Inshift)'
+                                            );
+                                            if (moveToDoingAction && moveToDoingAction.date) {
+                                                moveToDoingDate = dayjs(moveToDoingAction.date).format('HH:mm DD/MM');
+                                            }
+                                            const dueCompleteAction = [...card.actions].reverse().find(a =>
+                                                a.type === 'updateCard' && 
+                                                a.data?.old?.dueComplete === false &&
+                                                a.data?.card?.dueComplete === true && 
+                                                a.date
+                                            );
+                                            
+                                            // Fallback: if no old.dueComplete found, look for any updateCard with dueComplete: true
+                                            const fallbackAction = !dueCompleteAction ? [...card.actions].reverse().find(a =>
+                                                a.type === 'updateCard' && a.data?.card?.dueComplete === true && a.date
+                                            ) : null;
+                                            
+                                            const finalAction = dueCompleteAction || fallbackAction;
+                                            
+                                            if (finalAction && finalAction.date) {
+                                                dueCompleteDate = dayjs(finalAction.date).format('HH:mm DD/MM');
+                                                completedBy = finalAction.memberCreator?.fullName || 'Unknown';
+                                            }
+                                        }
+                                        if (card.dueComplete) {
+                                            resolutionTime = resolutionTimes[card.id];
+                                        }
+                                        if (Array.isArray(card.idMembers)) {
+                                            memberNames = card.idMembers.map(id => {
+                                                const m = tsMembers.find(mem => mem.id === id);
+                                                return m ? m.fullName : null;
+                                            }).filter(Boolean);
+                                        }
+                                        // Chọn màu border theo trạng thái
+                                        let borderColor = '#e3e8ee';
+                                        if (card.dueComplete) borderColor = '#4caf50';
+                                        else if (getListName(card.idList).toLowerCase().includes('pending')) borderColor = '#ff9800';
+                                        else if (getListName(card.idList).toLowerCase().includes('done')) borderColor = '#1976d2';
+                                        // Badge màu cho resolution
+                                        let resBg = resolutionTime ? (resolutionTime.resolutionTime > 120 ? 'rgba(239,68,68,0.12)' : 'rgba(34,197,94,0.12)') : '#f3f4f6';
+                                        let resColor = resolutionTime ? (resolutionTime.resolutionTime > 120 ? '#ef4444' : '#22c55e') : '#64748b';
+                                        return (
+                                            <Grid item xs={12} sm={6} md={4} lg={3} key={card.id}>
+                                                <Paper
+                                                    sx={{
+                                                        p: 2.5,
+                                                        borderRadius: 4,
+                                                        boxShadow: '0 2px 12px 0 #e0e7ef',
+                                                        border: `2.5px solid ${borderColor}`,
+                                                        transition: 'all 0.18s',
+                                                        height: '100%',
+                                                        '&:hover': {
+                                                            boxShadow: '0 8px 32px 0 #b6c2d9',
+                                                            transform: 'translateY(-4px) scale(1.03)',
+                                                            borderColor: '#1976d2',
+                                                            cursor: 'pointer'
+                                                        },
+                                                        display: 'flex', flexDirection: 'column', gap: 1.2
+                                                    }}
+                                                    onClick={() => { setSelectedCardDetail(card); setIsCardDetailModalOpen(true); }}
+                                                >
+                                                    <Typography variant="h6" noWrap title={card.name} sx={{ fontWeight: 800, color: '#1976d2', mb: 0.5, fontSize: 19, letterSpacing: 0.2 }}>
+                                                        {card.name}
+                                                    </Typography>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                                        <Box component="span" sx={{ fontSize: 13, color: '#64748b', fontWeight: 600, mr: 0.5 }}>TS:</Box>
+                                                        {memberNames.length > 0 ? memberNames.map((name, idx) => (
+                                                            <Box key={name} component="span" sx={{
+                                                                display: 'inline-flex', alignItems: 'center', px: 1, py: 0.2, borderRadius: 2, fontSize: 13, fontWeight: 600,
+                                                                background: '#e3e8ee', color: '#1976d2', mr: 0.5
+                                                            }}>
+                                                                <span style={{ fontSize: 15, marginRight: 3 }}>👤</span>{name}
+                                                            </Box>
+                                                        )) : <span style={{ color: '#bdbdbd', fontWeight: 500 }}>-</span>}
+                                                    </Box>
+                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 0.5 }}>
+                                                        <Box sx={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Status:</Box>
+                                                        <Box sx={{ fontSize: 13, color: '#1976d2', fontWeight: 700 }}>{getListName(card.idList)}</Box>
+                                                    </Box>
                                                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                                        <Box sx={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Completed by:</Box>
-                                                        <Box sx={{ fontSize: 13, color: '#22c55e', fontWeight: 600 }}>{completedBy}</Box>
+                                                        <Box sx={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Create:</Box>
+                                                        <Box sx={{ fontSize: 13, color: '#222', fontWeight: 500 }}>{createDate || '-'}</Box>
                                                     </Box>
-                                                )}
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                                                    <Box sx={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Resolution:</Box>
-                                                    <Box sx={{
-                                                        px: 1.5, py: 0.5, borderRadius: '16px', fontSize: 13, fontWeight: 700,
-                                                        background: resBg, color: resColor, minWidth: 60, textAlign: 'center',
-                                                        letterSpacing: 0.2
-                                                    }}>
-                                                        {resolutionTime ? `${Math.floor(resolutionTime.resolutionTime / 60)}h ${resolutionTime.resolutionTime % 60}m` : '-'}
+                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                                        <Box sx={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Moved to Doing:</Box>
+                                                        <Box sx={{ fontSize: 13, color: '#222', fontWeight: 500 }}>{moveToDoingDate || '-'}</Box>
                                                     </Box>
-                                                </Box>
+                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                                        <Box sx={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Due Complete:</Box>
+                                                        <Box sx={{ fontSize: 13, color: '#222', fontWeight: 500 }}>{dueCompleteDate || '-'}</Box>
+                                                    </Box>
+                                                    {completedBy && (
+                                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                                            <Box sx={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Completed by:</Box>
+                                                            <Box sx={{ fontSize: 13, color: '#22c55e', fontWeight: 600 }}>{completedBy}</Box>
+                                                        </Box>
+                                                    )}
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                                                        <Box sx={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Resolution:</Box>
+                                                        <Box sx={{
+                                                            px: 1.5, py: 0.5, borderRadius: '16px', fontSize: 13, fontWeight: 700,
+                                                            background: resBg, color: resColor, minWidth: 60, textAlign: 'center',
+                                                            letterSpacing: 0.2
+                                                        }}>
+                                                            {resolutionTime ? `${Math.floor(resolutionTime.resolutionTime / 60)}h ${resolutionTime.resolutionTime % 60}m` : '-'}
+                                                        </Box>
+                                                    </Box>
+                                                </Paper>
+                                            </Grid>
+                                        );
+                                    })}
+                                    {sortedCards.length === 0 && (
+                                        <Grid item xs={12}>
+                                            <Paper sx={{ p: 4, textAlign: 'center', color: '#64748b', fontSize: 16, fontWeight: 500 }}>
+                                                No cards found
                                             </Paper>
                                         </Grid>
-                                    );
-                                })}
-                                {sortedCards.length === 0 && (
-                                    <Grid item xs={12}>
-                                        <Paper sx={{ p: 4, textAlign: 'center', color: '#64748b', fontSize: 16, fontWeight: 500 }}>
-                                            No cards found
-                                        </Paper>
-                                    </Grid>
-                                )}
-                            </Grid>
-                        </Box>
-                    </>
-                )}
-            </Box>
-            {/* Card Detail Modal */}
+                                    )}
+                                </Grid>
+                            </Box>
+                        </>
+                    )}
+                </Box>
+            </Fade>
             <CardDetailModal
                 open={isCardDetailModalOpen}
                 onClose={() => setIsCardDetailModalOpen(false)}
