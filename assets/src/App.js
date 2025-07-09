@@ -26,6 +26,7 @@ import LeaderboardPage from './pages/Leaderboard';
 import PlanTsTeam from './pages/PlanTsTeam';
 import PerformanceTS from './pages/PerformanceTS';
 import CheckoutPage from './pages/CheckoutPage';
+import KpiTsTeamPage from './pages/KpiTsTeamPage';
 
 const theme = createTheme({
     palette: {
@@ -246,6 +247,16 @@ const App = () => {
                                         <Layout>
                                             <PerformanceTS />
                                         </Layout>   
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path="/kpi-ts-team"
+                                element={
+                                    <PrivateRoute>
+                                        <Layout>
+                                            <KpiTsTeamPage />   
+                                        </Layout>
                                     </PrivateRoute>
                                 }
                             />

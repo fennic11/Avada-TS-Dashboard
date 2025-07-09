@@ -14,6 +14,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import GroupIcon from '@mui/icons-material/Group';
+import KpiTsTeamIcon from '@mui/icons-material/Money';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import ChatIcon from '@mui/icons-material/Chat';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
@@ -49,6 +50,7 @@ const getTabIcon = (path) => {
   if (path.includes('leaderboard')) return <EmojiEventsIcon />;
   if (path.includes('plan-ts-team')) return <GroupIcon />;
   if (path.includes('checkout')) return <CheckCircleIcon />;
+  if (path.includes('kpi-ts-team')) return <KpiTsTeamIcon />;
   return <DashboardIcon />;
 };
 
