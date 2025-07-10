@@ -1,0 +1,27 @@
+{
+  "shiftRate": {
+    "Shift-1.1": 230,
+    "Shift-1.2": 230,
+    "Shift-1": 460,
+    "Shift-2": 400,
+    "Shift-3": 136,
+    "Shift-4": 136,
+    "Shift-5.1": 82,
+    "Shift-5.2": 82,
+    "Shift-5": 164,
+    "Shift-6": 177
+  },
+  "issueRate": {
+    "Issue: level 0": 4,
+    "Issue: level 1": 13,
+    "Issue: level 2": 20,
+    "Issue: level 3": 35,
+    "Issues: Level 4": 45,
+    "Bug: level 2": 20
+  },
+  "description": {
+    "shiftRate": "Điểm KPI cho mỗi ca trực",
+    "issueRate": "Điểm KPI cho mỗi level issue"
+  },
+  "lastUpdated": "2025-01-27"
+}

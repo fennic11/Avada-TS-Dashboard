@@ -49,14 +49,11 @@ const PrivateRoute = ({ children }) => {
     }
 
     const user = getCurrentUser();
-    console.log(user);
     const userRole = user?.role;
     const accessibleTabs = getAccessibleTabs(userRole);
-    console.log(accessibleTabs);
 
     // If no accessible tabs, something is wrong
     if (!accessibleTabs.length) {
-        console.error('No accessible tabs for role:', userRole);
         return <Navigate to="/login" />;
     }
 
@@ -67,7 +64,6 @@ const PrivateRoute = ({ children }) => {
 
     // Check if current path is accessible
     const hasAccess = hasTabAccess(userRole, currentPath);
-    console.log('Access check:', { currentPath, userRole, hasAccess, accessibleTabs });
 
     if (!hasAccess) {
         // Redirect to first accessible tab

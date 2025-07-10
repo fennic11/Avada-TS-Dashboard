@@ -58,10 +58,7 @@ const Issues = () => {
 
   // Đảm bảo appData được load
   useEffect(() => {
-    console.log('Checking appData import:', typeof appData, appData);
     if (appData && Array.isArray(appData) && appData.length > 0) {
-      console.log('appData successfully loaded:', appData.length, 'items');
-      console.log('First few items:', appData.slice(0, 3));
       setDataLoaded(true);
     } else {
       console.error('appData not loaded properly:', appData);
@@ -72,8 +69,6 @@ const Issues = () => {
 
   // Helper: Map label_trello to group_ts & product_team - sử dụng useMemo để cache
   const { appLabelToGroup, appLabelToProduct } = useMemo(() => {
-    console.log('Initializing mappings, appData:', appData);
-    
     const groupMap = {};
     const productMap = {};
     
@@ -95,10 +90,6 @@ const Issues = () => {
     } catch (error) {
       console.error('Error initializing mappings:', error);
     }
-    
-    console.log('appData loaded:', appData?.length, 'items');
-    console.log('groupMap:', groupMap);
-    console.log('productMap:', productMap);
     
     return { appLabelToGroup: groupMap, appLabelToProduct: productMap };
   }, [dataLoaded]); // Thêm dependency dataLoaded
@@ -146,7 +137,6 @@ const Issues = () => {
     setLoading(true);
     try {
       const cards = await getCardsByBoardWithDateFilter(start, end);
-      console.log('cards', cards[cards.length - 2].actions);
       if (cards) {
         setFilteredCards(cards);
 

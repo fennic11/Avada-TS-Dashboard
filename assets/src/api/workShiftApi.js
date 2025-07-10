@@ -37,23 +37,41 @@ export const getWorkShift = async (date) => {
 };
 
 export const getKpiTsTeam = async (startDate, endDate) => {
-    try {
+    try {        
         const response = await fetch(`https://avada-crm.web.app/crm/api/v1/shifts/all/csv?start=${startDate}T17:00:00.000Z&end=${endDate}T23:59:00.000Z`);
+        
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
+        
         const csvText = await response.text();
-        const lines = csvText.split('\n');
-        const headers = lines[0].split(',');
-        const data = lines.slice(1).map(line => {
-            const values = line.split(',');
-            return headers.reduce((acc, header, index) => {
-                acc[header] = values[index];
-                return acc;
-            }, {});
-        });
+        
+        // Parse CSV data thành mảng (dựa trên workShiftService.js)
+        const lines = csvText.trim().split('\n');
+        
+        if (lines.length === 0) {
+            console.log('No data lines found');
+            return [];
+        }
+        
+        // Lấy headers từ dòng đầu tiên
+        const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+        
+        // Parse data rows
+        const data = [];
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
+            const row = {};
+            
+            headers.forEach((header, index) => {
+                row[header] = values[index] || '';
+            });
+            
+            data.push(row);
+        }
         return data;
-        } catch (error) {
+        
+    } catch (error) {
         console.error('Error getting kpi ts team:', error);
         return [];
     }
