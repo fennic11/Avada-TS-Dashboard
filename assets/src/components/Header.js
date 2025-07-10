@@ -87,6 +87,22 @@ function ResponsiveAppBar({ sidebarOpen = true, onToggleSidebar, drawerWidth = 2
     }
   }, []);
 
+  // Get user picture from localStorage
+  const getUserPicture = () => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        const parsedUser = JSON.parse(userData);
+        return parsedUser.picture || null;
+      }
+    } catch (error) {
+      console.error('Error parsing user data from localStorage:', error);
+    }
+    return null;
+  };
+
+  const userPicture = getUserPicture();
+
   // Add interval for realtime updates
   React.useEffect(() => {
     // Initial fetch
@@ -591,7 +607,7 @@ function ResponsiveAppBar({ sidebarOpen = true, onToggleSidebar, drawerWidth = 2
                 <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
                   <Avatar 
                     alt={user?.name || 'User'} 
-                    src="/static/images/avatar/2.jpg"
+                    src={userPicture || "/static/images/avatar/2.jpg"}
                     sx={{ 
                       bgcolor: 'white',
                       color: '#06038D',
