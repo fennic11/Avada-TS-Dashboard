@@ -38,7 +38,8 @@ export const ROLE_PERMISSIONS = {
             TABS.ISSUES,
             TABS.RESOLUTION_TIME,
             TABS.TS_WORKSPACE,
-            TABS.CHECKOUT
+            TABS.CHECKOUT,
+            TABS.KPI_TS_TEAM
         ],
         description: 'Access to TS related features'
     },
@@ -74,7 +75,8 @@ export const ROLE_PERMISSIONS = {
             TABS.TS_WORKSPACE,
             TABS.SLACK_CHANNEL,
             TABS.PERFORMANCE_TS,
-            TABS.CHECKOUT
+            TABS.CHECKOUT,
+            TABS.KPI_TS_TEAM
         ],
         description: 'Access to TS Lead related features'
         },
