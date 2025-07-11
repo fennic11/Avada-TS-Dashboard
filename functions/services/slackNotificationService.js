@@ -108,25 +108,17 @@ const processCards = async (cards, member) => {
         });
 
         if (validCards.length === 0) {
-            console.log(`No valid cards found for member ${member.trelloId}`);
             return null;
         }
 
         // Lọc những card có member trùng với thành viên
         const memberCards = validCards.filter(card => {
             const hasMember = card.idMembers.includes(member.trelloId);
-            if (hasMember) {
-                console.log(`Found card for member ${member.trelloId}:`, {
-                    name: card.name,
-                    idList: card.idList
-                });
-            }
             return hasMember;
         });
 
         // Kiểm tra kết quả lọc
         if (memberCards.length === 0) {
-            console.log(`No cards found for member ${member.trelloId}`);
             return null;
         }
 

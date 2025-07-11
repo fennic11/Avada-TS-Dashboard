@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Grid, TextField, Paper, FormControl, InputLabel, Select, MenuItem, Chip, Button, Stack, Autocomplete, Tooltip, Fade } from '@mui/material';
+import { Box, Typography, Grid, TextField, Paper, FormControl, InputLabel, Select, MenuItem, Chip, Tooltip, Fade } from '@mui/material';
 import dayjs from 'dayjs';
 import members from '../../data/members.json';
 import lists from '../../data/listsId.json';
@@ -72,25 +72,6 @@ const CardsDetail = () => {
         WAITING_CONFIRMATION: '63f489b961f3a274163459a2', // Waiting for Customer's Confirmation
         TS_DONE: '66d7d254bdad4fb0a354495a', // Done
         DEV_DONE: '663ae7d6feac5f2f8d7a1c86' // Fix done from dev
-    };
-
-    // Map ca trực sang giờ bắt đầu và kết thúc
-    const shiftTimeRanges = {
-        'Ca 1': { start: '00:00', end: '03:59' },
-        'Ca 2': { start: '04:00', end: '07:59' },
-        'Ca 3': { start: '08:00', end: '11:59' },
-        'Ca 4': { start: '12:00', end: '15:59' },
-        'Ca 5.1': { start: '16:00', end: '17:59' },
-        'Ca 5.2': { start: '18:00', end: '19:59' },
-        'Ca 6': { start: '20:00', end: '23:59' },
-    };
-
-    // Lọc action theo ca trực (nếu có chọn), nếu không thì lấy toàn bộ ngày
-    const getHourRange = () => {
-        if (selectedShiftFilter && shiftTimeRanges[selectedShiftFilter]) {
-            return shiftTimeRanges[selectedShiftFilter];
-        }
-        return { start: '00:00', end: '23:59' };
     };
 
     // Status box component
@@ -177,7 +158,12 @@ const CardsDetail = () => {
             if (Array.isArray(card.actions)) {
                 const createAction = card.actions.find(a => a.type === 'createCard');
                 if (createAction && createAction.date) {
-                    return getShift(createAction.date) === selectedShift;
+                    const shift = getShift(createAction.date);
+                    // Map Ca 5.1 and Ca 5.2 to Ca 5 for filtering
+                    if (selectedShift === 'Ca 5') {
+                        return shift === 'Ca 5.1' || shift === 'Ca 5.2';
+                    }
+                    return shift === selectedShift;
                 }
             }
             return false;
@@ -241,7 +227,12 @@ const CardsDetail = () => {
             const createAction = card.actions.find(a => a.type === 'createCard');
             if (createAction && createAction.date) {
                 const shift = getShift(createAction.date);
-                if (shift && shiftMap.hasOwnProperty(shift)) shiftMap[shift]++;
+                // Map Ca 5.1 and Ca 5.2 to Ca 5 for the chart
+                if (shift === 'Ca 5.1' || shift === 'Ca 5.2') {
+                    shiftMap['Ca 5']++;
+                } else if (shift && shiftMap.hasOwnProperty(shift)) {
+                    shiftMap[shift]++;
+                }
             }
         }
     });
@@ -360,29 +351,6 @@ const CardsDetail = () => {
         };
         fetchCards();
     }, [selectedDate, selectedTS]);
-
-    // Lấy tất cả action types có trong filteredCards để làm options
-    const allActionTypes = Array.from(new Set(filteredCards.flatMap(card => Array.isArray(card.actions) ? card.actions.map(a => a.type) : [])));
-
-    // Gom tất cả actions của tất cả filteredCards vào một mảng duy nhất
-    const allCardActions = filteredCards.flatMap(card => {
-        if (!Array.isArray(card.actions)) return [];
-        return card.actions.map(action => {
-            // Vá member cho removeMemberFromCard nếu thiếu
-            let patchedAction = { ...action, cardName: card.name };
-            if (action.type === 'removeMemberFromCard' && !action.member) {
-                let foundMember = null;
-                if (action.data?.idMember) {
-                    foundMember = tsMembers.find(m => m.id === action.data.idMember);
-                }
-                if (!foundMember && Array.isArray(card.idMembers)) {
-                    foundMember = tsMembers.find(m => card.idMembers.includes(m.id));
-                }
-                patchedAction.member = foundMember ? { id: foundMember.id, fullName: foundMember.fullName } : undefined;
-            }
-            return patchedAction;
-        });
-    });
 
     // Function to get completed cards heatmap data
     const getCompletedCardsHeatmap = () => {
@@ -632,7 +600,7 @@ const CardsDetail = () => {
                             pb: 2
                         }}>Filters</Typography>
                         <Grid container spacing={3} alignItems="center">
-                            <Grid item xs={12} sm={6} md={3}>
+                            <Grid item xs={12} sm={6} md={2}>
                                 <TextField
                                     label="Date"
                                     type="date"
@@ -662,7 +630,7 @@ const CardsDetail = () => {
                                     }}
                                 />
                             </Grid>
-                            <Grid item xs={12} sm={6} md={3}>
+                            <Grid item xs={12} sm={6} md={2}>
                                 <FormControl fullWidth size="small" sx={{
                                     background: 'white',
                                     borderRadius: 2,
@@ -682,11 +650,11 @@ const CardsDetail = () => {
                                         '&.Mui-focused': { color: '#1565c0' }
                                     }
                                 }}>
-                                    <InputLabel>TS</InputLabel>
+                                    <InputLabel>Shift</InputLabel>
                                     <Select
-                                        value={selectedTS}
-                                        onChange={e => setSelectedTS(e.target.value)}
-                                        label="TS"
+                                        value={selectedShift}
+                                        onChange={e => setSelectedShift(e.target.value)}
+                                        label="Shift"
                                         MenuProps={{
                                             PaperProps: {
                                                 sx: {
@@ -700,8 +668,8 @@ const CardsDetail = () => {
                                         <MenuItem value="">
                                             <em>All</em>
                                         </MenuItem>
-                                        {tsMembers.map(member => (
-                                            <MenuItem key={member.id} value={member.id} sx={{
+                                        {shiftLabels.map(shift => (
+                                            <MenuItem key={shift.label} value={shift.label} sx={{
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 gap: 2,
@@ -709,21 +677,23 @@ const CardsDetail = () => {
                                                 px: 1.5,
                                                 borderRadius: 2,
                                                 fontWeight: 500,
-                                                backgroundColor: selectedTS === member.id ? '#e3f2fd' : 'inherit',
+                                                backgroundColor: selectedShift === shift.label ? '#e3f2fd' : 'inherit',
                                                 '&:hover': {
                                                     backgroundColor: '#e3e8ee'
                                                 }
                                             }}>
                                                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                                    <Typography sx={{ fontWeight: 700, fontSize: 15, color: '#1976d2', lineHeight: 1 }}>{member.fullName}</Typography>
-                                                    <Typography sx={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>{member.role}</Typography>
+                                                    <Typography sx={{ fontWeight: 700, fontSize: 15, color: '#1976d2', lineHeight: 1 }}>{shift.label}</Typography>
+                                                    <Typography sx={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
+                                                        {shift.hours[0]}h-{shift.hours[shift.hours.length-1]}h
+                                                    </Typography>
                                                 </Box>
                                             </MenuItem>
                                         ))}
                                     </Select>
                                 </FormControl>
                             </Grid>
-                            <Grid item xs={12} sm={6} md={3}>
+                            <Grid item xs={12} sm={6} md={2}>
                                 <FormControl fullWidth size="small" sx={{
                                     background: 'white',
                                     borderRadius: 2,
@@ -778,6 +748,67 @@ const CardsDetail = () => {
                                                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                                                     <Typography sx={{ fontWeight: 700, fontSize: 15, color: '#1976d2', lineHeight: 1 }}>{app.app_name}</Typography>
                                                     <Typography sx={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>{app.group_ts}</Typography>
+                                                </Box>
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={2}>
+                                <FormControl fullWidth size="small" sx={{
+                                    background: 'white',
+                                    borderRadius: 2,
+                                    '& .MuiOutlinedInput-root': {
+                                        fontSize: 16,
+                                        fontWeight: 500,
+                                        background: 'white',
+                                        borderRadius: 2,
+                                        '& fieldset': { borderColor: '#e3e8ee' },
+                                        '&:hover fieldset': { borderColor: '#1976d2' },
+                                        '&.Mui-focused fieldset': { borderColor: '#1976d2', borderWidth: 2 }
+                                    },
+                                    '& .MuiInputLabel-root': {
+                                        color: '#1976d2',
+                                        fontWeight: 600,
+                                        fontSize: 15,
+                                        '&.Mui-focused': { color: '#1565c0' }
+                                    }
+                                }}>
+                                    <InputLabel>TS</InputLabel>
+                                    <Select
+                                        value={selectedTS}
+                                        onChange={e => setSelectedTS(e.target.value)}
+                                        label="TS"
+                                        MenuProps={{
+                                            PaperProps: {
+                                                sx: {
+                                                    borderRadius: 2,
+                                                    boxShadow: '0 4px 24px 0 #b6c2d933',
+                                                    mt: 1
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        <MenuItem value="">
+                                            <em>All</em>
+                                        </MenuItem>
+                                        {tsMembers.map(member => (
+                                            <MenuItem key={member.id} value={member.id} sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 2,
+                                                py: 1.2,
+                                                px: 1.5,
+                                                borderRadius: 2,
+                                                fontWeight: 500,
+                                                backgroundColor: selectedTS === member.id ? '#e3f2fd' : 'inherit',
+                                                '&:hover': {
+                                                    backgroundColor: '#e3e8ee'
+                                                }
+                                            }}>
+                                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                                    <Typography sx={{ fontWeight: 700, fontSize: 15, color: '#1976d2', lineHeight: 1 }}>{member.fullName}</Typography>
+                                                    <Typography sx={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>{member.role}</Typography>
                                                 </Box>
                                             </MenuItem>
                                         ))}
