@@ -56,10 +56,6 @@
     "name": "Trial Shop"
   },
   {
-    "id": "6864a8d5480cdc7b1609f1a3",
-    "name": "Speedup-T6-2025"
-  },
-  {
     "id": "638d769884c52b05235a2317",
     "name": "Backlog"
   },
@@ -302,6 +298,14 @@
   {
     "id": "6860bc9160f5657e2f99ed8b",
     "name": "Done-T6-2025"
+  },
+  {
+    "id": "6864a8d5480cdc7b1609f1a3",
+    "name": "Speedup-T6-2025"
+  },
+  {
+    "id": "687709a88731fd932edbd6b6",
+    "name": "Done-T7-2025"
   },
   {
     "id": "65cb73c6808298930c0b7fd1",

@@ -51,7 +51,7 @@ const AllKpiTsTeam = () => {
                 
                 // Get list IDs for "Fix done from dev" and "Done"
                 const fixDoneList = listsId.find(list => list.name === "Fix done from dev");
-                const doneList = listsId.find(list => list.name === "Done");
+                const doneLists = listsId.filter(list => list.name === "Done" || list.name === "Done-T7-2025");
                 
                 // Fetch cards from both lists separately
                 const fixDoneCards = [];
@@ -61,7 +61,9 @@ const AllKpiTsTeam = () => {
                     const cards = await getCardsByList(fixDoneList.id);
                     if (cards) fixDoneCards.push(...cards);
                 }
-                if (doneList) {
+                
+                // Fetch cards from both Done lists
+                for (const doneList of doneLists) {
                     const cards = await getCardsByList(doneList.id);
                     if (cards) doneCards.push(...cards);
                 }

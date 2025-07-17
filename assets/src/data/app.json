@@ -122,7 +122,7 @@
     {
         "label_trello": "App: Bundle",
         "app_name": "Bundle",
-        "group_ts": "TS2",
+        "group_ts": "TS1",
         "product_team": "Team X"
     },
     {
@@ -134,25 +134,25 @@
     {
         "label_trello": "App: Free Gift",
         "app_name": "Free Gift",
-        "group_ts": "TS2",
+        "group_ts": "TS1",
         "product_team": "Team X"
     },
     {
         "label_trello": "App: Cart Drawer",
         "app_name": "Cart Drawer",
-        "group_ts": "TS2",
+        "group_ts": "TS1",
         "product_team": "Team X"
     },
     {
         "label_trello": "App: Boost Sales",
         "app_name": "UpSell",
-        "group_ts": "TS2",
+        "group_ts": "TS1",
         "product_team": "Team X"
     },
     {
         "label_trello": "App: Post Purchase Upsell",
         "app_name": "Post Purchase",
-        "group_ts": "TS2",
+        "group_ts": "TS1",
         "product_team": "Team X"
     }
     

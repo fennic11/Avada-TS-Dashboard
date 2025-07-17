@@ -19,7 +19,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
-import { getBoardActionsByMemberAndDate } from '../api/trelloApi';
+import { getBoardActionsByMemberAndDate, getActionsByCard } from '../api/trelloApi';
 import { getCurrentUser } from '../api/usersApi';
 import { calculateResolutionTime } from '../utils/resolutionTime';
 import CardDetailModal from './CardDetailModal';
@@ -37,6 +37,11 @@ const CheckoutShift = () => {
   const [selectedActionType, setSelectedActionType] = useState(null);
   const [selectedCardId, setSelectedCardId] = useState(null);
   const [isCardDetailModalOpen, setIsCardDetailModalOpen] = useState(false);
+  const [resLoading, setResLoading] = useState(false);
+  const [resError, setResError] = useState('');
+  const [avgResTime, setAvgResTime] = useState(0);
+  const [resDetails, setResDetails] = useState([]);
+  const [showResDetails, setShowResDetails] = useState(false);
 
   // Định nghĩa các ca trực
   const shifts = [
@@ -132,57 +137,62 @@ const CheckoutShift = () => {
     }
   }, [selectedDate, selectedShift, currentUser]);
 
-  // Update card resolution details when actions change
-  useEffect(() => {
-    if (!actions.length || !currentUser?.trelloId) {
-      setCardResolutionDetails([]);
-      setAverageResolutionTime(0);
-      return;
-    }
-
-    // 1. Card đã complete bởi current user
-    const completedCardIds = new Set();
-    actions.forEach(action => {
-      if (
+  // Handler to calculate avg resolution time
+  const handleCalculateAvgResolutionTime = async () => {
+    if (!actions.length || !currentUser?.trelloId) return;
+    setResLoading(true);
+    setResError('');
+    setShowResDetails(true);
+    try {
+      // 1. Card đã complete bởi current user
+      const completedCardIds = Array.from(new Set(actions.filter(action =>
         action.type === 'updateCard' &&
         action.data?.card?.dueComplete === true &&
         action.data?.card?.id &&
-        action.idMemberCreator === currentUser?.trelloId // Chỉ tính card mà current user complete
-      ) {
-        completedCardIds.add(action.data.card.id);
+        action.idMemberCreator === currentUser?.trelloId
+      ).map(action => action.data.card.id)));
+      if (!completedCardIds.length) {
+        setResDetails([]);
+        setAvgResTime(0);
+        setResLoading(false);
+        return;
       }
-    });
-
-    const cardDetails = [];
-    let totalResolutionTime = 0;
-    let cardCount = 0;
-    
-    if (completedCardIds.size > 0) {
-      completedCardIds.forEach(cardId => {
-        const cardActionList = actions.filter(action => action.data?.card?.id === cardId);
-        const resolution = calculateResolutionTime(cardActionList);
+      // 2. Lấy actions cho từng card
+      const allCardActions = await Promise.all(
+        completedCardIds.map(cardId => getActionsByCard(cardId).then(
+          actions => ({ cardId, actions }),
+          err => ({ cardId, actions: [] })
+        ))
+      );
+      // 3. Tính resolution time cho từng card
+      let total = 0;
+      let count = 0;
+      const details = allCardActions.map(({ cardId, actions }) => {
+        const resolution = calculateResolutionTime(actions);
         if (resolution && resolution.TSResolutionTime) {
-          totalResolutionTime += resolution.TSResolutionTime;
-          cardCount++;
+          total += resolution.TSResolutionTime;
+          count++;
           // Get card name from actions
-          const cardAction = cardActionList.find(action => action.data?.card?.name);
+          const cardAction = actions.find(action => action.data?.card?.name);
           const cardName = cardAction?.data?.card?.name || `Card ${cardId.slice(-8)}`;
-          cardDetails.push({
+          return {
             id: cardId,
             name: cardName,
             resolutionTime: Math.round(resolution.TSResolutionTime * 100) / 100,
             totalTime: Math.round(resolution.resolutionTime * 100) / 100,
             firstActionTime: Math.round(resolution.firstActionTime * 100) / 100
-          });
-
+          };
         }
-      });
+        return null;
+      }).filter(Boolean);
+      setResDetails(details);
+      setAvgResTime(count > 0 ? Math.round((total / count) * 100) / 100 : 0);
+    } catch (err) {
+      setResError('Có lỗi khi tính resolution time');
+    } finally {
+      setResLoading(false);
     }
-    
-    const average = cardCount > 0 ? Math.round((totalResolutionTime / cardCount) * 100) / 100 : 0;
-    setAverageResolutionTime(average);
-    setCardResolutionDetails(cardDetails);
-  }, [actions, currentUser?.trelloId]);
+  };
 
   const getShiftName = (shiftId) => {
     const shift = shifts.find(s => s.id === shiftId);
@@ -192,7 +202,6 @@ const CheckoutShift = () => {
   const getActionCounts = () => {
     if (!actions.length) return {};
     const actionCounts = {
-      resolutionTime: 0,
       addMemberToCard: 0,
       completeCard: 0,
       moveToDone: 0,
@@ -244,9 +253,6 @@ const CheckoutShift = () => {
       }
     });
     actionCounts.addMemberToCard = addedCardIds.size;
-    
-    // Add resolution time from state
-    actionCounts.resolutionTime = averageResolutionTime;
     
     return actionCounts;
   };
@@ -305,23 +311,6 @@ const CheckoutShift = () => {
     }
   }, []);
 
-  // Helper functions for icons and labels
-  function getActionIcon(type) {
-    switch (type) {
-      case 'updateCard': return '📝';
-      case 'commentCard': return '💬';
-      case 'addMemberToCard': return '👤';
-      case 'removeMemberFromCard': return '❌';
-      case 'completeCard': return '✅';
-      case 'moveToDone': return '➡️';
-      case 'moveToDoing': return '🔄';
-      case 'moveToWaitingToFix': return '⏳';
-      case 'moveToFixDoneFromDev': return '🔧';
-      case 'assigned': return '📌';
-      case 'resolutionTime': return '⏱️';
-      default: return '📄';
-    }
-  }
   function getActionLabel(type) {
     switch (type) {
       case 'resolutionTime': return 'Avg Resolution Time';
@@ -368,6 +357,15 @@ const CheckoutShift = () => {
       default:
         return { icon: '📄', chipLabel: 'OTHER', chipBg: '#f3f4f6', chipColor: '#64748b', bgColor: '#f3f4f6', color: '#64748b' };
     }
+  }
+
+  // Thêm hàm formatMinutes
+  function formatMinutes(mins) {
+    if (typeof mins !== 'number' || isNaN(mins)) return '-';
+    if (mins >= 60) {
+      return `${(Math.round((mins / 60) * 100) / 100)} h`;
+    }
+    return `${mins} mins`;
   }
 
   return (
@@ -529,13 +527,91 @@ const CheckoutShift = () => {
           </Box>
         ) : (
           <Grid container spacing={2}>
+            {/* Avg Resolution Time card */}
+            <Grid item xs={12} sm={6} md={3} lg={2} key="resolutionTime">
+              <Paper 
+                sx={{
+                  p: 2.5,
+                  borderRadius: 2.5,
+                  height: 190,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                  border: '1px solid #f1f5f9',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  position: 'relative',
+                  transition: 'all 0.2s ease',
+                  ...(showResDetails && {
+                    border: '2px solid #1976d2',
+                    boxShadow: '0 4px 12px rgba(25, 118, 210, 0.15)',
+                    transform: 'translateY(-2px)'
+                  }),
+                  '&:hover': {
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    transform: 'translateY(-2px)'
+                  }
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                  <Box sx={{
+                    background: '#fce4ec',
+                    color: '#c2185b',
+                    borderRadius: 2,
+                    width: 36,
+                    height: 36,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 22,
+                    fontWeight: 700,
+                    mr: 1
+                  }}>
+                    ⏱️
+                  </Box>
+                  <Box sx={{
+                    background: '#fce4ec',
+                    color: '#c2185b',
+                    borderRadius: 1.5,
+                    px: 1.5,
+                    py: 0.2,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    letterSpacing: 0.5,
+                    minWidth: 48,
+                    textAlign: 'center',
+                    alignSelf: 'flex-start'
+                  }}>TIME</Box>
+                </Box>
+                <Typography sx={{ fontWeight: 600, fontSize: 16, mb: 0.5 }}>Avg Resolution Time</Typography>
+                <Typography sx={{ 
+                  fontWeight: 800, 
+                  fontSize: 24, 
+                  color: '#111827',
+                  lineHeight: 1.2
+                }}>
+                  {resLoading ? <CircularProgress size={20} /> : formatMinutes(avgResTime)}
+                </Typography>
+                <Button
+                  variant="contained"
+                  color={showResDetails ? 'inherit' : 'error'}
+                  size="small"
+                  sx={{ mt: 2, fontWeight: 700, borderRadius: 2, textTransform: 'none' }}
+                  onClick={() => {
+                    if (showResDetails) {
+                      setShowResDetails(false);
+                    } else {
+                      handleCalculateAvgResolutionTime();
+                    }
+                  }}
+                  disabled={resLoading}
+                >
+                  {resLoading ? <CircularProgress size={18} sx={{ color: '#fff' }} /> : (showResDetails ? 'Đóng' : 'Tính Resolution Time')}
+                </Button>
+              </Paper>
+            </Grid>
+            {/* Other action cards */}
             {Object.entries(actionCounts).map(([key, value]) => {
               const actionMeta = getActionMeta(key);
-              // Format resolution time with hours unit
-              const displayValue = key === 'resolutionTime' 
-                ? `${value} mins` 
-                : value;
-              
               return (
                 <Grid item xs={12} sm={6} md={3} lg={2} key={key}>
                   <Paper 
@@ -597,11 +673,11 @@ const CheckoutShift = () => {
                     <Typography sx={{ fontWeight: 600, fontSize: 16, mb: 0.5 }}>{getActionLabel(key)}</Typography>
                     <Typography sx={{ 
                       fontWeight: 800, 
-                      fontSize: key === 'resolutionTime' ? 24 : 28, 
+                      fontSize: 28, 
                       color: '#111827',
                       lineHeight: 1.2
                     }}>
-                      {displayValue}
+                      {value}
                     </Typography>
                   </Paper>
                 </Grid>
@@ -794,155 +870,159 @@ const CheckoutShift = () => {
       )}
 
       {/* Card Resolution Details - only show when no action type is selected */}
-      {!selectedActionType && cardResolutionDetails.length > 0 && (
+      {!selectedActionType && showResDetails && (
         <Box sx={{ mt: 4 }}>
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-            Card Resolution Details ({cardResolutionDetails.length} cards)
+            Card Resolution Details ({resDetails.length} cards)
           </Typography>
-          <Grid container spacing={2}>
-            {cardResolutionDetails.map((card) => (
-              <Grid item xs={12} md={6} lg={4} key={card.id}>
-                <Paper sx={{
-                  p: 2.5,
-                  borderRadius: 2.5,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                  border: '1px solid #f1f5f9',
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                }}>
-                  <Box>
-                    <Typography 
-                      variant="subtitle1" 
-                      sx={{ 
-                        fontWeight: 600, 
-                        mb: 1,
-                        color: '#1e293b',
-                        lineHeight: 1.4
-                      }}
-                    >
-                      {card.name}
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center',
-                        p: 1,
-                        background: '#f8fafc',
-                        borderRadius: 1
-                      }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Box sx={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: '50%',
-                            background: '#e3f7e3',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 12
-                          }}>
-                            ⏱️
+          {resError && <Alert severity="error" sx={{ mb: 2 }}>{resError}</Alert>}
+          {resLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
+              <CircularProgress size={32} sx={{ color: '#06038D' }} />
+            </Box>
+          ) : (
+            <Grid container spacing={2}>
+              {resDetails.map((card) => (
+                <Grid item xs={12} md={6} lg={4} key={card.id}>
+                  <Paper sx={{
+                    p: 2.5,
+                    borderRadius: 2.5,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                    border: '1px solid #f1f5f9',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                  }}>
+                    <Box>
+                      <Typography 
+                        variant="subtitle1" 
+                        sx={{ 
+                          fontWeight: 600, 
+                          mb: 1,
+                          color: '#1e293b',
+                          lineHeight: 1.4
+                        }}
+                      >
+                        {card.name}
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center',
+                          p: 1,
+                          background: '#f8fafc',
+                          borderRadius: 1
+                        }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: '50%',
+                              background: '#e3f7e3',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 12
+                            }}>
+                              ⏱️
+                            </Box>
+                            <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
+                              TS Resolution
+                            </Typography>
                           </Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
-                            TS Resolution
+                          <Typography variant="body2" sx={{ fontWeight: 700, color: '#059669' }}>
+                            {formatMinutes(card.resolutionTime)}
                           </Typography>
                         </Box>
-                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#059669' }}>
-                          {card.resolutionTime} mins
-                        </Typography>
-                      </Box>
-                      
-                      <Box sx={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center',
-                        p: 1,
-                        background: '#f8fafc',
-                        borderRadius: 1
-                      }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Box sx={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: '50%',
-                            background: '#fff7e3',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 12
-                          }}>
-                            📅
+                        <Box sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center',
+                          p: 1,
+                          background: '#f8fafc',
+                          borderRadius: 1
+                        }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: '50%',
+                              background: '#fff7e3',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 12
+                            }}>
+                              📅
+                            </Box>
+                            <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
+                              Total Time
+                            </Typography>
                           </Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
-                            Total Time
+                          <Typography variant="body2" sx={{ fontWeight: 700, color: '#f59e0b' }}>
+                            {formatMinutes(card.totalTime)}
                           </Typography>
                         </Box>
-                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#f59e0b' }}>
-                          {card.totalTime} mins
-                        </Typography>
-                      </Box>
-                      
-                      <Box sx={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center',
-                        p: 1,
-                        background: '#f8fafc',
-                        borderRadius: 1
-                      }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Box sx={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: '50%',
-                            background: '#e3e9f7',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 12
-                          }}>
-                            🚀
+                        <Box sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center',
+                          p: 1,
+                          background: '#f8fafc',
+                          borderRadius: 1
+                        }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: '50%',
+                              background: '#e3e9f7',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 12
+                            }}>
+                              🚀
+                            </Box>
+                            <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
+                              First Action
+                            </Typography>
                           </Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
-                            First Action
+                          <Typography variant="body2" sx={{ fontWeight: 700, color: '#3b82f6' }}>
+                            {formatMinutes(card.firstActionTime)}
                           </Typography>
                         </Box>
-                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#3b82f6' }}>
-                          {card.firstActionTime} mins
-                        </Typography>
                       </Box>
                     </Box>
-                  </Box>
-                  
-                  <Box sx={{ 
-                    mt: 2, 
-                    pt: 2, 
-                    borderTop: '1px solid #e2e8f0',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <Chip 
-                      label="RESOLVED" 
-                      size="small" 
-                      sx={{ 
-                        background: '#e3f7e3', 
-                        color: '#059669',
-                        fontWeight: 600,
-                        fontSize: 11
-                      }} 
-                    />
-                    <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 500 }}>
-                      ID: {card.id.slice(-8)}
-                    </Typography>
-                  </Box>
-                </Paper>
-              </Grid>
-            ))}
-          </Grid>
+                    <Box sx={{ 
+                      mt: 2, 
+                      pt: 2, 
+                      borderTop: '1px solid #e2e8f0',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <Chip 
+                        label="RESOLVED" 
+                        size="small" 
+                        sx={{ 
+                          background: '#e3f7e3', 
+                          color: '#059669',
+                          fontWeight: 600,
+                          fontSize: 11
+                        }} 
+                      />
+                      <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 500 }}>
+                        ID: {card.id.slice(-8)}
+                      </Typography>
+                    </Box>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+          )}
         </Box>
       )}
 
