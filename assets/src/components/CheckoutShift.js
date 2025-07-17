@@ -169,8 +169,8 @@ const CheckoutShift = () => {
       let count = 0;
       const details = allCardActions.map(({ cardId, actions }) => {
         const resolution = calculateResolutionTime(actions);
-        if (resolution && resolution.TSResolutionTime) {
-          total += resolution.TSResolutionTime;
+        if (resolution && resolution.resolutionTime) { // Thay đổi từ TSResolutionTime thành resolutionTime
+          total += resolution.resolutionTime; // Thay đổi từ TSResolutionTime thành resolutionTime
           count++;
           // Get card name from actions
           const cardAction = actions.find(action => action.data?.card?.name);
@@ -178,7 +178,7 @@ const CheckoutShift = () => {
           return {
             id: cardId,
             name: cardName,
-            resolutionTime: Math.round(resolution.TSResolutionTime * 100) / 100,
+            resolutionTime: Math.round(resolution.resolutionTime * 100) / 100, // Thay đổi từ TSResolutionTime thành resolutionTime
             totalTime: Math.round(resolution.resolutionTime * 100) / 100,
             firstActionTime: Math.round(resolution.firstActionTime * 100) / 100
           };
