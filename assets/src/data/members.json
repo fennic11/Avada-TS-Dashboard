@@ -219,9 +219,11 @@
     {
       "id": "626bbe4266b9591833ebbc0e",
       "fullName": "Kenny ND",
+      "email": "kennynd@avada.io",
       "username": "kennynd",
       "avatarUrl": "https://trello-members.s3.amazonaws.com/626bbe4266b9591833ebbc0e/37b6e0f60269601b6bbd62dd5ca0db6a",
-      "initials": "KN"
+      "initials": "KN",
+      "role": "pm"
     },
     {
       "id": "661f4ae73a0b54e66afd437b",
