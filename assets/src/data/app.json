@@ -55,7 +55,7 @@
     },
     {
         "label_trello": "App: PDF Invoice",
-        "app_name": "PDF",
+        "app_name": "PDF Invoice",
         "group_ts": "TS1",
         "product_team": "Solar"
     },
@@ -85,19 +85,19 @@
     },
     {
         "label_trello": "App: Air Reviews",
-        "app_name": "Air Review",
+        "app_name": "Air Reviews",
         "group_ts": "TS2",
         "product_team": "Solar"
     },
     {
         "label_trello": "App: Joy Subscriptions",
-        "app_name": "Subscription",
+        "app_name": "Joy Subscriptions",
         "group_ts": "TS2",
         "product_team": "Solar"
     },
     {
-        "label_trello": "App: SPOS",
-        "app_name": "SPOS",
+        "label_trello": "App: POS Staff",
+        "app_name": "POS Staff",
         "group_ts": "TS2",
         "product_team": "Solar"
     },
@@ -145,13 +145,13 @@
     },
     {
         "label_trello": "App: Boost Sales",
-        "app_name": "UpSell",
+        "app_name": "Boost Sales",
         "group_ts": "TS1",
         "product_team": "Team X"
     },
     {
         "label_trello": "App: Post Purchase Upsell",
-        "app_name": "Post Purchase",
+        "app_name": "Post Purchase Upsell",
         "group_ts": "TS1",
         "product_team": "Team X"
     }

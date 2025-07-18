@@ -3,13 +3,14 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper,
   Card, CardContent, Typography, Grid, LinearProgress, Box, CircularProgress, useTheme, alpha,
-  TableSortLabel, Button, TextField
+  TableSortLabel, Button, TextField, FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
 import { getDevFixingCards } from '../../api/trelloApi';
 import CardDetailModal from '../CardDetailModal';
 import ClearIcon from '@mui/icons-material/Clear';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import appData from '../../data/app.json';
 
 export default function DevFixingDashboard() {
   const theme = useTheme();
@@ -23,6 +24,18 @@ export default function DevFixingDashboard() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showDateFilter, setShowDateFilter] = useState(false);
+
+  // Map app name to product_team
+  const appToTeam = {};
+  const teamSet = new Set();
+  // Chuẩn hóa app_name về chữ thường, trim khi tạo appToTeam
+  appData.forEach(app => {
+    appToTeam[app.app_name.toLowerCase().trim()] = app.product_team;
+    if (app.product_team) teamSet.add(app.product_team);
+  });
+  const allTeams = ['Tất cả', ...Array.from(teamSet)];
+
+  const [selectedTeam, setSelectedTeam] = useState('Tất cả');
 
   const processCards = (cards) => {
     return cards.map(card => {
@@ -39,6 +52,19 @@ export default function DevFixingDashboard() {
       // Extract Slack links from description
       const slackLink = extractSlackLink(card.desc || '');
 
+      // Chuẩn hóa tên app về chữ thường, trim để so sánh với app.json
+      let appKey = '';
+      if (appLabel) {
+        appKey = appLabel.name.replace('App:', '').trim().toLowerCase();
+      } else if (card.name) {
+        appKey = card.name.trim().toLowerCase();
+      }
+      // Gán productTeam cho card
+      const productTeam = appToTeam[appKey] || null;
+      console.log('productTeam', productTeam);
+      console.log('appKey', appKey);
+      console.log(card.name);
+
       return {
         id: card.id,
         shortUrl: card.shortUrl,
@@ -47,7 +73,9 @@ export default function DevFixingDashboard() {
         app: appLabel ? appLabel.name : 'Không có app',
         idMembers: card.idMembers || [],
         createDate: createDate,
-        slackLink: slackLink
+        slackLink: slackLink,
+        appKey: appKey,
+        productTeam: productTeam
       };
     });
   };
@@ -190,6 +218,11 @@ export default function DevFixingDashboard() {
     // Filter by app
     if (selectedApp !== 'Tất cả') {
       filtered = filtered.filter(card => card.app === selectedApp);
+    }
+
+    // Filter by team product (dùng productTeam đã gán khi processCards)
+    if (selectedTeam !== 'Tất cả') {
+      filtered = filtered.filter(card => card.productTeam === selectedTeam);
     }
 
     // Filter by date range
@@ -704,7 +737,7 @@ export default function DevFixingDashboard() {
       maxWidth: '1800px', 
       margin: '0 auto',
       minHeight: '100vh',
-      background: alpha(theme.palette.background.default, 0.8),
+      background: (theme) => alpha(theme.palette.background.default, 0.8),
       backdropFilter: 'blur(10px)',
       transition: 'all 0.3s ease-in-out'
     }}>
@@ -740,6 +773,90 @@ export default function DevFixingDashboard() {
           gap: 2,
           alignItems: 'center'
         }}>
+          <Box
+            sx={{
+              p: 0,
+              background: 'transparent',
+              border: 'none',
+              boxShadow: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              minWidth: 180,
+              mr: 2,
+            }}
+          >
+            <FormControl
+              size="small"
+              fullWidth
+              sx={{
+                background: (theme) => alpha(theme.palette.background.paper, 0.7),
+                borderRadius: 2,
+                '.MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  background: 'transparent',
+                  px: 1.5,
+                  py: 0.5,
+                  minHeight: 40,
+                  transition: 'all 0.2s',
+                  boxShadow: 'none',
+                  '& fieldset': {
+                    borderColor: alpha(theme.palette.primary.main, 0.15),
+                  },
+                  '&:hover fieldset': {
+                    borderColor: alpha(theme.palette.primary.main, 0.35),
+                  },
+                },
+                '.MuiInputLabel-root': {
+                  fontWeight: 500,
+                  color: alpha('#1976d2', 0.7),
+                  fontSize: '0.95rem',
+                  letterSpacing: 0.1,
+                  top: '-4px',
+                }
+              }}
+            >
+              <InputLabel id="product-team-label">Team Product</InputLabel>
+              <Select
+                labelId="product-team-label"
+                value={selectedTeam}
+                label="Team Product"
+                onChange={e => setSelectedTeam(e.target.value)}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      borderRadius: 2,
+                      mt: 0.5,
+                      boxShadow: '0 4px 24px rgba(25,118,210,0.08)'
+                    }
+                  }
+                }}
+              >
+                {allTeams.map(team => (
+                  <MenuItem
+                    key={team}
+                    value={team}
+                    sx={theme => ({
+                      fontWeight: team === selectedTeam ? 700 : 500,
+                      background: team === selectedTeam ? alpha(theme.palette.primary.main, 0.06) : 'transparent',
+                      borderRadius: 2,
+                      px: 2,
+                      py: 1.1,
+                      my: 0.2,
+                      fontSize: '1rem',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        background: alpha(theme.palette.primary.main, 0.12),
+                      },
+                    })}
+                  >
+                    {team}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
           <Button
             variant="outlined"
             startIcon={<FilterListIcon />}
@@ -756,26 +873,6 @@ export default function DevFixingDashboard() {
           >
             Lọc theo ngày
           </Button>
-          <Box sx={{
-            backgroundColor: alpha(theme.palette.warning.main, 0.1),
-            px: 2,
-            py: 1,
-            borderRadius: 2,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1
-          }}>
-            <Typography
-              variant="h6"
-              sx={{
-                color: theme.palette.warning.main,
-                fontWeight: 600,
-                fontSize: '0.9rem'
-              }}
-            >
-              Pending: {cards.length}
-            </Typography>
-          </Box>
         </Box>
       </Box>
 
