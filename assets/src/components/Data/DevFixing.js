@@ -8,7 +8,7 @@ import {
 import { getDevFixingCards } from '../../api/trelloApi';
 import CardDetailModal from '../CardDetailModal';
 import ClearIcon from '@mui/icons-material/Clear';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import appData from '../../data/app.json';
 
@@ -61,9 +61,6 @@ export default function DevFixingDashboard() {
       }
       // Gán productTeam cho card
       const productTeam = appToTeam[appKey] || null;
-      console.log('productTeam', productTeam);
-      console.log('appKey', appKey);
-      console.log(card.name);
 
       return {
         id: card.id,
@@ -246,6 +243,32 @@ export default function DevFixingDashboard() {
 
   const filteredCards = filterCards(cards);
 
+  // Tính số lượng card theo productTeam
+  const teamStats = cards.reduce((acc, card) => {
+    if (!card.productTeam) return acc;
+    acc[card.productTeam] = (acc[card.productTeam] || 0) + 1;
+    return acc;
+  }, {});
+  const teamChartData = Object.entries(teamStats).map(([team, count]) => ({ team, count }));
+ 
+  // Tính số app unique cho mỗi team
+  const teamAppStats = cards.reduce((acc, card) => {
+    if (!card.productTeam || !card.app) return acc;
+    if (!acc[card.productTeam]) {
+      acc[card.productTeam] = { cardCount: 0, apps: new Set() };
+    }
+    acc[card.productTeam].cardCount += 1;
+    acc[card.productTeam].apps.add(card.app);
+    return acc;
+  }, {});
+ 
+  // Chuyển đổi thành array với thông tin card và app count
+  const teamChartDataWithApps = Object.entries(teamAppStats).map(([team, data]) => ({
+    team,
+    count: data.cardCount,
+    appCount: data.apps.size
+  }));
+
   const renderAppStats = (cardList, title) => {
     const appStats = cardList.reduce((acc, card) => {
       acc[card.app] = (acc[card.app] || 0) + 1;
@@ -261,8 +284,6 @@ export default function DevFixingDashboard() {
     const getChartData = (app) => {
       const appCards = cardList.filter(card => card.app === app && card.createDate);
       
-      // console.log(`Cards for ${app}:`, appCards.length);
-      
       const dateMap = new Map();
       appCards.forEach(card => {
         if (card.createDate) {
@@ -274,8 +295,6 @@ export default function DevFixingDashboard() {
       const chartData = Array.from(dateMap.entries())
         .map(([date, count]) => ({ date, count }))
         .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-      // console.log(`Chart data for ${app}:`, chartData);
       return chartData;
     };
 
@@ -730,6 +749,9 @@ export default function DevFixingDashboard() {
     );
   }
 
+  // Màu sắc tương phản cho từng team
+  const teamColors = ['#1976d2', '#2e7d32', '#ed6c02', '#9c27b0', '#d32f2f', '#7b1fa2', '#388e3c'];
+
   return (
     <Box sx={{ 
       width: '100%', 
@@ -741,138 +763,207 @@ export default function DevFixingDashboard() {
       backdropFilter: 'blur(10px)',
       transition: 'all 0.3s ease-in-out'
     }}>
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        mb: 4,
-        background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.primary.main, 0.05)} 100%)`,
-        p: 3,
-        borderRadius: 3,
-        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-        border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        '&:hover': {
-          transform: 'translateY(-2px)',
-          boxShadow: '0 6px 24px rgba(0,0,0,0.1)'
-        }
-      }}>
-        <Typography variant="h4" sx={{ 
-          fontWeight: 700,
-          color: 'primary.main',
+      <Box
+        sx={{
           display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
-          gap: 1,
-          textShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          fontSize: '1.5rem'
-        }}>
-          Dev Fixing Dashboard
-        </Typography>
+          flexWrap: 'wrap',
+          mb: 4,
+          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.primary.main, 0.05)} 100%)`,
+          p: 3,
+          borderRadius: 3,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+          border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          '&:hover': {
+            transform: 'translateY(-2px)',
+            boxShadow: '0 6px 24px rgba(0,0,0,0.1)'
+          }
+        }}
+      >
+        {/* Box team bên trái */}
         <Box sx={{
           display: 'flex',
           gap: 2,
-          alignItems: 'center'
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          flex: 1,
+          minWidth: 0
         }}>
-          <Box
-            sx={{
-              p: 0,
-              background: 'transparent',
-              border: 'none',
-              boxShadow: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              minWidth: 180,
-              mr: 2,
-            }}
-          >
-            <FormControl
-              size="small"
-              fullWidth
-              sx={{
-                background: (theme) => alpha(theme.palette.background.paper, 0.7),
-                borderRadius: 2,
-                '.MuiOutlinedInput-root': {
-                  borderRadius: 2,
-                  fontWeight: 600,
-                  fontSize: '1rem',
-                  background: 'transparent',
-                  px: 1.5,
-                  py: 0.5,
-                  minHeight: 40,
+          {teamChartDataWithApps
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5)
+            .map((entry, index) => (
+              <Box
+                key={entry.team}
+                sx={{
+                  minWidth: 90,
+                  maxWidth: 120,
+                  p: 1.5,
+                  borderRadius: 3,
+                  background: alpha(teamColors[index % teamColors.length], 0.08),
+                  border: `2px solid ${alpha(teamColors[index % teamColors.length], 0.25)}`,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 0.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
                   transition: 'all 0.2s',
-                  boxShadow: 'none',
-                  '& fieldset': {
-                    borderColor: alpha(theme.palette.primary.main, 0.15),
+                  '&:hover': {
+                    boxShadow: `0 4px 16px ${alpha(teamColors[index % teamColors.length], 0.15)}`,
+                    borderColor: teamColors[index % teamColors.length],
+                    background: alpha(teamColors[index % teamColors.length], 0.18),
                   },
-                  '&:hover fieldset': {
-                    borderColor: alpha(theme.palette.primary.main, 0.35),
-                  },
-                },
-                '.MuiInputLabel-root': {
-                  fontWeight: 500,
-                  color: alpha('#1976d2', 0.7),
-                  fontSize: '0.95rem',
-                  letterSpacing: 0.1,
-                  top: '-4px',
-                }
+                  ...(selectedTeam === entry.team && {
+                    borderColor: teamColors[index % teamColors.length],
+                    background: alpha(teamColors[index % teamColors.length], 0.22),
+                  })
+                }}
+                onClick={() => setSelectedTeam(selectedTeam === entry.team ? 'Tất cả' : entry.team)}
+              >
+                <Box sx={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  backgroundColor: teamColors[index % teamColors.length],
+                  mb: 0.5
+                }} />
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: teamColors[index % teamColors.length], fontSize: '0.9rem', textAlign: 'center' }}>
+                  {entry.team}
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 800, color: '#222', mt: 0.3, fontSize: '1.1rem' }}>
+                  {entry.count}/{entry.appCount}
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#666', fontWeight: 500, textAlign: 'center', fontSize: '0.7rem' }}>
+                  cards/apps
+                </Typography>
+              </Box>
+          ))}
+        </Box>
+
+        {/* Filter + tiêu đề bên phải */}
+        <Box sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          gap: 2,
+          minWidth: 260
+        }}>
+          <Typography variant="h4" sx={{
+            fontWeight: 700,
+            color: 'primary.main',
+            textShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            fontSize: '1.5rem',
+            mb: 1
+          }}>
+            Dev Fixing Dashboard
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <Box
+              sx={{
+                p: 0,
+                background: 'transparent',
+                border: 'none',
+                boxShadow: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                minWidth: 180,
+                mr: 2,
               }}
             >
-              <InputLabel id="product-team-label">Team Product</InputLabel>
-              <Select
-                labelId="product-team-label"
-                value={selectedTeam}
-                label="Team Product"
-                onChange={e => setSelectedTeam(e.target.value)}
-                MenuProps={{
-                  PaperProps: {
-                    sx: {
-                      borderRadius: 2,
-                      mt: 0.5,
-                      boxShadow: '0 4px 24px rgba(25,118,210,0.08)'
-                    }
+              <FormControl
+                size="small"
+                fullWidth
+                sx={{
+                  background: (theme) => alpha(theme.palette.background.paper, 0.7),
+                  borderRadius: 2,
+                  '.MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    fontWeight: 600,
+                    fontSize: '1rem',
+                    background: 'transparent',
+                    px: 1.5,
+                    py: 0.5,
+                    minHeight: 40,
+                    transition: 'all 0.2s',
+                    boxShadow: 'none',
+                    '& fieldset': {
+                      borderColor: alpha(theme.palette.primary.main, 0.15),
+                    },
+                    '&:hover fieldset': {
+                      borderColor: alpha(theme.palette.primary.main, 0.35),
+                    },
+                  },
+                  '.MuiInputLabel-root': {
+                    fontWeight: 500,
+                    color: alpha('#1976d2', 0.7),
+                    fontSize: '0.95rem',
+                    letterSpacing: 0.1,
+                    top: '-4px',
                   }
                 }}
               >
-                {allTeams.map(team => (
-                  <MenuItem
-                    key={team}
-                    value={team}
-                    sx={theme => ({
-                      fontWeight: team === selectedTeam ? 700 : 500,
-                      background: team === selectedTeam ? alpha(theme.palette.primary.main, 0.06) : 'transparent',
-                      borderRadius: 2,
-                      px: 2,
-                      py: 1.1,
-                      my: 0.2,
-                      fontSize: '1rem',
-                      transition: 'all 0.2s',
-                      '&:hover': {
-                        background: alpha(theme.palette.primary.main, 0.12),
-                      },
-                    })}
-                  >
-                    {team}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                <InputLabel id="product-team-label">Team Product</InputLabel>
+                <Select
+                  labelId="product-team-label"
+                  value={selectedTeam}
+                  label="Team Product"
+                  onChange={e => setSelectedTeam(e.target.value)}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        borderRadius: 2,
+                        mt: 0.5,
+                        boxShadow: '0 4px 24px rgba(25,118,210,0.08)'
+                      }
+                    }
+                  }}
+                >
+                  {allTeams.map(team => (
+                    <MenuItem
+                      key={team}
+                      value={team}
+                      sx={theme => ({
+                        fontWeight: team === selectedTeam ? 700 : 500,
+                        background: team === selectedTeam ? alpha(theme.palette.primary.main, 0.06) : 'transparent',
+                        borderRadius: 2,
+                        px: 2,
+                        py: 1.1,
+                        my: 0.2,
+                        fontSize: '1rem',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          background: alpha(theme.palette.primary.main, 0.12),
+                        },
+                      })}
+                    >
+                      {team}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+            <Button
+              variant="outlined"
+              startIcon={<FilterListIcon />}
+              onClick={() => setShowDateFilter(!showDateFilter)}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                borderColor: alpha(theme.palette.primary.main, 0.5),
+                '&:hover': {
+                  borderColor: theme.palette.primary.main,
+                  backgroundColor: alpha(theme.palette.primary.main, 0.05)
+                }
+              }}
+            >
+              Lọc theo ngày
+            </Button>
           </Box>
-          <Button
-            variant="outlined"
-            startIcon={<FilterListIcon />}
-            onClick={() => setShowDateFilter(!showDateFilter)}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              borderColor: alpha(theme.palette.primary.main, 0.5),
-              '&:hover': {
-                borderColor: theme.palette.primary.main,
-                backgroundColor: alpha(theme.palette.primary.main, 0.05)
-              }
-            }}
-          >
-            Lọc theo ngày
-          </Button>
         </Box>
       </Box>
 

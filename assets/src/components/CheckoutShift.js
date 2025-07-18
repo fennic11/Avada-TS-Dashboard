@@ -144,7 +144,7 @@ const CheckoutShift = () => {
     setResError('');
     setShowResDetails(true);
     try {
-      // 1. Card đã complete bởi current user
+    // 1. Card đã complete bởi current user
       const completedCardIds = Array.from(new Set(actions.filter(action =>
         action.type === 'updateCard' &&
         action.data?.card?.dueComplete === true &&
@@ -881,147 +881,147 @@ const CheckoutShift = () => {
               <CircularProgress size={32} sx={{ color: '#06038D' }} />
             </Box>
           ) : (
-            <Grid container spacing={2}>
+          <Grid container spacing={2}>
               {resDetails.map((card) => (
-                <Grid item xs={12} md={6} lg={4} key={card.id}>
-                  <Paper sx={{
-                    p: 2.5,
-                    borderRadius: 2.5,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                    border: '1px solid #f1f5f9',
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                  }}>
-                    <Box>
-                      <Typography 
-                        variant="subtitle1" 
-                        sx={{ 
-                          fontWeight: 600, 
-                          mb: 1,
-                          color: '#1e293b',
-                          lineHeight: 1.4
-                        }}
-                      >
-                        {card.name}
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        <Box sx={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center',
-                          p: 1,
-                          background: '#f8fafc',
-                          borderRadius: 1
-                        }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Box sx={{
-                              width: 20,
-                              height: 20,
-                              borderRadius: '50%',
-                              background: '#e3f7e3',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: 12
-                            }}>
-                              ⏱️
-                            </Box>
-                            <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
-                              TS Resolution
-                            </Typography>
+              <Grid item xs={12} md={6} lg={4} key={card.id}>
+                <Paper sx={{
+                  p: 2.5,
+                  borderRadius: 2.5,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                  border: '1px solid #f1f5f9',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                }}>
+                  <Box>
+                    <Typography 
+                      variant="subtitle1" 
+                      sx={{ 
+                        fontWeight: 600, 
+                        mb: 1,
+                        color: '#1e293b',
+                        lineHeight: 1.4
+                      }}
+                    >
+                      {card.name}
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        p: 1,
+                        background: '#f8fafc',
+                        borderRadius: 1
+                      }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: '50%',
+                            background: '#e3f7e3',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 12
+                          }}>
+                            ⏱️
                           </Box>
-                          <Typography variant="body2" sx={{ fontWeight: 700, color: '#059669' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
+                            TS Resolution
+                          </Typography>
+                        </Box>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#059669' }}>
                             {formatMinutes(card.resolutionTime)}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        p: 1,
+                        background: '#f8fafc',
+                        borderRadius: 1
+                      }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: '50%',
+                            background: '#fff7e3',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 12
+                          }}>
+                            📅
+                          </Box>
+                          <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
+                            Total Time
                           </Typography>
                         </Box>
-                        <Box sx={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center',
-                          p: 1,
-                          background: '#f8fafc',
-                          borderRadius: 1
-                        }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Box sx={{
-                              width: 20,
-                              height: 20,
-                              borderRadius: '50%',
-                              background: '#fff7e3',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: 12
-                            }}>
-                              📅
-                            </Box>
-                            <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
-                              Total Time
-                            </Typography>
-                          </Box>
-                          <Typography variant="body2" sx={{ fontWeight: 700, color: '#f59e0b' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#f59e0b' }}>
                             {formatMinutes(card.totalTime)}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center',
-                          p: 1,
-                          background: '#f8fafc',
-                          borderRadius: 1
-                        }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Box sx={{
-                              width: 20,
-                              height: 20,
-                              borderRadius: '50%',
-                              background: '#e3e9f7',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: 12
-                            }}>
-                              🚀
-                            </Box>
-                            <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
-                              First Action
-                            </Typography>
+                        </Typography>
+                      </Box>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        p: 1,
+                        background: '#f8fafc',
+                        borderRadius: 1
+                      }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: '50%',
+                            background: '#e3e9f7',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 12
+                          }}>
+                            🚀
                           </Box>
-                          <Typography variant="body2" sx={{ fontWeight: 700, color: '#3b82f6' }}>
-                            {formatMinutes(card.firstActionTime)}
+                          <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
+                            First Action
                           </Typography>
                         </Box>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#3b82f6' }}>
+                            {formatMinutes(card.firstActionTime)}
+                        </Typography>
                       </Box>
                     </Box>
-                    <Box sx={{ 
-                      mt: 2, 
-                      pt: 2, 
-                      borderTop: '1px solid #e2e8f0',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <Chip 
-                        label="RESOLVED" 
-                        size="small" 
-                        sx={{ 
-                          background: '#e3f7e3', 
-                          color: '#059669',
-                          fontWeight: 600,
-                          fontSize: 11
-                        }} 
-                      />
-                      <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 500 }}>
-                        ID: {card.id.slice(-8)}
-                      </Typography>
-                    </Box>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
+                  </Box>
+                  <Box sx={{ 
+                    mt: 2, 
+                    pt: 2, 
+                    borderTop: '1px solid #e2e8f0',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <Chip 
+                      label="RESOLVED" 
+                      size="small" 
+                      sx={{ 
+                        background: '#e3f7e3', 
+                        color: '#059669',
+                        fontWeight: 600,
+                        fontSize: 11
+                      }} 
+                    />
+                    <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 500 }}>
+                      ID: {card.id.slice(-8)}
+                    </Typography>
+                  </Box>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
           )}
         </Box>
       )}
