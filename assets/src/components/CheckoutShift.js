@@ -23,6 +23,7 @@ import { getBoardActionsByMemberAndDate, getActionsByCard } from '../api/trelloA
 import { getCurrentUser } from '../api/usersApi';
 import { calculateResolutionTime } from '../utils/resolutionTime';
 import CardDetailModal from './CardDetailModal';
+import { sendMessageToChannel } from '../api/slackApi';
 
 const CheckoutShift = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -32,8 +33,6 @@ const CheckoutShift = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
-  const [cardResolutionDetails, setCardResolutionDetails] = useState([]);
-  const [averageResolutionTime, setAverageResolutionTime] = useState(0);
   const [selectedActionType, setSelectedActionType] = useState(null);
   const [selectedCardId, setSelectedCardId] = useState(null);
   const [isCardDetailModalOpen, setIsCardDetailModalOpen] = useState(false);
@@ -185,8 +184,22 @@ const CheckoutShift = () => {
         }
         return null;
       }).filter(Boolean);
+      // 4. Tính resolution time trung bình
       setResDetails(details);
       setAvgResTime(count > 0 ? Math.round((total / count) * 100) / 100 : 0);
+
+      // Tạo message Slack
+      const slackMessage = messageSlackConvert({
+        avgResolutionTime: count > 0 ? Math.round((total / count) * 100) / 100 : 0,
+        completeCardCount: getFilteredActionsByType('completeCard').length,
+        moveToDevCount: getFilteredActionsByType('moveToDev').length,
+        moveToDoingCount: getFilteredActionsByType('moveToDoing').length,
+        assignedCardCount: getFilteredActionsByType('assignedCard').length,
+        memberName: currentUser?.fullName || currentUser?.name || '',
+        currentShiftName: getShiftName(selectedShift),
+        currentDate: dayjs(selectedDate).format('DD/MM/YYYY')
+      });
+      await sendMessageToChannel(slackMessage, 'ts-shift-report');
     } catch (err) {
       setResError('Có lỗi khi tính resolution time');
     } finally {
@@ -366,6 +379,46 @@ const CheckoutShift = () => {
       return `${(Math.round((mins / 60) * 100) / 100)} h`;
     }
     return `${mins} mins`;
+  }
+
+  // Hàm tạo message gửi Slack
+  function messageSlackConvert({
+    avgResolutionTime,
+    completeCardCount,
+    moveToDevCount,
+    moveToDoingCount,
+    assignedCardCount,
+    memberName,
+    currentShiftName,
+    currentDate
+  }) {
+    return (
+      `*Báo cáo ca trực của ${memberName} <@U08UGHSA1B3> *\n` +
+      `Ca trực: ${currentShiftName} | Ngày: ${currentDate}\n` +
+      `- Resolution Time trung bình: ${avgResolutionTime} phút\n` +
+      `- Số card hoàn thành: ${completeCardCount}\n` +
+      `- Số lần kéo sang cột Dev: ${moveToDevCount}\n` +
+      `- Số lần kéo sang cột Doing: ${moveToDoingCount}\n` +
+      `- Số card được assign: ${assignedCardCount}\n` +
+      '-------------------------------------------------\n'
+    );
+  }
+
+  // Hàm filter action theo type (tối ưu, dùng lại cho các thống kê)
+  function getFilteredActionsByType(type) {
+    if (!actions.length || !currentUser?.trelloId) return [];
+    switch (type) {
+      case 'completeCard':
+        return actions.filter(action => action.type === 'updateCard' && action.data?.card?.dueComplete === true && action.idMemberCreator === currentUser?.trelloId);
+      case 'moveToDev':
+        return actions.filter(action => action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('dev') && action.idMemberCreator === currentUser?.trelloId);
+      case 'moveToDoing':
+        return actions.filter(action => action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('doing') && action.idMemberCreator === currentUser?.trelloId);
+      case 'assignedCard':
+        return actions.filter(action => action.type === 'addMemberToCard' && action.data?.idMember === currentUser?.trelloId);
+      default:
+        return [];
+    }
   }
 
   return (

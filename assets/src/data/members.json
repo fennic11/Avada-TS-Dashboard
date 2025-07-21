@@ -928,5 +928,15 @@
       "slackId": "U0906HQUZTJ",
       "role": "CS",
       "group": "CS1"
+    },
+    {
+      "id": "684652eda44577c30bc60ec4",
+      "fullName": "Thoai VQ",
+      "username": "lias_avada",
+      "avatarUrl": "https://trello-members.s3.amazonaws.com/684652eda44577c30bc60ec4/dd6d129cef20b0f12632eaee7b5db8bb",
+      "initials": "TV",
+      "slackId": "U0902NJ53P1",
+      "role": "TS",
+      "group": "TS1"
     }
   ]
