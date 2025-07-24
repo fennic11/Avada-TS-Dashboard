@@ -289,6 +289,16 @@ function reorderHeatmap(heatmap) {
 
 // Component: ResolutionTimeHeatmap
 function ResolutionTimeHeatmap({ cards, field = 'resolutionTime', onCellClick, heatmapFilter }) {
+    const getTitle = () => {
+        switch(field) {
+            case 'firstActionTime':
+                return 'First Action Time Heatmap';
+            case 'resolutionTimeTS':
+                return 'TS Done Issues Time Heatmap';
+            default:
+                return 'Resolution Time Heatmap';
+        }
+    };
     const heatmap = reorderHeatmap(getResolutionTimeHeatmap(cards, field));
     // Tìm max trung bình để scale màu
     let maxAvg = 0;
@@ -346,7 +356,7 @@ function ResolutionTimeHeatmap({ cards, field = 'resolutionTime', onCellClick, h
             }}
         >
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: '#1e293b', textAlign: 'left', fontSize: 22 }}>
-                Resolution Time Heatmap
+                {getTitle()}
             </Typography>
             {/* Chú thích màu heatmap */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, ml: 1 }}>
@@ -393,7 +403,7 @@ function ResolutionTimeHeatmap({ cards, field = 'resolutionTime', onCellClick, h
                                                 width: 48, height: 48, borderRadius: 2,
                                                 background: getCellColor(avg),
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                fontSize: 18, fontWeight: 700,
+                                                fontSize: 15, fontWeight: 700,
                                                 color: '#fff',
                                                 cursor: cell.count > 0 ? 'pointer' : 'default',
                                                 border: isActive ? '3px solid #6366f1' : '1.5px solid #cbd5e1',
@@ -408,7 +418,7 @@ function ResolutionTimeHeatmap({ cards, field = 'resolutionTime', onCellClick, h
                                             }}
                                             onClick={() => cell.count > 0 && onCellClick && onCellClick({ weekday: i, hour: h })}
                                         >
-                                            {cell.count > 0 ? avgHour.toFixed(1) : ''}
+                                            {cell.count > 0 ? (avgHour < 1 ? `${Math.round(avg)}p` : `${avgHour.toFixed(1)}h`) : ''}
                                         </Box>
                                     </Tooltip>
                                 );
@@ -714,8 +724,10 @@ const ResolutionTimeList = () => {
                             }}
                         >
                             <MenuItem value="">All Members</MenuItem>
-                            {members
+                            {[...new Map(members
                                 .filter(member => member.role === 'TS')
+                                .map(m => [m.id, m])).values()]
+                                .sort((a, b) => a.fullName.localeCompare(b.fullName))
                                 .map(m => (
                                     <MenuItem 
                                         key={m.id} 
@@ -723,21 +735,21 @@ const ResolutionTimeList = () => {
                                         sx={{
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: 1
+                                            gap: 1,
+                                            minHeight: '48px'
                                         }}
                                     >
-                                        <Box
-                                            component="img"
-                                            src={m.avatarUrl}
-                                            alt={m.fullName}
-                                            sx={{
-                                                width: 24,
-                                                height: 24,
-                                                borderRadius: '50%',
-                                                objectFit: 'cover'
-                                            }}
-                                        />
-                                        {m.fullName}
+                                        <Typography sx={{ 
+                                            fontSize: '0.875rem',
+                                            fontWeight: 500,
+                                            color: '#1e293b',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap',
+                                            flex: 1
+                                        }}>
+                                            {m.fullName}
+                                        </Typography>
                                     </MenuItem>
                                 ))}
                         </TextField>
@@ -988,6 +1000,22 @@ const ResolutionTimeList = () => {
                     <ResolutionTimeHeatmap 
                         cards={filteredData} 
                         field="resolutionTime" 
+                        onCellClick={setHeatmapFilter}
+                        heatmapFilter={heatmapFilter}
+                    />
+                    
+                    {/* First Action Time Heatmap */}
+                    <ResolutionTimeHeatmap 
+                        cards={filteredData} 
+                        field="firstActionTime" 
+                        onCellClick={setHeatmapFilter}
+                        heatmapFilter={heatmapFilter}
+                    />
+                    
+                    {/* TS Done Issues Time Heatmap */}
+                    <ResolutionTimeHeatmap 
+                        cards={filteredData} 
+                        field="resolutionTimeTS" 
                         onCellClick={setHeatmapFilter}
                         heatmapFilter={heatmapFilter}
                     />

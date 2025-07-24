@@ -24,6 +24,7 @@ import { getCurrentUser } from '../api/usersApi';
 import { calculateResolutionTime } from '../utils/resolutionTime';
 import CardDetailModal from './CardDetailModal';
 import { sendMessageToChannel } from '../api/slackApi';
+import { calculateDevResolutionTime } from '../utils/devResolutionTime';
 
 const CheckoutShift = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -41,6 +42,12 @@ const CheckoutShift = () => {
   const [avgResTime, setAvgResTime] = useState(0);
   const [resDetails, setResDetails] = useState([]);
   const [showResDetails, setShowResDetails] = useState(false);
+
+  // Thêm state cho dev resolution time
+  const [avgDevResTime, setAvgDevResTime] = useState(0);
+  const [devResDetails, setDevResDetails] = useState([]);
+  const [avgTSResTime, setAvgTSResTime] = useState(0);
+  const [tsResDetails, setTsResDetails] = useState([]);
 
   // Định nghĩa các ca trực
   const shifts = [
@@ -150,61 +157,108 @@ const CheckoutShift = () => {
         action.data?.card?.id &&
         action.idMemberCreator === currentUser?.trelloId
       ).map(action => action.data.card.id)));
+    
       if (!completedCardIds.length) {
         setResDetails([]);
+        setDevResDetails([]);
+        setTsResDetails([]);
         setAvgResTime(0);
+        setAvgDevResTime(0);
+        setAvgTSResTime(0);
         setResLoading(false);
         return;
       }
-      // 2. Lấy actions cho từng card
-      const allCardActions = await Promise.all(
-        completedCardIds.map(cardId => getActionsByCard(cardId).then(
-          actions => ({ cardId, actions }),
-          err => ({ cardId, actions: [] })
-        ))
+
+    // 2. Lấy actions cho từng card
+    const allCardActions = await Promise.all(
+      completedCardIds.map(cardId => getActionsByCard(cardId).then(
+        actions => ({ cardId, actions }),
+        err => ({ cardId, actions: [] })
+      ))
+    );
+
+    // 3. Phân loại card dev và card TS
+    const devCards = [];
+    const tsCards = [];
+
+    allCardActions.forEach(({ cardId, actions }) => {
+      // Kiểm tra xem card có ở cột "Waiting to fix (from dev)" không
+      const isDevCard = actions.some(action => 
+        action.type === 'updateCard' && 
+        action.data?.listAfter?.name === 'Waiting to fix (from dev)'
       );
-      // 3. Tính resolution time cho từng card
-      let total = 0;
-      let count = 0;
-      const details = allCardActions.map(({ cardId, actions }) => {
-        const resolution = calculateResolutionTime(actions);
-        if (resolution && resolution.resolutionTime) { // Thay đổi từ TSResolutionTime thành resolutionTime
-          total += resolution.resolutionTime; // Thay đổi từ TSResolutionTime thành resolutionTime
-          count++;
-          // Get card name from actions
-          const cardAction = actions.find(action => action.data?.card?.name);
-          const cardName = cardAction?.data?.card?.name || `Card ${cardId.slice(-8)}`;
-          return {
+
+      // Get card name from actions
+      const cardAction = actions.find(action => action.data?.card?.name);
+      const cardName = cardAction?.data?.card?.name || `Card ${cardId.slice(-8)}`;
+
+      if (isDevCard) {
+        // Tính dev resolution time
+        const devResolution = calculateDevResolutionTime(actions);
+        if (devResolution && devResolution.resolutionTime) {
+          devCards.push({
             id: cardId,
             name: cardName,
-            resolutionTime: Math.round(resolution.resolutionTime * 100) / 100, // Thay đổi từ TSResolutionTime thành resolutionTime
-            totalTime: Math.round(resolution.resolutionTime * 100) / 100,
-            firstActionTime: Math.round(resolution.firstActionTime * 100) / 100
-          };
+            resolutionTime: Math.round(devResolution.resolutionTime * 100) / 100,
+            devResolutionTime: Math.round(devResolution.devResolutionTime * 100) / 100,
+            firstActionTime: Math.round(devResolution.firstActionTime * 100) / 100,
+            type: 'dev'
+          });
         }
-        return null;
-      }).filter(Boolean);
-      // 4. Tính resolution time trung bình
-      setResDetails(details);
-      setAvgResTime(count > 0 ? Math.round((total / count) * 100) / 100 : 0);
+      } else {
+        // Tính TS resolution time
+        const tsResolution = calculateResolutionTime(actions);
+        if (tsResolution && tsResolution.resolutionTime) {
+          tsCards.push({
+            id: cardId,
+            name: cardName,
+            resolutionTime: Math.round(tsResolution.resolutionTime * 100) / 100,
+            totalTime: Math.round(tsResolution.resolutionTime * 100) / 100,
+            firstActionTime: Math.round(tsResolution.firstActionTime * 100) / 100,
+            type: 'ts'
+          });
+        }
+      }
+    });
 
-      // Tạo message Slack
-      const slackMessage = messageSlackConvert({
-        avgResolutionTime: count > 0 ? Math.round((total / count) * 100) / 100 : 0,
-        completeCardCount: getFilteredActionsByType('completeCard').length,
-        moveToDevCount: getFilteredActionsByType('moveToDev').length,
-        moveToDoingCount: getFilteredActionsByType('moveToDoing').length,
-        assignedCardCount: getFilteredActionsByType('assignedCard').length,
-        memberName: currentUser?.fullName || currentUser?.name || '',
-        currentShiftName: getShiftName(selectedShift),
-        currentDate: dayjs(selectedDate).format('DD/MM/YYYY')
-      });
-      await sendMessageToChannel(slackMessage, 'ts-shift-report');
-    } catch (err) {
-      setResError('Có lỗi khi tính resolution time');
-    } finally {
-      setResLoading(false);
-    }
+    // 4. Tính resolution time trung bình cho từng loại
+    const devTotal = devCards.reduce((sum, card) => sum + card.resolutionTime, 0);
+    const tsTotal = tsCards.reduce((sum, card) => sum + card.resolutionTime, 0);
+    
+    const avgDev = devCards.length > 0 ? Math.round((devTotal / devCards.length) * 100) / 100 : 0;
+    const avgTS = tsCards.length > 0 ? Math.round((tsTotal / tsCards.length) * 100) / 100 : 0;
+    const avgTotal = (devCards.length + tsCards.length) > 0 ? 
+      Math.round(((devTotal + tsTotal) / (devCards.length + tsCards.length)) * 100) / 100 : 0;
+
+    // 5. Cập nhật state
+    setDevResDetails(devCards);
+    setTsResDetails(tsCards);
+    setResDetails([...devCards, ...tsCards]); // Tất cả cards
+    setAvgDevResTime(avgDev);
+    setAvgTSResTime(avgTS);
+    setAvgResTime(avgTotal);
+
+    // Tạo message Slack
+    const slackMessage = messageSlackConvert({
+      avgResolutionTime: avgTotal,
+      avgDevResolutionTime: avgDev,
+      avgTSResolutionTime: avgTS,
+      devCardCount: devCards.length,
+      tsCardCount: tsCards.length,
+      completeCardCount: getFilteredActionsByType('completeCard').length,
+      moveToDevCount: getFilteredActionsByType('moveToDev').length,
+      moveToDoingCount: getFilteredActionsByType('moveToDoing').length,
+      assignedCardCount: getFilteredActionsByType('assignedCard').length,
+      memberName: currentUser?.fullName || currentUser?.name || '',
+      currentShiftName: getShiftName(selectedShift),
+      currentDate: dayjs(selectedDate).format('DD/MM/YYYY')
+    });
+    await sendMessageToChannel(slackMessage, 'ts-shift-report');
+  } catch (err) {
+    setResError('Có lỗi khi tính resolution time');
+  } finally {
+    setResLoading(false);
+  }
   };
 
   const getShiftName = (shiftId) => {
@@ -384,6 +438,10 @@ const CheckoutShift = () => {
   // Hàm tạo message gửi Slack
   function messageSlackConvert({
     avgResolutionTime,
+    avgDevResolutionTime,
+    avgTSResolutionTime,
+    devCardCount,
+    tsCardCount,
     completeCardCount,
     moveToDevCount,
     moveToDoingCount,
@@ -396,6 +454,8 @@ const CheckoutShift = () => {
       `*Báo cáo ca trực của ${memberName} <@U08UGHSA1B3> *\n` +
       `Ca trực: ${currentShiftName} | Ngày: ${currentDate}\n` +
       `- Resolution Time trung bình: ${avgResolutionTime} phút\n` +
+      `- Dev Resolution Time trung bình: ${avgDevResolutionTime} phút (${devCardCount} cards)\n` +
+      `- TS Resolution Time trung bình: ${avgTSResolutionTime} phút (${tsCardCount} cards)\n` +
       `- Số card hoàn thành: ${completeCardCount}\n` +
       `- Số lần kéo sang cột Dev: ${moveToDevCount}\n` +
       `- Số lần kéo sang cột Doing: ${moveToDoingCount}\n` +
@@ -662,6 +722,160 @@ const CheckoutShift = () => {
                 </Button>
               </Paper>
             </Grid>
+
+            {/* Dev & TS Resolution Time card */}
+            <Grid item xs={12} sm={6} md={3} lg={2} key="devTsResolutionTime">
+              <Paper 
+                sx={{
+                  p: 2,
+                  borderRadius: 2.5,
+                  height: 190,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                  border: '1px solid #f1f5f9',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  position: 'relative',
+                  transition: 'all 0.2s ease',
+                  ...(showResDetails && {
+                    border: '2px solid #6366f1',
+                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.15)',
+                    transform: 'translateY(-2px)'
+                  }),
+                  '&:hover': {
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    transform: 'translateY(-2px)'
+                  }
+                }}
+              >
+                {/* Header */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                  <Box sx={{
+                    background: 'linear-gradient(135deg, #ffebee 0%, #e3f2fd 100%)',
+                    color: '#6366f1',
+                    borderRadius: 2,
+                    width: 32,
+                    height: 32,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 18,
+                    fontWeight: 700,
+                    mr: 1
+                  }}>
+                    ⚡
+                  </Box>
+                  <Box sx={{
+                    background: 'linear-gradient(135deg, #ffebee 0%, #e3f2fd 100%)',
+                    color: '#6366f1',
+                    borderRadius: 1.5,
+                    px: 1,
+                    py: 0.2,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: 0.5,
+                    minWidth: 40,
+                    textAlign: 'center',
+                    alignSelf: 'flex-start'
+                  }}>RESOLUTION</Box>
+                </Box>
+                
+                {/* Title */}
+                <Typography sx={{ fontWeight: 600, fontSize: 14, mb: 1, textAlign: 'center' }}>
+                  Dev & TS Resolution Time
+                </Typography>
+                
+                {/* Metrics Container */}
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: 1,
+                  flex: 1,
+                  justifyContent: 'center'
+                }}>
+                  {/* Dev Metric */}
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between',
+                    p: 0.8,
+                    background: '#fff5f5',
+                    borderRadius: 1,
+                    border: '1px solid #ffebee'
+                  }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Box sx={{
+                        width: 16,
+                        height: 16,
+                        borderRadius: '50%',
+                        background: '#ffebee',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 10,
+                        color: '#d32f2f'
+                      }}>
+                        🐛
+                      </Box>
+                      <Typography sx={{ fontWeight: 600, fontSize: 12, color: '#d32f2f' }}>
+                        Dev
+                      </Typography>
+                    </Box>
+                    <Typography sx={{ 
+                      fontWeight: 700, 
+                      fontSize: 14, 
+                      color: '#d32f2f'
+                    }}>
+                      {resLoading ? <CircularProgress size={12} /> : formatMinutes(avgDevResTime)}
+                    </Typography>
+                  </Box>
+
+                  {/* Divider */}
+                  <Box sx={{ 
+                    height: 0.5, 
+                    background: 'linear-gradient(90deg, transparent 0%, #e2e8f0 50%, transparent 100%)',
+                    mx: 0.5
+                  }} />
+
+                  {/* TS Metric */}
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between',
+                    p: 0.8,
+                    background: '#f8fafc',
+                    borderRadius: 1,
+                    border: '1px solid #e3f2fd'
+                  }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Box sx={{
+                        width: 16,
+                        height: 16,
+                        borderRadius: '50%',
+                        background: '#e3f2fd',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 10,
+                        color: '#1976d2'
+                      }}>
+                        👨‍💻
+                      </Box>
+                      <Typography sx={{ fontWeight: 600, fontSize: 12, color: '#1976d2' }}>
+                        TS
+                      </Typography>
+                    </Box>
+                    <Typography sx={{ 
+                      fontWeight: 700, 
+                      fontSize: 14, 
+                      color: '#1976d2'
+                    }}>
+                      {resLoading ? <CircularProgress size={12} /> : formatMinutes(avgTSResTime)}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Paper>
+            </Grid>
+
             {/* Other action cards */}
             {Object.entries(actionCounts).map(([key, value]) => {
               const actionMeta = getActionMeta(key);
@@ -934,147 +1148,151 @@ const CheckoutShift = () => {
               <CircularProgress size={32} sx={{ color: '#06038D' }} />
             </Box>
           ) : (
-          <Grid container spacing={2}>
-              {resDetails.map((card) => (
-              <Grid item xs={12} md={6} lg={4} key={card.id}>
-                <Paper sx={{
-                  p: 2.5,
-                  borderRadius: 2.5,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                  border: '1px solid #f1f5f9',
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                }}>
-                  <Box>
-                    <Typography 
-                      variant="subtitle1" 
-                      sx={{ 
-                        fontWeight: 600, 
-                        mb: 1,
-                        color: '#1e293b',
-                        lineHeight: 1.4
-                      }}
-                    >
-                      {card.name}
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center',
-                        p: 1,
-                        background: '#f8fafc',
-                        borderRadius: 1
-                      }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Box sx={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: '50%',
-                            background: '#e3f7e3',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 12
-                          }}>
-                            ⏱️
+            <>
+              {/* Dev Cards Section */}
+              {devResDetails.length > 0 && (
+                <Box sx={{ mb: 4 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: '#d32f2f' }}>
+                    🐛 Dev Cards ({devResDetails.length} cards) - Avg: {formatMinutes(avgDevResTime)}
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {devResDetails.map((card) => (
+                      <Grid item xs={12} md={6} lg={4} key={card.id}>
+                        <Paper sx={{
+                          p: 2.5,
+                          borderRadius: 2.5,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                          border: '2px solid #ffebee',
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                        }}>
+                          <Box>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1, color: '#1e293b' }}>
+                              {card.name}
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1, background: '#fff5f5', borderRadius: 1 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Box sx={{ width: 20, height: 20, borderRadius: '50%', background: '#ffebee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
+                                    🐛
+                                  </Box>
+                                  <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>Dev Resolution</Typography>
+                                </Box>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: '#d32f2f' }}>
+                                  {formatMinutes(card.devResolutionTime)}
+                                </Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1, background: '#fff5f5', borderRadius: 1 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Box sx={{ width: 20, height: 20, borderRadius: '50%', background: '#ffebee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
+                                    ⏱️
+                                  </Box>
+                                  <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>Total Time</Typography>
+                                </Box>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: '#d32f2f' }}>
+                                  {formatMinutes(card.resolutionTime)}
+                                </Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1, background: '#fff5f5', borderRadius: 1 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Box sx={{ width: 20, height: 20, borderRadius: '50%', background: '#ffebee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
+                                    🚀
+                                  </Box>
+                                  <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>First Action</Typography>
+                                </Box>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: '#d32f2f' }}>
+                                  {formatMinutes(card.firstActionTime)}
+                                </Typography>
+                              </Box>
+                            </Box>
                           </Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
-                            TS Resolution
-                          </Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#059669' }}>
-                            {formatMinutes(card.resolutionTime)}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center',
-                        p: 1,
-                        background: '#f8fafc',
-                        borderRadius: 1
-                      }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Box sx={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: '50%',
-                            background: '#fff7e3',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 12
-                          }}>
-                            📅
+                          <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Chip label="DEV CARD" size="small" sx={{ background: '#ffebee', color: '#d32f2f', fontWeight: 600, fontSize: 11 }} />
+                            <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 500 }}>
+                              ID: {card.id.slice(-8)}
+                            </Typography>
                           </Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
-                            Total Time
-                          </Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#f59e0b' }}>
-                            {formatMinutes(card.totalTime)}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center',
-                        p: 1,
-                        background: '#f8fafc',
-                        borderRadius: 1
-                      }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Box sx={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: '50%',
-                            background: '#e3e9f7',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 12
-                          }}>
-                            🚀
+                        </Paper>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              )}
+
+              {/* TS Cards Section */}
+              {tsResDetails.length > 0 && (
+                <Box sx={{ mb: 4 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: '#1976d2' }}>
+                    👨‍💻 TS Cards ({tsResDetails.length} cards) - Avg: {formatMinutes(avgTSResTime)}
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {tsResDetails.map((card) => (
+                      <Grid item xs={12} md={6} lg={4} key={card.id}>
+                        <Paper sx={{
+                          p: 2.5,
+                          borderRadius: 2.5,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                          border: '2px solid #e3f2fd',
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                        }}>
+                          <Box>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1, color: '#1e293b' }}>
+                              {card.name}
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1, background: '#f8fafc', borderRadius: 1 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Box sx={{ width: 20, height: 20, borderRadius: '50%', background: '#e3f2fd', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
+                                    ⏱️
+                                  </Box>
+                                  <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>TS Resolution</Typography>
+                                </Box>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: '#1976d2' }}>
+                                  {formatMinutes(card.resolutionTime)}
+                                </Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1, background: '#f8fafc', borderRadius: 1 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Box sx={{ width: 20, height: 20, borderRadius: '50%', background: '#e3f2fd', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
+                                    📅
+                                  </Box>
+                                  <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>Total Time</Typography>
+                                </Box>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: '#1976d2' }}>
+                                  {formatMinutes(card.totalTime)}
+                                </Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1, background: '#f8fafc', borderRadius: 1 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Box sx={{ width: 20, height: 20, borderRadius: '50%', background: '#e3f2fd', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
+                                    🚀
+                                  </Box>
+                                  <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>First Action</Typography>
+                                </Box>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: '#1976d2' }}>
+                                  {formatMinutes(card.firstActionTime)}
+                                </Typography>
+                              </Box>
+                            </Box>
                           </Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500, color: '#64748b' }}>
-                            First Action
-                          </Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#3b82f6' }}>
-                            {formatMinutes(card.firstActionTime)}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Box>
-                  <Box sx={{ 
-                    mt: 2, 
-                    pt: 2, 
-                    borderTop: '1px solid #e2e8f0',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <Chip 
-                      label="RESOLVED" 
-                      size="small" 
-                      sx={{ 
-                        background: '#e3f7e3', 
-                        color: '#059669',
-                        fontWeight: 600,
-                        fontSize: 11
-                      }} 
-                    />
-                    <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 500 }}>
-                      ID: {card.id.slice(-8)}
-                    </Typography>
-                  </Box>
-                </Paper>
-              </Grid>
-            ))}
-          </Grid>
+                          <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Chip label="TS CARD" size="small" sx={{ background: '#e3f2fd', color: '#1976d2', fontWeight: 600, fontSize: 11 }} />
+                            <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 500 }}>
+                              ID: {card.id.slice(-8)}
+                            </Typography>
+                          </Box>
+                        </Paper>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              )}
+            </>
           )}
         </Box>
       )}
