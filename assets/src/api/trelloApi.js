@@ -1,3 +1,5 @@
+import dayjs from 'dayjs';
+
 // Lấy key và token từ localStorage
 const getCredentials = () => {
     const user = localStorage.getItem('user');
@@ -780,6 +782,46 @@ export async function getBoardActionsByMemberAndDate(since, before, limit = 1000
         return actions;
     } catch (error) {
         console.error('Error getBoardActionsByMemberAndDate:', error);
+        return [];
+    }
+}
+
+export async function getManyActionsOnBoard(since, before) {
+    try {
+        const sinceDate = dayjs(since);
+        const beforeDate = dayjs(before);
+
+        const totalMs = beforeDate.diff(sinceDate);
+        const split1 = sinceDate.add(totalMs / 4, 'millisecond');
+        const split2 = sinceDate.add((2 * totalMs) / 4, 'millisecond');
+        const split3 = sinceDate.add((3 * totalMs) / 4, 'millisecond');
+
+        const range1Since = sinceDate.toISOString();
+        const range1Before = split1.toISOString();
+        const range2Since = split1.toISOString();
+        const range2Before = split2.toISOString();
+        const range3Since = split2.toISOString();
+        const range3Before = split3.toISOString();
+        const range4Since = split3.toISOString();
+        const range4Before = beforeDate.toISOString();
+
+        console.log('since:', since, 'before:', before);
+        console.log('range1:', range1Since, range1Before);
+        console.log('range2:', range2Since, range2Before);
+        console.log('range3:', range3Since, range3Before);
+        console.log('range4:', range4Since, range4Before);
+
+        const [actions1, actions2, actions3, actions4] = await Promise.all([
+            getBoardActionsByMemberAndDate(range1Since, range1Before),
+            getBoardActionsByMemberAndDate(range2Since, range2Before),
+            getBoardActionsByMemberAndDate(range3Since, range3Before),
+            getBoardActionsByMemberAndDate(range4Since, range4Before)
+        ]);
+        console.log(actions1.length, actions2.length, actions3.length, actions4.length);
+
+        return [...actions1, ...actions2, ...actions3, ...actions4];
+    } catch (error) {
+        console.error('Error getManyActionsOnBoard:', error);
         return [];
     }
 }

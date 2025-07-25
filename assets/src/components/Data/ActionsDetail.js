@@ -3,7 +3,7 @@ import { Box, TextField, FormControl, InputLabel, Select, MenuItem, Typography, 
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
-import { getBoardActionsByMemberAndDate } from '../../api/trelloApi';
+import { getManyActionsOnBoard } from '../../api/trelloApi';
 import members from '../../data/members.json';
 import CardDetailModal from '../CardDetailModal';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -70,7 +70,7 @@ const ActionsDetail = () => {
             // Chuyển sang UTC từ Asia/Ho_Chi_Minh
             const since = dayjs.tz(`${selectedDate}T${start}:00`, 'Asia/Ho_Chi_Minh').utc().format();
             const before = dayjs.tz(`${selectedDate}T${end}:59`, 'Asia/Ho_Chi_Minh').utc().format();
-            const data = await getBoardActionsByMemberAndDate(since, before);
+            const data = await getManyActionsOnBoard(since, before);
             console.log(data);
             setActions(data || []);
         } catch (err) {

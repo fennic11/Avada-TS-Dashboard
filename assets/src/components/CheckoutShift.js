@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -19,7 +19,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
-import { getBoardActionsByMemberAndDate, getActionsByCard } from '../api/trelloApi';
+import { getManyActionsOnBoard, getActionsByCard } from '../api/trelloApi';
 import { getCurrentUser } from '../api/usersApi';
 import { calculateResolutionTime } from '../utils/resolutionTime';
 import CardDetailModal from './CardDetailModal';
@@ -128,7 +128,7 @@ const CheckoutShift = () => {
       // Điều chỉnh since sớm hơn 10 phút, before muộn hơn 30 phút
       const since = startDate.subtract(10, 'minute').toISOString();
       const before = endDate.add(30, 'minute').toISOString();
-      const actionsData = await getBoardActionsByMemberAndDate(since, before);
+      const actionsData = await getManyActionsOnBoard(since, before);
       setActions(actionsData || []);
     } catch (err) {
       setError('Có lỗi khi tải dữ liệu actions');
@@ -266,7 +266,8 @@ const CheckoutShift = () => {
     return shift ? shift.name : '';
   };
 
-  const getActionCounts = () => {
+  // Memoize action counts to prevent infinite re-render
+  const actionCounts = useMemo(() => {
     if (!actions.length) return {};
     const actionCounts = {
       addMemberToCard: 0,
@@ -280,22 +281,17 @@ const CheckoutShift = () => {
       moveToFixDoneFromDev: 0,
       moveToUpdateWorkflowOrWaitingAccess: 0,
     };
-    
     // Filter actions for only the current user as member being added
     const filteredActions = actions.filter(action => {
-      // For addMemberToCard, only count if currentUser is the member being added
       if (action.type === 'addMemberToCard') {
         return action.data?.idMember === currentUser?.trelloId;
       }
-      // For other actions, only count if currentUser is the creator
       return action.idMemberCreator === currentUser?.trelloId;
     });
-
     filteredActions.forEach(action => {
       if (action.type === 'updateCard') actionCounts.updateCard++;
       if (action.type === 'commentCard') actionCounts.commentCard++;
       if (action.type === 'removeMemberFromCard') {
-        // Only count if current user is the one being removed AND they are the creator of the action
         if (action.data?.idMember === currentUser?.trelloId && action.idMemberCreator === currentUser?.trelloId) {
           actionCounts.removeMemberFromCard++;
         }
@@ -307,7 +303,6 @@ const CheckoutShift = () => {
       if (action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('fix done from dev')) actionCounts.moveToFixDoneFromDev++;
       if (action.type === 'updateCard' && action.data?.listAfter?.name && (action.data.listAfter.name.toLowerCase().includes('update workflow required') || action.data.listAfter.name.toLowerCase().includes('waiting for access'))) actionCounts.moveToUpdateWorkflowOrWaitingAccess++;
     });
-    
     // Đếm số card khác nhau mà user được add vào
     const addedCardIds = new Set();
     filteredActions.forEach(action => {
@@ -320,11 +315,8 @@ const CheckoutShift = () => {
       }
     });
     actionCounts.addMemberToCard = addedCardIds.size;
-    
     return actionCounts;
-  };
-
-  const actionCounts = getActionCounts();
+  }, [actions, currentUser]);
 
   // Get filtered actions based on selected action type
   const getFilteredActions = () => {
@@ -334,42 +326,51 @@ const CheckoutShift = () => {
 
     // Filter actions for only the current user
     const userActions = actions.filter(action => {
-      // For addMemberToCard, only count if currentUser is the member being added
       if (action.type === 'addMemberToCard') {
         return action.data?.idMember === currentUser?.trelloId;
       }
-      // For other actions, only count if currentUser is the creator
       return action.idMemberCreator === currentUser?.trelloId;
     });
 
-    // Filter by action type
+    // Data-driven filter logic
     return userActions.filter(action => {
-      switch (selectedActionType) {
-        case 'updateCard':
-          return action.type === 'updateCard';
-        case 'commentCard':
-          return action.type === 'commentCard';
-        case 'addMemberToCard':
-          return action.type === 'addMemberToCard' && action.data?.idMember === currentUser?.trelloId;
-        case 'removeMemberFromCard':
-          return action.type === 'removeMemberFromCard' && action.data?.idMember === currentUser?.trelloId && action.idMemberCreator === currentUser?.trelloId;
-        case 'completeCard':
-          return action.type === 'updateCard' && action.data?.card?.dueComplete === true;
-        case 'moveToDone':
-          return action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('done');
-        case 'moveToDoing':
-          return action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('doing');
-        case 'moveToWaitingToFix':
-          return action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('waiting to fix');
-        case 'moveToFixDoneFromDev':
-          return action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('fix done from dev');
-        case 'moveToUpdateWorkflowOrWaitingAccess':
-          return action.type === 'updateCard' && action.data?.listAfter?.name && (action.data.listAfter.name.toLowerCase().includes('update workflow required') || action.data.listAfter.name.toLowerCase().includes('waiting for access'));
-        default:
-          return false;
+      if (selectedActionType === 'moveToDone') {
+        return action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('done');
       }
+      if (selectedActionType === 'moveToDoing') {
+        return action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('doing');
+      }
+      if (selectedActionType === 'moveToWaitingToFix') {
+        return action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('waiting to fix');
+      }
+      if (selectedActionType === 'moveToFixDoneFromDev') {
+        return action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('fix done from dev');
+      }
+      if (selectedActionType === 'moveToUpdateWorkflowOrWaitingAccess') {
+        return action.type === 'updateCard' && action.data?.listAfter?.name && (
+          action.data.listAfter.name.toLowerCase().includes('update workflow required') ||
+          action.data.listAfter.name.toLowerCase().includes('waiting for access')
+        );
+      }
+      if (selectedActionType === 'completeCard') {
+        return action.type === 'updateCard' && action.data?.card?.dueComplete === true;
+      }
+      if (selectedActionType === 'commentCard') {
+        return action.type === 'commentCard';
+      }
+      if (selectedActionType === 'addMemberToCard') {
+        return action.type === 'addMemberToCard' && action.data?.idMember === currentUser?.trelloId;
+      }
+      if (selectedActionType === 'removeMemberFromCard') {
+        return action.type === 'removeMemberFromCard' && action.data?.idMember === currentUser?.trelloId && action.idMemberCreator === currentUser?.trelloId;
+      }
+      // Default: match by action.type
+      return action.type === selectedActionType;
     });
   };
+
+  // Memoize filtered actions to prevent infinite re-render
+  const filteredActions = useMemo(() => getFilteredActions(), [selectedActionType, actions, currentUser]);
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -955,11 +956,11 @@ const CheckoutShift = () => {
       </Box>
 
       {/* Action Details */}
-      {selectedActionType && getFilteredActions().length > 0 && (
+      {selectedActionType && filteredActions.length > 0 && (
         <Box sx={{ mt: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              {getActionLabel(selectedActionType)} Details ({getFilteredActions().length} actions)
+              {getActionLabel(selectedActionType)} Details ({filteredActions.length} actions)
             </Typography>
             <Button
               variant="outlined"
@@ -971,7 +972,7 @@ const CheckoutShift = () => {
             </Button>
           </Box>
           <Grid container spacing={2}>
-            {getFilteredActions().map((action, index) => (
+            {filteredActions.map((action, index) => (
               <Grid item xs={12} md={6} lg={4} key={`${action.id}-${index}`}>
                 <Paper sx={{
                   p: 2.5,
