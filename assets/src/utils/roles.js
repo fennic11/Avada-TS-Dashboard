@@ -3,14 +3,15 @@ export const TABS = {
     BUGS: 'bugs',
     ISSUES: 'issues',
     RESOLUTION_TIME: 'resolution-time',
+    DEV_RESOLUTION_TIME: 'dev-resolution-time',
     DATA_KPI: 'data-kpi',
     TS_LEAD: 'TS-lead-workspace',
-    TS_WORKSPACE: 'TS-workspace',
+    // TS_WORKSPACE: 'TS-workspace',
     BA_PAGE: 'ba-page',
     DEV_ZONE: 'dev-zone',
-    SLACK_CHANNEL: 'slack-channel',
-    LEADERBOARD: 'leaderboard',
-    PLAN_TS_TEAM: 'plan-ts-team',
+    // SLACK_CHANNEL: 'slack-channel',
+    // LEADERBOARD: 'leaderboard',
+    // PLAN_TS_TEAM: 'plan-ts-team',
     PERFORMANCE_TS: 'performance-ts',
     CHECKOUT: 'checkout',
     KPI_TS_TEAM: 'kpi-ts-team'
@@ -54,14 +55,16 @@ export const ROLE_PERMISSIONS = {
         allowedTabs: [
             TABS.BUGS,
             TABS.BA_PAGE,
-            TABS.ISSUES
+            TABS.ISSUES,
+            TABS.DEV_RESOLUTION_TIME
         ],
         description: 'Access to PM related features'
     },
     [ROLES.DEV]: {
         allowedTabs: [
             TABS.BUGS,
-            TABS.ISSUES
+            TABS.ISSUES,
+            TABS.DEV_RESOLUTION_TIME
         ],
         description: 'Access to Dev related features'
     },
@@ -72,8 +75,9 @@ export const ROLE_PERMISSIONS = {
             TABS.DATA_KPI,
             TABS.ISSUES,
             TABS.TS_LEAD,
-            TABS.TS_WORKSPACE,
-            TABS.SLACK_CHANNEL,
+            TABS.DEV_RESOLUTION_TIME,
+            // TABS.TS_WORKSPACE,
+            // TABS.SLACK_CHANNEL,
             TABS.PERFORMANCE_TS,
             TABS.CHECKOUT,
             TABS.KPI_TS_TEAM

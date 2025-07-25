@@ -77,7 +77,7 @@ export function calculateDevResolutionTime(actions) {
 
     return {
         resolutionTime: resolutionTime,
-        devResolutionTime: devResolutionTime,
+        resolutionTimeDev: devResolutionTime,
         firstActionTime: firstActionTime
     };
 }

@@ -27,6 +27,7 @@ import PlanTsTeam from './pages/PlanTsTeam';
 import PerformanceTS from './pages/PerformanceTS';
 import CheckoutPage from './pages/CheckoutPage';
 import KpiTsTeamPage from './pages/KpiTsTeamPage';
+import DevResolutionTime from './pages/DevResolutionTime';
 
 const theme = createTheme({
     palette: {
@@ -278,7 +279,17 @@ const App = () => {
                                     </PrivateRoute>
                                 }
                             />
-                        </Routes>
+                            <Route
+                                path="/dev-resolution-time"
+                                element={
+                                    <PrivateRoute>
+                                        <Layout>
+                                            <DevResolutionTime />
+                                        </Layout>
+                                    </PrivateRoute>
+                                }
+                            />
+                        </Routes>   
                     </Router>
                 </ThemeProvider>
             </SnackbarProvider>

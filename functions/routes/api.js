@@ -7,6 +7,7 @@ const slackController = require('../controllers/slackController');
 const workShiftController = require('../controllers/workShiftController');
 const leaderboardController = require('../controllers/leaderboardController');
 const crispController = require('../controllers/crispController');
+const devCardController = require('../controllers/devCardController');
 // Auth routes
 router.put('/auth/user', authController.createOrUpdateUser);
 router.get('/auth/user/:email', authController.getUserByEmail);
@@ -14,6 +15,9 @@ router.get('/auth/user/:email', authController.getUserByEmail);
 router.post('/cards', cardController.createOrUpdateCard);
 router.get('/cards', cardController.getCards);
 router.get('/cards/:cardUrl', cardController.getCardByUrl);
+// Dev Card routes
+router.post('/dev-cards', devCardController.createOrUpdateDevCard);
+router.get('/dev-cards', devCardController.getDevCards);
 
 // Notion routes
 router.get('/notion/search', notionController.search);
