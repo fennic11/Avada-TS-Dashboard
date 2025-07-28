@@ -1,13 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Card, Typography, Row, Col, Button, Select, DatePicker, Modal, Spin, Tag, Space, Divider, Progress } from 'antd';
+import { Table, Card, Typography, Row, Col, Button, Select, DatePicker, Modal, Spin, Tag, Space, Divider, Progress, Statistic, Alert, Badge } from 'antd';
 import { getDevFixingCards } from '../../api/trelloApi';
 import appData from '../../data/app.json';
-import { ReloadOutlined } from '@ant-design/icons';
+import { ReloadOutlined, BugOutlined, TeamOutlined, AppstoreOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
 
 const teamColors = ['#1976d2', '#2e7d32', '#ed6c02', '#9c27b0', '#d32f2f', '#7b1fa2', '#388e3c'];
+
+// Animation variants
+const boxVariants = {
+  hidden: { opacity: 0, y: 40 },
+  visible: (i) => ({ opacity: 1, y: 0, transition: { delay: i * 0.06, type: 'spring', stiffness: 80 } })
+};
+
+const metricVariants = {
+  hidden: { opacity: 0, scale: 0.95 },
+  visible: (i) => ({ opacity: 1, scale: 1, transition: { delay: i * 0.08, type: 'spring', stiffness: 80 } })
+};
 
 export default function DevFixingDashboard() {
   const [loading, setLoading] = useState(true);
@@ -27,7 +40,7 @@ export default function DevFixingDashboard() {
   });
   const allTeams = ['Tất cả', ...Array.from(teamSet)];
 
-  // Thêm hàm extractSlackLink
+  // Extract Slack link function
   function extractSlackLink(description) {
     if (!description) return null;
     let decodedDescription = description;
@@ -42,6 +55,14 @@ export default function DevFixingDashboard() {
       return cleanUrl;
     }
     return null;
+  }
+
+  // Calculate days pending
+  function calculateDaysPending(card) {
+    const now = new Date();
+    const createDate = card.createDate ? new Date(card.createDate) : null;
+    if (!createDate) return 0;
+    return Math.ceil((now - createDate) / (1000 * 60 * 60 * 24));
   }
 
   const processCards = (cards) => {
@@ -60,15 +81,17 @@ export default function DevFixingDashboard() {
         appKey = card.name.trim().toLowerCase();
       }
       const productTeam = appToTeam[appKey] || null;
-      // Lấy Slack link từ desc
       const slackLink = extractSlackLink(card.desc || '');
+      const daysPending = calculateDaysPending(card);
+      
       return {
         ...card,
         app: appLabel ? appLabel.name : 'Không có app',
         createDate: createDate,
         appKey: appKey,
         productTeam: productTeam,
-        slackLink: slackLink
+        slackLink: slackLink,
+        daysPending: daysPending
       };
     });
   };
@@ -80,7 +103,6 @@ export default function DevFixingDashboard() {
       const mappedPendingCards = processCards(pendingData);
       setCards(mappedPendingCards);
     } catch (error) {
-      // eslint-disable-next-line
       console.error('Lỗi khi lấy dữ liệu:', error);
     } finally {
       setLoading(false);
@@ -107,42 +129,78 @@ export default function DevFixingDashboard() {
     });
   }
 
-  // Thống kê team
+  // Calculate metrics
+  const totalBugs = filteredCards.length;
+  const avgWaitTime = filteredCards.length > 0 
+    ? (filteredCards.reduce((sum, card) => sum + card.daysPending, 0) / filteredCards.length).toFixed(1)
+    : 0;
+  const todayBugs = cards.filter(card => {
+    const today = new Date();
+    const createDate = card.createDate;
+    return createDate && today.toDateString() === createDate.toDateString();
+  }).length;
+
+  // Team statistics
   const teamStats = cards.reduce((acc, card) => {
     if (!card.productTeam) return acc;
-    acc[card.productTeam] = (acc[card.productTeam] || 0) + 1;
-    return acc;
-  }, {});
-  const teamAppStats = cards.reduce((acc, card) => {
-    if (!card.productTeam || !card.app) return acc;
     if (!acc[card.productTeam]) {
-      acc[card.productTeam] = { cardCount: 0, apps: new Set() };
+      acc[card.productTeam] = {
+        total: 0,
+        avgWaitTime: 0,
+        totalWaitTime: 0
+      };
     }
-    acc[card.productTeam].cardCount += 1;
-    acc[card.productTeam].apps.add(card.app);
+    acc[card.productTeam].total += 1;
+    acc[card.productTeam].totalWaitTime += card.daysPending;
+    acc[card.productTeam].avgWaitTime = (acc[card.productTeam].totalWaitTime / acc[card.productTeam].total).toFixed(1);
     return acc;
   }, {});
-  const teamChartDataWithApps = Object.entries(teamAppStats).map(([team, data]) => ({
-    team,
-    count: data.cardCount,
-    appCount: data.apps.size
+
+  // App statistics
+  const appStats = filteredCards.reduce((acc, card) => {
+    if (!acc[card.app]) {
+      acc[card.app] = {
+        total: 0,
+        avgWaitTime: 0,
+        totalWaitTime: 0
+      };
+    }
+    acc[card.app].total += 1;
+    acc[card.app].totalWaitTime += card.daysPending;
+    acc[card.app].avgWaitTime = (acc[card.app].totalWaitTime / acc[card.app].total).toFixed(1);
+    return acc;
+  }, {});
+
+  // Chart data
+  const teamChartData = Object.entries(teamStats).map(([team, stats]) => ({
+    name: team,
+    bugs: stats.total,
+    avgWait: parseFloat(stats.avgWaitTime)
   }));
 
-  // Thống kê app
-  const appStats = filteredCards.reduce((acc, card) => {
-    acc[card.app] = (acc[card.app] || 0) + 1;
-    return acc;
-  }, {});
-  const totalCards = filteredCards.length;
-  const top3Apps = Object.entries(appStats).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([app]) => app);
+  const appChartData = Object.entries(appStats)
+    .sort(([, a], [, b]) => b.total - a.total)
+    .slice(0, 8)
+    .map(([app, stats]) => ({
+      name: app,
+      bugs: stats.total,
+      avgWait: parseFloat(stats.avgWaitTime)
+    }));
 
   // Table columns
   const columns = [
     {
-      title: 'Card',
+      title: 'Bug Name',
       dataIndex: 'name',
       key: 'name',
-      render: (text, record) => <a style={{ fontWeight: 500 }} onClick={() => { setSelectedCard(record); setModalOpen(true); }}>{text}</a>
+      render: (text, record) => (
+        <a 
+          style={{ fontWeight: 500, color: '#2563eb' }}
+          onClick={() => { setSelectedCard(record); setModalOpen(true); }}
+        >
+          {text}
+        </a>
+      )
     },
     {
       title: 'App',
@@ -157,16 +215,35 @@ export default function DevFixingDashboard() {
       render: (team) => team ? <Tag color="geekblue">{team}</Tag> : <Tag>Không có</Tag>
     },
     {
-      title: 'Due',
-      dataIndex: 'due',
-      key: 'due',
-      render: (due) => due ? new Date(due).toLocaleString('vi-VN') : 'Không có'
+      title: 'Days Pending',
+      dataIndex: 'daysPending',
+      key: 'daysPending',
+      render: (days) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <ClockCircleOutlined style={{ color: '#64748b' }} />
+          <span style={{ fontWeight: 600, color: days > 7 ? '#e53935' : days > 3 ? '#f57c00' : '#388e3c' }}>
+            {days} days
+          </span>
+        </div>
+      )
     },
     {
-      title: 'Create Date',
-      dataIndex: 'createDate',
-      key: 'createDate',
-      render: (date) => date ? new Date(date).toLocaleString('vi-VN') : 'Không có'
+      title: 'Due Date',
+      dataIndex: 'due',
+      key: 'due',
+      render: (due) => {
+        if (!due) return <span style={{ color: '#94a3b8' }}>Không có</span>;
+        const dueDate = new Date(due);
+        const isOverdue = new Date() > dueDate;
+        return (
+          <span style={{ 
+            color: isOverdue ? '#e53935' : '#64748b',
+            fontWeight: isOverdue ? 600 : 400
+          }}>
+            {dueDate.toLocaleDateString('vi-VN')}
+          </span>
+        );
+      }
     },
     {
       title: 'Slack Link',
@@ -188,192 +265,325 @@ export default function DevFixingDashboard() {
   ];
 
   return (
-    <div style={{ width: '100%', minHeight: '100vh', background: 'linear-gradient(135deg,#f8fafc 0%,#e0e7ef 100%)', padding: 0 }}>
-      <div style={{ maxWidth: 1600, margin: '0 auto', padding: '56px 20px 40px 20px' }}>
-        {/* Label cho page */}
-        <div style={{ fontWeight: 900, fontSize: 38, color: '#2563eb', marginBottom: 36, letterSpacing: 1, textAlign: 'center' }}>
-          DEV Pending Cards
+    <div style={{ width: '100%', minHeight: '100vh', background: '#f5f5f5', padding: 0 }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '24px' }}>
+        
+        {/* Header */}
+        <div style={{ marginBottom: 32 }}>
+          <Title level={2} style={{ color: '#1e293b', marginBottom: 8 }}>
+            <BugOutlined style={{ marginRight: 12, color: '#2563eb' }} />
+            Bugs Management Dashboard
+          </Title>
+          <Text type="secondary">Monitor and control pending bugs across teams and applications</Text>
         </div>
-        {/* Filter box lớn */}
-        <Card style={{ borderRadius: 24, boxShadow: '0 8px 32px 0 rgba(30,41,59,0.10)', marginBottom: 48, background: '#fff' }} bodyStyle={{ padding: 36 }}>
-          <Row gutter={[24, 24]} align="middle" justify="center">
+
+        {/* Key Metrics with animation */}
+        <Row gutter={[24, 24]} style={{ marginBottom: 32 }}>
+          {[{
+            title: 'Total Pending Bugs',
+            value: totalBugs,
+            valueStyle: { color: '#e53935', fontSize: 28, fontWeight: 700 },
+            prefix: <BugOutlined style={{ marginRight: 8 }} />,
+            suffix: <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>+{todayBugs} today</div>
+          }, {
+            title: 'Active Teams',
+            value: Object.keys(teamStats).length,
+            valueStyle: { color: '#2e7d32', fontSize: 28, fontWeight: 700 },
+            prefix: <TeamOutlined style={{ marginRight: 8 }} />
+          }, {
+            title: 'Active Apps',
+            value: Object.keys(appStats).length,
+            valueStyle: { color: '#9c27b0', fontSize: 28, fontWeight: 700 },
+            prefix: <AppstoreOutlined style={{ marginRight: 8 }} />
+          }].map((item, i) => (
+            <Col xs={24} sm={12} md={8} key={item.title}>
+              <motion.div
+                custom={i}
+                initial="hidden"
+                animate="visible"
+                variants={metricVariants}
+                whileHover={{ scale: 1.04, boxShadow: '0 4px 24px #e5393533' }}
+                style={{ borderRadius: 8 }}
+              >
+                <Card style={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                  <Statistic
+                    title={item.title}
+                    value={item.value}
+                    valueStyle={item.valueStyle}
+                    prefix={item.prefix}
+                    suffix={item.suffix}
+                  />
+                </Card>
+              </motion.div>
+            </Col>
+          ))}
+        </Row>
+
+        {/* Filters */}
+        <Card style={{ borderRadius: 8, marginBottom: 32, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+          <Row gutter={[16, 16]} align="middle">
             <Col xs={24} sm={12} md={6}>
               <RangePicker
                 value={dateRange}
                 onChange={setDateRange}
-                style={{ width: '100%', borderRadius: 12, fontSize: 18, height: 48 }}
+                style={{ width: '100%' }}
                 allowClear
                 format="YYYY-MM-DD"
-                size="large"
                 placeholder={["Start date", "End date"]}
               />
             </Col>
-            <Col xs={24} sm={12} md={5}>
+            <Col xs={24} sm={12} md={4}>
               <Select
                 value={selectedTeam}
                 onChange={setSelectedTeam}
-                style={{ width: '100%', borderRadius: 12, fontSize: 18, height: 48 }}
-                size="large"
+                style={{ width: '100%' }}
+                placeholder="Select Team"
+                allowClear
               >
                 {allTeams.map(team => (
                   <Select.Option key={team} value={team}>{team}</Select.Option>
                 ))}
               </Select>
             </Col>
-            <Col xs={24} sm={12} md={5}>
+            <Col xs={24} sm={12} md={4}>
               <Select
                 value={selectedApp}
                 onChange={setSelectedApp}
-                style={{ width: '100%', borderRadius: 12, fontSize: 18, height: 48 }}
+                style={{ width: '100%' }}
                 showSearch
                 optionFilterProp="children"
-                size="large"
+                placeholder="Select App"
+                allowClear
               >
-                <Select.Option value="Tất cả">Tất cả</Select.Option>
+                <Select.Option value="Tất cả">All Apps</Select.Option>
                 {[...new Set(cards.map(card => card.app))].map(app => (
                   <Select.Option key={app} value={app}>{app}</Select.Option>
                 ))}
               </Select>
             </Col>
-            {/* Bỏ button làm mới */}
+            <Col xs={24} sm={12} md={6}>
+              <Button
+                type="primary"
+                icon={<ReloadOutlined />}
+                onClick={fetchData}
+                style={{ width: '100%' }}
+              >
+                Refresh Data
+              </Button>
+            </Col>
           </Row>
         </Card>
-        <Row gutter={[40, 40]} align="top" justify="space-between" style={{ marginBottom: 48, flexWrap: 'wrap' }}>
-          {/* Box team bên trái */}
-          <Col xs={24} md={16} lg={17}>
-            <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'center', minHeight: 140 }}>
-              {teamChartDataWithApps.sort((a, b) => b.count - a.count).slice(0, 5).map((entry, idx) => (
-                <div
-                  key={entry.team}
-                  style={{
-                    minWidth: 130,
-                    maxWidth: 170,
-                    padding: 28,
-                    borderRadius: 22,
-                    background: teamColors[idx % teamColors.length] + '10',
-                    border: `2.5px solid ${teamColors[idx % teamColors.length]}33`,
-                    boxShadow: '0 6px 24px rgba(30,41,59,0.10)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    marginBottom: 12,
-                    ...(selectedTeam === entry.team ? {
-                      borderColor: teamColors[idx % teamColors.length],
-                      background: teamColors[idx % teamColors.length] + '22',
-                      boxShadow: `0 8px 32px ${teamColors[idx % teamColors.length]}22`,
-                    } : {}),
-                  }}
-                  onClick={() => setSelectedTeam(selectedTeam === entry.team ? 'Tất cả' : entry.team)}
-                >
-                  <div style={{ width: 18, height: 18, borderRadius: '50%', background: teamColors[idx % teamColors.length], marginBottom: 10 }} />
-                  <div style={{ fontWeight: 700, color: teamColors[idx % teamColors.length], fontSize: 18, textAlign: 'center' }}>{entry.team}</div>
-                  <div style={{ fontWeight: 800, color: '#222', marginTop: 4, fontSize: 24 }}>{entry.count}/{entry.appCount}</div>
-                  <div style={{ color: '#666', fontWeight: 500, textAlign: 'center', fontSize: 14, marginTop: 2 }}>cards/apps</div>
-                </div>
+
+        {/* Team Overview with animation */}
+        <Card
+          title="Team Overview"
+          style={{ borderRadius: 8, marginBottom: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+        >
+          <Row gutter={[16, 16]}>
+            <AnimatePresence>
+              {Object.entries(teamStats).map(([team, stats], idx) => (
+                <Col xs={24} sm={12} md={8} lg={6} key={team}>
+                  <motion.div
+                    custom={idx}
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
+                    variants={boxVariants}
+                    whileHover={{ scale: 1.06, boxShadow: `0 8px 32px ${teamColors[idx % teamColors.length]}33` }}
+                    style={{ borderRadius: 8 }}
+                  >
+                    <Card
+                      size="small"
+                      style={{
+                        borderRadius: 8,
+                        border: `1px solid ${teamColors[idx % teamColors.length]}33`,
+                        background: `${teamColors[idx % teamColors.length]}08`,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onClick={() => setSelectedTeam(selectedTeam === team ? 'Tất cả' : team)}
+                    >
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ 
+                          fontWeight: 600, 
+                          color: teamColors[idx % teamColors.length], 
+                          fontSize: 14, 
+                          marginBottom: 8 
+                        }}>
+                          {team}
+                        </div>
+                        <div style={{ fontWeight: 700, fontSize: 20, color: '#1e293b', marginBottom: 4 }}>
+                          {stats.total} bugs
+                        </div>
+                        <div style={{ color: '#64748b', fontSize: 12 }}>
+                          {totalBugs > 0 ? ((stats.total / totalBugs) * 100).toFixed(1) : 0}% of total
+                        </div>
+                      </div>
+                    </Card>
+                  </motion.div>
+                </Col>
               ))}
-            </div>
+            </AnimatePresence>
+          </Row>
+        </Card>
+
+        {/* App Overview with animation */}
+        <Card
+          title="App Overview"
+          style={{ borderRadius: 8, marginBottom: 32, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+        >
+          <Row gutter={[16, 16]}>
+            <AnimatePresence>
+              {Object.entries(appStats)
+                .sort(([, a], [, b]) => b.total - a.total)
+                .map(([app, stats], idx) => (
+                  <Col xs={24} sm={12} md={8} lg={6} key={app}>
+                    <motion.div
+                      custom={idx}
+                      initial="hidden"
+                      animate="visible"
+                      exit="hidden"
+                      variants={boxVariants}
+                      whileHover={{ scale: 1.06, boxShadow: `0 8px 32px ${teamColors[idx % teamColors.length]}33` }}
+                      style={{ borderRadius: 8 }}
+                    >
+                      <Card
+                        size="small"
+                        style={{
+                          borderRadius: 8,
+                          border: `1px solid ${teamColors[idx % teamColors.length]}33`,
+                          background: `${teamColors[idx % teamColors.length]}08`,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                        onClick={() => setSelectedApp(selectedApp === app ? 'Tất cả' : app)}
+                      >
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ 
+                            fontWeight: 600, 
+                            color: teamColors[idx % teamColors.length], 
+                            fontSize: 14, 
+                            marginBottom: 8 
+                          }}>
+                            {app}
+                          </div>
+                          <div style={{ fontWeight: 700, fontSize: 20, color: '#1e293b', marginBottom: 4 }}>
+                            {stats.total} bugs
+                          </div>
+                          <div style={{ color: '#64748b', fontSize: 12 }}>
+                            {totalBugs > 0 ? ((stats.total / totalBugs) * 100).toFixed(1) : 0}% of total
+                          </div>
+                        </div>
+                      </Card>
+                    </motion.div>
+                  </Col>
+                ))}
+            </AnimatePresence>
+          </Row>
+        </Card>
+
+        {/* Charts Section (PieChart) */}
+        <Row gutter={[24, 24]} style={{ marginBottom: 32 }}>
+          <Col xs={24} lg={12}>
+            <Card
+              title="Team Bug Distribution"
+              style={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+            >
+              <ResponsiveContainer width="100%" height={320}>
+                <PieChart>
+                  <Pie
+                    data={teamChartData}
+                    dataKey="bugs"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={110}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                  >
+                    {teamChartData.map((entry, idx) => (
+                      <Cell key={`cell-team-${idx}`} fill={teamColors[idx % teamColors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value, name, props) => [`${value} bugs`, '']} />
+                </PieChart>
+              </ResponsiveContainer>
+            </Card>
           </Col>
-          {/* Filter + tiêu đề bên phải */}
-          <Col xs={24} md={8} lg={7}>
-            {/* Bỏ filter card cũ, chỉ giữ box team/app/bảng */}
+          <Col xs={24} lg={12}>
+            <Card
+              title="App Bug Distribution"
+              style={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+            >
+              <ResponsiveContainer width="100%" height={320}>
+                <PieChart>
+                  <Pie
+                    data={appChartData}
+                    dataKey="bugs"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={110}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                  >
+                    {appChartData.map((entry, idx) => (
+                      <Cell key={`cell-app-${idx}`} fill={teamColors[idx % teamColors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value, name, props) => [`${value} bugs`, '']} />
+                </PieChart>
+              </ResponsiveContainer>
+            </Card>
           </Col>
         </Row>
-        {/* Tổng số cards */}
-        <div style={{ fontWeight: 800, fontSize: 26, color: '#2563eb', marginBottom: 24, letterSpacing: 1 }}>
-          Tổng số cards: {totalCards}
-        </div>
-        {/* Box từng app */}
-        <div
-          style={{
-            display: 'flex',
-            gap: 44,
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            marginBottom: 56,
-            justifyContent: 'flex-start',
-          }}
+
+        {/* Bugs Table */}
+        <Card
+          title={
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>Pending Bugs List</span>
+              <Badge count={filteredCards.length} style={{ backgroundColor: '#2563eb' }} />
+            </div>
+          }
+          style={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
         >
-          {Object.entries(appStats)
-            .sort(([, a], [, b]) => b - a)
-            .map(([app, count], idx) => {
-              const percent = totalCards > 0 ? (count / totalCards) * 100 : 0;
-              const isTopApp = top3Apps.includes(app);
-              const isSelected = selectedApp === app;
-              return (
-                <div
-                  key={app}
-                  style={{
-                    width: 220,
-                    height: 220,
-                    minWidth: 200,
-                    minHeight: 200,
-                    maxWidth: 260,
-                    maxHeight: 260,
-                    padding: 32,
-                    borderRadius: 24,
-                    background: isTopApp ? '#ffeaea' : (isTopApp ? '#f0f9ff' : '#fff'),
-                    border: isTopApp ? '3px solid #e53935' : (isSelected ? '3px solid #2563eb' : '2.5px solid #e0e7ef'),
-                    boxShadow: isSelected ? '0 12px 40px #2563eb22' : '0 6px 24px rgba(30,41,59,0.10)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    marginBottom: 32,
-                    textAlign: 'center',
-                  }}
-                  onClick={() => setSelectedApp(selectedApp === app ? 'Tất cả' : app)}
-                >
-                  <div style={{ fontWeight: 600, color: isTopApp ? '#e53935' : (isTopApp ? '#0ea5e9' : '#2563eb'), fontSize: 17, marginBottom: 12 }}>{app}</div>
-                  <div style={{ fontWeight: 800, color: '#222', fontSize: 24 }}>{count} cards</div>
-                  <div style={{ width: '92%', margin: '18px auto 0 auto' }}>
-                    <Progress percent={Math.round(percent)} size="small" showInfo={false} strokeColor={isTopApp ? '#e53935' : '#2563eb'} />
-                  </div>
-                  <div style={{ color: isTopApp ? '#e53935' : '#64748b', fontWeight: 500, fontSize: 18, marginTop: 16 }}>{percent.toFixed(1)}%</div>
-                  {isSelected && <div style={{ color: isTopApp ? '#e53935' : '#2563eb', fontWeight: 700, fontSize: 16, marginTop: 10 }}>Đã chọn</div>}
-                </div>
-              );
-            })}
-        </div>
-        <Divider style={{ margin: '48px 0 32px 0', borderRadius: 8, border: '2px solid #e0e7ef' }} />
-        <Card style={{ borderRadius: 24, boxShadow: '0 8px 32px 0 rgba(30,41,59,0.10)' }} bodyStyle={{ padding: 32 }}>
-          <Spin spinning={loading} tip="Đang tải...">
+          <Spin spinning={loading} tip="Loading...">
             <Table
               columns={columns}
               dataSource={filteredCards.map(card => ({ ...card, key: card.id }))}
-              pagination={{ pageSize: 20 }}
-              locale={{ emptyText: 'Không có dữ liệu' }}
+              pagination={{ pageSize: 15 }}
+              locale={{ emptyText: 'No pending bugs found' }}
               style={{ width: '100%' }}
-              scroll={{ x: 900 }}
-              rowClassName={() => 'ant-table-row-hover'}
-              bordered
-              size="large"
-              tableLayout="auto"
+              scroll={{ x: 1000 }}
+              size="middle"
             />
           </Spin>
         </Card>
+
+        {/* Bug Detail Modal */}
         <Modal
           open={modalOpen}
           onCancel={() => setModalOpen(false)}
           footer={null}
-          width={700}
-          title={selectedCard ? selectedCard.name : ''}
-          bodyStyle={{ padding: 36, borderRadius: 18 }}
-          style={{ borderRadius: 18 }}
+          width={600}
+          title="Bug Details"
+          style={{ borderRadius: 8 }}
         >
           {selectedCard && (
-            <div style={{ fontSize: 18, lineHeight: 1.7 }}>
-              <p><b>App:</b> {selectedCard.app}</p>
-              <p><b>Team:</b> {selectedCard.productTeam}</p>
-              <p><b>Due:</b> {selectedCard.due ? new Date(selectedCard.due).toLocaleString('vi-VN') : 'Không có'}</p>
-              <p><b>Ngày tạo:</b> {selectedCard.createDate ? new Date(selectedCard.createDate).toLocaleString('vi-VN') : 'Không có'}</p>
-              <p><b>Slack Link:</b> {selectedCard.slackLink ? <a href={selectedCard.slackLink} target="_blank" rel="noopener noreferrer">Mở Slack</a> : 'Không có'}</p>
+            <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+              <Row gutter={[16, 16]}>
+                <Col span={12}>
+                  <div><strong>Bug Name:</strong> {selectedCard.name}</div>
+                  <div><strong>App:</strong> {selectedCard.app}</div>
+                  <div><strong>Team:</strong> {selectedCard.productTeam || 'N/A'}</div>
+                </Col>
+                <Col span={12}>
+                  <div><strong>Days Pending:</strong> {selectedCard.daysPending} days</div>
+                  <div><strong>Due Date:</strong> {selectedCard.due ? new Date(selectedCard.due).toLocaleDateString('vi-VN') : 'N/A'}</div>
+                  <div><strong>Create Date:</strong> {selectedCard.createDate ? new Date(selectedCard.createDate).toLocaleDateString('vi-VN') : 'N/A'}</div>
+                </Col>
+              </Row>
+              <Divider />
+              <div><strong>Slack Link:</strong> {selectedCard.slackLink ? <a href={selectedCard.slackLink} target="_blank" rel="noopener noreferrer">Open Slack</a> : 'N/A'}</div>
             </div>
           )}
         </Modal>
