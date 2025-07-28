@@ -214,19 +214,7 @@ export default function DevFixingDashboard() {
       key: 'productTeam',
       render: (team) => team ? <Tag color="geekblue">{team}</Tag> : <Tag>Không có</Tag>
     },
-    {
-      title: 'Days Pending',
-      dataIndex: 'daysPending',
-      key: 'daysPending',
-      render: (days) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <ClockCircleOutlined style={{ color: '#64748b' }} />
-          <span style={{ fontWeight: 600, color: days > 7 ? '#e53935' : days > 3 ? '#f57c00' : '#388e3c' }}>
-            {days} days
-          </span>
-        </div>
-      )
-    },
+
     {
       title: 'Due Date',
       dataIndex: 'due',
@@ -266,7 +254,7 @@ export default function DevFixingDashboard() {
 
   return (
     <div style={{ width: '100%', minHeight: '100vh', background: '#f5f5f5', padding: 0 }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '24px' }}>
+      <div style={{ maxWidth: '100%', margin: '0 auto', padding: '24px' }}>
         
         {/* Header */}
         <div style={{ marginBottom: 32 }}>

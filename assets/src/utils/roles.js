@@ -38,7 +38,7 @@ export const ROLE_PERMISSIONS = {
             TABS.BUGS,
             TABS.ISSUES,
             TABS.RESOLUTION_TIME,
-            TABS.TS_WORKSPACE,
+            // TABS.TS_WORKSPACE,
             TABS.CHECKOUT,
             TABS.KPI_TS_TEAM
         ],
