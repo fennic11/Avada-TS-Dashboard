@@ -2,18 +2,22 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { getResolutionTimes } from "../../api/cardsApi";
 import members from "../../data/members.json";
+import appData from "../../data/app.json";
 import {
-    Table, TableHead, TableBody, TableRow, TableCell,
-    Typography, Paper, CircularProgress, Box, Grid, TextField, MenuItem, Button, Chip, Link, Tooltip
-} from "@mui/material";
-import { BarChart, Bar, XAxis, YAxis, Legend, ResponsiveContainer, AreaChart, Area, LabelList } from "recharts";
-import { format } from "date-fns";
-import ClearIcon from '@mui/icons-material/Clear';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import CardDetailModal from '../CardDetailModal';
-import KeyMetricsBoxCharts from '../Chart/BoxChart';
+    DatePicker, Button, Select, Row, Col, Card, Typography, 
+    Table, Tag, Space, Spin, Badge, Modal
+} from "antd";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
+import { 
+    ReloadOutlined, TeamOutlined,
+    TrophyOutlined, FireOutlined, StarOutlined
+} from '@ant-design/icons';
 import HeatmapOfWeek from '../Heatmap/HeatmapOfWeek';
+import CardDetailModal from '../CardDetailModal';
+import dayjs from 'dayjs';
 
+const { RangePicker } = DatePicker;
+const { Title, Text } = Typography;
 
 const memberMap = members.reduce((acc, m) => {
     acc[m.id] = m.name;
@@ -21,6 +25,23 @@ const memberMap = members.reduce((acc, m) => {
 }, {});
 
 const memberIds = members.map((m) => m.id);
+
+// Tạo map từ label_trello/app_name sang product_team và group_ts
+const appLabelToTeam = {};
+const appLabelToGroup = {};
+appData.forEach(app => {
+    if (app.label_trello) {
+        appLabelToTeam[app.label_trello] = app.product_team;
+        appLabelToGroup[app.label_trello] = app.group_ts;
+    }
+    if (app.app_name) {
+        appLabelToTeam[app.app_name] = app.product_team;
+        appLabelToGroup[app.app_name] = app.group_ts;
+    }
+});
+
+const productTeams = Array.from(new Set(appData.map(app => app.product_team))).filter(Boolean);
+const tsGroups = Array.from(new Set(appData.map(app => app.group_ts))).filter(Boolean);
 
 const TIME_GROUPS = [
     { label: "<1h", min: 0, max: 60 },
@@ -32,20 +53,25 @@ const TIME_GROUPS = [
 ];
 
 function formatMinutes(mins) {
-    const h = Math.floor(mins / 60);
-    const m = Math.round(mins % 60);
-    return `${h > 0 ? `${h}h ` : ""}${m}m`;
+    if (!mins || isNaN(mins)) return '—';
+    if (mins < 60) return `${mins} min`;
+    if (mins < 1440) return `${(mins / 60).toFixed(1)} h`;
+    const days = Math.floor(mins / 1440);
+    const hours = ((mins % 1440) / 60).toFixed(1);
+    return hours > 0 ? `${days} ngày ${hours} h` : `${days} ngày`;
 }
 
 function safeFormatDate(dateValue) {
     try {
-        const date = dateValue instanceof Date
-            ? dateValue
-            : dateValue?.toDate
-                ? dateValue.toDate()
-                : new Date(dateValue);
-        if (isNaN(date)) return "—";
-        return format(date, "dd/MM/yyyy HH:mm");
+        const date = new Date(dateValue);
+        if (isNaN(date.getTime())) return "—";
+        return date.toLocaleDateString('vi-VN', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     } catch {
         return "—";
     }
@@ -75,7 +101,7 @@ function groupAverageByDate(cards, field) {
         const value = Number(card[field]);
         if (isNaN(value)) return;
 
-        const date = format(new Date(card.createdAt), "yyyy-MM-dd");
+        const date = new Date(card.createdAt).toISOString().split('T')[0];
 
         if (!map.has(date)) map.set(date, { total: 0, count: 0 });
 
@@ -91,51 +117,44 @@ function groupAverageByDate(cards, field) {
         }));
 }
 
-function groupByShift(cards, field) {
-    const shiftMap = new Map();
-    
-    cards.forEach(card => {
-        const value = Number(card[field]);
-        if (isNaN(value)) return;
+function getCardTeam(card) {
+    let team = null;
+    if (card.labels && card.labels.length > 0) {
+        team = card.labels.map(l => appLabelToTeam[l]).find(Boolean);
+    }
+    if (!team && card.appName) {
+        team = appLabelToTeam[card.appName];
+    }
+    if (!team && card.cardName) {
+        team = appLabelToTeam[card.cardName];
+    }
+    return team;
+}
 
-        const createdAt = new Date(card.createdAt);
-        const hour = createdAt.getHours();
-        
-        // Determine shift based on hour
-        let shift;
-        if (hour >= 0 && hour < 4) shift = "Ca 1";
-        else if (hour >= 4 && hour < 8) shift = "Ca 2";
-        else if (hour >= 8 && hour < 12) shift = "Ca 3";
-        else if (hour >= 12 && hour < 16) shift = "Ca 4";
-        else if (hour >= 16 && hour < 20) shift = "Ca 5";
-        else shift = "Ca 6";
+function getCardGroup(card) {
+    let group = null;
+    if (card.labels && card.labels.length > 0) {
+        group = card.labels.map(l => appLabelToGroup[l]).find(Boolean);
+    }
+    if (!group && card.appName) {
+        group = appLabelToGroup[card.appName];
+    }
+    if (!group && card.cardName) {
+        group = appLabelToGroup[card.cardName];
+    }
+    return group;
+}
 
-        if (!shiftMap.has(shift)) {
-            shiftMap.set(shift, { total: 0, count: 0 });
-        }
-
-        // Convert minutes to hours
-        shiftMap.get(shift).total += value / 60;
-        shiftMap.get(shift).count += 1;
-    });
-
-    return Array.from(shiftMap.entries())
-        .map(([shift, { total, count }]) => ({
-            shift,
-            average: count > 0 ? Math.round(total / count * 10) / 10 : 0, // Round to 1 decimal place
-            count
-        }))
-        .sort((a, b) => {
-            const shiftOrder = {
-                "Ca 1": 1,
-                "Ca 2": 2,
-                "Ca 3": 3,
-                "Ca 4": 4,
-                "Ca 5": 5,
-                "Ca 6": 6
-            };
-            return shiftOrder[a.shift] - shiftOrder[b.shift];
+function getCardApps(card) {
+    const apps = [];
+    if (card.labels && card.labels.length > 0) {
+        card.labels.forEach(label => {
+            if (label.startsWith("App:")) {
+                apps.push(label);
+            }
         });
+    }
+    return apps;
 }
 
 function groupByTimeAndCount(cards, field, groupBy) {
@@ -245,219 +264,7 @@ function calculateAgentLeaderboard(cards) {
         .sort((a, b) => a.averageTime - b.averageTime);
 }
 
-// Helper: Get weekday index (0=Sun, 1=Mon, ..., 6=Sat)
-function getWeekdayIdx(date) {
-    const d = new Date(date);
-    return d.getDay();
-}
-
-// Helper: Get hour (0-23)
-function getHour(date) {
-    return new Date(date).getHours();
-}
-
-// Tạo heatmap: 7 ngày x 24 giờ, mỗi ô là { total, count }
-function getResolutionTimeHeatmap(cards, field = 'resolutionTime') {
-    // 0=Sun, 1=Mon, ..., 6=Sat
-    const heatmap = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => ({ total: 0, count: 0 })));
-    cards.forEach(card => {
-        const value = Number(card[field]);
-        if (isNaN(value) || value <= 0) return;
-        const date = card.createdAt;
-        const weekday = getWeekdayIdx(date);
-        const hour = getHour(date);
-        heatmap[weekday][hour].total += value;
-        heatmap[weekday][hour].count += 1;
-    });
-    return heatmap;
-}
-
-// Helper: Weekday labels (bắt đầu từ Monday)
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-// Helper: Lấy index weekday (0=Mon, 6=Sun) từ Date
-function getWeekdayIdxMondayFirst(date) {
-    // JS getDay: 0=Sun, 1=Mon,...,6=Sat => 0=Mon, ..., 6=Sun
-    const jsIdx = new Date(date).getDay();
-    return [1,2,3,4,5,6,0].indexOf(jsIdx);
-}
-
-// Chuyển đổi heatmap để render: luôn bắt đầu từ Monday
-function reorderHeatmap(heatmap) {
-    // heatmap: 0=Sun, 1=Mon, ..., 6=Sat
-    // Trả về: [Mon, Tue, ..., Sun]
-    return [1,2,3,4,5,6,0].map(idx => heatmap[idx]);
-}
-
-// Component: ResolutionTimeHeatmap
-function ResolutionTimeHeatmap({ cards, field = 'resolutionTime', onCellClick, heatmapFilter }) {
-    const getTitle = () => {
-        switch(field) {
-            case 'firstActionTime':
-                return 'First Action Time Heatmap';
-            case 'resolutionTimeTS':
-                return 'TS Done Issues Time Heatmap';
-            default:
-                return 'Resolution Time Heatmap';
-        }
-    };
-    const heatmap = reorderHeatmap(getResolutionTimeHeatmap(cards, field));
-    // Tìm max trung bình để scale màu
-    let maxAvg = 0;
-    heatmap.forEach(row => row.forEach(cell => {
-        if (cell.count > 0) {
-            const avg = cell.total / cell.count;
-            if (avg > maxAvg) maxAvg = avg;
-        }
-    }));
-    // Hàm tính màu theo avg
-    function getCellColor(avg) {
-        if (!avg) return '#f1f5f9'; // gray-100
-        const hours = avg / 60;
-        if (hours < 1) {
-            // Xanh lá cây tươi
-            return '#4ade80'; // green-400
-        } else if (hours < 4) {
-            // Xanh nước biển tươi
-            const percent = (hours - 1) / 3;
-            // Interpolate giữa #38bdf8 (blue-400) và #1d4ed8 (blue-700)
-            const r = Math.round(56 + (29 - 56) * percent);
-            const g = Math.round(189 + (78 - 189) * percent);
-            const b = Math.round(248 + (216 - 248) * percent);
-            return `rgb(${r},${g},${b})`;
-        } else if (hours < 8) {
-            // Vàng tươi
-            const percent = (hours - 4) / 4;
-            // #fde047 (yellow-300) -> #fbbf24 (yellow-400)
-            const r = Math.round(253 + (251 - 253) * percent);
-            const g = Math.round(224 + (191 - 224) * percent);
-            const b = Math.round(71 + (36 - 71) * percent);
-            return `rgb(${r},${g},${b})`;
-        } else {
-            // Đỏ tươi
-            const percent = Math.min((hours - 8) / 8, 1);
-            // #f87171 (red-400) -> #b91c1c (red-800)
-            const r = Math.round(248 + (185 - 248) * percent);
-            const g = Math.round(113 + (28 - 113) * percent);
-            const b = Math.round(113 + (28 - 113) * percent);
-            return `rgb(${r},${g},${b})`;
-        }
-    }
-    return (
-        <Paper
-            sx={{
-                p: 3,
-                mb: 4,
-                width: '100%',
-                maxWidth: '100vw',
-                minWidth: 0,
-                borderRadius: 3,
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                overflowX: 'auto',
-                boxSizing: 'border-box',
-            }}
-        >
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: '#1e293b', textAlign: 'left', fontSize: 22 }}>
-                {getTitle()}
-            </Typography>
-            {/* Chú thích màu heatmap */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, ml: 1 }}>
-                <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#bbf7d0', border: '1.5px solid #cbd5e1', mr: 1 }} />
-                <Typography sx={{ fontSize: 15, color: '#334155', mr: 2 }}>&lt; 1h</Typography>
-                <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#bae6fd', border: '1.5px solid #cbd5e1', mr: 1 }} />
-                <Typography sx={{ fontSize: 15, color: '#334155', mr: 2 }}>1-4h</Typography>
-                <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#fde68a', border: '1.5px solid #cbd5e1', mr: 1 }} />
-                <Typography sx={{ fontSize: 15, color: '#334155', mr: 2 }}>4-8h</Typography>
-                <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#fca5a5', border: '1.5px solid #cbd5e1', mr: 1 }} />
-                <Typography sx={{ fontSize: 15, color: '#334155' }}>&gt; 8h</Typography>
-            </Box>
-            <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 1, mx: 'auto' }}>
-                {/* Header row: 0h-23h */}
-                <Box sx={{ display: 'flex', columnGap: 1 }}>
-                    <Box sx={{ width: 48 }} />
-                    {Array.from({ length: 24 }).map((_, h) => (
-                        <Box key={h} sx={{ width: 48, textAlign: 'center', fontSize: 16, color: '#64748b' }}>{h}h</Box>
-                    ))}
-                    {/* Thêm header AVG */}
-                    <Box sx={{ width: 48, textAlign: 'center', fontSize: 16, color: '#64748b', fontWeight: 700 }}>AVG</Box>
-                </Box>
-                {/* Rows: Mon-Sun */}
-                {heatmap.map((row, i) => {
-                    // Tính avg của cả ngày
-                    const total = row.reduce((sum, cell) => sum + cell.total, 0);
-                    const count = row.reduce((sum, cell) => sum + cell.count, 0);
-                    const avgDay = count > 0 ? total / count : 0;
-                    const avgDayHour = avgDay / 60;
-                    return (
-                        <Box key={i} sx={{ display: 'flex', alignItems: 'center', columnGap: 1 }}>
-                            <Box sx={{ width: 48, textAlign: 'right', fontWeight: 600, color: '#64748b', fontSize: 16 }}>
-                                {WEEKDAYS[i]}
-                            </Box>
-                            {row.map((cell, h) => {
-                                const avg = cell.count > 0 ? cell.total / cell.count : 0;
-                                const avgHour = avg / 60;
-                                const isActive = heatmapFilter && heatmapFilter.weekday === i && heatmapFilter.hour === h;
-                                return (
-                                    <Tooltip key={h} title={cell.count > 0 ? `${avgHour.toFixed(1)}h\n${cell.count} cards` : 'No data'} arrow
-                                        slotProps={{ tooltip: { sx: { fontSize: 15, px: 2, py: 1 } } }}>
-                                        <Box
-                                            sx={{
-                                                width: 48, height: 48, borderRadius: 2,
-                                                background: getCellColor(avg),
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                fontSize: 15, fontWeight: 700,
-                                                color: '#fff',
-                                                cursor: cell.count > 0 ? 'pointer' : 'default',
-                                                border: isActive ? '3px solid #6366f1' : '1.5px solid #cbd5e1',
-                                                boxShadow: isActive ? '0 0 0 2px #6366f155' : 'none',
-                                                transition: 'all 0.18s cubic-bezier(.4,2,.6,1)',
-                                                '&:hover': cell.count > 0 ? {
-                                                    border: '3px solid #6366f1',
-                                                    boxShadow: '0 2px 8px 0 #6366f133',
-                                                    transform: 'scale(1.08)',
-                                                    zIndex: 2,
-                                                } : {},
-                                            }}
-                                            onClick={() => cell.count > 0 && onCellClick && onCellClick({ weekday: i, hour: h })}
-                                        >
-                                            {cell.count > 0 ? (avgHour < 1 ? `${Math.round(avg)}p` : `${avgHour.toFixed(1)}h`) : ''}
-                                        </Box>
-                                    </Tooltip>
-                                );
-                            })}
-                            {/* AVG column */}
-                            <Tooltip title={count > 0 ? `AVG: ${avgDayHour.toFixed(1)}h\nTổng cards: ${count}` : 'No data'} arrow
-                                slotProps={{ tooltip: { sx: { fontSize: 15, px: 2, py: 1 } } }}>
-                                <Box
-                                    sx={{
-                                        width: 48, height: 48, borderRadius: 2,
-                                        background: getCellColor(avgDay),
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: 18, fontWeight: 700,
-                                        color: '#fff',
-                                        border: heatmapFilter && heatmapFilter.weekday === i && heatmapFilter.avg ? '3px solid #6366f1' : '2px solid #6366f1',
-                                        boxShadow: heatmapFilter && heatmapFilter.weekday === i && heatmapFilter.avg ? '0 0 0 2px #6366f155' : 'none',
-                                        transition: 'all 0.18s cubic-bezier(.4,2,.6,1)',
-                                        cursor: count > 0 ? 'pointer' : 'default',
-                                        '&:hover': count > 0 ? {
-                                            border: '3px solid #6366f1',
-                                            boxShadow: '0 2px 8px 0 #6366f133',
-                                            transform: 'scale(1.08)',
-                                            zIndex: 2,
-                                        } : {},
-                                    }}
-                                    onClick={() => count > 0 && onCellClick && onCellClick({ weekday: i, avg: true })}
-                                >
-                                    {count > 0 ? avgDayHour.toFixed(1) : ''}
-                                </Box>
-                            </Tooltip>
-                        </Box>
-                    );
-                })}
-            </Box>
-        </Paper>
-    );
-}
+const teamColors = ['#1976d2', '#2e7d32', '#ed6c02', '#9c27b0', '#d32f2f', '#7b1fa2', '#388e3c'];
 
 const ResolutionTimeList = () => {
     const [data, setData] = useState([]);
@@ -466,19 +273,30 @@ const ResolutionTimeList = () => {
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [selectedCard, setSelectedCard] = useState(null);
     const [modalOpen, setModalOpen] = useState(false);
+    const [chartDetailModal, setChartDetailModal] = useState(false);
+    const [selectedChartData, setSelectedChartData] = useState(null);
+    const [selectedChartTitle, setSelectedChartTitle] = useState("");
+    const [selectedHeatmapField, setSelectedHeatmapField] = useState("resolutionTime");
+    const [heatmapFilter, setHeatmapFilter] = useState(null);
+    const [cardDetailModalOpen, setCardDetailModalOpen] = useState(false);
+    const [selectedCardId, setSelectedCardId] = useState(null);
 
     const [selectedApp, setSelectedApp] = useState("");
     const [selectedMember, setSelectedMember] = useState("");
-    const [startDate, setStartDate] = useState(format(new Date(Date.now() - 7 * 86400000), 'yyyy-MM-dd'));
-    const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const [selectedTeam, setSelectedTeam] = useState("");
+    const [selectedGroup, setSelectedGroup] = useState("");
+    const [dateRange, setDateRange] = useState([
+        dayjs().subtract(7, 'day'),
+        dayjs()
+    ]);
 
     const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
-    const [chartFilter, setChartFilter] = useState({ field: null, range: null });
-    const [heatmapFilter, setHeatmapFilter] = useState(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
+            const startDate = dateRange[0].format('YYYY-MM-DD');
+            const endDate = dateRange[1].format('YYYY-MM-DD');
             const results = await getResolutionTimes(startDate, endDate);
             const validCards = results.filter(card =>
                 !isNaN(Number(card.resolutionTime)) &&
@@ -491,7 +309,7 @@ const ResolutionTimeList = () => {
         } finally {
             setLoading(false);
         }
-    }, [startDate, endDate]);
+    }, [dateRange]);
 
     // Initial data fetch
     useEffect(() => {
@@ -503,21 +321,16 @@ const ResolutionTimeList = () => {
 
     // Update filtered data when filters change
     useEffect(() => {
+        // Don't update if heatmap filter is active
+        if (heatmapFilter) return;
+        
         let filtered = data.filter((card) => {
             const hasApp = selectedApp ? card.labels?.some(l => l === selectedApp) : true;
             const hasMember = selectedMember ? card.members?.includes(selectedMember) : true;
-            const chartMatch = chartFilter.field
-                ? (() => {
-                    if (chartFilter.field === 'createdAt') {
-                        const createdAt = new Date(card.createdAt);
-                        const hour = createdAt.getHours();
-                        return hour >= chartFilter.range.min && hour < chartFilter.range.max;
-                    }
-                    return Number(card[chartFilter.field]) >= chartFilter.range.min && 
-                           Number(card[chartFilter.field]) < chartFilter.range.max;
-                })()
-                : true;
-            return hasApp && hasMember && chartMatch;
+            const hasTeam = selectedTeam ? getCardTeam(card) === selectedTeam : true;
+            const hasGroup = selectedGroup ? getCardGroup(card) === selectedGroup : true;
+            
+            return hasApp && hasMember && hasTeam && hasGroup;
         });
 
         // Filter out cards that don't have any TS members
@@ -528,22 +341,8 @@ const ResolutionTimeList = () => {
             })
         );
 
-        // Filter theo heatmap nếu có
-        if (heatmapFilter) {
-            filtered = filtered.filter(card => {
-                const weekday = getWeekdayIdxMondayFirst(card.createdAt);
-                if (heatmapFilter.avg) {
-                    // Lọc theo cả ngày
-                    return weekday === heatmapFilter.weekday;
-                } else {
-                    const hour = new Date(card.createdAt).getHours();
-                    return weekday === heatmapFilter.weekday && hour === heatmapFilter.hour;
-                }
-            });
-        }
-
         setFilteredData(filtered);
-    }, [data, selectedApp, selectedMember, chartFilter, heatmapFilter]);
+    }, [data, selectedApp, selectedMember, selectedTeam, selectedGroup, heatmapFilter]);
 
     // Handle manual data fetch
     const handleFetchData = () => {
@@ -598,12 +397,6 @@ const ResolutionTimeList = () => {
         }
     };
 
-    const shiftData = {
-        resolutionTime: groupByShift(filteredData, "resolutionTime"),
-        firstActionTime: groupByShift(filteredData, "firstActionTime"),
-        resolutionTimeTS: groupByShift(filteredData, "resolutionTimeTS")
-    };
-
     const CHART_TITLES = {
         resolutionTime: "Resolution Time",
         firstActionTime: "First Action Time",
@@ -611,8 +404,8 @@ const ResolutionTimeList = () => {
     };
 
     const handleRowClick = (card) => {
-        setSelectedCard(card.cardId);
-        setModalOpen(true);
+        setSelectedCardId(card.cardId);
+        setCardDetailModalOpen(true);
     };
 
     const handleCloseModal = () => {
@@ -620,1020 +413,809 @@ const ResolutionTimeList = () => {
         setSelectedCard(null);
     };
 
+    const handleChartClick = (chartData, title) => {
+        setSelectedChartData(chartData);
+        setSelectedChartTitle(title);
+        setChartDetailModal(true);
+    };
+
+    const handleCloseChartModal = () => {
+        setChartDetailModal(false);
+        setSelectedChartData(null);
+        setSelectedChartTitle("");
+    };
+
+    const handleHeatmapCellClick = (filter) => {
+        setHeatmapFilter(filter);
+        
+        // Filter cards based on heatmap cell click
+        const { weekday, hour } = filter;
+        
+        // Convert weekday index (0=Mon, 6=Sun) to actual day names
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const selectedDay = dayNames[weekday];
+        
+        // Filter cards that were created on the selected day and hour
+        const filteredByHeatmap = data.filter(card => {
+            const cardDate = new Date(card.createdAt);
+            const cardDay = cardDate.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+            const cardHour = cardDate.getHours();
+            
+            // Convert to Monday-first index (0=Mon, 6=Sun)
+            const mondayFirstIndex = [1,2,3,4,5,6,0].indexOf(cardDay);
+            
+            return mondayFirstIndex === weekday && cardHour === hour;
+        });
+        
+        // Update filtered data to show only cards from selected heatmap cell
+        setFilteredData(filteredByHeatmap);
+    };
+
+    // Table columns
+    const columns = [
+        {
+            title: 'Card',
+            dataIndex: 'cardName',
+            key: 'cardName',
+            render: (text, record) => (
+                <div>
+                    <div style={{ fontWeight: 600, color: '#1e293b' }}>{text}</div>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>
+                        {safeFormatDate(record.createdAt)}
+                    </div>
+                </div>
+            )
+        },
+        {
+            title: 'App',
+            dataIndex: 'labels',
+            key: 'app',
+            render: (labels) => {
+                const apps = labels?.filter(l => l.startsWith("App:")) || [];
+                return (
+                    <Space wrap>
+                        {apps.map(app => (
+                            <Tag key={app} color="blue">{app}</Tag>
+                        ))}
+                    </Space>
+                );
+            }
+        },
+        {
+            title: 'Team',
+            key: 'team',
+            render: (_, record) => {
+                const team = getCardTeam(record);
+                const group = getCardGroup(record);
+                return (
+                    <div>
+                        <div style={{ fontWeight: 600, color: '#1e293b' }}>{team || '—'}</div>
+                        <div style={{ fontSize: 12, color: '#64748b' }}>{group || '—'}</div>
+                    </div>
+                );
+            }
+        },
+        {
+            title: 'Members',
+            dataIndex: 'members',
+            key: 'members',
+            render: (members) => {
+                const memberNames = members?.map(id => memberMap[id]).filter(Boolean) || [];
+                return (
+                    <Space wrap>
+                        {memberNames.map(name => (
+                            <Tag key={name} color="green">{name}</Tag>
+                        ))}
+                    </Space>
+                );
+            }
+        },
+        {
+            title: 'Resolution Time',
+            dataIndex: 'resolutionTime',
+            key: 'resolutionTime',
+            sorter: true,
+            render: (value) => (
+                <div style={{ fontWeight: 600, color: '#3b82f6' }}>
+                    {formatMinutes(value)}
+                </div>
+            )
+        },
+        {
+            title: 'First Action Time',
+            dataIndex: 'firstActionTime',
+            key: 'firstActionTime',
+            sorter: true,
+            render: (value) => (
+                <div style={{ fontWeight: 600, color: '#6366f1' }}>
+                    {formatMinutes(value)}
+                </div>
+            )
+        },
+        {
+            title: 'TS Done Time',
+            dataIndex: 'resolutionTimeTS',
+            key: 'resolutionTimeTS',
+            sorter: true,
+            render: (value) => (
+                <div style={{ fontWeight: 600, color: '#0ea5e9' }}>
+                    {formatMinutes(value)}
+                </div>
+            )
+        },
+        {
+            title: 'Link',
+            key: 'link',
+            render: (_, record) => (
+                <a href={record.cardUrl} target="_blank" rel="noopener noreferrer">
+                    <Button type="link" size="small">Trello</Button>
+                </a>
+            )
+        }
+    ];
+
+    // Tạo dữ liệu cho biểu đồ số lượng card theo ngày
+    function groupCardsByDate(cards) {
+        const map = new Map();
+
+        cards.forEach(card => {
+            const date = dayjs(card.createdAt).format('YYYY-MM-DD');
+            if (!map.has(date)) {
+                map.set(date, 0);
+            }
+            map.set(date, map.get(date) + 1);
+        });
+
+        return Array.from(map.entries())
+            .sort((a, b) => new Date(a[0]) - new Date(b[0]))
+            .map(([date, count]) => ({
+                date: dayjs(date).format('MM/DD'),
+                count
+            }));
+    }
+
     return (
-        <Paper 
-            sx={{ 
-                padding: 4,
-                background: 'linear-gradient(to bottom right, #ffffff, #f8fafc)',
-                borderRadius: 3,
-                boxShadow: '0 4px 20px rgba(0,0,0,0.05)'
-            }}
-        >
-            <Typography 
-                variant="h3" 
-                gutterBottom
-                sx={{
-                    color: '#1e293b',
-                    fontWeight: 700,
-                    mb: 4,
-                    fontSize: { xs: '2rem', md: '2.5rem' },
-                    textAlign: { xs: 'center', md: 'left' }
-                }}
-            >
-                Overview
-            </Typography>
+        <div style={{ width: '100%', minHeight: '100vh', background: '#f5f5f5', padding: 0 }}>
+            <div style={{ maxWidth: '100%', margin: '0 auto', padding: '24px' }}>
+                
+                {/* Header */}
+                <div style={{ marginBottom: 32 }}>
+                    <Title level={2} style={{ color: '#1e293b', marginBottom: 8, textAlign: 'center' }}>
+                        <TeamOutlined style={{ marginRight: 12, color: '#2563eb' }} />
+                        TS Resolution Time Dashboard
+                    </Title>
+                    <Text type="secondary" style={{ textAlign: 'center', display: 'block' }}>
+                        Monitor TS team performance and resolution times
+                    </Text>
+                </div>
 
+                {/* Filters */}
+                <Card style={{ borderRadius: 16, marginBottom: 32, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+                    <Row gutter={[16, 16]} align="middle">
+                        <Col xs={24} sm={12} md={6}>
+                            <RangePicker
+                                value={dateRange}
+                                onChange={setDateRange}
+                                format="YYYY-MM-DD"
+                                allowClear
+                                style={{ width: '100%' }}
+                                placeholder={["Start date", "End date"]}
+                            />
+                        </Col>
+                        <Col xs={24} sm={12} md={4}>
+                            <Select
+                                allowClear
+                                placeholder="Select App"
+                                style={{ width: '100%' }}
+                                value={selectedApp}
+                                onChange={val => setSelectedApp(val)}
+                            >
+                                <Select.Option value="">All Apps</Select.Option>
+                                {appOptions.map(app => (
+                                    <Select.Option key={app} value={app}>{app}</Select.Option>
+                                ))}
+                            </Select>
+                        </Col>
+                        <Col xs={24} sm={12} md={4}>
+                            <Select
+                                allowClear
+                                placeholder="Select Team"
+                                style={{ width: '100%' }}
+                                value={selectedTeam}
+                                onChange={val => setSelectedTeam(val)}
+                            >
+                                <Select.Option value="">All Teams</Select.Option>
+                                {productTeams.map(team => (
+                                    <Select.Option key={team} value={team}>{team}</Select.Option>
+                                ))}
+                            </Select>
+                        </Col>
+                        <Col xs={24} sm={12} md={4}>
+                            <Select
+                                allowClear
+                                placeholder="Select TS Group"
+                                style={{ width: '100%' }}
+                                value={selectedGroup}
+                                onChange={val => setSelectedGroup(val)}
+                            >
+                                <Select.Option value="">All Groups</Select.Option>
+                                {tsGroups.map(group => (
+                                    <Select.Option key={group} value={group}>{group}</Select.Option>
+                                ))}
+                            </Select>
+                        </Col>
+                        <Col xs={24} sm={12} md={6}>
+                            <Select
+                                allowClear
+                                showSearch
+                                placeholder="Select TS Member"
+                                style={{ width: '100%' }}
+                                value={selectedMember}
+                                onChange={val => setSelectedMember(val)}
+                                optionFilterProp="children"
+                                filterOption={(input, option) =>
+                                    (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                                }
+                            >
+                                <Select.Option value="">All Members</Select.Option>
+                                {members
+                                    .filter(member => member.role === 'TS')
+                                    .sort((a, b) => a.fullName.localeCompare(b.fullName))
+                                    .map(m => (
+                                        <Select.Option key={m.id} value={m.id}>
+                                            {m.fullName}
+                                        </Select.Option>
+                                    ))}
+                            </Select>
+                        </Col>
+                        <Col xs={24} sm={12} md={6}>
+                            <Button
+                                type="primary"
+                                icon={<ReloadOutlined />}
+                                onClick={handleFetchData}
+                                loading={loading}
+                                style={{ width: '100%', fontWeight: 600 }}
+                            >
+                                Refresh Data
+                            </Button>
+                        </Col>
+                    </Row>
+                </Card>
 
-            {/* Filters Section */}
-            <Paper 
-                sx={{ 
-                    p: { xs: 2, sm: 3 }, 
-                    mb: 4,
-                    background: 'rgba(255, 255, 255, 0.5)',
-                    backdropFilter: 'blur(8px)',
-                    borderRadius: 3,
-                    border: '1px solid rgba(255, 255, 255, 0.3)'
-                }}
-            >
-                <Box sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    mb: { xs: 2, sm: 3 }
-                }}>
-                    <Typography 
-                        variant="h6" 
-                        sx={{ 
-                            color: '#1e293b',
-                            fontWeight: 600,
-                            fontSize: { xs: '1rem', sm: '1.25rem' }
-                        }}
-                    >
-                        Filters
-                    </Typography>
-                </Box>
-                <Grid container spacing={{ xs: 1, sm: 2 }} alignItems="center">
-                    <Grid item xs={12} sm={6} md={3}>
-                        <TextField
-                            select 
-                            fullWidth 
-                            label="App"
-                            value={selectedApp} 
-                            onChange={e => setSelectedApp(e.target.value)}
-                            sx={{
-                                '& .MuiOutlinedInput-root': {
-                                    borderRadius: 2,
-                                    background: 'rgba(255, 255, 255, 0.8)',
-                                    '&:hover fieldset': {
-                                        borderColor: '#3b82f6'
-                                    }
-                                },
-                                '& .MuiInputLabel-root': {
-                                    color: '#64748b'
-                                },
-                                '& .MuiSelect-select': {
-                                    fontSize: { xs: '0.875rem', sm: '1rem' }
-                                }
-                            }}
-                        >
-                            <MenuItem value="">All Apps</MenuItem>
-                            {appOptions.map(app => (
-                                <MenuItem key={app} value={app}>{app}</MenuItem>
-                            ))}
-                        </TextField>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                        <TextField
-                            select 
-                            fullWidth 
-                            label="Members"
-                            value={selectedMember} 
-                            onChange={e => setSelectedMember(e.target.value)}
-                            sx={{
-                                '& .MuiOutlinedInput-root': {
-                                    borderRadius: 2,
-                                    background: 'rgba(255, 255, 255, 0.8)',
-                                    '&:hover fieldset': {
-                                        borderColor: '#3b82f6'
-                                    }
-                                },
-                                '& .MuiInputLabel-root': {
-                                    color: '#64748b'
-                                },
-                                '& .MuiSelect-select': {
-                                    fontSize: { xs: '0.875rem', sm: '1rem' }
-                                }
-                            }}
-                        >
-                            <MenuItem value="">All Members</MenuItem>
-                            {[...new Map(members
-                                .filter(member => member.role === 'TS')
-                                .map(m => [m.id, m])).values()]
-                                .sort((a, b) => a.fullName.localeCompare(b.fullName))
-                                .map(m => (
-                                    <MenuItem 
-                                        key={m.id} 
-                                        value={m.id}
-                                        sx={{
+                {loading ? (
+                    <div style={{ textAlign: 'center', padding: '100px 0' }}>
+                        <Spin size="large" />
+                    </div>
+                ) : (
+                    <>
+                        {/* Key Metrics */}
+                        <Row gutter={[24, 24]} style={{ marginBottom: 32 }}>
+                            <Col xs={24} sm={12} md={6}>
+                                <Card style={{ 
+                                    borderRadius: 12, 
+                                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                                    background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                                        <div>
+                                            <div style={{ fontSize: 14, color: '#64748b', marginBottom: 4 }}>Total Cards</div>
+                                            <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b' }}>
+                                                {filteredData.length.toLocaleString()}
+                                            </div>
+                                        </div>
+                                        <div style={{ 
+                                            width: 24, 
+                                            height: 24, 
+                                            borderRadius: '50%', 
+                                            background: '#2563eb20',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: 1,
-                                            minHeight: '48px'
-                                        }}
-                                    >
-                                        <Typography sx={{ 
-                                            fontSize: '0.875rem',
-                                            fontWeight: 500,
-                                            color: '#1e293b',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap',
-                                            flex: 1
+                                            justifyContent: 'center',
+                                            fontSize: 12,
+                                            color: '#2563eb',
+                                            fontWeight: 600
                                         }}>
-                                            {m.fullName}
-                                        </Typography>
-                                    </MenuItem>
-                                ))}
-                        </TextField>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={2}>
-                        <TextField
-                            type="date" 
-                            label="From Date" 
-                            fullWidth
-                            InputLabelProps={{ shrink: true }}
-                            value={startDate} 
-                            onChange={e => setStartDate(e.target.value)}
-                            sx={{
-                                '& .MuiOutlinedInput-root': {
-                                    borderRadius: 2,
-                                    background: 'rgba(255, 255, 255, 0.8)',
-                                    '&:hover fieldset': {
-                                        borderColor: '#3b82f6'
-                                    }
-                                },
-                                '& .MuiInputLabel-root': {
-                                    color: '#64748b'
-                                },
-                                '& .MuiInputBase-input': {
-                                    fontSize: { xs: '0.875rem', sm: '1rem' }
-                                }
-                            }}
-                        />
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={2}>
-                        <TextField
-                            type="date" 
-                            label="To Date" 
-                            fullWidth
-                            InputLabelProps={{ shrink: true }}
-                            value={endDate} 
-                            onChange={e => setEndDate(e.target.value)}
-                            sx={{
-                                '& .MuiOutlinedInput-root': {
-                                    borderRadius: 2,
-                                    background: 'rgba(255, 255, 255, 0.8)',
-                                    '&:hover fieldset': {
-                                        borderColor: '#3b82f6'
-                                    }
-                                },
-                                '& .MuiInputLabel-root': {
-                                    color: '#64748b'
-                                },
-                                '& .MuiInputBase-input': {
-                                    fontSize: { xs: '0.875rem', sm: '1rem' }
-                                }
-                            }}
-                        />
-                    </Grid>
-                    <Grid item xs={12} sm={12} md={2}>
-                        <Box sx={{ 
-                            display: 'flex', 
-                            gap: 1, 
-                            height: '100%',
-                            alignItems: 'center',
-                            justifyContent: { xs: 'flex-start', sm: 'flex-end' },
-                            mt: { xs: 1, sm: 0 }
-                        }}>
-                            {chartFilter.field && (
-                                <Button 
-                                    variant="outlined" 
-                                    color="error"
-                                    onClick={() => setChartFilter({ field: null, range: null })}
-                                    startIcon={<ClearIcon />}
-                                    sx={{
-                                        borderRadius: 2,
-                                        textTransform: 'none',
-                                        fontWeight: 500,
-                                        borderColor: '#ef4444',
-                                        color: '#ef4444',
-                                        minWidth: '100px',
-                                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                        '&:hover': {
-                                            borderColor: '#dc2626',
-                                            backgroundColor: '#fef2f2'
-                                        }
-                                    }}
-                                >
-                                    Clear
-                                </Button>
-                            )}
-                            <Button
-                                variant="contained"
-                                onClick={handleFetchData}
-                                startIcon={<RefreshIcon />}
-                                sx={{
-                                    borderRadius: 2,
-                                    textTransform: 'none',
-                                    fontWeight: 600,
-                                    py: 1,
-                                    px: 2,
-                                    minWidth: '120px',
-                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
-                                    '&:hover': {
-                                        background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                                        transform: 'translateY(-1px)',
-                                        boxShadow: '0 6px 16px rgba(59, 130, 246, 0.4)'
-                                    },
-                                    transition: 'all 0.3s ease'
-                                }}
-                            >
-                                Get Data
-                            </Button>
-                        </Box>
-                    </Grid>
-                </Grid>
-            </Paper>
-
-            {loading ? (
-                <Box sx={{ 
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    minHeight: '400px'
-                }}>
-                    <CircularProgress 
-                        sx={{ 
-                            color: '#3b82f6',
-                            width: '60px !important',
-                            height: '60px !important'
-                        }} 
-                    />
-                </Box>
-            ) : (
-                <>
-                    {/* Key Metrics */}
-                    <KeyMetricsBoxCharts
-                        chartsData={chartsData}
-                        averages={averages}
-                        setChartFilter={setChartFilter}
-                        TIME_GROUPS={TIME_GROUPS}
-                        formatMinutes={formatMinutes}
-                        CHART_TITLES={CHART_TITLES}
-                    />
-                    {/* HEATMAP HERE */}
-                    <HeatmapOfWeek
-                        cards={filteredData}
-                        field="resolutionTime"
-                        onCellClick={setHeatmapFilter}
-                        heatmapFilter={heatmapFilter}
-                    />
-                    
-                    {/* First Action Time Heatmap */}
-                    <ResolutionTimeHeatmap 
-                        cards={filteredData} 
-                        field="firstActionTime" 
-                        onCellClick={setHeatmapFilter}
-                        heatmapFilter={heatmapFilter}
-                    />
-                    
-                    {/* TS Done Issues Time Heatmap */}
-                    <ResolutionTimeHeatmap 
-                        cards={filteredData} 
-                        field="resolutionTimeTS" 
-                        onCellClick={setHeatmapFilter}
-                        heatmapFilter={heatmapFilter}
-                    />
-                    {/* Filter chip */}
-                    {heatmapFilter && (
-                        <Box sx={{ mb: 2 }}>
-                            <Chip 
-                                label={heatmapFilter.avg
-                                    ? `Filter: ${WEEKDAYS[heatmapFilter.weekday]} (AVG)`
-                                    : `Filter: ${WEEKDAYS[heatmapFilter.weekday]} - ${heatmapFilter.hour}h`}
-                                color="primary"
-                                onDelete={() => setHeatmapFilter(null)}
-                                sx={{ fontWeight: 600, fontSize: 15 }}
-                            />
-                        </Box>
-                    )}
-                    {/* Shift Analysis Charts */}
-                    <Grid container spacing={3} sx={{ mb: 4, mt: 10 }}>
-                        {Object.entries(shiftData).map(([key, data]) => (
-                            <Grid item xs={12} md={4} key={`shift-chart-${key}`}>
-                                <Paper
-                                    sx={{
-                                        p: 4,
-                                        height: '100%',
-                                        background: 'rgba(255, 255, 255, 0.8)',
-                                        backdropFilter: 'blur(8px)',
-                                        borderRadius: 3,
-                                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                                        transition: 'all 0.3s ease',
-                                        '&:hover': {
-                                            transform: 'translateY(-4px)',
-                                            boxShadow: '0 12px 24px rgba(0,0,0,0.1)'
-                                        }
-                                    }}
-                                >
-                                    <Typography 
-                                        variant="h6" 
-                                        sx={{ 
-                                            mb: 4,
-                                            color: '#1e293b',
-                                            fontWeight: 600
+                                            i
+                                        </div>
+                                    </div>
+                                    <div 
+                                        style={{ 
+                                            height: 120, 
+                                            marginTop: 16, 
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s ease'
                                         }}
+                                        onClick={() => handleChartClick(groupCardsByDate(filteredData), "Daily Cards Trend")}
+                                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                                     >
-                                        {CHART_TITLES[key]} by Shift
-                                    </Typography>
-                                    <Box sx={{ height: 400 }}>
-                                        <ResponsiveContainer>
-                                            <BarChart
-                                                data={data}
-                                                margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-                                                barCategoryGap="20%"
-                                                barGap={4}
-                                            >
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={groupCardsByDate(filteredData)}>
+                                                <defs>
+                                                    <linearGradient id="totalCardsGradient" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0.05} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <RechartsTooltip 
+                                                    formatter={(value, name) => [value, 'Cards']}
+                                                    labelFormatter={(label) => `Date: ${label}`}
+                                                    contentStyle={{
+                                                        backgroundColor: 'white',
+                                                        border: '1px solid #d9d9d9',
+                                                        borderRadius: '6px',
+                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                                                    }}
+                                                />
+                                                <Area 
+                                                    type="monotone" 
+                                                    dataKey="count" 
+                                                    stroke="#2563eb" 
+                                                    fill="url(#totalCardsGradient)"
+                                                    strokeWidth={2}
+                                                />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+
+                                </Card>
+                            </Col>
+                            <Col xs={24} sm={12} md={6}>
+                                <Card style={{ 
+                                    borderRadius: 12, 
+                                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                                    background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                                        <div>
+                                            <div style={{ fontSize: 14, color: '#64748b', marginBottom: 4 }}>AVG Resolution Time</div>
+                                            <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b' }}>
+                                                {formatMinutes(averages.resolutionTime)}
+                                            </div>
+                                        </div>
+                                        <div style={{ 
+                                            width: 24, 
+                                            height: 24, 
+                                            borderRadius: '50%', 
+                                            background: '#3b82f620',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: 12,
+                                            color: '#3b82f6',
+                                            fontWeight: 600
+                                        }}>
+                                            i
+                                        </div>
+                                    </div>
+                                    <div 
+                                        style={{ 
+                                            height: 120, 
+                                            marginTop: 16, 
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s ease'
+                                        }}
+                                        onClick={() => handleChartClick(chartsData.resolutionTime, "Resolution Time Distribution")}
+                                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    >
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={chartsData.resolutionTime}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                                 <XAxis 
-                                                    dataKey="shift" 
-                                                    tick={{ fontSize: 12, fill: '#64748b' }}
-                                                    axisLine={{ stroke: '#e2e8f0' }}
-                                                    tickLine={{ stroke: '#e2e8f0' }}
+                                                    dataKey="name" 
+                                                    tick={{ fontSize: 10 }}
+                                                    axisLine={false}
+                                                    tickLine={false}
                                                 />
                                                 <YAxis 
-                                                    tick={{ fontSize: 12, fill: '#64748b' }}
-                                                    axisLine={{ stroke: '#e2e8f0' }}
-                                                    tickLine={{ stroke: '#e2e8f0' }}
-                                                    label={{ 
-                                                        value: 'Hours', 
-                                                        angle: -90, 
-                                                        position: 'insideLeft',
-                                                        style: { 
-                                                            textAnchor: 'middle',
-                                                            fill: '#64748b',
-                                                            fontSize: 12
-                                                        }
-                                                    }}
+                                                    tick={{ fontSize: 10 }}
+                                                    axisLine={false}
+                                                    tickLine={false}
                                                 />
-                                                <Tooltip
+                                                <RechartsTooltip 
+                                                    formatter={(value, name) => [value, 'Cards']}
+                                                    labelFormatter={(label) => `Time Group: ${label}`}
                                                     contentStyle={{
-                                                        backgroundColor: "#ffffff",
-                                                        border: "1px solid #e2e8f0",
-                                                        fontSize: "13px",
-                                                        borderRadius: '8px',
-                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                                                    }}
-                                                    labelStyle={{ 
-                                                        fontWeight: 600,
-                                                        color: '#1e293b'
-                                                    }}
-                                                    formatter={(value, name) => {
-                                                        if (name === "average") {
-                                                            return [`${value}h`, "Average Time"];
-                                                        } else if (name === "count") {
-                                                            return [`${value} cards`, "Card Count"];
-                                                        }
-                                                        return [value, name];
+                                                        backgroundColor: 'white',
+                                                        border: '1px solid #d9d9d9',
+                                                        borderRadius: '6px',
+                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
                                                     }}
                                                 />
-                                                <Legend 
-                                                    wrapperStyle={{ 
-                                                        fontSize: 14,
-                                                        color: '#64748b'
-                                                    }}
-                                                    formatter={(value) => {
-                                                        if (value === 'average') return 'Average Time (hours)';
-                                                        if (value === 'count') return 'Card Count';
-                                                        return value;
-                                                    }}
-                                                />
-                                                <Bar 
-                                                    dataKey="average" 
-                                                    fill="#3b82f6" 
-                                                    name="Average Time"
-                                                    radius={[4, 4, 0, 0]}
-                                                    onClick={(data) => {
-                                                        if (data && data.payload) {
-                                                            const shift = data.payload.shift;
-                                                            const shiftNumber = parseInt(shift.split(' ')[1]);
-                                                            
-                                                            // Calculate correct time ranges for each shift
-                                                            let startHour, endHour;
-                                                            switch(shiftNumber) {
-                                                                case 1:
-                                                                    startHour = 0;
-                                                                    endHour = 4;
-                                                                    break;
-                                                                case 2:
-                                                                    startHour = 4;
-                                                                    endHour = 8;
-                                                                    break;
-                                                                case 3:
-                                                                    startHour = 8;
-                                                                    endHour = 12;
-                                                                    break;
-                                                                case 4:
-                                                                    startHour = 12;
-                                                                    endHour = 16;
-                                                                    break;
-                                                                case 5:
-                                                                    startHour = 16;
-                                                                    endHour = 20;
-                                                                    break;
-                                                                case 6:
-                                                                    startHour = 20;
-                                                                    endHour = 24;
-                                                                    break;
-                                                                default:
-                                                                    startHour = 0;
-                                                                    endHour = 24;
-                                                                    break;
-                                                            }
-                                                            
-                                                            setChartFilter({
-                                                                field: 'createdAt',
-                                                                range: {
-                                                                    min: startHour,
-                                                                    max: endHour
-                                                                }
-                                                            });
-                                                        }
-                                                    }}
-                                                    cursor="pointer"
-                                                >
-                                                    <LabelList
-                                                        dataKey="average"
-                                                        position="top"
-                                                        formatter={(value) => `${value}h`}
-                                                        style={{
-                                                            fill: '#64748b',
-                                                            fontSize: '12px',
-                                                            fontWeight: 500
-                                                        }}
-                                                    />
-                                                </Bar>
+                                                <Bar dataKey="count" fill="#3b82f6" radius={[2, 2, 0, 0]} />
                                             </BarChart>
                                         </ResponsiveContainer>
-                                    </Box>
-                                </Paper>
-                            </Grid>
-                        ))}
-                    </Grid>
+                                    </div>
 
-                    {/* Time Series Charts */}
-                    {Object.entries(avgCharts).map(([key, data]) => (
-                        <Paper
-                            key={`time-series-${key}`}
-                            sx={{
-                                p: 4,
-                                mb: 4,
-                                mt: 15,
-                                background: 'rgba(255, 255, 255, 0.8)',
-                                backdropFilter: 'blur(8px)',
-                                borderRadius: 3,
-                                border: '1px solid rgba(255, 255, 255, 0.3)',
-                                transition: 'all 0.3s ease',
-                                '&:hover': {
-                                    transform: 'translateY(-4px)',
-                                    boxShadow: '0 12px 24px rgba(0,0,0,0.1)'
-                                }
-                            }}
+                                </Card>
+                            </Col>
+                            <Col xs={24} sm={12} md={6}>
+                                <Card style={{ 
+                                    borderRadius: 12, 
+                                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                                    background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                                        <div>
+                                            <div style={{ fontSize: 14, color: '#64748b', marginBottom: 4 }}>AVG First Action Time</div>
+                                            <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b' }}>
+                                                {formatMinutes(averages.firstActionTime)}
+                                            </div>
+                                        </div>
+                                        <div style={{ 
+                                            width: 24, 
+                                            height: 24, 
+                                            borderRadius: '50%', 
+                                            background: '#6366f120',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: 12,
+                                            color: '#6366f1',
+                                            fontWeight: 600
+                                        }}>
+                                            i
+                                        </div>
+                                    </div>
+                                    <div 
+                                        style={{ 
+                                            height: 120, 
+                                            marginTop: 16, 
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s ease'
+                                        }}
+                                        onClick={() => handleChartClick(chartsData.firstActionTime, "First Action Time Distribution")}
+                                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    >
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={chartsData.firstActionTime}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                                <XAxis 
+                                                    dataKey="name" 
+                                                    tick={{ fontSize: 10 }}
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                />
+                                                <YAxis 
+                                                    tick={{ fontSize: 10 }}
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                />
+                                                <RechartsTooltip 
+                                                    formatter={(value, name) => [value, 'Cards']}
+                                                    labelFormatter={(label) => `Time Group: ${label}`}
+                                                    contentStyle={{
+                                                        backgroundColor: 'white',
+                                                        border: '1px solid #d9d9d9',
+                                                        borderRadius: '6px',
+                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                                                    }}
+                                                />
+                                                <Bar dataKey="count" fill="#6366f1" radius={[2, 2, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+
+                                </Card>
+                            </Col>
+                            <Col xs={24} sm={12} md={6}>
+                                <Card style={{ 
+                                    borderRadius: 12, 
+                                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                                    background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                                        <div>
+                                            <div style={{ fontSize: 14, color: '#64748b', marginBottom: 4 }}>AVG TS Done Time</div>
+                                            <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b' }}>
+                                                {formatMinutes(averages.resolutionTimeTS)}
+                                            </div>
+                                        </div>
+                                        <div style={{ 
+                                            width: 24, 
+                                            height: 24, 
+                                            borderRadius: '50%', 
+                                            background: '#0ea5e920',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: 12,
+                                            color: '#0ea5e9',
+                                            fontWeight: 600
+                                        }}>
+                                            i
+                                        </div>
+                                    </div>
+                                    <div 
+                                        style={{ 
+                                            height: 120, 
+                                            marginTop: 16, 
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s ease'
+                                        }}
+                                        onClick={() => handleChartClick(chartsData.resolutionTimeTS, "TS Done Time Distribution")}
+                                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    >
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={chartsData.resolutionTimeTS}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                                <XAxis 
+                                                    dataKey="name" 
+                                                    tick={{ fontSize: 10 }}
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                />
+                                                <YAxis 
+                                                    tick={{ fontSize: 10 }}
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                />
+                                                <RechartsTooltip 
+                                                    formatter={(value, name) => [value, 'Cards']}
+                                                    labelFormatter={(label) => `Time Group: ${label}`}
+                                                    contentStyle={{
+                                                        backgroundColor: 'white',
+                                                        border: '1px solid #d9d9d9',
+                                                        borderRadius: '6px',
+                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                                                    }}
+                                                />
+                                                <Bar dataKey="count" fill="#0ea5e9" radius={[2, 2, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+
+                                </Card>
+                            </Col>
+                        </Row>
+
+                        {/* Heatmap Section */}
+                        <Card
+                            title={
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                    <span style={{ fontWeight: 700, fontSize: 18 }}>Resolution Time Heatmap</span>
+                                    <Select
+                                        value={selectedHeatmapField}
+                                        onChange={setSelectedHeatmapField}
+                                        style={{ width: 200 }}
+                                        size="small"
+                                    >
+                                        <Select.Option value="resolutionTime">Resolution Time</Select.Option>
+                                        <Select.Option value="firstActionTime">First Action Time</Select.Option>
+                                        <Select.Option value="resolutionTimeTS">TS Done Time</Select.Option>
+                                    </Select>
+                                    {heatmapFilter && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                                Filtered: {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][heatmapFilter.weekday]} {heatmapFilter.hour}:00
+                                            </Text>
+                                            <Button 
+                                                size="small" 
+                                                onClick={() => {
+                                                    setHeatmapFilter(null);
+                                                    setFilteredData(data.filter((card) => {
+                                                        const hasApp = selectedApp ? card.labels?.some(l => l === selectedApp) : true;
+                                                        const hasMember = selectedMember ? card.members?.includes(selectedMember) : true;
+                                                        const hasTeam = selectedTeam ? getCardTeam(card) === selectedTeam : true;
+                                                        const hasGroup = selectedGroup ? getCardGroup(card) === selectedGroup : true;
+                                                        return hasApp && hasMember && hasTeam && hasGroup;
+                                                    }));
+                                                }}
+                                            >
+                                                Clear Filter
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            }
+                            style={{ borderRadius: 16, marginBottom: 32, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
                         >
-                            <Typography 
-                                variant="h5" 
-                                sx={{ 
-                                    mb: 4,
-                                    color: '#1e293b',
-                                    fontWeight: 700
+                            <HeatmapOfWeek 
+                                cards={filteredData}
+                                field={selectedHeatmapField}
+                                onCellClick={handleHeatmapCellClick}
+                                heatmapFilter={heatmapFilter}
+                            />
+                        </Card>
+
+                        {/* TS Team Analysis */}
+                        <Card
+                            title={
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ fontWeight: 700, fontSize: 18 }}>TS Team Analysis</span>
+                                    <Badge count={timeAndCountData.member.resolutionTime.length} style={{ backgroundColor: '#2563eb' }} />
+                                </div>
+                            }
+                            style={{ borderRadius: 16, marginBottom: 32, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                        >
+                            <Row gutter={[24, 24]}>
+                                {Object.entries(timeAndCountData.member).map(([key, data]) => (
+                                    <Col xs={24} lg={8} key={`member-chart-${key}`}>
+                                        <Card
+                                            title={CHART_TITLES[key]}
+                                            size="small"
+                                            style={{ borderRadius: 12 }}
+                                        >
+                                            <ResponsiveContainer width="100%" height={300}>
+                                                <BarChart
+                                                    layout="vertical"
+                                                    data={data.sort((a, b) => b.time - a.time)}
+                                                    margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
+                                                >
+                                                    <XAxis type="number" />
+                                                    <YAxis dataKey="name" type="category" width={100} />
+                                                    <RechartsTooltip />
+                                                    <Bar dataKey="time" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </Card>
+                                    </Col>
+                                ))}
+                            </Row>
+                        </Card>
+
+                        {/* App Analysis */}
+                        <Card
+                            title={
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ fontWeight: 700, fontSize: 18 }}>App Analysis</span>
+                                    <Badge count={timeAndCountData.app.resolutionTime.length} style={{ backgroundColor: '#2563eb' }} />
+                                </div>
+                            }
+                            style={{ borderRadius: 16, marginBottom: 32, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                        >
+                            <Row gutter={[24, 24]}>
+                                {Object.entries(timeAndCountData.app).map(([key, data]) => (
+                                    <Col xs={24} lg={8} key={`app-chart-${key}`}>
+                                        <Card
+                                            title={CHART_TITLES[key]}
+                                            size="small"
+                                            style={{ borderRadius: 12 }}
+                                        >
+                                            <ResponsiveContainer width="100%" height={300}>
+                                                <BarChart
+                                                    layout="vertical"
+                                                    data={data.sort((a, b) => b.time - a.time)}
+                                                    margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
+                                                >
+                                                    <XAxis type="number" />
+                                                    <YAxis dataKey="name" type="category" width={100} />
+                                                    <RechartsTooltip />
+                                                    <Bar dataKey="time" fill="#10b981" radius={[0, 4, 4, 0]} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </Card>
+                                    </Col>
+                                ))}
+                            </Row>
+                        </Card>
+
+                        {/* TS Team Leaderboard */}
+                        <Card
+                            title={
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <TrophyOutlined style={{ color: '#f59e0b' }} />
+                                    <span style={{ fontWeight: 700, fontSize: 18 }}>TS Team Leaderboard</span>
+                                </div>
+                            }
+                            style={{ borderRadius: 16, marginBottom: 32, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                        >
+                            <AgentLeaderboard data={filteredData} />
+                        </Card>
+
+                        {/* Data Table */}
+                        <Card
+                            title={
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ fontWeight: 700, fontSize: 18 }}>Resolution Time Details</span>
+                                    <Badge count={filteredData.length} style={{ backgroundColor: '#2563eb' }} />
+                                </div>
+                            }
+                            style={{ borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                        >
+                            <Table
+                                columns={columns}
+                                dataSource={sortedData}
+                                rowKey="cardUrl"
+                                pagination={{
+                                    pageSize: 20,
+                                    showSizeChanger: true,
+                                    showQuickJumper: true,
+                                    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`
                                 }}
-                            >
-                                {CHART_TITLES[key]} Over Time
-                            </Typography>
-                            <Box sx={{ height: 400 }}>
-                                <ResponsiveContainer>
-                                    <AreaChart data={data}>
-                                        <XAxis 
-                                            dataKey="date" 
-                                            stroke="#64748b" 
-                                            tick={{ fontSize: 12 }}
-                                            axisLine={{ stroke: '#e2e8f0' }}
-                                            tickLine={{ stroke: '#e2e8f0' }}
-                                        />
-                                        <YAxis 
-                                            stroke="#64748b" 
-                                            tick={{ fontSize: 12 }}
-                                            axisLine={{ stroke: '#e2e8f0' }}
-                                            tickLine={{ stroke: '#e2e8f0' }}
-                                            label={{ 
-                                                value: 'Minutes', 
-                                                angle: -90, 
-                                                position: 'insideLeft',
-                                                style: { 
-                                                    textAnchor: 'middle',
-                                                    fill: '#64748b',
-                                                    fontSize: 12
-                                                }
-                                            }}
-                                        />
-                                        <Tooltip
-                                            formatter={(value) => [`${Math.round(value)} minutes`, "Average"]}
-                                            contentStyle={{ 
-                                                backgroundColor: "#ffffff", 
-                                                border: "1px solid #e2e8f0", 
-                                                fontSize: "13px",
-                                                borderRadius: '8px',
-                                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                                            }}
-                                            labelStyle={{ 
-                                                fontWeight: 600,
-                                                color: '#1e293b'
-                                            }}
-                                        />
-                                        <Legend 
-                                            wrapperStyle={{ 
-                                                fontSize: 14, 
-                                                paddingTop: 10,
-                                                color: '#64748b'
-                                            }} 
-                                        />
-                                        <defs>
-                                            <linearGradient id={`avg-color-${key}`} x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
-                                            </linearGradient>
-                                        </defs>
-                                        <Area
-                                            type="monotone"
-                                            dataKey="average"
-                                            stroke="#3b82f6"
-                                            fill={`url(#avg-color-${key})`}
-                                            strokeWidth={2}
-                                            dot={{ r: 2, fill: '#3b82f6' }}
-                                            activeDot={{ r: 4, fill: '#3b82f6' }}
-                                            name="Average (minutes)"
-                                        />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            </Box>
-                        </Paper>
-                    ))}
+                                onChange={(pagination, filters, sorter) => {
+                                    if (sorter.field) {
+                                        handleSort(sorter.field);
+                                    }
+                                }}
+                                onRow={(record) => ({
+                                    onClick: () => handleRowClick(record),
+                                    style: { cursor: 'pointer' }
+                                })}
+                            />
+                        </Card>
+                    </>
+                )}
 
-                    {/* Dual Bar Charts */}
-                    <Typography 
-                        variant="h5" 
-                        sx={{ 
-                            mb: 4,
-                            color: '#1e293b',
-                            fontWeight: 700
-                        }}
-                    >
-                        Time & Card Count Analysis
-                    </Typography>
-
-                    {/* TS Team Analysis */}
-                    <Typography 
-                        variant="h6" 
-                        sx={{ 
-                            mb: 3,
-                            color: '#1e293b',
-                            fontWeight: 600
-                        }}
-                    >
-                        TS Team Analysis
-                    </Typography>
-                    <Grid container spacing={3} sx={{ mb: 4 }}>
-                        {Object.entries(timeAndCountData.member).map(([key, data]) => (
-                            <Grid item xs={12} md={6} key={`member-chart-${key}`}>
-                                <Paper
-                                    sx={{
-                                        p: 4,
-                                        height: '100%',
-                                        background: 'rgba(255, 255, 255, 0.8)',
-                                        backdropFilter: 'blur(8px)',
-                                        borderRadius: 3,
-                                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                                        transition: 'all 0.3s ease',
-                                        '&:hover': {
-                                            transform: 'translateY(-4px)',
-                                            boxShadow: '0 12px 24px rgba(0,0,0,0.1)'
-                                        }
-                                    }}
-                                >
-                                    <Typography 
-                                        variant="h6" 
-                                        sx={{ 
-                                            mb: 4,
-                                            color: '#1e293b',
-                                            fontWeight: 600
-                                        }}
-                                    >
-                                        {CHART_TITLES[key]} by TS Member
-                                    </Typography>
-                                    <Box sx={{ height: 400 }}>
-                                        <ResponsiveContainer>
-                                            <BarChart
-                                                layout="vertical"
-                                                data={data.sort((a, b) => b.time - a.time)}
-                                                margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
-                                                barCategoryGap="20%"
-                                                barGap={4}
-                                            >
-                                                <XAxis 
-                                                    type="number"
-                                                    tick={{ fontSize: 12, fill: '#64748b' }}
-                                                    axisLine={{ stroke: '#e2e8f0' }}
-                                                    tickLine={{ stroke: '#e2e8f0' }}
-                                                />
-                                                <YAxis 
-                                                    dataKey="name" 
-                                                    type="category" 
-                                                    width={150}
-                                                    tick={{ fontSize: 12, fill: '#64748b' }}
-                                                    axisLine={{ stroke: '#e2e8f0' }}
-                                                    tickLine={{ stroke: '#e2e8f0' }}
-                                                />
-                                                <Tooltip
-                                                    contentStyle={{
-                                                        backgroundColor: "#ffffff",
-                                                        border: "1px solid #e2e8f0",
-                                                        fontSize: "13px",
-                                                        borderRadius: '8px',
-                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                                                    }}
-                                                    labelStyle={{ 
-                                                        fontWeight: 600,
-                                                        color: '#1e293b'
-                                                    }}
-                                                    formatter={(value, name) => {
-                                                        if (name === "time") {
-                                                            return [`${value} hours`, "Total Time"];
-                                                        } else if (name === "count") {
-                                                            return [`${value} cards`, "Card Count"];
-                                                        } else {
-                                                            return [value, name];
-                                                        }
-                                                    }}
-                                                />
-                                                <Legend 
-                                                    wrapperStyle={{ 
-                                                        fontSize: 14,
-                                                        color: '#64748b'
-                                                    }}
-                                                    formatter={(value) => {
-                                                        if (value === 'time') return 'Total Time';
-                                                        if (value === 'count') return 'Card Count';
-                                                        return value;
-                                                    }}
-                                                />
-                                                <Bar 
-                                                    dataKey="time" 
-                                                    fill="#3b82f6" 
-                                                    name="Total Time"
-                                                    radius={[0, 4, 4, 0]}
-                                                    label={({ value, payload }) => {
-                                                        const total = data.reduce((sum, item) => sum + item.time, 0);
-                                                        const percentage = ((value / total) * 100).toFixed(1);
-                                                        return [
-                                                            `${value}h`,
-                                                            `${percentage}%`
-                                                        ].join('\n');
-                                                    }}
-                                                    labelStyle={{
-                                                        fill: '#64748b',
-                                                        fontSize: '12px',
-                                                        fontWeight: 500,
-                                                        textAnchor: 'start'
-                                                    }}
-                                                />
-                                                <Bar 
-                                                    dataKey="count" 
-                                                    fill="#10b981" 
-                                                    name="Card Count"
-                                                    radius={[0, 4, 4, 0]}
-                                                    label={({ value, payload }) => {
-                                                        const total = data.reduce((sum, item) => sum + item.count, 0);
-                                                        const percentage = ((value / total) * 100).toFixed(1);
-                                                        return [
-                                                            `${value}`,
-                                                            `${percentage}%`
-                                                        ].join('\n');
-                                                    }}
-                                                    labelStyle={{
-                                                        fill: '#64748b',
-                                                        fontSize: '12px',
-                                                        fontWeight: 500,
-                                                        textAnchor: 'start'
-                                                    }}
-                                                />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </Box>
-                                </Paper>
-                            </Grid>
-                        ))}
-                    </Grid>
-
-                    {/* App Analysis */}
-                    <Typography 
-                        variant="h6" 
-                        sx={{ 
-                            mb: 3,
-                            color: '#1e293b',
-                            fontWeight: 600
-                        }}
-                    >
-                        App Analysis
-                    </Typography>
-                    <Grid container spacing={3} sx={{ mb: 4 }}>
-                        {Object.entries(timeAndCountData.app).map(([key, data]) => (
-                            <Grid item xs={12} md={6} key={`app-chart-${key}`}>
-                                <Paper
-                                    sx={{
-                                        p: 4,
-                                        height: '100%',
-                                        background: 'rgba(255, 255, 255, 0.8)',
-                                        backdropFilter: 'blur(8px)',
-                                        borderRadius: 3,
-                                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                                        transition: 'all 0.3s ease',
-                                        '&:hover': {
-                                            transform: 'translateY(-4px)',
-                                            boxShadow: '0 12px 24px rgba(0,0,0,0.1)'
-                                        }
-                                    }}
-                                >
-                                    <Typography 
-                                        variant="h6" 
-                                        sx={{ 
-                                            mb: 4,
-                                            color: '#1e293b',
-                                            fontWeight: 600
-                                        }}
-                                    >
-                                        {CHART_TITLES[key]} by App
-                                    </Typography>
-                                    <Box sx={{ height: 400 }}>
-                                        <ResponsiveContainer>
-                                            <BarChart
-                                                layout="vertical"
-                                                data={data.sort((a, b) => b.time - a.time)}
-                                                margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
-                                                barCategoryGap="20%"
-                                                barGap={4}
-                                            >
-                                                <XAxis 
-                                                    type="number"
-                                                    tick={{ fontSize: 12, fill: '#64748b' }}
-                                                    axisLine={{ stroke: '#e2e8f0' }}
-                                                    tickLine={{ stroke: '#e2e8f0' }}
-                                                />
-                                                <YAxis 
-                                                    dataKey="name" 
-                                                    type="category" 
-                                                    width={150}
-                                                    tick={{ fontSize: 12, fill: '#64748b' }}
-                                                    axisLine={{ stroke: '#e2e8f0' }}
-                                                    tickLine={{ stroke: '#e2e8f0' }}
-                                                />
-                                                <Tooltip
-                                                    contentStyle={{
-                                                        backgroundColor: "#ffffff",
-                                                        border: "1px solid #e2e8f0",
-                                                        fontSize: "13px",
-                                                        borderRadius: '8px',
-                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                                                    }}
-                                                    labelStyle={{ 
-                                                        fontWeight: 600,
-                                                        color: '#1e293b'
-                                                    }}
-                                                    formatter={(value, name) => {
-                                                        if (name === "time") {
-                                                            return [`${value} hours`, "Total Time"];
-                                                        } else if (name === "count") {
-                                                            return [`${value} cards`, "Card Count"];
-                                                        } else {
-                                                            return [value, name];
-                                                        }
-                                                    }}
-                                                />
-                                                <Legend 
-                                                    wrapperStyle={{ 
-                                                        fontSize: 14,
-                                                        color: '#64748b'
-                                                    }}
-                                                    formatter={(value) => {
-                                                        if (value === 'time') return 'Total Time';
-                                                        if (value === 'count') return 'Card Count';
-                                                        return value;
-                                                    }}
-                                                />
-                                                <Bar 
-                                                    dataKey="time" 
-                                                    fill="#3b82f6" 
-                                                    name="Total Time"
-                                                    radius={[0, 4, 4, 0]}
-                                                    label={({ value, payload }) => {
-                                                        const total = data.reduce((sum, item) => sum + item.time, 0);
-                                                        const percentage = ((value / total) * 100).toFixed(1);
-                                                        return [
-                                                            `${value}h`,
-                                                            `${percentage}%`
-                                                        ].join('\n');
-                                                    }}
-                                                    labelStyle={{
-                                                        fill: '#64748b',
-                                                        fontSize: '12px',
-                                                        fontWeight: 500,
-                                                        textAnchor: 'start'
-                                                    }}
-                                                />
-                                                <Bar 
-                                                    dataKey="count" 
-                                                    fill="#10b981" 
-                                                    name="Card Count"
-                                                    radius={[0, 4, 4, 0]}
-                                                    label={({ value, payload }) => {
-                                                        const total = data.reduce((sum, item) => sum + item.count, 0);
-                                                        const percentage = ((value / total) * 100).toFixed(1);
-                                                        return [
-                                                            `${value}`,
-                                                            `${percentage}%`
-                                                        ].join('\n');
-                                                    }}
-                                                    labelStyle={{
-                                                        fill: '#64748b',
-                                                        fontSize: '12px',
-                                                        fontWeight: 500,
-                                                        textAnchor: 'start'
-                                                    }}
-                                                />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </Box>
-                                </Paper>
-                            </Grid>
-                        ))}
-                    </Grid>
-                </>
-            )}
-
-            {/* Data Table */}
-            <Box sx={{ 
-                width: '100%', 
-                overflowX: 'auto',
-                borderRadius: 3,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                backgroundColor: '#ffffff',
-                mb: 4,
-                mt: 8
-            }}>
-                <Table 
-                    sx={{ 
-                        minWidth: { xs: 800, sm: 1000 },
-                        border: "1px solid #e2e8f0", 
-                        borderRadius: 3,
-                        overflow: 'hidden',
-                        backgroundColor: '#ffffff',
-                    }}
+                {/* Chart Detail Modal */}
+                <Modal
+                    title={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontWeight: 700, fontSize: 18 }}>{selectedChartTitle}</span>
+                        </div>
+                    }
+                    open={chartDetailModal}
+                    onCancel={handleCloseChartModal}
+                    footer={null}
+                    width={800}
+                    style={{ top: 20 }}
                 >
-                    <TableHead>
-                        <TableRow sx={{ backgroundColor: "#f8fafc" }}>
-                            <TableCell sx={{ 
-                                fontWeight: 600, 
-                                color: '#1e293b',
-                                fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                py: { xs: 1, sm: 2 }
-                            }}>Card</TableCell>
-                            <TableCell sx={{ 
-                                fontWeight: 600, 
-                                color: '#1e293b',
-                                fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                py: { xs: 1, sm: 2 }
-                            }}>Link</TableCell>
-                            <TableCell sx={{ 
-                                fontWeight: 600, 
-                                color: '#1e293b',
-                                fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                py: { xs: 1, sm: 2 }
-                            }}>App</TableCell>
-                            <TableCell sx={{ 
-                                fontWeight: 600, 
-                                color: '#1e293b',
-                                fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                py: { xs: 1, sm: 2 }
-                            }}>Members</TableCell>
-                            <TableCell 
-                                onClick={() => handleSort("resolutionTime")} 
-                                sx={{ 
-                                    cursor: "pointer", 
-                                    fontWeight: 600,
-                                    color: '#1e293b',
-                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                    py: { xs: 1, sm: 2 },
-                                    '&:hover': {
-                                        backgroundColor: '#f1f5f9'
-                                    }
-                                }}
-                            >
-                                Resolution Time {sortConfig.key === "resolutionTime" ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}
-                            </TableCell>
-                            <TableCell 
-                                onClick={() => handleSort("firstActionTime")} 
-                                sx={{ 
-                                    cursor: "pointer", 
-                                    fontWeight: 600,
-                                    color: '#1e293b',
-                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                    py: { xs: 1, sm: 2 },
-                                    '&:hover': {
-                                        backgroundColor: '#f1f5f9'
-                                    }
-                                }}
-                            >
-                                First Action Time {sortConfig.key === "firstActionTime" ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}
-                            </TableCell>
-                            <TableCell 
-                                onClick={() => handleSort("resolutionTimeTS")} 
-                                sx={{ 
-                                    cursor: "pointer", 
-                                    fontWeight: 600,
-                                    color: '#1e293b',
-                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                    py: { xs: 1, sm: 2 },
-                                    '&:hover': {
-                                        backgroundColor: '#f1f5f9'
-                                    }
-                                }}
-                            >
-                                TS Done Issues Time {sortConfig.key === "resolutionTimeTS" ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}
-                            </TableCell>
-                            <TableCell sx={{ 
-                                fontWeight: 600, 
-                                color: '#1e293b',
-                                fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                py: { xs: 1, sm: 2 }
-                            }}>Created At</TableCell>
-                        </TableRow>
-                    </TableHead>
+                    {selectedChartData && (
+                        <div>
+                            <div style={{ marginBottom: 24 }}>
+                                <Text type="secondary">
+                                    Click vào biểu đồ để xem chi tiết phân bố thời gian
+                                </Text>
+                            </div>
+                            
+                            <div style={{ height: 400, marginBottom: 24 }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={selectedChartData}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="name" />
+                                        <YAxis />
+                                        <RechartsTooltip 
+                                            formatter={(value, name) => [value, 'Cards']}
+                                            labelStyle={{ fontWeight: 600 }}
+                                        />
+                                        <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
 
-                    <TableBody>
-                        {sortedData.map((card) => (
-                            <TableRow
-                                key={card.cardUrl}
-                                onClick={() => handleRowClick(card)}
-                                sx={{
-                                    transition: "all 0.2s ease",
-                                    "&:hover": {
-                                        backgroundColor: "#f8fafc",
-                                        cursor: "pointer"
-                                    }
-                                }}
-                            >
-                                <TableCell>{card.cardName}</TableCell>
-                                <TableCell>
-                                    <Link href={card.cardUrl} target="_blank" rel="noopener noreferrer">
-                                        Trello
-                                    </Link>
-                                </TableCell>
-                                <TableCell>{card.labels?.filter(l => l.startsWith("App:")).join(", ")}</TableCell>
-                                <TableCell>{card.members?.map(id => memberMap[id]).filter(Boolean).join(", ")}</TableCell>
-                                <TableCell>{formatMinutes(card.resolutionTime)}</TableCell>
-                                <TableCell>{formatMinutes(card.firstActionTime)}</TableCell>
-                                <TableCell>{formatMinutes(card.resolutionTimeTS)}</TableCell>
-                                <TableCell>{safeFormatDate(card.createdAt)}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </Box>
+                            <div style={{ background: '#f8fafc', padding: 16, borderRadius: 8 }}>
+                                <Title level={5} style={{ marginBottom: 16 }}>Chi tiết phân bố:</Title>
+                                <Row gutter={[16, 8]}>
+                                    {selectedChartData.map((item, index) => (
+                                        <Col xs={12} sm={8} md={6} key={index}>
+                                            <div style={{ 
+                                                background: 'white', 
+                                                padding: 12, 
+                                                borderRadius: 6,
+                                                border: '1px solid #e2e8f0'
+                                            }}>
+                                                <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: 4 }}>
+                                                    {item.name}
+                                                </div>
+                                                <div style={{ fontSize: 18, fontWeight: 700, color: '#3b82f6' }}>
+                                                    {item.count} cards
+                                                </div>
+                                                <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                                                    {((item.count / selectedChartData.reduce((sum, i) => sum + i.count, 0)) * 100).toFixed(1)}%
+                                                </div>
+                                            </div>
+                                        </Col>
+                                    ))}
+                                </Row>
+                            </div>
+                        </div>
+                    )}
+                </Modal>
 
-            {/* Card Detail Modal */}
-            <CardDetailModal
-                open={modalOpen}
-                onClose={handleCloseModal}
-                cardId={selectedCard}
-            />
-
-            {/* Add AgentLeaderboard here at the bottom */}
-            {!loading && (
-                <Box sx={{ mt: 4 }}>
-                    <AgentLeaderboard data={filteredData} />
-                </Box>
-            )}
-        </Paper>
+                {/* Card Detail Modal */}
+                <CardDetailModal
+                    open={cardDetailModalOpen}
+                    onClose={() => {
+                        setCardDetailModalOpen(false);
+                        setSelectedCardId(null);
+                    }}
+                    cardId={selectedCardId}
+                />
+            </div>
+        </div>
     );
 };
 
@@ -1642,90 +1224,94 @@ const AgentLeaderboard = ({ data }) => {
 
     if (leaderboard.length === 0) {
         return (
-            <Paper
-                sx={{
-                    p: 4,
-                    mb: 4,
-                    background: 'rgba(255, 255, 255, 0.8)',
-                    backdropFilter: 'blur(8px)',
-                    borderRadius: 3,
-                    border: '1px solid rgba(255, 255, 255, 0.3)',
-                    textAlign: 'center'
-                }}
-            >
-                <Typography variant="h6" color="text.secondary">
-                    No data available for TS Team Leaderboard
-                </Typography>
-            </Paper>
+            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                <Text type="secondary">No data available for TS Team Leaderboard</Text>
+            </div>
         );
     }
 
-    return (
-        <Paper
-            sx={{
-                p: 4,
-                mb: 4,
-                background: 'rgba(255, 255, 255, 0.8)',
-                backdropFilter: 'blur(8px)',
-                borderRadius: 3,
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: '0 12px 24px rgba(0,0,0,0.1)'
+    const columns = [
+        {
+            title: 'Rank',
+            key: 'rank',
+            width: 80,
+            render: (_, record, index) => {
+                let color = 'default';
+                let icon = null;
+                
+                if (index === 0) {
+                    color = 'gold';
+                    icon = <TrophyOutlined />;
+                } else if (index === 1) {
+                    color = 'silver';
+                    icon = <StarOutlined />;
+                } else if (index === 2) {
+                    color = 'bronze';
+                    icon = <FireOutlined />;
                 }
-            }}
-        >
-            <Typography 
-                variant="h5" 
-                sx={{ 
-                    mb: 4,
-                    color: '#1e293b',
-                    fontWeight: 700
-                }}
-            >
-                TS Team Leaderboard
-            </Typography>
-            <Table>
-                <TableHead>
-                    <TableRow>
-                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Rank</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Member</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Total Cards</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Avg Resolution Time</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Avg First Action Time</TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>Avg TS Done Time</TableCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {leaderboard.map((agent, index) => (
-                        <TableRow key={agent.name}>
-                            <TableCell>
-                                <Chip 
-                                    label={`#${index + 1}`}
-                                    color={index === 0 ? "success" : index < 3 ? "primary" : "default"}
-                                    sx={{ 
-                                        fontWeight: 600,
-                                        minWidth: '40px'
-                                    }}
-                                />
-                            </TableCell>
-                            <TableCell sx={{ fontWeight: 500, color: '#1e293b' }}>{agent.name}</TableCell>
-                            <TableCell sx={{ color: '#64748b' }}>{agent.cardCount}</TableCell>
-                            <TableCell sx={{ fontWeight: 500, color: '#1e293b' }}>
-                                {formatMinutes(agent.avgResolutionTime)}
-                            </TableCell>
-                            <TableCell sx={{ fontWeight: 500, color: '#1e293b' }}>
-                                {formatMinutes(agent.avgFirstActionTime)}
-                            </TableCell>
-                            <TableCell sx={{ fontWeight: 500, color: '#1e293b' }}>
-                                {formatMinutes(agent.avgResolutionTimeTS)}
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        </Paper>
+
+                return (
+                    <Badge
+                        count={index + 1}
+                        color={color}
+                        style={{ backgroundColor: color === 'gold' ? '#f59e0b' : color === 'silver' ? '#94a3b8' : '#cd7f32' }}
+                        icon={icon}
+                    />
+                );
+            }
+        },
+        {
+            title: 'Member',
+            dataIndex: 'name',
+            key: 'name',
+            render: (text) => <Text strong>{text}</Text>
+        },
+        {
+            title: 'Total Cards',
+            dataIndex: 'cardCount',
+            key: 'cardCount',
+            render: (value) => <Tag color="blue">{value}</Tag>
+        },
+        {
+            title: 'Avg Resolution Time',
+            dataIndex: 'avgResolutionTime',
+            key: 'avgResolutionTime',
+            render: (value) => (
+                <Text style={{ color: '#3b82f6', fontWeight: 600 }}>
+                    {formatMinutes(value)}
+                </Text>
+            )
+        },
+        {
+            title: 'Avg First Action Time',
+            dataIndex: 'avgFirstActionTime',
+            key: 'avgFirstActionTime',
+            render: (value) => (
+                <Text style={{ color: '#6366f1', fontWeight: 600 }}>
+                    {formatMinutes(value)}
+                </Text>
+            )
+        },
+        {
+            title: 'Avg TS Done Time',
+            dataIndex: 'avgResolutionTimeTS',
+            key: 'avgResolutionTimeTS',
+            render: (value) => (
+                <Text style={{ color: '#0ea5e9', fontWeight: 600 }}>
+                    {formatMinutes(value)}
+                </Text>
+            )
+        }
+    ];
+
+    return (
+        <Table
+            columns={columns}
+            dataSource={leaderboard}
+            rowKey="name"
+            pagination={false}
+            size="small"
+        />
     );
 };
 

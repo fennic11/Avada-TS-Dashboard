@@ -16,7 +16,7 @@ import { TABS, ROLES, hasTabAccess, getAccessibleTabs } from './utils/roles';
 // Import existing pages
 import Bugs from './pages/Dashboard';
 import Issues from './pages/Issues';
-import RevolutionTime from './pages/RevolutionTime';
+import ResolutionTime from './pages/ResolutionTime';
 import Kpis from './pages/Kpi';
 import TSLead from './pages/TSLeadPage';
 import TSWorkspace from './pages/TSWorkspace';
@@ -172,7 +172,7 @@ const App = () => {
                                 element={
                                     <PrivateRoute>
                                         <Layout>
-                                            <RevolutionTime />
+                                            <ResolutionTime />
                                         </Layout>
                                     </PrivateRoute>
                                 }

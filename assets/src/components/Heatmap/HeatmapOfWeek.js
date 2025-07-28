@@ -1,6 +1,8 @@
 import React from 'react';
-import { Paper, Typography, Box, Tooltip } from '@mui/material';
+import { Card, Typography, Tooltip, Row, Col } from 'antd';
 import { format } from 'date-fns';
+
+const { Title, Text } = Typography;
 
 // Helper: Weekday labels (bắt đầu từ Monday)
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -87,41 +89,79 @@ const HeatmapOfWeek = ({ cards, field = 'resolutionTime', onCellClick, heatmapFi
         }
     }
     return (
-        <Paper
-            sx={{
-                p: 3,
-                mb: 4,
-                width: '100%',
-                maxWidth: '100vw',
-                minWidth: 0,
-                borderRadius: 3,
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                overflowX: 'auto',
-                boxSizing: 'border-box',
+        <Card
+            style={{
+                borderRadius: 16,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                marginBottom: 32,
+                overflowX: 'auto'
             }}
         >
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: '#1e293b', textAlign: 'left', fontSize: 22 }}>
+            <Title level={4} style={{ marginBottom: 16, color: '#1e293b', textAlign: 'left' }}>
                 Heatmap of Week
-            </Typography>
+            </Title>
+            
             {/* Chú thích màu heatmap */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, ml: 1 }}>
-                <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#bbf7d0', border: '1.5px solid #cbd5e1', mr: 1 }} />
-                <Typography sx={{ fontSize: 15, color: '#334155', mr: 2 }}>&lt; 1h</Typography>
-                <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#bae6fd', border: '1.5px solid #cbd5e1', mr: 1 }} />
-                <Typography sx={{ fontSize: 15, color: '#334155', mr: 2 }}>1-4h</Typography>
-                <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#fde68a', border: '1.5px solid #cbd5e1', mr: 1 }} />
-                <Typography sx={{ fontSize: 15, color: '#334155', mr: 2 }}>4-8h</Typography>
-                <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#fca5a5', border: '1.5px solid #cbd5e1', mr: 1 }} />
-                <Typography sx={{ fontSize: 15, color: '#334155' }}>&gt; 8h</Typography>
-            </Box>
-            <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 1, mx: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ 
+                        width: 28, 
+                        height: 20, 
+                        borderRadius: 6, 
+                        background: '#bbf7d0', 
+                        border: '1.5px solid #cbd5e1' 
+                    }} />
+                    <Text style={{ fontSize: 14, color: '#334155' }}>&lt; 1h</Text>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ 
+                        width: 28, 
+                        height: 20, 
+                        borderRadius: 6, 
+                        background: '#bae6fd', 
+                        border: '1.5px solid #cbd5e1' 
+                    }} />
+                    <Text style={{ fontSize: 14, color: '#334155' }}>1-4h</Text>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ 
+                        width: 28, 
+                        height: 20, 
+                        borderRadius: 6, 
+                        background: '#fde68a', 
+                        border: '1.5px solid #cbd5e1' 
+                    }} />
+                    <Text style={{ fontSize: 14, color: '#334155' }}>4-8h</Text>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ 
+                        width: 28, 
+                        height: 20, 
+                        borderRadius: 6, 
+                        background: '#fca5a5', 
+                        border: '1.5px solid #cbd5e1' 
+                    }} />
+                    <Text style={{ fontSize: 14, color: '#334155' }}>&gt; 8h</Text>
+                </div>
+            </div>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {/* Header row: 0h-23h */}
-                <Box sx={{ display: 'flex', columnGap: 1 }}>
-                    <Box sx={{ width: 48 }} />
+                <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ width: 48 }} />
                     {Array.from({ length: 24 }).map((_, h) => (
-                        <Box key={h} sx={{ width: 48, textAlign: 'center', fontSize: 16, color: '#64748b' }}>{h}h</Box>
+                        <div key={h} style={{ 
+                            width: 48, 
+                            textAlign: 'center', 
+                            fontSize: 14, 
+                            color: '#64748b',
+                            fontWeight: 500
+                        }}>
+                            {h}h
+                        </div>
                     ))}
-                </Box>
+                </div>
+                
                 {/* Rows: Mon-Sun */}
                 {heatmap.map((row, i) => {
                     // Tính avg của cả ngày
@@ -130,47 +170,71 @@ const HeatmapOfWeek = ({ cards, field = 'resolutionTime', onCellClick, heatmapFi
                     const avgDay = count > 0 ? total / count : 0;
                     const avgDayHour = avgDay / 60;
                     return (
-                        <Box key={i} sx={{ display: 'flex', alignItems: 'center', columnGap: 1 }}>
-                            <Box sx={{ width: 48, textAlign: 'right', fontWeight: 600, color: '#64748b', fontSize: 16 }}>
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ 
+                                width: 48, 
+                                textAlign: 'right', 
+                                fontWeight: 600, 
+                                color: '#64748b', 
+                                fontSize: 14 
+                            }}>
                                 {WEEKDAYS[i]}
-                            </Box>
+                            </div>
                             {row.map((cell, h) => {
                                 const avg = cell.count > 0 ? cell.total / cell.count : 0;
                                 const avgHour = avg / 60;
                                 const isActive = heatmapFilter && heatmapFilter.weekday === i && heatmapFilter.hour === h;
                                 return (
-                                    <Tooltip key={h} title={cell.count > 0 ? `${avgHour.toFixed(1)}h\n${cell.count} cards` : 'No data'} arrow
-                                        slotProps={{ tooltip: { sx: { fontSize: 15, px: 2, py: 1 } } }}>
-                                        <Box
-                                            sx={{
-                                                width: 48, height: 48, borderRadius: 2,
+                                    <Tooltip 
+                                        key={h} 
+                                        title={cell.count > 0 ? `${avgHour.toFixed(1)}h\n${cell.count} cards` : 'No data'}
+                                        placement="top"
+                                    >
+                                        <div
+                                            style={{
+                                                width: 48, 
+                                                height: 48, 
+                                                borderRadius: 8,
                                                 background: getCellColor(avg),
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                fontSize: 15, fontWeight: 700,
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                justifyContent: 'center',
+                                                fontSize: 12, 
+                                                fontWeight: 700,
                                                 color: '#fff',
                                                 cursor: cell.count > 0 ? 'pointer' : 'default',
                                                 border: isActive ? '3px solid #6366f1' : '1.5px solid #cbd5e1',
                                                 boxShadow: isActive ? '0 0 0 2px #6366f155' : 'none',
                                                 transition: 'all 0.18s cubic-bezier(.4,2,.6,1)',
-                                                '&:hover': cell.count > 0 ? {
-                                                    border: '3px solid #6366f1',
-                                                    boxShadow: '0 2px 8px 0 #6366f133',
-                                                    transform: 'scale(1.08)',
-                                                    zIndex: 2,
-                                                } : {},
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (cell.count > 0) {
+                                                    e.currentTarget.style.border = '3px solid #6366f1';
+                                                    e.currentTarget.style.boxShadow = '0 2px 8px 0 #6366f133';
+                                                    e.currentTarget.style.transform = 'scale(1.08)';
+                                                    e.currentTarget.style.zIndex = 2;
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (!isActive) {
+                                                    e.currentTarget.style.border = '1.5px solid #cbd5e1';
+                                                    e.currentTarget.style.boxShadow = 'none';
+                                                    e.currentTarget.style.transform = 'scale(1)';
+                                                    e.currentTarget.style.zIndex = 1;
+                                                }
                                             }}
                                             onClick={() => cell.count > 0 && onCellClick && onCellClick({ weekday: i, hour: h })}
                                         >
                                             {cell.count > 0 ? (avgHour < 1 ? `${Math.round(avg)}p` : `${avgHour.toFixed(1)}h`) : ''}
-                                        </Box>
+                                        </div>
                                     </Tooltip>
                                 );
                             })}
-                        </Box>
+                        </div>
                     );
                 })}
-            </Box>
-        </Paper>
+            </div>
+        </Card>
     );
 };
 
