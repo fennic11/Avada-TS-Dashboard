@@ -2,45 +2,43 @@ import React, { useState } from "react";
 import {
     Avatar,
     Typography,
-    Box,
-    Stack,
-    Link,
-    Paper,
-    Chip,
-    ToggleButtonGroup,
-    ToggleButton
-} from "@mui/material";
+    Space,
+    Tag,
+    Card,
+    Button,
+    Divider
+} from "antd";
 import { format, formatDistanceToNow } from "date-fns";
-import { useTheme } from "@mui/material/styles";
 
-const getActionBackgroundColor = (type, theme) => {
+const { Text, Title } = Typography;
+
+const getActionBackgroundColor = (type) => {
     switch (type) {
         case "commentCard":
-            return `${theme.palette.success.light}15`; // Light green with 15% opacity
+            return "rgba(76, 175, 80, 0.15)"; // Light green with 15% opacity
         case "updateCard":
-            return `${theme.palette.info.light}15`; // Light blue with 15% opacity
+            return "rgba(33, 150, 243, 0.15)"; // Light blue with 15% opacity
         case "addMemberToCard":
-            return `${theme.palette.secondary.light}15`; // Light secondary color with 15% opacity
+            return "rgba(156, 39, 176, 0.15)"; // Light secondary color with 15% opacity
         case "removeMemberFromCard":
-            return `${theme.palette.error.light}15`; // Light red with 15% opacity
+            return "rgba(244, 67, 54, 0.15)"; // Light red with 15% opacity
         case "addAttachmentToCard":
-            return `${theme.palette.warning.light}15`; // Light orange with 15% opacity
+            return "rgba(255, 152, 0, 0.15)"; // Light orange with 15% opacity
         case "deleteAttachmentFromCard":
-            return `${theme.palette.error.light}15`; // Light red with 15% opacity
+            return "rgba(233, 30, 99, 0.15)"; // Light red with 15% opacity
         case "addChecklistToCard":
-            return `${theme.palette.info.light}15`; // Light cyan with 15% opacity
+            return "rgba(0, 188, 212, 0.15)"; // Light cyan with 15% opacity
         case "createCard":
-            return `${theme.palette.success.light}15`; // Light green with 15% opacity
+            return "rgba(139, 195, 74, 0.15)"; // Light green with 15% opacity
         default:
-            return `${theme.palette.grey[300]}15`; // Light grey with 15% opacity
+            return "rgba(96, 125, 139, 0.15)"; // Light grey with 15% opacity
     }
 };
 
 const CardActivityHistory = ({ actions }) => {
-    const theme = useTheme();
     const [filter, setFilter] = useState('all'); // 'all' or 'comments'
 
-    const handleFilterChange = (event, newFilter) => {
+    const handleFilterChange = (newFilter) => {
         if (newFilter !== null) {
             setFilter(newFilter);
         }
@@ -62,50 +60,42 @@ const CardActivityHistory = ({ actions }) => {
                 const loomMatch = text.match(loomRegex);
                 
                 return (
-                    <Stack spacing={1}>
+                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
                         {slackMatch && (
-                            <Chip
-                                label="View Slack Message"
-                                component="a"
-                                href={slackMatch[2].trim()}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                clickable
-                                sx={{
-                                    bgcolor: '#4A154B',
+                            <Tag
+                                color="#4A154B"
+                                style={{
                                     color: 'white',
-                                    '&:hover': {
-                                        bgcolor: '#5c1b5d'
-                                    },
-                                    '& .MuiChip-label': {
-                                        fontSize: '0.875rem'
-                                    }
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem',
+                                    padding: '4px 8px'
                                 }}
-                                icon={
-                                    <Box
-                                        component="img"
+                                onClick={() => window.open(slackMatch[2].trim(), '_blank')}
+                            >
+                                <Space>
+                                    <img
                                         src="https://a.slack-edge.com/80588/marketing/img/icons/icon_slack_hash_colored.png"
                                         alt="Slack"
-                                        sx={{
+                                        style={{
                                             width: 16,
-                                            height: 16,
-                                            ml: 0.5
+                                            height: 16
                                         }}
                                     />
-                                }
-                            />
+                                    View Slack Message
+                                </Space>
+                            </Tag>
                         )}
                         {loomMatch && (
-                            <Box
-                                sx={{
+                            <div
+                                style={{
                                     position: 'relative',
                                     paddingBottom: '56.25%', // 16:9 aspect ratio
                                     height: 0,
                                     overflow: 'hidden',
                                     maxWidth: '100%',
                                     background: '#000',
-                                    borderRadius: 1,
-                                    mt: 1
+                                    borderRadius: 4,
+                                    marginTop: 8
                                 }}
                             >
                                 <iframe
@@ -122,9 +112,9 @@ const CardActivityHistory = ({ actions }) => {
                                         height: '100%'
                                     }}
                                 />
-                            </Box>
+                            </div>
                         )}
-                        <Typography variant="body2" sx={{ whiteSpace: "pre-line" }}>
+                        <Text style={{ whiteSpace: "pre-line" }}>
                             {slackMatch ? (
                                 text.split(slackLinkRegex)[0]
                             ) : loomMatch ? (
@@ -133,110 +123,107 @@ const CardActivityHistory = ({ actions }) => {
                                 text.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
                                     if (part.match(/^https?:\/\//)) {
                                         return (
-                                            <Link
+                                            <a
                                                 key={index}
                                                 href={part}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                sx={{
-                                                    color: 'primary.main',
+                                                style={{
+                                                    color: '#1890ff',
                                                     textDecoration: 'none',
                                                     wordBreak: 'break-all',
                                                     display: 'inline-block',
-                                                    maxWidth: '100%',
-                                                    '&:hover': {
-                                                        textDecoration: 'underline'
-                                                    }
+                                                    maxWidth: '100%'
                                                 }}
                                             >
                                                 {part}
-                                            </Link>
+                                            </a>
                                         );
                                     }
                                     return part;
                                 })
                             )}
-                        </Typography>
+                        </Text>
                         {action.data.attachments && action.data.attachments.map((attachment, index) => {
                             // Check if it's an image attachment
                             if (attachment.mimeType?.startsWith('image/') || 
                                 attachment.name?.match(/\.(jpg|jpeg|png|gif)$/i)) {
                                 return (
-                                    <Box
+                                    <div
                                         key={index}
-                                        sx={{
+                                        style={{
                                             position: "relative",
-                                            "&:hover .image-overlay": {
-                                                opacity: 1
-                                            }
+                                            cursor: "pointer"
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            const overlay = e.currentTarget.querySelector('.image-overlay');
+                                            if (overlay) overlay.style.opacity = '1';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            const overlay = e.currentTarget.querySelector('.image-overlay');
+                                            if (overlay) overlay.style.opacity = '0';
                                         }}
                                     >
-                                        <Paper
-                                            variant="outlined"
-                                            sx={{
-                                                p: 1,
-                                                borderRadius: 1,
+                                        <Card
+                                            size="small"
+                                            style={{
+                                                padding: 8,
+                                                borderRadius: 4,
                                                 borderColor: "rgba(0, 0, 0, 0.12)",
                                                 overflow: "hidden"
                                             }}
                                         >
-                                            <Box
-                                                component="img"
+                                            <img
                                                 src={attachment.url || attachment.previewUrl}
                                                 alt={attachment.name || "Comment attachment"}
-                                                sx={{
+                                                style={{
                                                     width: "100%",
                                                     height: "auto",
                                                     maxHeight: 300,
                                                     objectFit: "contain",
-                                                    borderRadius: 0.5,
+                                                    borderRadius: 2,
                                                     cursor: "pointer"
                                                 }}
                                                 onClick={() => window.open(attachment.url || attachment.previewUrl, "_blank")}
                                             />
-                                        </Paper>
-                                        <Box
+                                        </Card>
+                                        <div
                                             className="image-overlay"
-                                            sx={{
+                                            style={{
                                                 position: "absolute",
                                                 top: 0,
                                                 left: 0,
                                                 right: 0,
                                                 bottom: 0,
-                                                bgcolor: "rgba(0, 0, 0, 0.5)",
+                                                backgroundColor: "rgba(0, 0, 0, 0.5)",
                                                 display: "flex",
                                                 alignItems: "center",
                                                 justifyContent: "center",
                                                 opacity: 0,
                                                 transition: "opacity 0.2s",
-                                                borderRadius: 1,
+                                                borderRadius: 4,
                                                 cursor: "pointer"
                                             }}
                                             onClick={() => window.open(attachment.url || attachment.previewUrl, "_blank")}
                                         >
-                                            <Typography
-                                                variant="button"
-                                                sx={{
+                                            <Text
+                                                style={{
                                                     color: "white",
-                                                    bgcolor: "rgba(0, 0, 0, 0.7)",
-                                                    px: 2,
-                                                    py: 1,
-                                                    borderRadius: 1,
-                                                    cursor: "pointer",
-                                                    "&:hover": {
-                                                        bgcolor: "rgba(0, 0, 0, 0.8)"
-                                                    }
+                                                    backgroundColor: "rgba(0, 0, 0, 0.7)",
+                                                    padding: "8px 16px",
+                                                    borderRadius: 4,
+                                                    cursor: "pointer"
                                                 }}
                                             >
                                                 View Full Size
-                                            </Typography>
-                                        </Box>
-                                    </Box>
+                                            </Text>
+                                        </div>
+                                    </div>
                                 );
                             }
                             return null;
                         })}
-                    </Stack>
+                    </Space>
                 );
 
             case "updateCard":
@@ -245,9 +232,9 @@ const CardActivityHistory = ({ actions }) => {
                 // List movement
                 if (listBefore && listAfter) {
                     return (
-                        <Typography variant="body2" color="text.secondary">
+                        <Text type="secondary">
                             Moved to <strong>{listAfter.name}</strong>
-                        </Typography>
+                        </Text>
                     );
                 }
                 
@@ -255,33 +242,33 @@ const CardActivityHistory = ({ actions }) => {
                 if (old && old.due != null) {
                     if (!card.due) {
                         return (
-                            <Typography variant="body2" color="text.secondary">
+                            <Text type="secondary">
                                 Removed due date
-                            </Typography>
+                            </Text>
                         );
                     }
                     return (
-                        <Typography variant="body2" color="text.secondary">
+                        <Text type="secondary">
                             Due date: <strong>{format(new Date(card.due), "MMM d, yyyy")}</strong>
-                        </Typography>
+                        </Text>
                     );
                 }
 
                 // Due complete changes
                 if (old && old.dueComplete != null) {
                     return (
-                        <Typography variant="body2" color="text.secondary">
+                        <Text type="secondary">
                             Marked as <strong>{card.dueComplete ? "complete" : "incomplete"}</strong>
-                        </Typography>
+                        </Text>
                     );
                 }
                 
                 // Description changes
                 if (old && 'desc' in old) {
                     return (
-                        <Typography variant="body2" color="text.secondary">
+                        <Text type="secondary">
                             Updated description
-                        </Typography>
+                        </Text>
                     );
                 }
 
@@ -290,16 +277,16 @@ const CardActivityHistory = ({ actions }) => {
 
             case "addMemberToCard":
                 return (
-                    <Typography variant="body2" color="text.secondary">
+                    <Text type="secondary">
                         Added <strong>{action.member?.username || action.member?.fullName}</strong>
-                    </Typography>
+                    </Text>
                 );
 
             case "removeMemberFromCard":
                 return (
-                    <Typography variant="body2" color="text.secondary">
+                    <Text type="secondary">
                         Removed <strong>{action.member?.username || action.member?.fullName}</strong>
-                    </Typography>
+                    </Text>
                 );
 
             case "addAttachmentToCard":
@@ -307,165 +294,149 @@ const CardActivityHistory = ({ actions }) => {
                 if (attachment && (attachment.mimeType?.startsWith('image/') || 
                     attachment.name?.match(/\.(jpg|jpeg|png|gif)$/i))) {
                     return (
-                        <Box
-                            sx={{
+                        <div
+                            style={{
                                 position: "relative",
-                                "&:hover .image-overlay": {
-                                    opacity: 1
-                                }
+                                cursor: "pointer"
+                            }}
+                            onMouseEnter={(e) => {
+                                const overlay = e.currentTarget.querySelector('.image-overlay');
+                                if (overlay) overlay.style.opacity = '1';
+                            }}
+                            onMouseLeave={(e) => {
+                                const overlay = e.currentTarget.querySelector('.image-overlay');
+                                if (overlay) overlay.style.opacity = '0';
                             }}
                         >
-                            <Paper
-                                variant="outlined"
-                                sx={{
-                                    p: 1,
-                                    borderRadius: 1,
+                            <Card
+                                size="small"
+                                style={{
+                                    padding: 8,
+                                    borderRadius: 4,
                                     borderColor: "rgba(0, 0, 0, 0.12)",
                                     overflow: "hidden"
                                 }}
                             >
-                                <Box
-                                    component="img"
+                                <img
                                     src={attachment.url || attachment.previewUrl}
                                     alt={attachment.name || "Attachment"}
-                                    sx={{
+                                    style={{
                                         width: "100%",
                                         height: "auto",
                                         maxHeight: 300,
                                         objectFit: "contain",
-                                        borderRadius: 0.5,
+                                        borderRadius: 2,
                                         cursor: "pointer"
                                     }}
                                     onClick={() => window.open(attachment.url || attachment.previewUrl, "_blank")}
                                 />
-                            </Paper>
-                            <Box
+                            </Card>
+                            <div
                                 className="image-overlay"
-                                sx={{
+                                style={{
                                     position: "absolute",
                                     top: 0,
                                     left: 0,
                                     right: 0,
                                     bottom: 0,
-                                    bgcolor: "rgba(0, 0, 0, 0.5)",
+                                    backgroundColor: "rgba(0, 0, 0, 0.5)",
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
                                     opacity: 0,
                                     transition: "opacity 0.2s",
-                                    borderRadius: 1,
+                                    borderRadius: 4,
                                     cursor: "pointer"
                                 }}
                                 onClick={() => window.open(attachment.url || attachment.previewUrl, "_blank")}
                             >
-                                <Typography
-                                    variant="button"
-                                    sx={{
+                                <Text
+                                    style={{
                                         color: "white",
-                                        bgcolor: "rgba(0, 0, 0, 0.7)",
-                                        px: 2,
-                                        py: 1,
-                                        borderRadius: 1,
-                                        cursor: "pointer",
-                                        "&:hover": {
-                                            bgcolor: "rgba(0, 0, 0, 0.8)"
-                                        }
+                                        backgroundColor: "rgba(0, 0, 0, 0.7)",
+                                        padding: "8px 16px",
+                                        borderRadius: 4,
+                                        cursor: "pointer"
                                     }}
                                 >
                                     View Full Size
-                                </Typography>
-                            </Box>
-                        </Box>
+                                </Text>
+                            </div>
+                        </div>
                     );
                 }
                 return (
-                    <Typography variant="body2" color="text.secondary">
+                    <Text type="secondary">
                         Added <strong>{attachment?.name}</strong>
-                    </Typography>
+                    </Text>
                 );
 
             case "deleteAttachmentFromCard":
                 return (
-                    <Typography variant="body2" color="text.secondary">
+                    <Text type="secondary">
                         Removed <strong>{action.data.attachment?.name}</strong>
-                    </Typography>
+                    </Text>
                 );
 
             case "addChecklistToCard":
                 return (
-                    <Typography variant="body2" color="text.secondary">
+                    <Text type="secondary">
                         Added checklist: <strong>{action.data.checklist?.name}</strong>
-                    </Typography>
+                    </Text>
                 );
 
             case "createCard":
                 return (
-                    <Typography variant="body2" color="text.secondary">
+                    <Text type="secondary">
                         Created card
-                    </Typography>
+                    </Text>
                 );
 
             default:
                 return (
-                    <Typography variant="body2" color="text.secondary">
+                    <Text type="secondary">
                         {action.type}
-                    </Typography>
+                    </Text>
                 );
         }
     };
 
     return (
-        <Stack spacing={2}>
-            <Box sx={{ 
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <div style={{ 
                 display: 'flex',
                 justifyContent: 'flex-end',
-                mb: 2
+                marginBottom: 16
             }}>
-                <ToggleButtonGroup
-                    value={filter}
-                    exclusive
-                    onChange={handleFilterChange}
-                    size="small"
-                    sx={{
-                        '& .MuiToggleButton-root': {
-                            textTransform: 'none',
-                            px: 2,
-                            py: 0.5,
-                            color: '#64748b',
-                            borderColor: 'rgba(0, 0, 0, 0.08)',
-                            '&.Mui-selected': {
-                                bgcolor: 'primary.main',
-                                color: 'white',
-                                '&:hover': {
-                                    bgcolor: 'primary.dark',
-                                }
-                            },
-                            '&:hover': {
-                                bgcolor: 'rgba(0, 0, 0, 0.04)',
-                            }
-                        }
-                    }}
-                >
-                    <ToggleButton 
-                        value="all"
-                        sx={{ 
-                            borderTopLeftRadius: '6px !important',
-                            borderBottomLeftRadius: '6px !important',
+                <Button.Group size="small">
+                    <Button 
+                        type={filter === 'all' ? 'primary' : 'default'}
+                        onClick={() => handleFilterChange('all')}
+                        style={{ 
+                            borderTopLeftRadius: '8px',
+                            borderBottomLeftRadius: '8px',
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
                         }}
                     >
                         All Activities
-                    </ToggleButton>
-                    <ToggleButton 
-                        value="comments"
-                        sx={{ 
-                            borderTopRightRadius: '6px !important',
-                            borderBottomRightRadius: '6px !important',
+                    </Button>
+                    <Button 
+                        type={filter === 'comments' ? 'primary' : 'default'}
+                        onClick={() => handleFilterChange('comments')}
+                        style={{ 
+                            borderTopRightRadius: '8px',
+                            borderBottomRightRadius: '8px',
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
                         }}
                     >
                         Comments Only
-                    </ToggleButton>
-                </ToggleButtonGroup>
-            </Box>
+                    </Button>
+                </Button.Group>
+            </div>
             {filteredActions.map((action, index) => {
                 // Check if this is the first action and has Slack link
                 if (index === 0 && action.type === "commentCard") {
@@ -475,139 +446,116 @@ const CardActivityHistory = ({ actions }) => {
                     
                     if (slackMatch) {
                         return (
-                            <Box key={action.id}>
-                                <Chip
-                                    label="View Slack Message"
-                                    component="a"
-                                    href={slackMatch[2].trim()}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    clickable
-                                    sx={{
-                                        bgcolor: '#4A154B',
+                            <div key={action.id}>
+                                <Tag
+                                    color="#4A154B"
+                                    style={{
                                         color: 'white',
-                                        '&:hover': {
-                                            bgcolor: '#5c1b5d'
-                                        },
-                                        '& .MuiChip-label': {
-                                            fontSize: '0.875rem'
-                                        },
-                                        mb: 2
+                                        cursor: 'pointer',
+                                        fontSize: '0.875rem',
+                                        padding: '4px 8px',
+                                        marginBottom: 16
                                     }}
-                                    icon={
-                                        <Box
-                                            component="img"
+                                    onClick={() => window.open(slackMatch[2].trim(), '_blank')}
+                                >
+                                    <Space>
+                                        <img
                                             src="https://a.slack-edge.com/80588/marketing/img/icons/icon_slack_hash_colored.png"
                                             alt="Slack"
-                                            sx={{
+                                            style={{
                                                 width: 16,
-                                                height: 16,
-                                                ml: 0.5
+                                                height: 16
                                             }}
                                         />
-                                    }
-                                />
-                                <Box
-                                    sx={{
+                                        View Slack Message
+                                    </Space>
+                                </Tag>
+                                <Card
+                                    size="small"
+                                    style={{
                                         display: "flex",
-                                        gap: 2,
-                                        p: 2,
-                                        borderRadius: 1,
-                                        bgcolor: "background.paper",
+                                        gap: 16,
+                                        padding: 16,
+                                        borderRadius: 4,
+                                        backgroundColor: "#ffffff",
                                         position: "relative",
                                         transition: "all 0.2s ease-in-out",
-                                        "&:hover": {
-                                            bgcolor: "action.hover",
-                                            transform: "translateX(4px)",
-                                            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-                                        },
-                                        "&::before": {
-                                            content: '""',
-                                            position: "absolute",
-                                            left: 0,
-                                            top: 0,
-                                            bottom: 0,
-                                            width: "4px",
-                                            bgcolor: getActionColor(action.type),
-                                            borderTopLeftRadius: "4px",
-                                            borderBottomLeftRadius: "4px"
-                                        }
+                                        cursor: "pointer"
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = "translateX(4px)";
+                                        e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = "translateX(0)";
+                                        e.currentTarget.style.boxShadow = "none";
                                     }}
                                 >
+                                    <div style={{
+                                        position: "absolute",
+                                        left: 0,
+                                        top: 0,
+                                        bottom: 0,
+                                        width: "4px",
+                                        backgroundColor: getActionColor(action.type),
+                                        borderTopLeftRadius: "4px",
+                                        borderBottomLeftRadius: "4px"
+                                    }} />
                                     <Avatar
                                         src={action.memberCreator?.avatarUrl}
                                         alt={action.memberCreator?.fullName}
-                                        sx={{ 
+                                        style={{ 
                                             width: 32, 
                                             height: 32,
                                             border: "2px solid white",
                                             boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
                                         }}
                                     />
-                                    <Box sx={{ flex: 1 }}>
-                                        <Box sx={{ 
+                                    <div style={{ flex: 1 }}>
+                                        <Space style={{ 
                                             display: "flex", 
                                             alignItems: "center", 
-                                            gap: 1, 
-                                            mb: 0.5,
+                                            marginBottom: 4,
                                             flexWrap: "wrap"
                                         }}>
-                                            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                                            <Text strong>
                                                 {action.memberCreator?.username || action.memberCreator?.fullName}
-                                            </Typography>
-                                            <Typography 
-                                                variant="caption" 
-                                                color="text.secondary" 
-                                                sx={{ 
-                                                    bgcolor: "rgba(0,0,0,0.05)",
-                                                    px: 1,
-                                                    py: 0.5,
-                                                    borderRadius: 1,
-                                                    position: 'relative',
-                                                    '&:hover::after': {
-                                                        content: `"${format(new Date(action.date), 'MMM d, yyyy HH:mm:ss')}"`,
-                                                        position: 'absolute',
-                                                        bottom: '100%',
-                                                        left: '50%',
-                                                        transform: 'translateX(-50%)',
-                                                        bgcolor: 'rgba(0,0,0,0.8)',
-                                                        color: 'white',
-                                                        padding: '4px 8px',
-                                                        borderRadius: '4px',
-                                                        fontSize: '12px',
-                                                        whiteSpace: 'nowrap',
-                                                        zIndex: 1,
-                                                        mb: 1
-                                                    }
+                                            </Text>
+                                            <Tag
+                                                style={{ 
+                                                    backgroundColor: "rgba(0,0,0,0.05)",
+                                                    padding: "2px 8px",
+                                                    borderRadius: 4,
+                                                    fontSize: '12px',
+                                                    color: 'rgba(0, 0, 0, 0.45)'
                                                 }}
+                                                title={format(new Date(action.date), 'MMM d, yyyy HH:mm:ss')}
                                             >
                                                 {formatDistanceToNow(new Date(action.date), { addSuffix: true })}
-                                            </Typography>
+                                            </Tag>
                                             {action.appCreator && (
-                                                <Chip
+                                                <Tag
                                                     size="small"
-                                                    label={action.appCreator.name}
-                                                    sx={{ 
-                                                        ml: 1,
-                                                        bgcolor: "rgba(0,0,0,0.05)",
-                                                        "& .MuiChip-label": {
-                                                            fontSize: "0.75rem"
-                                                        }
+                                                    style={{ 
+                                                        backgroundColor: "rgba(0,0,0,0.05)",
+                                                        fontSize: "12px"
                                                     }}
-                                                />
+                                                >
+                                                    {action.appCreator.name}
+                                                </Tag>
                                             )}
-                                        </Box>
-                                        <Box sx={{ 
-                                            mt: 1,
+                                        </Space>
+                                        <div style={{ 
+                                            marginTop: 8,
                                             "& strong": {
-                                                color: "primary.main"
+                                                color: "#1890ff"
                                             }
                                         }}>
                                             {text.split(slackLinkRegex)[0]}
-                                        </Box>
-                                    </Box>
-                                </Box>
-                            </Box>
+                                        </div>
+                                    </div>
+                                </Card>
+                            </div>
                         );
                     }
                 }
@@ -618,156 +566,197 @@ const CardActivityHistory = ({ actions }) => {
                 if (content === null) return null;
                 
                 return (
-                    <Box
+                    <div
                         key={action.id}
-                        sx={{
+                        style={{
                             display: "flex",
-                            gap: 2,
-                            p: 2,
-                            borderRadius: 1,
-                            bgcolor: getActionBackgroundColor(action.type, theme),
-                            position: "relative",
-                            transition: "all 0.2s ease-in-out",
-                            "&:hover": {
-                                transform: "translateX(4px)",
-                                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                                bgcolor: (theme) => `${getActionBackgroundColor(action.type, theme).slice(0, -2)}25`,
-                            },
-                            "&::before": {
-                                content: '""',
-                                position: "absolute",
-                                left: 0,
-                                top: 0,
-                                bottom: 0,
-                                width: "4px",
-                                bgcolor: getActionColor(action.type),
-                                borderTopLeftRadius: "4px",
-                                borderBottomLeftRadius: "4px"
-                            },
-                            borderLeft: `1px solid ${theme.palette.divider}`,
-                            borderRight: `1px solid ${theme.palette.divider}`,
-                            borderTop: `1px solid ${theme.palette.divider}`,
-                            borderBottom: `1px solid ${theme.palette.divider}`,
+                            gap: 12,
+                            padding: 16,
+                            borderRadius: 8,
+                            backgroundColor: "#ffffff",
+                            border: "1px solid rgba(0, 0, 0, 0.08)",
+                            marginBottom: 12,
+                            transition: "all 0.2s ease-in-out"
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
+                            e.currentTarget.style.borderColor = "rgba(0, 0, 0, 0.12)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.boxShadow = "none";
+                            e.currentTarget.style.borderColor = "rgba(0, 0, 0, 0.08)";
                         }}
                     >
-                        <Box sx={{ 
-                            display: 'flex', 
-                            flexDirection: 'column', 
-                            alignItems: 'center',
-                            gap: 1 
-                        }}>
-                            <Avatar
-                                src={action.memberCreator?.avatarUrl}
-                                alt={action.memberCreator?.fullName}
-                                sx={{ 
-                                    width: 40, 
-                                    height: 40,
-                                    border: "2px solid white",
-                                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-                                }}
-                            />
-                            <Typography 
-                                variant="caption" 
-                                color="text.secondary"
-                                sx={{
-                                    fontSize: '0.7rem',
-                                    textAlign: 'center',
-                                    maxWidth: '80px',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap'
-                                }}
-                            >
-                                {action.memberCreator?.username || action.memberCreator?.fullName}
-                            </Typography>
-                        </Box>
-
-                        <Box sx={{ 
-                            flex: 1,
-                            borderLeft: `1px dashed ${theme.palette.divider}`,
-                            pl: 2,
-                            ml: 1
-                        }}>
-                            <Box sx={{ 
+                        {/* Avatar */}
+                        <Avatar
+                            src={action.memberCreator?.avatarUrl}
+                            alt={action.memberCreator?.fullName}
+                            style={{ 
+                                width: 40, 
+                                height: 40,
+                                flexShrink: 0
+                            }}
+                        />
+                        
+                        {/* Content */}
+                        <div style={{ flex: 1 }}>
+                            {/* User Info */}
+                            <div style={{ 
                                 display: "flex", 
                                 alignItems: "center", 
-                                gap: 1, 
-                                mb: 1.5,
-                                pb: 1.5,
-                                borderBottom: `1px solid ${theme.palette.divider}`,
-                                flexWrap: "wrap",
-                                justifyContent: 'space-between'
+                                gap: 8,
+                                marginBottom: 4
                             }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Typography 
-                                        variant="caption" 
-                                        sx={{ 
-                                            bgcolor: "rgba(255,255,255,0.5)",
-                                            px: 1.5,
-                                            py: 0.5,
-                                            borderRadius: 1,
-                                            position: 'relative',
-                                            fontWeight: 500,
-                                            '&:hover::after': {
-                                                content: `"${format(new Date(action.date), 'MMM d, yyyy HH:mm:ss')}"`,
-                                                position: 'absolute',
-                                                bottom: '100%',
-                                                left: '50%',
-                                                transform: 'translateX(-50%)',
-                                                bgcolor: 'rgba(0,0,0,0.8)',
-                                                color: 'white',
-                                                padding: '4px 8px',
-                                                borderRadius: '4px',
-                                                fontSize: '12px',
-                                                whiteSpace: 'nowrap',
-                                                zIndex: 1,
-                                                mb: 1
-                                            }
-                                        }}
-                                    >
-                                        {formatDistanceToNow(new Date(action.date), { addSuffix: true })}
-                                    </Typography>
-                                    {action.appCreator && (
-                                        <Chip
-                                            size="small"
-                                            label={action.appCreator.name}
-                                            sx={{ 
-                                                bgcolor: "rgba(255,255,255,0.5)",
-                                                "& .MuiChip-label": {
-                                                    fontSize: "0.75rem"
-                                                }
-                                            }}
-                                        />
-                                    )}
-                                </Box>
-                                <Chip
-                                    size="small"
-                                    label={action.type.replace(/([A-Z])/g, ' $1').trim()}
-                                    sx={{ 
-                                        bgcolor: "rgba(255,255,255,0.5)",
-                                        color: getActionColor(action.type),
-                                        borderColor: getActionColor(action.type),
-                                        border: '1px solid',
-                                        "& .MuiChip-label": {
-                                            fontSize: "0.75rem",
-                                            textTransform: 'capitalize'
-                                        }
+                                <Text 
+                                    strong
+                                    style={{
+                                        fontSize: '14px',
+                                        color: '#1e293b',
+                                        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
                                     }}
-                                />
-                            </Box>
-                            <Box sx={{ 
-                                "& strong": {
-                                    color: "primary.main",
-                                    fontWeight: 600
-                                }
+                                >
+                                    {action.memberCreator?.username || action.memberCreator?.fullName}
+                                </Text>
+                                <Text 
+                                    type="secondary"
+                                    style={{
+                                        fontSize: '12px',
+                                        color: 'rgba(0, 0, 0, 0.45)',
+                                        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                                    }}
+                                >
+                                    {formatDistanceToNow(new Date(action.date), { addSuffix: true })}
+                                </Text>
+                            </div>
+                            
+                            {/* Action Content */}
+                            <div style={{ 
+                                marginBottom: 8,
+                                fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                fontSize: '14px',
+                                lineHeight: 1.5,
+                                color: 'rgba(0, 0, 0, 0.85)'
                             }}>
                                 {content}
-                            </Box>
-                        </Box>
-                    </Box>
+                            </div>
+                            
+                            {/* Action Buttons */}
+                            <div style={{ 
+                                display: "flex", 
+                                alignItems: "center", 
+                                gap: 16
+                            }}>
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    style={{
+                                        padding: '4px 8px',
+                                        height: 'auto',
+                                        color: 'rgba(0, 0, 0, 0.45)',
+                                        fontSize: '12px',
+                                        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.color = '#1890ff';
+                                        e.currentTarget.style.backgroundColor = 'rgba(24, 144, 255, 0.04)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.color = 'rgba(0, 0, 0, 0.45)';
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                    }}
+                                >
+                                    👍 Like
+                                </Button>
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    style={{
+                                        padding: '4px 8px',
+                                        height: 'auto',
+                                        color: 'rgba(0, 0, 0, 0.45)',
+                                        fontSize: '12px',
+                                        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.color = '#1890ff';
+                                        e.currentTarget.style.backgroundColor = 'rgba(24, 144, 255, 0.04)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.color = 'rgba(0, 0, 0, 0.45)';
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                    }}
+                                >
+                                    😊 React
+                                </Button>
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    style={{
+                                        padding: '4px 8px',
+                                        height: 'auto',
+                                        color: 'rgba(0, 0, 0, 0.45)',
+                                        fontSize: '12px',
+                                        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.color = '#1890ff';
+                                        e.currentTarget.style.backgroundColor = 'rgba(24, 144, 255, 0.04)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.color = 'rgba(0, 0, 0, 0.45)';
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                    }}
+                                >
+                                    Reply
+                                </Button>
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    style={{
+                                        padding: '4px 8px',
+                                        height: 'auto',
+                                        color: 'rgba(0, 0, 0, 0.45)',
+                                        fontSize: '12px',
+                                        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.color = '#1890ff';
+                                        e.currentTarget.style.backgroundColor = 'rgba(24, 144, 255, 0.04)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.color = 'rgba(0, 0, 0, 0.45)';
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                    }}
+                                >
+                                    Edit
+                                </Button>
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    style={{
+                                        padding: '4px 8px',
+                                        height: 'auto',
+                                        color: 'rgba(0, 0, 0, 0.45)',
+                                        fontSize: '12px',
+                                        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.color = '#ff4d4f';
+                                        e.currentTarget.style.backgroundColor = 'rgba(255, 77, 79, 0.04)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.color = 'rgba(0, 0, 0, 0.45)';
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                    }}
+                                >
+                                    Delete
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
                 );
             })}
-        </Stack>
+        </Space>
     );
 };
 

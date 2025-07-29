@@ -1,19 +1,14 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-    Modal, Box, Typography, CircularProgress, Chip,
-    Link, Stack, IconButton,
-    MenuItem, Dialog, DialogTitle, DialogContent,
-    DialogContentText, DialogActions, Button, Paper,
-    TextField, List, ListItem, Avatar,
-    Divider, Snackbar, Alert, Menu
-} from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import AddIcon from '@mui/icons-material/Add';
-import SearchIcon from '@mui/icons-material/Search';
-import ImageIcon from '@mui/icons-material/Image';
-import SendIcon from '@mui/icons-material/Send';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+    Modal, Typography, Spin, Tag, Space, Button,
+    Input, Avatar, Divider, message, Card, List,
+    Dropdown, Upload, Tooltip
+} from 'antd';
+import {
+    CloseOutlined, PlusOutlined, SearchOutlined,
+    PictureOutlined, SendOutlined, CopyOutlined,
+    DownOutlined
+} from '@ant-design/icons';
 import {
     getActionsByCard,
     removeMemberByID,
@@ -252,11 +247,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                 }
             } catch (error) {
                 console.error('Error fetching card details:', error);
-                setSnackbar({
-                    open: true,
-                    message: 'Error loading card details',
-                    severity: 'error'
-                });
+                            message.error('Error loading card details');
             } finally {
                 setLoading(false);
             }
@@ -299,11 +290,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
         
         const member = members.find(m => m.id === newAgentId);
         if (!member) {
-            setSnackbar({
-                open: true,
-                message: 'Member not found',
-                severity: 'error'
-            });
+            message.error('Member not found');
             return;
         }
 
@@ -747,21 +734,18 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
         return parts.map((part, index) => {
             if (part.match(urlRegex)) {
                 return (
-                    <Link 
+                    <a 
                         key={index} 
                         href={part} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        sx={{ 
-                            color: 'primary.main',
-                            textDecoration: 'underline',
-                            '&:hover': {
-                                color: 'primary.dark'
-                            }
+                        style={{ 
+                            color: '#1890ff',
+                            textDecoration: 'underline'
                         }}
                     >
                         {part}
-                    </Link>
+                    </a>
                 );
             }
             return part;
@@ -772,57 +756,61 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
         switch (activeTab) {
             case 0: // Details & Comments
                 return (
-                    <Stack spacing={3}>
+                    <Space direction="vertical" size="large" style={{ width: '100%' }}>
                         {/* Description */}
-                        <Box sx={{
-                            bgcolor: '#ffffff',
-                            p: 2,
-                            borderRadius: '4px'
+                        <Card style={{
+                            backgroundColor: '#ffffff',
+                            padding: 12,
+                            borderRadius: '8px',
+                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+                            border: '1px solid rgba(0, 0, 0, 0.06)'
                         }}>
-                            <Typography variant="subtitle1" gutterBottom sx={{ 
+                            <Typography.Title level={5} style={{ 
                                 color: '#1e293b',
                                 fontWeight: 600,
-                                fontSize: '1rem',
-                                mb: 2,
+                                fontSize: '0.95rem',
+                                marginBottom: 12,
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: 1
+                                gap: 8,
+                                margin: 0
                             }}>
                                 Description
-                            </Typography>
-                            <Box sx={{
-                                p: 2,
-                                borderRadius: '4px',
-                                bgcolor: '#f5f5f5'
+                            </Typography.Title>
+                            <div style={{
+                                padding: 12,
+                                borderRadius: '6px',
+                                backgroundColor: '#f8fafc',
+                                border: '1px solid rgba(0, 0, 0, 0.04)'
                             }}>
-                                <Typography
-                                    variant="body2"
-                                    sx={{
-                                        color: '#333333',
+                                <Typography.Text
+                                    style={{
+                                        color: '#374151',
                                         fontSize: '0.875rem',
                                         lineHeight: 1.6,
                                         whiteSpace: 'pre-wrap'
                                     }}
                                 >
                                     {renderDescriptionWithLinks(card.desc || '')}
-                                </Typography>
-                            </Box>
-                        </Box>
+                                </Typography.Text>
+                            </div>
+                        </Card>
 
                         {/* Attachments Section */}
                         {safeCard.attachments && safeCard.attachments.length > 0 && (
-                            <Box>
-                                <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <ImageIcon fontSize="small" />
+                            <div>
+                                <Typography.Title level={5} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <PictureOutlined />
                                     Attachments
-                                </Typography>
-                                <Paper variant="outlined" sx={{ 
-                                    p: 2,
-                                    borderRadius: 1.5,
-                                    borderColor: 'rgba(0, 0, 0, 0.12)',
-                                    bgcolor: '#ffffff'
+                                </Typography.Title>
+                                <Card style={{ 
+                                    padding: 12,
+                                    borderRadius: 8,
+                                    borderColor: 'rgba(0, 0, 0, 0.08)',
+                                    backgroundColor: '#ffffff',
+                                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
                                 }}>
-                                    <Stack spacing={2}>
+                                    <Space direction="vertical" size="middle">
                                         {safeCard.attachments.map((attachment, index) => {
                                             // Check if the attachment is an image
                                             const isImage = attachment.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ||
@@ -831,91 +819,97 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                             if (!isImage) return null;
 
                                             return (
-                                                <Box 
+                                                <div 
                                                     key={attachment.id || index}
-                                                    sx={{
+                                                    style={{
                                                         position: 'relative',
-                                                        '&:hover .image-overlay': {
-                                                            opacity: 1
-                                                        }
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        const overlay = e.currentTarget.querySelector('.image-overlay');
+                                                        if (overlay) overlay.style.opacity = '1';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        const overlay = e.currentTarget.querySelector('.image-overlay');
+                                                        if (overlay) overlay.style.opacity = '0';
                                                     }}
                                                 >
-                                                    <Box
-                                                        component="img"
+                                                    <img
                                                         src={attachment.url}
                                                         alt={attachment.name || 'Attachment'}
-                                                        sx={{
+                                                        style={{
                                                             width: '100%',
                                                             height: 'auto',
                                                             maxHeight: 400,
                                                             objectFit: 'contain',
-                                                            borderRadius: 1,
+                                                            borderRadius: 4,
                                                             cursor: 'pointer'
                                                         }}
                                                         onClick={() => window.open(attachment.url, '_blank')}
                                                     />
-                                                    <Box
+                                                    <div
                                                         className="image-overlay"
-                                                        sx={{
+                                                        style={{
                                                             position: 'absolute',
                                                             top: 0,
                                                             left: 0,
                                                             right: 0,
                                                             bottom: 0,
-                                                            bgcolor: 'rgba(0, 0, 0, 0.5)',
+                                                            backgroundColor: 'rgba(0, 0, 0, 0.5)',
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
                                                             opacity: 0,
                                                             transition: 'opacity 0.2s',
-                                                            borderRadius: 1
+                                                            borderRadius: 4
                                                         }}
                                                     >
                                                         <Button
-                                                            variant="contained"
-                                                            color="primary"
+                                                            type="primary"
                                                             onClick={() => window.open(attachment.url, '_blank')}
-                                                            startIcon={<ImageIcon />}
+                                                            icon={<PictureOutlined />}
                                                         >
                                                             View Full Size
                                                         </Button>
-                                                    </Box>
-                                                </Box>
+                                                    </div>
+                                                </div>
                                             );
                                         })}
-                                    </Stack>
-                                </Paper>
-                            </Box>
+                                    </Space>
+                                </Card>
+                            </div>
                         )}
 
                         {/* Comments Section */}
-                        <Box sx={{ mt: 3 }}>
-                            <Paper 
-                                variant="outlined"
-                                sx={{ 
-                                    p: 2.5,
-                                    borderRadius: 1.5,
-                                    borderColor: 'rgba(0, 0, 0, 0.12)',
-                                    bgcolor: '#ffffff',
-                                    '&:hover': {
-                                        borderColor: 'primary.main',
-                                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
-                                    }
+                        <div style={{ marginTop: 15 }}>
+                            <Card 
+                                style={{ 
+                                    padding: 16,
+                                    borderRadius: 12,
+                                    borderColor: 'rgba(0, 0, 0, 0.08)',
+                                    backgroundColor: '#ffffff',
+                                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                                    border: '1px solid rgba(0, 0, 0, 0.06)',
+                                    transition: 'all 0.2s ease-in-out'
                                 }}
                             >
-                                <Typography variant="subtitle1" gutterBottom sx={{ 
+                                <Typography.Title level={5} style={{ 
                                     color: '#1e293b',
-                                    fontWeight: 600,
+                                    fontWeight: 700,
                                     fontSize: '1rem',
-                                    mb: 2,
+                                    marginBottom: 16,
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: 1
+                                    gap: 10,
+                                    letterSpacing: '0.01em',
+                                    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                    margin: 0,
+                                    borderBottom: '2px solid rgba(0, 0, 0, 0.06)',
+                                    paddingBottom: 12
                                 }}>
-                                    Comments
-                                </Typography>
-                                <Box
-                                    component="div"
+                                    💬 Comments
+                                </Typography.Title>
+                                <div
                                     onDragOver={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
@@ -929,358 +923,341 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                             setImageUpload(imageFile);
                                         }
                                     }}
-                                    sx={{
-                                        position: 'relative',
-                                        '&:focus-within': {
-                                            '& .comment-actions': {
-                                                opacity: 1,
-                                                transform: 'translateY(0)',
-                                                visibility: 'visible'
-                                            }
-                                        }
+                                    style={{
+                                        position: 'relative'
                                     }}
                                 >
-                                    <TextField
-                                        fullWidth
-                                        multiline
+                                    <Input.TextArea
                                         rows={4}
                                         value={commentContent}
                                         onChange={(e) => setCommentContent(e.target.value)}
                                         onPaste={handlePaste}
                                         placeholder="Write a comment... You can also paste or drag & drop images"
-                                        sx={{
-                                            '& .MuiOutlinedInput-root': {
-                                                backgroundColor: '#f8fafc',
-                                                '& fieldset': {
-                                                    borderColor: 'rgba(0, 0, 0, 0.12)',
-                                                },
-                                                '&:hover fieldset': {
-                                                    borderColor: 'primary.main',
-                                                },
-                                                '&.Mui-focused fieldset': {
-                                                    borderColor: 'primary.main',
-                                                },
-                                            },
-                                            '& .MuiOutlinedInput-input': {
-                                                fontSize: '0.9rem',
-                                                lineHeight: 1.6,
-                                            }
+                                        style={{
+                                            backgroundColor: '#f8fafc',
+                                            fontSize: '0.9rem',
+                                            lineHeight: 1.6,
+                                            borderColor: 'rgba(0, 0, 0, 0.08)',
+                                            borderRadius: '8px',
+                                            padding: '12px 16px',
+                                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                            transition: 'all 0.2s ease-in-out',
+                                            border: '1px solid rgba(0, 0, 0, 0.06)'
                                         }}
                                     />
                                     
                                     {/* Image Preview */}
                                     {imageUpload && (
-                                        <Paper
-                                            variant="outlined"
-                                            sx={{
-                                                mt: 2,
-                                                p: 1,
-                                                borderRadius: 1,
-                                                borderColor: 'rgba(0, 0, 0, 0.12)',
-                                                position: 'relative'
+                                        <Card
+                                            style={{
+                                                marginTop: 12,
+                                                padding: 12,
+                                                borderRadius: 8,
+                                                borderColor: 'rgba(0, 0, 0, 0.08)',
+                                                position: 'relative',
+                                                backgroundColor: '#f8fafc',
+                                                border: '1px solid rgba(0, 0, 0, 0.06)',
+                                                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
                                             }}
                                         >
-                                            <Box sx={{ position: 'relative' }}>
-                                                <Box
-                                                    component="img"
+                                            <div style={{ position: 'relative' }}>
+                                                <img
                                                     src={URL.createObjectURL(imageUpload)}
                                                     alt="Upload preview"
-                                                    sx={{
+                                                    style={{
                                                         width: '100%',
                                                         maxHeight: '200px',
                                                         objectFit: 'contain',
-                                                        borderRadius: 0.5
+                                                        borderRadius: 6,
+                                                        border: '1px solid rgba(0, 0, 0, 0.04)'
                                                     }}
                                                 />
-                                                <IconButton
+                                                <Button
                                                     size="small"
+                                                    type="text"
+                                                    icon={<CloseOutlined />}
                                                     onClick={() => setImageUpload(null)}
-                                                    sx={{
+                                                    style={{
                                                         position: 'absolute',
-                                                        top: -8,
-                                                        right: -8,
-                                                        bgcolor: 'background.paper',
-                                                        boxShadow: 1,
-                                                        '&:hover': {
-                                                            bgcolor: 'error.light',
-                                                            color: 'white'
-                                                        }
+                                                        top: -6,
+                                                        right: -6,
+                                                        backgroundColor: 'white',
+                                                        boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                                                        minWidth: 'auto',
+                                                        width: 28,
+                                                        height: 28,
+                                                        borderRadius: '50%',
+                                                        border: '1px solid rgba(0, 0, 0, 0.08)',
+                                                        transition: 'all 0.2s ease-in-out'
                                                     }}
-                                                >
-                                                    <CloseIcon fontSize="small" />
-                                                </IconButton>
-                                            </Box>
-                                            <Typography 
-                                                variant="caption" 
-                                                color="text.secondary"
-                                                sx={{ 
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.transform = 'scale(1.1)';
+                                                        e.currentTarget.style.boxShadow = '0 3px 8px rgba(0,0,0,0.2)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.transform = 'scale(1)';
+                                                        e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
+                                                    }}
+                                                />
+                                            </div>
+                                            <Typography.Text 
+                                                style={{ 
                                                     display: 'block',
-                                                    mt: 0.5,
-                                                    textAlign: 'center'
+                                                    marginTop: 6,
+                                                    textAlign: 'center',
+                                                    color: 'rgba(0, 0, 0, 0.45)',
+                                                    fontSize: '12px',
+                                                    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                                    fontWeight: 500
                                                 }}
                                             >
                                                 {imageUpload.name}
-                                            </Typography>
-                                        </Paper>
+                                            </Typography.Text>
+                                        </Card>
                                     )}
 
                                     {/* Comment Actions */}
-                                    <Box 
+                                    <div 
                                         className="comment-actions"
-                                        sx={{ 
+                                        style={{ 
                                             display: 'flex', 
                                             justifyContent: 'space-between',
                                             alignItems: 'center',
-                                            mt: 2,
-                                            gap: 2,
+                                            marginTop: 12,
+                                            gap: 12,
                                             opacity: commentContent || imageUpload ? 1 : 0,
                                             transform: commentContent || imageUpload ? 'translateY(0)' : 'translateY(10px)',
-                                            transition: 'all 0.2s ease-in-out',
+                                            transition: 'all 0.3s ease-in-out',
                                             visibility: commentContent || imageUpload ? 'visible' : 'hidden'
                                         }}
                                     >
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <Button
-                                                component="label"
-                                                variant="outlined"
-                                                startIcon={<ImageIcon />}
-                                                sx={{ 
-                                                    textTransform: 'none',
-                                                    fontWeight: 500,
-                                                    color: 'text.secondary',
-                                                    borderColor: 'rgba(0, 0, 0, 0.12)',
-                                                    '&:hover': {
-                                                        borderColor: 'primary.main',
-                                                        bgcolor: 'rgba(25, 118, 210, 0.04)'
-                                                    }
+                                        <Space>
+                                            <Upload
+                                                accept="image/*"
+                                                showUploadList={false}
+                                                beforeUpload={(file) => {
+                                                    setImageUpload(file);
+                                                    return false;
                                                 }}
                                             >
-                                                Add Image
-                                                <input
-                                                    type="file"
-                                                    hidden
-                                                    accept="image/*"
-                                                    onChange={(e) => setImageUpload(e.target.files[0])}
-                                                />
-                                            </Button>
-                                            <Typography 
-                                                variant="caption" 
-                                                color="text.secondary"
-                                                sx={{
-                                                    display: { xs: 'none', sm: 'block' },
-                                                    fontStyle: 'italic'
+                                                <Button
+                                                    icon={<PictureOutlined />}
+                                                    style={{ 
+                                                        fontWeight: 600,
+                                                        color: '#64748b',
+                                                        borderColor: 'rgba(0, 0, 0, 0.08)',
+                                                        backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                                                        borderRadius: '8px',
+                                                        padding: '6px 12px',
+                                                        fontSize: '13px',
+                                                        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                                        transition: 'all 0.2s ease-in-out'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+                                                        e.currentTarget.style.color = '#374151';
+                                                        e.currentTarget.style.transform = 'translateY(-1px)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
+                                                        e.currentTarget.style.color = '#64748b';
+                                                        e.currentTarget.style.transform = 'translateY(0)';
+                                                    }}
+                                                >
+                                                    Add Image
+                                                </Button>
+                                            </Upload>
+                                            <Typography.Text 
+                                                style={{
+                                                    display: 'none',
+                                                    '@media (min-width: 600px)': {
+                                                        display: 'block'
+                                                    },
+                                                    fontStyle: 'italic',
+                                                    color: '#94a3b8',
+                                                    fontSize: '12px',
+                                                    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
                                                 }}
                                             >
                                                 or drag & drop
-                                            </Typography>
-                                        </Box>
+                                            </Typography.Text>
+                                        </Space>
                                         <Button
-                                            variant="contained"
+                                            type="primary"
                                             onClick={handleAddComment}
                                             disabled={commentLoading || (!commentContent.trim() && !imageUpload)}
-                                            sx={{
-                                                textTransform: 'none',
-                                                fontWeight: 500,
+                                            icon={commentLoading ? <Spin size="small" /> : <SendOutlined />}
+                                            style={{
+                                                fontWeight: 700,
                                                 minWidth: '120px',
-                                                position: 'relative',
-                                                '&.Mui-disabled': {
-                                                    bgcolor: 'rgba(0, 0, 0, 0.12)',
-                                                    color: 'rgba(0, 0, 0, 0.26)'
-                                                }
+                                                backgroundColor: '#3b82f6',
+                                                borderColor: '#3b82f6',
+                                                borderRadius: '8px',
+                                                padding: '8px 16px',
+                                                fontSize: '14px',
+                                                fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                                boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)',
+                                                transition: 'all 0.2s ease-in-out'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.backgroundColor = '#2563eb';
+                                                e.currentTarget.style.borderColor = '#2563eb';
+                                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                                e.currentTarget.style.boxShadow = '0 4px 8px rgba(59, 130, 246, 0.3)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.backgroundColor = '#3b82f6';
+                                                e.currentTarget.style.borderColor = '#3b82f6';
+                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                e.currentTarget.style.boxShadow = '0 2px 4px rgba(59, 130, 246, 0.2)';
                                             }}
                                         >
-                                            {commentLoading ? (
-                                                <>
-                                                    <CircularProgress
-                                                        size={16}
-                                                        thickness={4}
-                                                        sx={{
-                                                            color: 'inherit',
-                                                            position: 'absolute',
-                                                            left: '50%',
-                                                            marginLeft: '-12px'
-                                                        }}
-                                                    />
-                                                    <Box sx={{ opacity: 0 }}>Comment</Box>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <SendIcon sx={{ mr: 1, fontSize: '1.1rem' }} />
-                                                    Comment
-                                                </>
-                                            )}
+                                            {commentLoading ? 'Sending...' : 'Comment'}
                                         </Button>
-                                    </Box>
-                                </Box>
-                            </Paper>
-                        </Box>
+                                    </div>
+                                </div>
+                            </Card>
+                        </div>
 
                         {/* Activity History */}
-                        <Box sx={{ mt: 3 }}>
-                            <Paper 
-                                variant="outlined"
-                                sx={{ 
-                                    p: 2.5,
-                                    borderRadius: 1.5,
-                                    borderColor: 'rgba(0, 0, 0, 0.12)',
-                                    bgcolor: '#ffffff'
+                        <div style={{ marginTop: 20 }}>
+                            <Card 
+                                style={{ 
+                                    padding: 10,
+                                    borderRadius: 8,
+                                    borderColor: 'rgba(0, 0, 0, 0.08)',
+                                    backgroundColor: '#ffffff',
+                                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
                                 }}
                             >
-                                <Typography variant="subtitle1" gutterBottom sx={{ 
+                                <Typography.Title level={5} style={{ 
                                     color: '#1e293b',
                                     fontWeight: 600,
                                     fontSize: '1rem',
-                                    mb: 2,
+                                    marginBottom: 16,
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: 1
+                                    gap: 8
                                 }}>
                                     Activity History
-                                </Typography>
+                                </Typography.Title>
                                 <CardActivityHistory actions={actions} />
-                            </Paper>
-                        </Box>
-                    </Stack>
+                            </Card>
+                        </div>
+                    </Space>
                 );
 
             case 1: // Documentation
                 return (
-                    <Stack spacing={3}>
-                        <Box>
-                            <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <SearchIcon fontSize="small" />
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                        <div>
+                            <Typography.Title level={5} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <SearchOutlined />
                                 Search Documentation
-                            </Typography>
-                            <Paper variant="outlined" sx={{ 
-                                p: 2.5,
-                                borderRadius: 1.5,
-                                borderColor: 'rgba(0, 0, 0, 0.12)',
-                                bgcolor: '#ffffff',
-                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
+                            </Typography.Title>
+                            <Card style={{ 
+                                padding: 12,
+                                borderRadius: 8,
+                                borderColor: 'rgba(0, 0, 0, 0.08)',
+                                backgroundColor: '#ffffff',
+                                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
                             }}>
-                                <Stack spacing={2}>
-                                    <Box sx={{ 
+                                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                                    <Space style={{ 
                                         display: 'flex', 
-                                        gap: 1,
-                                        alignItems: 'center'
+                                        gap: 8,
+                                        alignItems: 'center',
+                                        width: '100%'
                                     }}>
-                                        <TextField
-                                            fullWidth
-                                            size="small"
+                                        <Input
                                             placeholder="Tìm kiếm tài liệu..."
                                             value={notionQuery}
                                             onChange={(e) => {
                                                 const newValue = e.target.value;
                                                 setNotionQuery(newValue);
                                             }}
-                                            InputProps={{
-                                                startAdornment: (
-                                                    <SearchIcon color="action" sx={{ mr: 1 }} />
-                                                ),
-                                                endAdornment: notionLoading && (
-                                                    <CircularProgress size={20} sx={{ mr: 1 }} />
-                                                )
-                                            }}
-                                            variant="outlined"
-                                            sx={{
-                                                '& .MuiOutlinedInput-root': {
-                                                    '& fieldset': {
-                                                        borderColor: 'rgba(0, 0, 0, 0.23)',
-                                                    },
-                                                    '&:hover fieldset': {
-                                                        borderColor: 'primary.main',
-                                                    },
-                                                    '&.Mui-focused fieldset': {
-                                                        borderColor: 'primary.main',
-                                                    },
-                                                },
-                                                '& .MuiInputBase-input': {
-                                                    cursor: 'text',
-                                                    '&:focus': {
-                                                        cursor: 'text',
-                                                    }
-                                                }
+                                            prefix={<SearchOutlined />}
+                                            suffix={notionLoading && <Spin size="small" />}
+                                            style={{
+                                                flex: 1,
+                                                borderColor: 'rgba(0, 0, 0, 0.23)'
                                             }}
                                         />
                                         <Button
-                                            variant="contained"
+                                            type="primary"
                                             onClick={() => handleNotionSearch()}
                                             disabled={notionLoading || !notionQuery}
-                                            sx={{
+                                            style={{
                                                 minWidth: '100px',
-                                                textTransform: 'none',
                                                 fontWeight: 500
                                             }}
                                         >
                                             Tìm kiếm
                                         </Button>
-                                    </Box>
+                                    </Space>
                                     {notionResults.length > 0 && (
-                                        <List sx={{ 
-                                            bgcolor: 'background.paper',
-                                            borderRadius: 1,
-                                            border: '1px solid',
-                                            borderColor: 'divider',
-                                            maxHeight: '400px',
-                                            overflow: 'auto'
-                                        }}>
+                                        <List
+                                            style={{ 
+                                                backgroundColor: 'white',
+                                                borderRadius: 4,
+                                                border: '1px solid #f0f0f0',
+                                                maxHeight: '400px',
+                                                overflow: 'auto'
+                                            }}
+                                        >
                                             {notionResults.map((article) => (
-                                                <ListItem
+                                                <List.Item
                                                     key={article.id}
-                                                    component={Link}
-                                                    href={article.url}
-                                                    target="_blank"
-                                                    divider
-                                                    sx={{
+                                                    style={{
                                                         display: 'block',
-                                                        py: 2,
-                                                        '&:hover': {
-                                                            bgcolor: 'action.hover',
-                                                            cursor: 'pointer'
-                                                        }
+                                                        padding: '12px',
+                                                        borderBottom: '1px solid #f0f0f0',
+                                                        cursor: 'pointer'
                                                     }}
+                                                    onClick={() => window.open(article.url, '_blank')}
                                                 >
-                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                                                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                                                        <Typography.Text strong style={{ fontWeight: 600 }}>
                                                             {article.properties.title || article.title}
-                                                        </Typography>
-                                                        <Typography variant="caption" color="text.secondary">
+                                                        </Typography.Text>
+                                                        <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
                                                             {new Date(article.lastEdited).toLocaleDateString()}
-                                                        </Typography>
-                                                    </Box>
-                                                    <Typography variant="body2" color="text.secondary" sx={{ 
+                                                        </Typography.Text>
+                                                    </div>
+                                                    <Typography.Text type="secondary" style={{ 
                                                         display: '-webkit-box',
                                                         WebkitLineClamp: 2,
                                                         WebkitBoxOrient: 'vertical',
                                                         overflow: 'hidden',
-                                                        textOverflow: 'ellipsis'
+                                                        textOverflow: 'ellipsis',
+                                                        fontSize: '14px'
                                                     }}>
                                                         {article.preview}
-                                                    </Typography>
-                                                </ListItem>
+                                                    </Typography.Text>
+                                                </List.Item>
                                             ))}
                                         </List>
                                     )}
                                     {notionQuery && !notionLoading && notionResults.length === 0 && (
-                                        <Box sx={{ 
-                                            textAlign: 'center', 
-                                            py: 4,
-                                            bgcolor: 'background.default',
-                                            borderRadius: 1
-                                        }}>
-                                            <SearchIcon sx={{ fontSize: 40, color: 'text.secondary', mb: 1 }} />
-                                            <Typography color="text.secondary">
+                                                                <div style={{ 
+                            textAlign: 'center', 
+                            padding: '24px 12px',
+                            backgroundColor: '#fafafa',
+                            borderRadius: 4
+                        }}>
+                                            <SearchOutlined style={{ fontSize: 40, color: 'rgba(0, 0, 0, 0.45)', marginBottom: 8 }} />
+                                            <Typography.Text type="secondary">
                                                 Không tìm thấy kết quả cho "{notionQuery}"
-                                            </Typography>
-                                            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                                            </Typography.Text>
+                                            <Typography.Text type="secondary" style={{ marginTop: 8, display: 'block', fontSize: '12px' }}>
                                                 Hãy thử từ khóa khác hoặc kiểm tra lại chính tả
-                                            </Typography>
-                                        </Box>
+                                            </Typography.Text>
+                                        </div>
                                     )}
-                                </Stack>
-                            </Paper>
-                        </Box>
-                    </Stack>
+                                </Space>
+                            </Card>
+                        </div>
+                    </Space>
                 );
 
             default:
@@ -1293,283 +1270,414 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
     }
 
     const renderSidebarField = (label, content) => (
-        <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ py: 1 }}>
-            <Box sx={{ flex: 1, backgroundColor: '#ffffff', p: 2, borderRadius: '4px', width: '100%' }}>
-                <Typography variant="subtitle1" gutterBottom sx={{ 
+        <Space direction="horizontal" size="small" align="start" style={{ padding: '8px 0' }}>
+                                            <div style={{ flex: 1, backgroundColor: '#ffffff', padding: 12, borderRadius: '8px', width: '100%', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)', border: '1px solid rgba(0, 0, 0, 0.06)' }}>
+                <Typography.Title level={5} style={{ 
                     color: '#1e293b',
                     fontWeight: 600,
                     fontSize: '1rem',
-                    mb: 2,
+                    marginBottom: 16,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 1
+                    gap: 8,
+                    margin: 0
                 }}>
                     {label}
-                </Typography>
+                </Typography.Title>
                 {content}
-            </Box>
-        </Stack>
+            </div>
+        </Space>
     );
 
     const renderResolutionTimes = () => (
-        <Box sx={{
+        <Card style={{
             backgroundColor: '#ffffff',
-            p: 2.5,
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+            padding: 16,
+            borderRadius: '12px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+            border: '1px solid rgba(0, 0, 0, 0.06)',
+            transition: 'all 0.2s ease-in-out'
         }}>
-            <Typography 
-                variant="subtitle1" 
-                gutterBottom 
-                sx={{ 
+            <Typography.Title 
+                level={5} 
+                style={{ 
                     color: '#1e293b',
-                    fontWeight: 600,
-                    fontSize: '0.95rem',
-                    mb: 2,
+                    fontWeight: 700,
+                    fontSize: '1rem',
+                    marginBottom: 20,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 1
+                    gap: 10,
+                    letterSpacing: '0.01em',
+                    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                    margin: 0,
+                    borderBottom: '2px solid rgba(0, 0, 0, 0.06)',
+                    paddingBottom: 12
                 }}
             >
-                Resolution Times
-            </Typography>
-            <Stack spacing={2}>
+                ⏱️ Resolution Times
+            </Typography.Title>
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                 {/* Total Resolution Time */}
-                <Box sx={{ 
+                <div style={{ 
                     display: 'flex',
                     flexDirection: 'column',
-                    p: 1.5,
-                    borderRadius: '6px',
+                    padding: 16,
+                    borderRadius: '10px',
                     backgroundColor: 'rgba(0, 0, 0, 0.02)',
-                    border: '1px solid rgba(0, 0, 0, 0.06)'
-                }}>
-                    <Box sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 2
-                    }}>
-                        <Typography variant="body2" sx={{ 
-                            color: '#64748b', 
-                            fontWeight: 500,
-                            fontSize: '0.85rem',
-                            whiteSpace: 'nowrap',
-                            flex: '0 0 auto'
-                        }}>
-                            Total Resolution Time
-                        </Typography>
-                        <Box sx={{
-                            display: 'inline-flex',
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
+                    transition: 'all 0.2s ease-in-out',
+                    position: 'relative',
+                    overflow: 'hidden'
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                }}
+                >
+                                            <div style={{
+                            display: 'flex',
                             alignItems: 'center',
-                            backgroundColor: timingData.resolutionTime > 120 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-                            color: timingData.resolutionTime > 120 ? '#ef4444' : '#22c55e',
-                            px: 1.5,
-                            py: 0.5,
-                            borderRadius: '16px',
-                            fontSize: '0.85rem',
-                            fontWeight: 600,
-                            whiteSpace: 'nowrap',
-                            flex: '0 0 auto'
+                            justifyContent: 'space-between',
+                            gap: 12,
+                            width: '100%'
                         }}>
-                            {timingData.resolutionTime != null ? (
-                                `${Math.floor(timingData.resolutionTime / 60)}h ${timingData.resolutionTime % 60}m`
-                            ) : 'N/A'}
-                        </Box>
-                    </Box>
-                </Box>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                                <div style={{
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: '50%',
+                                    backgroundColor: '#3b82f6',
+                                    flexShrink: 0
+                                }} />
+                                <Typography.Text style={{ 
+                                    color: '#374151', 
+                                    fontWeight: 600,
+                                    fontSize: '13px',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    flex: 1,
+                                    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                                }}>
+                                    Total Resolution Time
+                                </Typography.Text>
+                            </div>
+                            <div style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                backgroundColor: timingData.resolutionTime > 120 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(34, 197, 94, 0.12)',
+                                color: timingData.resolutionTime > 120 ? '#dc2626' : '#059669',
+                                padding: '6px 12px',
+                                borderRadius: '16px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0,
+                                border: '1px solid',
+                                borderColor: timingData.resolutionTime > 120 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+                                fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                minWidth: 'fit-content'
+                            }}>
+                                {timingData.resolutionTime != null ? (
+                                    `${Math.floor(timingData.resolutionTime / 60)}h ${timingData.resolutionTime % 60}m`
+                                ) : 'N/A'}
+                            </div>
+                        </div>
+                </div>
 
                 {/* TS Resolution Time */}
-                <Box sx={{ 
+                <div style={{ 
                     display: 'flex',
                     flexDirection: 'column',
-                    p: 1.5,
-                    borderRadius: '6px',
+                    padding: 16,
+                    borderRadius: '10px',
                     backgroundColor: 'rgba(0, 0, 0, 0.02)',
-                    border: '1px solid rgba(0, 0, 0, 0.06)'
-                }}>
-                    <Box sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 2
-                    }}>
-                        <Typography variant="body2" sx={{ 
-                            color: '#64748b', 
-                            fontWeight: 500,
-                            fontSize: '0.85rem',
-                            whiteSpace: 'nowrap',
-                            flex: '0 0 auto'
-                        }}>
-                            TS Resolution Time
-                        </Typography>
-                        <Box sx={{
-                            display: 'inline-flex',
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
+                    transition: 'all 0.2s ease-in-out',
+                    position: 'relative',
+                    overflow: 'hidden'
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                }}
+                >
+                                            <div style={{
+                            display: 'flex',
                             alignItems: 'center',
-                            backgroundColor: timingData.TSResolutionTime > 60 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-                            color: timingData.TSResolutionTime > 60 ? '#ef4444' : '#22c55e',
-                            px: 1.5,
-                            py: 0.5,
-                            borderRadius: '16px',
-                            fontSize: '0.85rem',
-                            fontWeight: 600,
-                            whiteSpace: 'nowrap',
-                            flex: '0 0 auto'
+                            justifyContent: 'space-between',
+                            gap: 12,
+                            width: '100%'
                         }}>
-                            {timingData.TSResolutionTime != null ? (
-                                `${Math.floor(timingData.TSResolutionTime / 60)}h ${timingData.TSResolutionTime % 60}m`
-                            ) : 'N/A'}
-                        </Box>
-                    </Box>
-                </Box>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                                <div style={{
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: '50%',
+                                    backgroundColor: '#8b5cf6',
+                                    flexShrink: 0
+                                }} />
+                                <Typography.Text style={{ 
+                                    color: '#374151', 
+                                    fontWeight: 600,
+                                    fontSize: '13px',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    flex: 1,
+                                    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                                }}>
+                                    TS Resolution Time
+                                </Typography.Text>
+                            </div>
+                            <div style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                backgroundColor: timingData.TSResolutionTime > 60 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(34, 197, 94, 0.12)',
+                                color: timingData.TSResolutionTime > 60 ? '#dc2626' : '#059669',
+                                padding: '6px 12px',
+                                borderRadius: '16px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0,
+                                border: '1px solid',
+                                borderColor: timingData.TSResolutionTime > 60 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+                                fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                minWidth: 'fit-content'
+                            }}>
+                                {timingData.TSResolutionTime != null ? (
+                                    `${Math.floor(timingData.TSResolutionTime / 60)}h ${timingData.TSResolutionTime % 60}m`
+                                ) : 'N/A'}
+                            </div>
+                        </div>
+                </div>
 
                 {/* First Action Time */}
-                <Box sx={{ 
+                <div style={{ 
                     display: 'flex',
                     flexDirection: 'column',
-                    p: 1.5,
-                    borderRadius: '6px',
+                    padding: 16,
+                    borderRadius: '10px',
                     backgroundColor: 'rgba(0, 0, 0, 0.02)',
-                    border: '1px solid rgba(0, 0, 0, 0.06)'
-                }}>
-                    <Box sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 2
-                    }}>
-                        <Typography variant="body2" sx={{ 
-                            color: '#64748b', 
-                            fontWeight: 500,
-                            fontSize: '0.85rem',
-                            whiteSpace: 'nowrap',
-                            flex: '0 0 auto'
-                        }}>
-                            First Action Time
-                        </Typography>
-                        <Box sx={{
-                            display: 'inline-flex',
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
+                    transition: 'all 0.2s ease-in-out',
+                    position: 'relative',
+                    overflow: 'hidden'
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                }}
+                >
+                                            <div style={{
+                            display: 'flex',
                             alignItems: 'center',
-                            backgroundColor: timingData.firstActionTime > 30 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-                            color: timingData.firstActionTime > 30 ? '#ef4444' : '#22c55e',
-                            px: 1.5,
-                            py: 0.5,
-                            borderRadius: '16px',
-                            fontSize: '0.85rem',
-                            fontWeight: 600,
-                            whiteSpace: 'nowrap',
-                            flex: '0 0 auto'
+                            justifyContent: 'space-between',
+                            gap: 12,
+                            width: '100%'
                         }}>
-                            {timingData.firstActionTime != null ? (
-                                `${Math.floor(timingData.firstActionTime / 60)}h ${timingData.firstActionTime % 60}m`
-                            ) : 'N/A'}
-                        </Box>
-                    </Box>
-                </Box>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                                <div style={{
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: '50%',
+                                    backgroundColor: '#f59e0b',
+                                    flexShrink: 0
+                                }} />
+                                <Typography.Text style={{ 
+                                    color: '#374151', 
+                                    fontWeight: 600,
+                                    fontSize: '13px',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    flex: 1,
+                                    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                                }}>
+                                    First Action Time
+                                </Typography.Text>
+                            </div>
+                            <div style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                backgroundColor: timingData.firstActionTime > 30 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(34, 197, 94, 0.12)',
+                                color: timingData.firstActionTime > 30 ? '#dc2626' : '#059669',
+                                padding: '6px 12px',
+                                borderRadius: '16px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0,
+                                border: '1px solid',
+                                borderColor: timingData.firstActionTime > 30 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+                                fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                minWidth: 'fit-content'
+                            }}>
+                                {timingData.firstActionTime != null ? (
+                                    `${Math.floor(timingData.firstActionTime / 60)}h ${timingData.firstActionTime % 60}m`
+                                ) : 'N/A'}
+                            </div>
+                        </div>
+                </div>
 
                 {/* Review Button */}
                 {!loading && timingData.resolutionTime != null && (
                     <Button
-                        variant="contained"
-                        color="success"
+                        type="primary"
                         onClick={handleReviewed}
-                        fullWidth
-                        startIcon={<span>✓</span>}
-                        sx={{
-                            mt: 1,
-                            py: 1,
-                            backgroundColor: '#22c55e',
+                        style={{
+                            marginTop: 12,
+                            padding: '12px 20px',
+                            backgroundColor: '#059669',
                             color: '#ffffff',
-                            textTransform: 'none',
-                            fontWeight: 600,
-                            fontSize: '0.875rem',
-                            borderRadius: '6px',
-                            '&:hover': {
-                                backgroundColor: '#16a34a'
-                            }
+                            fontWeight: 700,
+                            fontSize: '14px',
+                            borderRadius: '10px',
+                            border: 'none',
+                            width: '100%',
+                            height: '44px',
+                            boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)',
+                            transition: 'all 0.3s ease-in-out',
+                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                            letterSpacing: '0.02em'
+                        }}
+                        icon={<span style={{ fontSize: '16px', fontWeight: 'bold' }}>✓</span>}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#047857';
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(5, 150, 105, 0.4)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#059669';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(5, 150, 105, 0.3)';
                         }}
                     >
                         Mark as Reviewed
                     </Button>
                 )}
-            </Stack>
-        </Box>
+            </Space>
+        </Card>
     );
 
     return (
         <>
             <Modal
                 open={open}
-                onClose={onClose}
-                sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
+                onCancel={onClose}
+                width="90vw"
+                closable={false}
+                style={{
+                    maxWidth: 1400,
+                    maxHeight: 400,
+                    top: 100
                 }}
+                bodyStyle={{
+                    padding: 0,
+                    height: '90vh',
+                    maxWidth: '100%',
+                    maxHeight: '80vh',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    backgroundColor: '#f5f5f5',
+                    borderRadius: 8
+                }}
+                footer={null}
             >
-                <Paper
-                    elevation={24}
-                    sx={{
-                        width: '90vw',
-                        maxWidth: 1200,
+                <div
+                    style={{
+                        width: '100%',
+                        maxWidth: 1400,
                         maxHeight: '90vh',
-                        borderRadius: 2,
+                        borderRadius: 8,
                         overflow: 'hidden',
                         display: 'flex',
                         flexDirection: 'column',
-                        bgcolor: '#f5f5f5',
+                        backgroundColor: '#f5f5f5',
                         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
                     }}
                 >
                     {/* Header */}
-                    <Box sx={{
-                        p: 2,
+                    <div style={{
+                        padding: 16,
                         borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: 1,
-                        bgcolor: '#ffffff',
+                        gap: 8,
+                        backgroundColor: '#ffffff',
                     }}>
-                        <Box sx={{ 
+                        <div style={{ 
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: 2,
+                            gap: 16,
                             flex: 1
                         }}>
-                            <Box sx={{ 
+                            <div style={{ 
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
                                 width: '100%'
                             }}>
-                                <Box sx={{ 
+                                <div style={{ 
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: 2,
+                                    gap: 16,
                                     flex: 1
                                 }}>
-                                    <Box
+                                    <div
                                         onClick={handleToggleComplete}
-                                        sx={{
+                                        style={{
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: 1,
+                                            gap: 8,
                                             cursor: 'pointer',
-                                            padding: '6px 12px',
-                                            borderRadius: '20px',
+                                            padding: '8px 14px',
+                                            borderRadius: '8px',
                                             backgroundColor: card?.dueComplete ? 'rgba(76, 175, 80, 0.1)' : 'rgba(0, 0, 0, 0.04)',
                                             color: card?.dueComplete ? '#2E7D32' : '#666666',
                                             border: '1px solid',
-                                            borderColor: card?.dueComplete ? '#4CAF50' : 'transparent',
+                                            borderColor: card?.dueComplete ? '#4CAF50' : 'rgba(0, 0, 0, 0.08)',
                                             transition: 'all 0.2s ease-in-out',
-                                            '&:hover': {
-                                                backgroundColor: card?.dueComplete ? 'rgba(76, 175, 80, 0.15)' : 'rgba(0, 0, 0, 0.08)',
-                                                transform: 'translateY(-1px)'
-                                            }
+                                            boxShadow: card?.dueComplete ? '0 2px 4px rgba(76, 175, 80, 0.2)' : '0 1px 2px rgba(0, 0, 0, 0.05)'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.backgroundColor = card?.dueComplete ? 'rgba(76, 175, 80, 0.15)' : 'rgba(0, 0, 0, 0.08)';
+                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                            e.currentTarget.style.boxShadow = card?.dueComplete ? '0 4px 8px rgba(76, 175, 80, 0.25)' : '0 2px 4px rgba(0, 0, 0, 0.1)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.backgroundColor = card?.dueComplete ? 'rgba(76, 175, 80, 0.1)' : 'rgba(0, 0, 0, 0.04)';
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = card?.dueComplete ? '0 2px 4px rgba(76, 175, 80, 0.2)' : '0 1px 2px rgba(0, 0, 0, 0.05)';
                                         }}
                                     >
-                                        <Box sx={{
-                                            width: 16,
-                                            height: 16,
+                                        <div style={{
+                                            width: 18,
+                                            height: 18,
                                             borderRadius: '50%',
                                             backgroundColor: card?.dueComplete ? '#4CAF50' : 'transparent',
                                             border: '2px solid',
@@ -1579,81 +1687,76 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                             justifyContent: 'center',
                                             color: '#fff',
                                             fontSize: '12px',
+                                            fontWeight: 'bold',
                                             transition: 'all 0.2s ease-in-out'
                                         }}>
                                             {card?.dueComplete && '✓'}
-                                        </Box>
-                                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                        </div>
+                                        <Typography.Text style={{ 
+                                            fontWeight: 600,
+                                            fontSize: '13px'
+                                        }}>
                                             {card?.dueComplete ? 'Completed' : 'Mark Complete'}
-                                        </Typography>
-                                    </Box>
-                                    <Typography variant="h5" sx={{ 
+                                        </Typography.Text>
+                                    </div>
+                                    <Typography.Title level={4} style={{ 
                                         color: '#1e293b',
                                         fontWeight: 600,
                                         letterSpacing: '-0.01em',
                                         whiteSpace: 'nowrap',
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',
-                                        flex: 1
+                                        flex: 1,
+                                        margin: 0
                                     }}>
                                         {safeCard.name}
-                                    </Typography>
-                                </Box>
-                                <IconButton 
-                                    size="small" 
+                                    </Typography.Title>
+                                </div>
+                                <Button 
+                                    type="text"
+                                    icon={<CloseOutlined />}
                                     onClick={onClose}
-                                    sx={{
-                                        color: 'text.secondary',
-                                        ml: 2,
-                                        '&:hover': {
-                                            bgcolor: 'rgba(0, 0, 0, 0.04)',
-                                            color: 'primary.main'
-                                        }
+                                    style={{
+                                        color: 'rgba(0, 0, 0, 0.45)',
+                                        marginLeft: 16
                                     }}
-                                >
-                                    <CloseIcon fontSize="small" />
-                                </IconButton>
-                            </Box>
-                            <Stack 
-                                direction="row" 
-                                spacing={0.5} 
-                                alignItems="center"
-                                useFlexGap 
-                                sx={{ 
+                                />
+                            </div>
+                            <Space 
+                                style={{ 
                                     flex: 1,
                                     flexWrap: 'wrap',
-                                    gap: 0.5
+                                    gap: 6
                                 }}
                             >
                                 {card.labels.map(label => (
-                                    <Chip
+                                    <Tag
                                         key={label.id}
-                                        label={label.name}
-                                        size="small"
-                                        onDelete={() => handleRemoveLabel(label.id)}
-                                        sx={{ 
-                                            bgcolor: getLabelColor(label.name),
+                                        closable
+                                        onClose={() => handleRemoveLabel(label.id)}
+                                        style={{ 
+                                            backgroundColor: getLabelColor(label.name),
                                             color: 'white',
-                                            fontWeight: 500,
-                                            fontSize: '0.75rem',
-                                            height: '24px',
-                                            boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                                            '& .MuiChip-deleteIcon': { 
-                                                color: 'rgba(255, 255, 255, 0.8)',
-                                                width: '16px',
-                                                height: '16px',
-                                                margin: '0 4px 0 -6px',
-                                                '&:hover': {
-                                                    color: 'white'
-                                                }
-                                            },
-                                            '&:hover': {
-                                                bgcolor: getLabelColor(label.name),
-                                                filter: 'brightness(90%)',
-                                                boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
-                                            }
+                                            fontWeight: 600,
+                                            fontSize: '12px',
+                                            height: '26px',
+                                            padding: '0 10px',
+                                            borderRadius: '6px',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                                            border: 'none',
+                                            transition: 'all 0.2s ease-in-out'
                                         }}
-                                    />
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                            e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.15)';
+                                        }}
+                                    >
+                                        {label.name}
+                                    </Tag>
                                 ))}
                                 {availableLabels.length > 0 && (
                                     <Button
@@ -1661,509 +1764,576 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                             setLabelMenuAnchorEl(event.currentTarget);
                                             setLabelMenuOpen(true);
                                         }}
-                                        startIcon={<AddIcon />}
+                                        icon={<PlusOutlined />}
                                         size="small"
-                                        sx={{ 
+                                        style={{ 
                                             color: '#1976d2',
                                             backgroundColor: 'rgba(25, 118, 210, 0.08)',
-                                            textTransform: 'none',
-                                            fontWeight: 500,
-                                            fontSize: '0.75rem',
-                                            height: '24px',
+                                            fontWeight: 600,
+                                            fontSize: '12px',
+                                            height: '26px',
                                             minWidth: 'auto',
-                                            p: '4px 8px',
-                                            borderRadius: '4px',
-                                            '&:hover': {
-                                                backgroundColor: 'rgba(25, 118, 210, 0.12)'
-                                            }
+                                            padding: '4px 10px',
+                                            borderRadius: '6px',
+                                            border: '1px solid rgba(25, 118, 210, 0.15)',
+                                            transition: 'all 0.2s ease-in-out'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.backgroundColor = 'rgba(25, 118, 210, 0.12)';
+                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(25, 118, 210, 0.2)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.backgroundColor = 'rgba(25, 118, 210, 0.08)';
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = 'none';
                                         }}
                                     >
                                         Add Label
                                     </Button>
                                 )}
-                            </Stack>
+                            </Space>
                             {availableLabels.length > 0 && (
-                                <Menu
-                                    anchorEl={labelMenuAnchorEl}
+                                <Dropdown
                                     open={labelMenuOpen}
-                                    onClose={() => {
-                                        setLabelMenuOpen(false);
-                                        setLabelSearch('');
+                                    onOpenChange={(open) => {
+                                        setLabelMenuOpen(open);
+                                        if (!open) setLabelSearch('');
                                     }}
-                                    PaperProps={{
-                                        sx: {
-                                            mt: 1,
+                                    trigger={['click']}
+                                    overlay={
+                                        <div style={{
+                                            marginTop: 4,
                                             boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
                                             borderRadius: '8px',
                                             minWidth: '250px',
-                                            maxHeight: '400px'
-                                        }
-                                    }}
-                                >
-                                    {/* Search Box */}
-                                    <Box sx={{ p: 1, borderBottom: '1px solid rgba(0, 0, 0, 0.08)' }}>
-                                        <TextField
-                                            size="small"
-                                            fullWidth
-                                            placeholder="Search labels..."
-                                            value={labelSearch}
-                                            onChange={(e) => setLabelSearch(e.target.value)}
-                                            InputProps={{
-                                                startAdornment: (
-                                                    <SearchIcon 
-                                                        fontSize="small" 
-                                                        sx={{ 
-                                                            color: 'action.active',
-                                                            mr: 1
-                                                        }} 
-                                                    />
-                                                ),
-                                                sx: {
-                                                    fontSize: '0.875rem',
-                                                    backgroundColor: '#f8fafc',
-                                                    '& .MuiOutlinedInput-notchedOutline': {
+                                            maxHeight: '400px',
+                                            backgroundColor: 'white',
+                                            border: '1px solid #f0f0f0'
+                                        }}>
+                                            {/* Search Box */}
+                                            <div style={{ padding: 8, borderBottom: '1px solid rgba(0, 0, 0, 0.08)' }}>
+                                                <Input
+                                                    size="small"
+                                                    placeholder="Search labels..."
+                                                    value={labelSearch}
+                                                    onChange={(e) => setLabelSearch(e.target.value)}
+                                                    prefix={<SearchOutlined />}
+                                                    style={{
+                                                        fontSize: '14px',
+                                                        backgroundColor: '#f8fafc',
                                                         borderColor: 'rgba(0, 0, 0, 0.08)'
-                                                    },
-                                                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                        borderColor: 'rgba(0, 0, 0, 0.15)'
-                                                    },
-                                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                        borderColor: '#1976d2'
-                                                    }
-                                                }
-                                            }}
-                                        />
-                                    </Box>
-                                    <Divider />
-                                    <Box sx={{ 
-                                        maxHeight: 300,
-                                        overflow: 'auto',
-                                        ...(filteredLabels.length === 0 && {
-                                            display: 'flex',
-                                            justifyContent: 'center',
-                                            alignItems: 'center',
-                                            py: 2
-                                        })
-                                    }}>
-                                        {filteredLabels.length > 0 ? (
-                                            filteredLabels.map(label => {
-                                                const labelColor = getLabelColor(label.name);
-                                                return (
-                                                    <MenuItem 
-                                                        key={label.id} 
-                                                        onClick={() => {
-                                                            handleAddLabel(label.id);
-                                                        }}
-                                                        sx={{ 
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: 1,
-                                                            py: 1,
-                                                            px: 2,
-                                                            '&:hover': {
-                                                                backgroundColor: 'rgba(25, 118, 210, 0.08)'
-                                                            }
+                                                    }}
+                                                />
+                                            </div>
+                                            <Divider />
+                                            <div style={{ 
+                                                maxHeight: 300,
+                                                overflow: 'auto'
+                                            }}>
+                                                {filteredLabels.length > 0 ? (
+                                                    filteredLabels.map(label => {
+                                                        const labelColor = getLabelColor(label.name);
+                                                        return (
+                                                            <div 
+                                                                key={label.id} 
+                                                                onClick={() => {
+                                                                    handleAddLabel(label.id);
+                                                                }}
+                                                                style={{ 
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: 8,
+                                                                    padding: '8px 16px',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                                onMouseEnter={(e) => {
+                                                                    e.currentTarget.style.backgroundColor = 'rgba(25, 118, 210, 0.08)';
+                                                                }}
+                                                                onMouseLeave={(e) => {
+                                                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                                                }}
+                                                            >
+                                                                <div
+                                                                    style={{ 
+                                                                        width: 32,
+                                                                        height: 4,
+                                                                        borderRadius: 2,
+                                                                        backgroundColor: labelColor,
+                                                                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                                                    }}
+                                                                />
+                                                                <Typography.Text style={{
+                                                                    fontSize: '14px',
+                                                                    fontWeight: 500
+                                                                }}>
+                                                                    {label.name}
+                                                                </Typography.Text>
+                                                            </div>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <Typography.Text 
+                                                        style={{ 
+                                                            color: 'rgba(0, 0, 0, 0.45)',
+                                                            fontStyle: 'italic',
+                                                            padding: '16px',
+                                                            textAlign: 'center',
+                                                            display: 'block'
                                                         }}
                                                     >
-                                                        <Box
-                                                            sx={{ 
-                                                                width: 32,
-                                                                height: 4,
-                                                                borderRadius: 2,
-                                                                bgcolor: labelColor,
-                                                                boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                                                            }}
-                                                        />
-                                                        <Typography variant="body2" sx={{
-                                                            fontSize: '0.875rem',
-                                                            fontWeight: 500
-                                                        }}>
-                                                            {label.name}
-                                                        </Typography>
-                                                    </MenuItem>
-                                                );
-                                            })
-                                        ) : (
-                                            <Typography 
-                                                variant="body2" 
-                                                sx={{ 
-                                                    color: 'text.secondary',
-                                                    fontStyle: 'italic'
-                                                }}
-                                            >
-                                                No labels found
-                                            </Typography>
-                                        )}
-                                    </Box>
-                                </Menu>
+                                                        No labels found
+                                                    </Typography.Text>
+                                                )}
+                                            </div>
+                                        </div>
+                                    }
+                                >
+                                    <div />
+                                </Dropdown>
                             )}
-                        </Box>
-                        <Box sx={{
+                        </div>
+                        <div style={{
                             display: 'flex',
                             alignItems: 'center',
-                            width: '30%',
-                            gap: 1,
+                            gap: 8,
                             backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                            borderRadius: '7px',
-                            p: 1
+                            borderRadius: '8px',
+                            padding: '10px 12px',
+                            border: '1px solid rgba(0, 0, 0, 0.06)',
+                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
                         }}>
-                            <Typography variant="body2" sx={{ 
-                                color: 'text.secondary',
+                            <div style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                backgroundColor: '#64748b',
+                                flexShrink: 0
+                            }} />
+                            <Typography.Text style={{ 
+                                color: 'rgba(0, 0, 0, 0.65)',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: 1
+                                gap: 8,
+                                fontSize: '13px',
+                                fontWeight: 500
                             }}>
-                                Create Date: {createDate ? (
-                                    <Box component="span" sx={{ fontWeight: 700 }}>
+                                Created: {createDate ? (
+                                    <span style={{ 
+                                        fontWeight: 700,
+                                        color: '#1e293b'
+                                    }}>
                                         {format(createDate, 'MMM d, yyyy HH:mm')}
-                                    </Box>
+                                    </span>
                                 ) : 'N/A'}
                                 {createDate && (
-                                    <Typography 
-                                        component="span" 
-                                        variant="caption" 
-                                        sx={{ color: 'text.secondary' }}
+                                    <Typography.Text 
+                                        style={{ 
+                                            color: 'rgba(0, 0, 0, 0.45)',
+                                            fontSize: '11px',
+                                            fontStyle: 'italic'
+                                        }}
                                     >
                                         ({formatDistanceToNow(createDate, { addSuffix: true })})
-                                    </Typography>
+                                    </Typography.Text>
                                 )}
-                            </Typography>
-                        </Box>
-                    </Box>
+                            </Typography.Text>
+                        </div>
+                    </div>
 
                     {/* Content */}
-                    <Box sx={{ 
+                    <div style={{ 
                         display: 'flex', 
                         flex: 1,
                         overflow: 'hidden',
-                        bgcolor: '#f5f5f5'
+                        backgroundColor: '#f5f5f5'
                     }}>
                         {/* Left Column */}
-                        <Box sx={{ 
+                        <div style={{ 
                             flex: 1,
                             overflowY: 'auto',
-                            p: 3,
+                            padding: 24,
                             borderRight: '1px solid rgba(0, 0, 0, 0.08)',
-                            bgcolor: '#f5f5f5'
+                            backgroundColor: '#f5f5f5'
                         }}>
                             {loading ? (
-                                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                                    <CircularProgress />
-                                </Box>
+                                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                                    <Spin size="large" />
+                                </div>
                             ) : (
                                 renderTabContent()
                             )}
-                        </Box>
+                        </div>
 
                         {/* Right Column - Sidebar */}
-                        <Box sx={{ 
-                            width: 330,
+                        <div style={{ 
+                            width: 360,
                             overflowY: 'auto',
-                            p: 2.5,
-                            bgcolor: '#f5f5f5',
+                            padding: 20,
+                            backgroundColor: '#f5f5f5',
                             borderRadius: '4px'
                         }}>
-                            <Stack spacing={2.5} divider={<Divider sx={{ borderColor: 'rgba(0, 0, 0, 0.08)' }} />}>
+                            <Space direction="vertical" size="large" style={{ width: '100%' }} divider={<Divider style={{ borderColor: 'rgba(0, 0, 0, 0.08)' }} />}>
                                 {/* Quick Links */}
                                 {(shopUrl || crispUrl || safeCard.shortUrl) && (
-                                    <Box sx={{
-                                        bgcolor: '#ffffff',
-                                        p: 2,
-                                        borderRadius: '8px',
-                                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
-                                    }}>
-                                        <Typography variant="subtitle1" gutterBottom sx={{ 
+                                                                    <Card style={{
+                                    backgroundColor: '#ffffff',
+                                    padding: 16,
+                                    borderRadius: '12px',
+                                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                                    border: '1px solid rgba(0, 0, 0, 0.06)',
+                                    transition: 'all 0.2s ease-in-out'
+                                }}>
+                                        <Typography.Title level={5} style={{ 
                                             color: '#1e293b',
-                                            fontWeight: 600,
-                                            fontSize: '0.95rem',
-                                            mb: 2,
+                                            fontWeight: 700,
+                                            fontSize: '1rem',
+                                            marginBottom: 20,
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: 1,
+                                            gap: 10,
                                             letterSpacing: '0.01em',
-                                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                            margin: 0,
+                                            borderBottom: '2px solid rgba(0, 0, 0, 0.06)',
+                                            paddingBottom: 12
                                         }}>
-                                            Informations
-                                        </Typography>
-                                        <Stack direction="row" spacing={1.5} sx={{ width: '100%' }}> 
+                                            📋 Informations
+                                        </Typography.Title>
+                                        <Space direction="horizontal" size="large" style={{ width: '100%' }}> 
                                             {shopUrl && (
-                                                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
-                                                    <Link
+                                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+                                                    <a
                                                         href={shopUrl}
                                                         target="_blank"
-                                                        sx={{
+                                                        rel="noopener noreferrer"
+                                                        style={{
                                                             display: 'flex',
                                                             flexDirection: 'column',
                                                             alignItems: 'center',
                                                             color: '#64748b',
                                                             textDecoration: 'none',
-                                                            gap: 1,
+                                                            gap: 10,
                                                             border: '1px solid rgba(0, 0, 0, 0.08)',
-                                                            borderRadius: '6px',
-                                                            p: 1.5,
+                                                            borderRadius: '12px',
+                                                            padding: 16,
                                                             position: 'relative',
                                                             width: '100%',
-                                                            bgcolor: 'rgba(0, 0, 0, 0.02)',
-                                                            transition: 'all 0.2s ease-in-out',
+                                                            backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                                                            transition: 'all 0.3s ease-in-out',
                                                             fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                                                            '&:hover': {
-                                                                backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                                                                transform: 'translateY(-1px)',
-                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                                                                color: '#1e293b'
-                                                            }
+                                                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+                                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.1)';
+                                                            e.currentTarget.style.color = '#1e293b';
+                                                            e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.12)';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
+                                                            e.currentTarget.style.transform = 'translateY(0)';
+                                                            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
+                                                            e.currentTarget.style.color = '#64748b';
+                                                            e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.08)';
                                                         }}
                                                     >
-                                                        <Box sx={{ 
-                                                            width: 32,
-                                                            height: 32,
+                                                        <div style={{ 
+                                                            width: 48,
+                                                            height: 48,
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
-                                                            borderRadius: '6px',
-                                                            bgcolor: 'rgba(0, 0, 0, 0.04)',
-                                                            color: '#64748b'
+                                                            borderRadius: '12px',
+                                                            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                                                            color: '#64748b',
+                                                            transition: 'all 0.3s ease-in-out',
+                                                            border: '1px solid rgba(0, 0, 0, 0.06)'
                                                         }}>
-                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                                                                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
                                                             </svg>
-                                                        </Box>
-                                                        <Typography variant="caption" sx={{ 
-                                                            fontSize: '0.75rem', 
+                                                        </div>
+                                                        <Typography.Text style={{ 
+                                                            fontSize: '14px', 
                                                             textAlign: 'center', 
-                                                            fontWeight: 500,
+                                                            fontWeight: 700,
                                                             letterSpacing: '0.02em',
                                                             fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                                                            textTransform: 'capitalize'
+                                                            textTransform: 'capitalize',
+                                                            lineHeight: 1.2,
+                                                            color: 'inherit'
                                                         }}>
                                                             View Shop
-                                                        </Typography>
-                                                        <IconButton
+                                                        </Typography.Text>
+                                                        <Button
                                                             size="small"
+                                                            type="text"
+                                                            icon={<CopyOutlined />}
                                                             onClick={(e) => {
                                                                 e.preventDefault();
                                                                 handleCopyLink(shopUrl, 'Shop URL');
                                                             }}
-                                                            sx={{
+                                                            style={{
                                                                 position: 'absolute',
-                                                                top: 4,
-                                                                right: 4,
-                                                                p: 0.5,
+                                                                top: 8,
+                                                                right: 8,
+                                                                padding: 6,
                                                                 color: '#94a3b8',
-                                                                '&:hover': {
-                                                                    color: '#1e293b',
-                                                                    bgcolor: 'rgba(0, 0, 0, 0.04)'
-                                                                }
+                                                                minWidth: 'auto',
+                                                                width: 32,
+                                                                height: 32,
+                                                                borderRadius: '8px',
+                                                                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                                                border: '1px solid rgba(0, 0, 0, 0.08)',
+                                                                boxShadow: '0 3px 6px rgba(0, 0, 0, 0.12)',
+                                                                transition: 'all 0.3s ease-in-out',
+                                                                backdropFilter: 'blur(4px)'
                                                             }}
-                                                        >
-                                                            <ContentCopyIcon sx={{ fontSize: 14 }} />
-                                                        </IconButton>
-                                                    </Link>
-                                                </Box>
+                                                            onMouseEnter={(e) => {
+                                                                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 1)';
+                                                                e.currentTarget.style.color = '#64748b';
+                                                                e.currentTarget.style.transform = 'scale(1.1)';
+                                                                e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
+                                                                e.currentTarget.style.color = '#94a3b8';
+                                                                e.currentTarget.style.transform = 'scale(1)';
+                                                                e.currentTarget.style.boxShadow = '0 3px 6px rgba(0, 0, 0, 0.12)';
+                                                            }}
+                                                        />
+                                                    </a>
+                                                </div>
                                             )}
                                             {crispUrl && (
-                                                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
-                                                    <Link
+                                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+                                                    <a
                                                         href={crispUrl}
                                                         target="_blank"
-                                                        sx={{
+                                                        rel="noopener noreferrer"
+                                                        style={{
                                                             display: 'flex',
                                                             flexDirection: 'column',
                                                             alignItems: 'center',
                                                             color: '#64748b',
                                                             textDecoration: 'none',
-                                                            gap: 1,
+                                                            gap: 10,
                                                             border: '1px solid rgba(0, 0, 0, 0.08)',
-                                                            borderRadius: '6px',
-                                                            p: 1.5,
+                                                            borderRadius: '12px',
+                                                            padding: 16,
                                                             position: 'relative',
                                                             width: '100%',
-                                                            bgcolor: 'rgba(0, 0, 0, 0.02)',
-                                                            transition: 'all 0.2s ease-in-out',
+                                                            backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                                                            transition: 'all 0.3s ease-in-out',
                                                             fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                                                            '&:hover': {
-                                                                backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                                                                transform: 'translateY(-1px)',
-                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                                                                color: '#1e293b'
-                                                            }
+                                                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+                                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.1)';
+                                                            e.currentTarget.style.color = '#1e293b';
+                                                            e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.12)';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
+                                                            e.currentTarget.style.transform = 'translateY(0)';
+                                                            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
+                                                            e.currentTarget.style.color = '#64748b';
+                                                            e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.08)';
                                                         }}
                                                     >
-                                                        <Box sx={{ 
-                                                            width: 32,
-                                                            height: 32,
+                                                        <div style={{ 
+                                                            width: 48,
+                                                            height: 48,
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
-                                                            borderRadius: '6px',
-                                                            bgcolor: 'rgba(0, 0, 0, 0.04)',
-                                                            color: '#64748b'
+                                                            borderRadius: '12px',
+                                                            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                                                            color: '#64748b',
+                                                            transition: 'all 0.3s ease-in-out',
+                                                            border: '1px solid rgba(0, 0, 0, 0.06)'
                                                         }}>
-                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                                                                 <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12zM7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/>
                                                             </svg>
-                                                        </Box>
-                                                        <Typography variant="caption" sx={{ 
-                                                            fontSize: '0.75rem', 
+                                                        </div>
+                                                        <Typography.Text style={{ 
+                                                            fontSize: '14px', 
                                                             textAlign: 'center',
-                                                            fontWeight: 500,
+                                                            fontWeight: 700,
                                                             letterSpacing: '0.02em',
                                                             fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                                                            textTransform: 'capitalize'
+                                                            textTransform: 'capitalize',
+                                                            lineHeight: 1.2,
+                                                            color: 'inherit'
                                                         }}>
                                                             View Chat
-                                                        </Typography>
-                                                        <IconButton
+                                                        </Typography.Text>
+                                                        <Button
                                                             size="small"
+                                                            type="text"
+                                                            icon={<CopyOutlined />}
                                                             onClick={(e) => {
                                                                 e.preventDefault();
                                                                 handleCopyLink(crispUrl, 'Chat URL');
                                                             }}
-                                                            sx={{
+                                                            style={{
                                                                 position: 'absolute',
                                                                 top: 4,
                                                                 right: 4,
-                                                                p: 0.5,
+                                                                padding: 2,
                                                                 color: '#94a3b8',
-                                                                '&:hover': {
-                                                                    color: '#1e293b',
-                                                                    bgcolor: 'rgba(0, 0, 0, 0.04)'
-                                                                }
+                                                                minWidth: 'auto',
+                                                                width: 24,
+                                                                height: 24
                                                             }}
-                                                        >
-                                                            <ContentCopyIcon sx={{ fontSize: 14 }} />
-                                                        </IconButton>
-                                                    </Link>
-                                                </Box>
+                                                        />
+                                                    </a>
+                                                </div>
                                             )}
-                                        </Stack>
+                                        </Space>
                                         {safeCard.shortUrl && (
-                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5, mt: 1.5, width: '100%' }}>
-                                                <Link
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, marginTop: 16, width: '100%' }}>
+                                                <a
                                                     href={safeCard.shortUrl}
                                                     target="_blank"
-                                                    sx={{
+                                                    rel="noopener noreferrer"
+                                                    style={{
                                                         display: 'flex',
                                                         flexDirection: 'column',
                                                         alignItems: 'center',
                                                         color: '#64748b',
                                                         textDecoration: 'none',
-                                                        gap: 1,
+                                                        gap: 10,
                                                         border: '1px solid rgba(0, 0, 0, 0.08)',
-                                                        borderRadius: '6px',
-                                                        p: 1.5,
+                                                        borderRadius: '12px',
+                                                        padding: 16,
                                                         position: 'relative',
                                                         width: '100%',
-                                                        bgcolor: 'rgba(0, 0, 0, 0.02)',
-                                                        transition: 'all 0.2s ease-in-out',
+                                                        backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                                                        transition: 'all 0.3s ease-in-out',
                                                         fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                                                        '&:hover': {
-                                                            backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                                                            transform: 'translateY(-1px)',
-                                                            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                                                            color: '#1e293b'
-                                                        }
+                                                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+                                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                                        e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.1)';
+                                                        e.currentTarget.style.color = '#1e293b';
+                                                        e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.12)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
+                                                        e.currentTarget.style.transform = 'translateY(0)';
+                                                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
+                                                        e.currentTarget.style.color = '#64748b';
+                                                        e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.08)';
                                                     }}
                                                 >
-                                                    <Box sx={{ 
-                                                        width: 32,
-                                                        height: 32,
+                                                    <div style={{ 
+                                                        width: 48,
+                                                        height: 48,
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
-                                                        borderRadius: '6px',
-                                                        bgcolor: 'rgba(0, 0, 0, 0.04)',
-                                                        color: '#64748b'
+                                                        borderRadius: '12px',
+                                                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                                                        color: '#64748b',
+                                                        transition: 'all 0.3s ease-in-out',
+                                                        border: '1px solid rgba(0, 0, 0, 0.06)'
                                                     }}>
-                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                                                             <path d="M19.5 3h-15A1.5 1.5 0 003 4.5v15A1.5 1.5 0 004.5 21h15a1.5 1.5 0 001.5-1.5v-15A1.5 1.5 0 0019.5 3zm-15 1.5h15v15h-15v-15zM6 6h12v2H6V6zm0 4h12v2H6v-2zm0 4h12v2H6v-2z"/>
                                                         </svg>
-                                                    </Box>
-                                                    <Typography variant="caption" sx={{ 
-                                                        fontSize: '0.75rem', 
+                                                    </div>
+                                                    <Typography.Text style={{ 
+                                                        fontSize: '14px', 
                                                         textAlign: 'center',
-                                                        fontWeight: 500,
+                                                        fontWeight: 700,
                                                         letterSpacing: '0.02em',
                                                         fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                                                        textTransform: 'capitalize'
+                                                        textTransform: 'capitalize',
+                                                        lineHeight: 1.2,
+                                                        color: 'inherit'
                                                     }}>
                                                         View Trello
-                                                    </Typography>
-                                                    <IconButton
+                                                    </Typography.Text>
+                                                    <Button
                                                         size="small"
+                                                        type="text"
+                                                        icon={<CopyOutlined />}
                                                         onClick={(e) => {
                                                             e.preventDefault();
                                                             handleCopyLink(safeCard.shortUrl, 'Trello URL');
                                                         }}
-                                                        sx={{
+                                                        style={{
                                                             position: 'absolute',
                                                             top: 4,
                                                             right: 4,
-                                                            p: 0.5,
+                                                            padding: 2,
                                                             color: '#94a3b8',
-                                                            '&:hover': {
-                                                                color: '#1e293b',
-                                                                bgcolor: 'rgba(0, 0, 0, 0.04)'
-                                                            }
+                                                            minWidth: 'auto',
+                                                            width: 24,
+                                                            height: 24
                                                         }}
-                                                    >
-                                                        <ContentCopyIcon sx={{ fontSize: 14 }} />
-                                                    </IconButton>
-                                                </Link>
-                                            </Box>
+                                                    />
+                                                </a>
+                                            </div>
                                         )}
-                                    </Box>
+                                    </Card>
                                 )}
 
                                 {/* Status */}
-                                <Box sx={{
-                                    bgcolor: '#ffffff',
-                                    p: 2,
-                                    borderRadius: '4px'
+                                <Card style={{
+                                    backgroundColor: '#ffffff',
+                                    padding: 12,
+                                    borderRadius: '8px',
+                                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+                                    border: '1px solid rgba(0, 0, 0, 0.06)'
                                 }}>
-                                    <Typography variant="subtitle1" gutterBottom sx={{ 
+                                    <Typography.Title level={5} style={{ 
                                             color: '#1e293b',
                                             fontWeight: 600,
                                             fontSize: '1rem',
-                                            mb: 2,
+                                            marginBottom: 16,
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: 1
+                                            gap: 8,
+                                            margin: 0
                                     }}>
                                         List
-                                    </Typography>
-                                    <Box>
+                                    </Typography.Title>
+                                    <div>
                                         <Button
                                             onClick={(e) => setListMenuAnchorEl(e.currentTarget)}
-                                            sx={{
+                                            style={{
                                                 width: '100%',
                                                 height: '40px',
                                                 justifyContent: 'space-between',
-                                                textTransform: 'none',
                                                 backgroundColor: '#f8fafc',
                                                 border: '1px solid rgba(0, 0, 0, 0.12)',
                                                 borderRadius: '8px',
                                                 color: '#1e293b',
-                                                '&:hover': {
-                                                    backgroundColor: '#f1f5f9',
-                                                    borderColor: 'primary.main'
-                                                },
-                                                px: 2
+                                                padding: '0 16px'
                                             }}
                                         >
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-                                                <Box 
-                                                    sx={{ 
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                                                <div 
+                                                    style={{ 
                                                         width: 8,
                                                         height: 8,
                                                         borderRadius: '50%',
-                                                        bgcolor: 'primary.main',
+                                                        backgroundColor: '#1976d2',
                                                         flexShrink: 0
                                                     }} 
                                                 />
-                                                <Typography 
-                                                    sx={{ 
-                                                        fontSize: '0.875rem', 
+                                                <Typography.Text 
+                                                    style={{ 
+                                                        fontSize: '14px', 
                                                         fontWeight: 500,
                                                         whiteSpace: 'nowrap',
                                                         overflow: 'hidden',
@@ -2171,107 +2341,93 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                     }}
                                                 >
                                                     {lists.find(list => list.id === currentListId)?.name || 'Select List'}
-                                                </Typography>
-                                            </Box>
-                                            <KeyboardArrowDownIcon sx={{ color: '#64748b' }} />
+                                                </Typography.Text>
+                                            </div>
+                                            <DownOutlined style={{ color: '#64748b' }} />
                                         </Button>
 
-                                        <Menu
-                                            anchorEl={listMenuAnchorEl}
+                                        <Dropdown
                                             open={listMenuOpen}
-                                            onClose={() => {
-                                                setListMenuAnchorEl(null);
-                                                setListSearch('');
+                                            onOpenChange={(open) => {
+                                                if (!open) {
+                                                    setListMenuAnchorEl(null);
+                                                    setListSearch('');
+                                                }
                                             }}
-                                            PaperProps={{
-                                                sx: {
-                                                    mt: 1,
+                                            trigger={['click']}
+                                            overlay={
+                                                <div style={{
+                                                    marginTop: 4,
                                                     width: 320,
                                                     maxHeight: 400,
                                                     boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-                                                    borderRadius: '8px'
-                                                }
-                                            }}
-                                        >
-                                            <Box sx={{ p: 1, position: 'sticky', top: 0, bgcolor: 'background.paper', zIndex: 1 }}>
-                                                <TextField
-                                                    size="small"
-                                                    fullWidth
-                                                    placeholder="Search lists..."
-                                                    value={listSearch}
-                                                    onChange={(e) => setListSearch(e.target.value)}
-                                                    InputProps={{
-                                                        startAdornment: (
-                                                            <SearchIcon 
-                                                                fontSize="small" 
-                                                                sx={{ 
-                                                                    color: 'action.active',
-                                                                    mr: 1
-                                                                }} 
-                                                            />
-                                                        ),
-                                                        sx: {
-                                                            fontSize: '0.875rem',
-                                                            backgroundColor: '#f8fafc',
-                                                            '& .MuiOutlinedInput-notchedOutline': {
+                                                    borderRadius: '8px',
+                                                    backgroundColor: 'white',
+                                                    border: '1px solid #f0f0f0'
+                                                }}>
+                                                    <div style={{ padding: 8, position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
+                                                        <Input
+                                                            size="small"
+                                                            placeholder="Search lists..."
+                                                            value={listSearch}
+                                                            onChange={(e) => setListSearch(e.target.value)}
+                                                            prefix={<SearchOutlined />}
+                                                            style={{
+                                                                fontSize: '14px',
+                                                                backgroundColor: '#f8fafc',
                                                                 borderColor: 'rgba(0, 0, 0, 0.08)'
-                                                            },
-                                                            '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                                borderColor: 'rgba(0, 0, 0, 0.15)'
-                                                            },
-                                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                                borderColor: '#1976d2'
-                                                            }
-                                                        }
-                                                    }}
-                                                />
-                                            </Box>
+                                                            }}
+                                                        />
+                                                    </div>
                                             <Divider />
-                                            <Box sx={{ 
+                                            <div style={{ 
                                                 maxHeight: 320,
                                                 overflow: 'auto',
                                                 ...(filteredLists.length === 0 && {
                                                     display: 'flex',
                                                     justifyContent: 'center',
                                                     alignItems: 'center',
-                                                    py: 2
+                                                    padding: '16px 0'
                                                 })
                                             }}>
                                                 {filteredLists.length > 0 ? (
                                                     filteredLists.map(list => (
-                                                        <MenuItem 
+                                                        <div 
                                                             key={list.id}
                                                             onClick={() => {
                                                                 handleMoveList(list.id);
                                                                 setListMenuAnchorEl(null);
                                                                 setListSearch('');
                                                             }}
-                                                            sx={{
+                                                            style={{
                                                                 display: 'flex',
                                                                 alignItems: 'center',
                                                                 gap: '8px',
                                                                 minHeight: '40px',
-                                                                py: 1,
-                                                                px: 2,
-                                                                '&:hover': {
-                                                                    backgroundColor: 'rgba(25, 118, 210, 0.08)'
-                                                                }
+                                                                padding: '8px 16px',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                e.currentTarget.style.backgroundColor = 'rgba(25, 118, 210, 0.08)';
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.backgroundColor = 'transparent';
                                                             }}
                                                         >
-                                                            <Box 
-                                                                sx={{ 
+                                                            <div 
+                                                                style={{ 
                                                                     width: 8,
                                                                     height: 8,
                                                                     borderRadius: '50%',
-                                                                    bgcolor: currentListId === list.id ? 'primary.main' : 'rgba(0, 0, 0, 0.12)',
+                                                                    backgroundColor: currentListId === list.id ? '#1976d2' : 'rgba(0, 0, 0, 0.12)',
                                                                     flexShrink: 0
                                                                 }} 
                                                             />
-                                                            <Typography 
-                                                                sx={{ 
-                                                                    fontSize: '0.875rem',
+                                                            <Typography.Text 
+                                                                style={{ 
+                                                                    fontSize: '14px',
                                                                     fontWeight: currentListId === list.id ? 500 : 400,
-                                                                    color: currentListId === list.id ? 'primary.main' : 'text.primary',
+                                                                    color: currentListId === list.id ? '#1976d2' : 'rgba(0, 0, 0, 0.85)',
                                                                     whiteSpace: 'nowrap',
                                                                     overflow: 'hidden',
                                                                     textOverflow: 'ellipsis',
@@ -2279,78 +2435,68 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                                 }}
                                                             >
                                                                 {list.name}
-                                                            </Typography>
-                                                        </MenuItem>
+                                                            </Typography.Text>
+                                                        </div>
                                                     ))
                                                 ) : (
-                                                    <Typography 
-                                                        variant="body2" 
-                                                        sx={{ 
-                                                            color: 'text.secondary',
-                                                            fontStyle: 'italic'
+                                                    <Typography.Text 
+                                                        style={{ 
+                                                            color: 'rgba(0, 0, 0, 0.45)',
+                                                            fontStyle: 'italic',
+                                                            padding: '16px',
+                                                            textAlign: 'center',
+                                                            display: 'block'
                                                         }}
                                                     >
                                                         No lists found
-                                                    </Typography>
+                                                    </Typography.Text>
                                                 )}
-                                            </Box>
-                                        </Menu>
-                                    </Box>
-                                </Box>
+                                            </div>
+                                        </div>
+                                    }
+                                >
+                                    <div />
+                                </Dropdown>
+                                    </div>
+                                </Card>
 
                                 {/* Assignees */}
                                 {renderSidebarField(
                                     'Assignees',
-                                    <Stack spacing={1}>
-                                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                    <Space direction="vertical" size="small">
+                                        <Space direction="horizontal" size="small" wrap>
                                             {agents.map(agent => (
-                                                <Chip
+                                                <Tag
                                                     key={agent.id}
-                                                    label={agent.username || agent.fullName}
-                                                    size="small"
-                                                    onDelete={() => handleRemoveMember(agent.id)}
-                                                    avatar={
-                                                        <Avatar
-                                                            src={agent.avatarUrl}
-                                                            alt={agent.initials}
-                                                            sx={{ 
-                                                                width: 24, 
-                                                                height: 24,
-                                                                bgcolor: '#1976d2',
-                                                                fontSize: '0.75rem',
-                                                                fontWeight: 500
-                                                            }}
-                                                        >
-                                                            {agent.initials}
-                                                        </Avatar>
-                                                    }
-                                                    sx={{
+                                                    closable
+                                                    onClose={() => handleRemoveMember(agent.id)}
+                                                    style={{
                                                         height: '28px',
                                                         backgroundColor: 'rgba(25, 118, 210, 0.08)',
                                                         color: '#1976d2',
                                                         fontWeight: 500,
-                                                        fontSize: '0.95rem',
+                                                        fontSize: '14px',
                                                         border: '1px solid rgba(25, 118, 210, 0.1)',
-                                                        '& .MuiChip-label': {
-                                                            fontSize: '0.95rem',
-                                                            lineHeight: 1.2
-                                                        },
-                                                        '& .MuiChip-deleteIcon': { 
-                                                            color: '#1976d2',
-                                                            width: '16px',
-                                                            height: '16px',
-                                                            margin: '0 4px 0 -6px',
-                                                            '&:hover': {
-                                                                color: '#d32f2f',
-                                                            }
-                                                        },
-                                                        '&:hover': {
-                                                            backgroundColor: 'rgba(25, 118, 210, 0.12)',
-                                                        }
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px'
                                                     }}
-                                                />
+                                                >
+                                                    <Avatar
+                                                        src={agent.avatarUrl}
+                                                        size={16}
+                                                        style={{ 
+                                                            backgroundColor: '#1976d2',
+                                                            fontSize: '12px',
+                                                            fontWeight: 500
+                                                        }}
+                                                    >
+                                                        {agent.initials}
+                                                    </Avatar>
+                                                    {agent.username || agent.fullName}
+                                                </Tag>
                                             ))}
-                                        </Stack>
+                                        </Space>
                                         {availableAgents.length > 0 && (
                                             <>
                                                 <Button
@@ -2358,89 +2504,65 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                         setAssigneeMenuAnchorEl(event.currentTarget);
                                                         setAssigneeMenuOpen(true);
                                                     }}
-                                                    startIcon={<AddIcon />}
-                                                    sx={{ 
+                                                    icon={<PlusOutlined />}
+                                                    style={{ 
                                                         color: '#1976d2',
                                                         backgroundColor: 'rgba(25, 118, 210, 0.08)',
-                                                        textTransform: 'none',
                                                         fontWeight: 500,
-                                                        fontSize: '0.875rem',
-                                                        py: 0.75,
-                                                        px: 1.5,
+                                                        fontSize: '14px',
+                                                        padding: '6px 12px',
                                                         borderRadius: '6px',
-                                                        '&:hover': {
-                                                            backgroundColor: 'rgba(25, 118, 210, 0.12)'
-                                                        },
                                                         width: 'fit-content'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'rgba(25, 118, 210, 0.12)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'rgba(25, 118, 210, 0.08)';
                                                     }}
                                                 >
                                                     Add Assignee
                                                 </Button>
-                                                <Menu
-                                                    anchorEl={assigneeMenuAnchorEl}
+                                                <Dropdown
                                                     open={assigneeMenuOpen}
-                                                    onClose={() => {
-                                                        setAssigneeMenuOpen(false);
-                                                        setAssigneeSearch(''); // Reset search when closing
+                                                    onOpenChange={(open) => {
+                                                        if (!open) {
+                                                            setAssigneeMenuOpen(false);
+                                                            setAssigneeSearch('');
+                                                        }
                                                     }}
-                                                    anchorOrigin={{
-                                                        vertical: 'bottom',
-                                                        horizontal: 'left',
-                                                    }}
-                                                    transformOrigin={{
-                                                        vertical: 'top',
-                                                        horizontal: 'left',
-                                                    }}
-                                                    PaperProps={{
-                                                        sx: {
-                                                            mt: 0.5,
+                                                    trigger={['click']}
+                                                    overlay={
+                                                        <div style={{
+                                                            marginTop: 4,
                                                             boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
                                                             borderRadius: '8px',
                                                             minWidth: '250px',
-                                                            maxHeight: '400px'
-                                                        }
-                                                    }}
-                                                >
-                                                    <Box sx={{ p: 1, borderBottom: '1px solid rgba(0, 0, 0, 0.08)' }}>
-                                                        <TextField
+                                                            maxHeight: '400px',
+                                                            backgroundColor: 'white',
+                                                            border: '1px solid #f0f0f0'
+                                                        }}>
+                                                    <div style={{ padding: 8, borderBottom: '1px solid rgba(0, 0, 0, 0.08)' }}>
+                                                        <Input
                                                             size="small"
-                                                            fullWidth
                                                             placeholder="Search members..."
                                                             value={assigneeSearch}
                                                             onChange={(e) => setAssigneeSearch(e.target.value)}
-                                                            InputProps={{
-                                                                startAdornment: (
-                                                                    <SearchIcon 
-                                                                        fontSize="small" 
-                                                                        sx={{ 
-                                                                            color: 'action.active',
-                                                                            mr: 1
-                                                                        }} 
-                                                                    />
-                                                                ),
-                                                                sx: {
-                                                                    fontSize: '0.875rem',
-                                                                    '& .MuiOutlinedInput-notchedOutline': {
-                                                                        borderColor: 'rgba(0, 0, 0, 0.08)'
-                                                                    },
-                                                                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                                        borderColor: 'rgba(0, 0, 0, 0.15)'
-                                                                    },
-                                                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                                                        borderColor: '#1976d2'
-                                                                    }
-                                                                }
+                                                            prefix={<SearchOutlined />}
+                                                            style={{
+                                                                fontSize: '14px',
+                                                                borderColor: 'rgba(0, 0, 0, 0.08)'
                                                             }}
                                                         />
-                                                    </Box>
-                                                    <Box sx={{ 
+                                                    </div>
+                                                    <div style={{ 
                                                         maxHeight: 300,
                                                         overflow: 'auto',
                                                         ...(filteredAgents.length === 0 && {
                                                             display: 'flex',
                                                             justifyContent: 'center',
                                                             alignItems: 'center',
-                                                            py: 2
+                                                            padding: '16px 0'
                                                         })
                                                     }}>
                                                         {filteredAgents.length > 0 ? (
@@ -2450,128 +2572,109 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                                     null;
                                                                 
                                                                 return (
-                                                                    <MenuItem 
+                                                                    <div 
                                                                         key={agent.id} 
                                                                         onClick={() => {
                                                                             handleAgentSelect({ target: { value: agent.id }});
                                                                             setAssigneeMenuOpen(false);
                                                                             setAssigneeSearch('');
                                                                         }}
-                                                                        sx={{ 
+                                                                        style={{ 
                                                                             display: 'flex',
                                                                             alignItems: 'center',
-                                                                            gap: 1,
-                                                                            py: 1,
-                                                                            px: 2,
-                                                                            '&:hover': {
-                                                                                backgroundColor: 'rgba(25, 118, 210, 0.08)'
-                                                                            }
+                                                                            gap: 8,
+                                                                            padding: '8px 16px',
+                                                                            cursor: 'pointer'
+                                                                        }}
+                                                                        onMouseEnter={(e) => {
+                                                                            e.currentTarget.style.backgroundColor = 'rgba(25, 118, 210, 0.08)';
+                                                                        }}
+                                                                        onMouseLeave={(e) => {
+                                                                            e.currentTarget.style.backgroundColor = 'transparent';
                                                                         }}
                                                                     >
                                                                         <Avatar
                                                                             src={avatarUrl}
-                                                                            alt={agent.initials}
-                                                                            sx={{ 
-                                                                                width: 24, 
-                                                                                height: 24,
-                                                                                bgcolor: '#1976d2',
-                                                                                fontSize: '0.75rem',
+                                                                            size={24}
+                                                                            style={{ 
+                                                                                backgroundColor: '#1976d2',
+                                                                                fontSize: '12px',
                                                                                 fontWeight: 500
                                                                             }}
                                                                         >
                                                                             {agent.initials}
                                                                         </Avatar>
-                                                                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                                                            <Typography variant="body2" sx={{ 
-                                                                                fontSize: '0.875rem', 
+                                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                                            <Typography.Text style={{ 
+                                                                                fontSize: '14px', 
                                                                                 fontWeight: 500,
-                                                                                color: 'text.primary',
+                                                                                color: 'rgba(0, 0, 0, 0.85)',
                                                                                 lineHeight: 1.2
                                                                             }}>
                                                                                 {agent.username || agent.fullName}
-                                                                            </Typography>
+                                                                            </Typography.Text>
                                                                             {agent.username && agent.fullName && agent.username !== agent.fullName && (
-                                                                                <Typography variant="caption" sx={{ 
-                                                                                    color: 'text.secondary',
-                                                                                    fontSize: '0.75rem',
+                                                                                <Typography.Text style={{ 
+                                                                                    color: 'rgba(0, 0, 0, 0.45)',
+                                                                                    fontSize: '12px',
                                                                                     lineHeight: 1.2
                                                                                 }}>
                                                                                     {agent.fullName}
-                                                                                </Typography>
+                                                                                </Typography.Text>
                                                                             )}
-                                                                        </Box>
-                                                                    </MenuItem>
+                                                                        </div>
+                                                                    </div>
                                                                 );
                                                             })
                                                         ) : (
-                                                            <Typography 
-                                                                variant="body2" 
-                                                                sx={{ 
-                                                                    color: 'text.secondary',
-                                                                    fontStyle: 'italic'
+                                                            <Typography.Text 
+                                                                style={{ 
+                                                                    color: 'rgba(0, 0, 0, 0.45)',
+                                                                    fontStyle: 'italic',
+                                                                    padding: '16px',
+                                                                    textAlign: 'center',
+                                                                    display: 'block'
                                                                 }}
                                                             >
                                                                 No members found
-                                                            </Typography>
+                                                            </Typography.Text>
                                                         )}
-                                                    </Box>
-                                                </Menu>
+                                                    </div>
+                                                </div>
+                                            }
+                                        >
+                                            <div />
+                                        </Dropdown>
                                             </>
                                         )}
-                                    </Stack>
+                                    </Space>
                                 )}
 
                                 {/* Resolution Times */}
                                 {renderResolutionTimes()}
-                            </Stack>
-                        </Box>
-                    </Box>
-                </Paper>
+                            </Space>
+                        </div>
+                    </div>
+                </div>
             </Modal>
 
             {/* Confirm Dialog */}
-            <Dialog 
-                open={confirmOpen} 
-                onClose={() => setConfirmOpen(false)}
-                PaperProps={{
-                    sx: {
-                        borderRadius: 2,
-                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
-                    }
+            <Modal
+                open={confirmOpen}
+                onCancel={() => setConfirmOpen(false)}
+                title="Confirm Action"
+                onOk={handleConfirm}
+                okText="Confirm"
+                cancelText="Cancel"
+                style={{
+                    borderRadius: 8,
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)'
                 }}
             >
-                <DialogTitle>
-                    Confirm Action
-                </DialogTitle>
-                <DialogContent>
-                    <DialogContentText>
-                        {confirmAction?.message}
-                    </DialogContentText>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
-                    <Button onClick={handleConfirm} variant="contained" autoFocus>
-                        Confirm
-                    </Button>
-                </DialogActions>
-            </Dialog>
-
-            {/* Snackbar Notification */}
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={3000}
-                onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-            >
-                <Alert
-                    onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-                    severity={snackbar.severity}
-                    variant="filled"
-                    sx={{ width: '100%' }}
-                >
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
+                <Typography.Text>
+                    {confirmAction?.message}
+                </Typography.Text>
+            </Modal>
         </>
     );
 };

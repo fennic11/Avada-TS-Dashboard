@@ -54,7 +54,7 @@ const TIME_GROUPS = [
 
 function formatMinutes(mins) {
     if (!mins || isNaN(mins)) return '—';
-    if (mins < 60) return `${mins} min`;
+    if (mins < 60) return `${Math.round(mins * 10) / 10} min`;
     if (mins < 1440) return `${(mins / 60).toFixed(1)} h`;
     const days = Math.floor(mins / 1440);
     const hours = ((mins % 1440) / 60).toFixed(1);
@@ -91,7 +91,7 @@ function averageTime(cards, field) {
     const values = cards.map(c => Number(c[field])).filter(v => !isNaN(v) && v > 0);
     if (values.length === 0) return null;
     const total = values.reduce((a, b) => a + b, 0);
-    return total / values.length;
+    return Math.round((total / values.length) * 10) / 10;
 }
 
 function groupAverageByDate(cards, field) {
@@ -113,7 +113,7 @@ function groupAverageByDate(cards, field) {
         .sort((a, b) => new Date(a[0]) - new Date(b[0]))
         .map(([date, { total, count }]) => ({
             date,
-            average: count > 0 ? Math.round(total / count) : 0
+            average: count > 0 ? Math.round((total / count) * 10) / 10 : 0
         }));
 }
 
@@ -255,10 +255,10 @@ function calculateAgentLeaderboard(cards) {
     return Array.from(agentStats.values())
         .map(stats => ({
             ...stats,
-            averageTime: stats.cardCount > 0 ? stats.totalTime / stats.cardCount : 0,
-            avgResolutionTime: stats.cardCount > 0 ? stats.resolutionTime / stats.cardCount : 0,
-            avgFirstActionTime: stats.cardCount > 0 ? stats.firstActionTime / stats.cardCount : 0,
-            avgResolutionTimeTS: stats.cardCount > 0 ? stats.resolutionTimeTS / stats.cardCount : 0
+            averageTime: stats.cardCount > 0 ? Math.round((stats.totalTime / stats.cardCount) * 10) / 10 : 0,
+            avgResolutionTime: stats.cardCount > 0 ? Math.round((stats.resolutionTime / stats.cardCount) * 10) / 10 : 0,
+            avgFirstActionTime: stats.cardCount > 0 ? Math.round((stats.firstActionTime / stats.cardCount) * 10) / 10 : 0,
+            avgResolutionTimeTS: stats.cardCount > 0 ? Math.round((stats.resolutionTimeTS / stats.cardCount) * 10) / 10 : 0
         }))
         .filter(stats => stats.cardCount > 0)
         .sort((a, b) => a.averageTime - b.averageTime);
