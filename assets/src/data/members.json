@@ -809,7 +809,7 @@
       "slackId": "U08QY52JK8A",
       "role": "CS",
       "group": "CS3",
-      "kpiName": "ThuyNNT"
+      "kpiName": "ThuyNNT1"
     },
     {
       "id": "682175c3e94e4f5644a59d3d",
@@ -841,7 +841,7 @@
       "slackId": "U08RFT1KWBZ",
       "role": "CS",
       "group": "CS3",
-      "kpiName": "LinhNT"
+      "kpiName": "LinhNT3"
     },
     {
       "id": "6821786d902bc9ef54452b24",
@@ -895,7 +895,8 @@
       "initials": "H",
       "slackId": "U08T11T6GDA",
       "role": "CS",
-      "group": "CS4"
+      "group": "CS4",
+      "kpiName": "HienNT3"
     },
     {
       "id": "682ab78028a7ac043be33dca",
