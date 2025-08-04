@@ -938,5 +938,16 @@
       "slackId": "U0902NJ53P1",
       "role": "TS",
       "group": "TS1"
+    },
+    {
+      "id": "684fb68d42e41bef96450446",
+      "fullName": "Trần Thị Ngọc Ánh",
+      "username": "annie_avada",
+      "avatarUrl": "https://trello-members.s3.amazonaws.com/684fb68d42e41bef96450446/e91dc5c4009c443ecc67a0b34ec85983",
+      "initials": "TÁ",
+      "role": "CS",
+      "group": "CS3",
+      "kpiName": "AnhPM",
+      "slackId": "U091CDSGZ3Q"
     }
   ]

@@ -48,6 +48,17 @@ const IssuesKpiSummary = () => {
     const [bugsOpen, setBugsOpen] = useState(false);
     const [selectedCard, setSelectedCard] = useState(null);
     const [modalOpen, setModalOpen] = useState(false);
+    const [teamTotalKPI, setTeamTotalKPI] = useState({
+        totalPoints: 0,
+        totalCards: 0,
+        totalMembers: 0,
+        averagePoints: 0
+    });
+    const [tabKPIs, setTabKPIs] = useState({
+        issues: { totalPoints: 0, totalCards: 0, totalMembers: 0, averagePoints: 0 },
+        bugs: { totalPoints: 0, totalCards: 0, totalMembers: 0, averagePoints: 0 },
+        speedUp: { totalPoints: 0, totalCards: 0, totalMembers: 0, averagePoints: 0 }
+    });
 
     useEffect(() => {
         const fetchLists = async () => {
@@ -159,6 +170,30 @@ const IssuesKpiSummary = () => {
                 setSingleMemberKPIs(singleKPI);
                 setNoLevelCards(noLevelCards);
                 setMultiLevelCards(multiLevelCards);
+
+                // Calculate team total KPI
+                const totalPoints = Object.values(singleKPI).reduce((sum, data) => sum + data.points, 0);
+                const totalCards = Object.values(singleKPI).reduce((sum, data) => sum + data.cards.length, 0);
+                const totalMembers = Object.keys(singleKPI).length;
+                const averagePoints = totalMembers > 0 ? Math.round(totalPoints / totalMembers * 100) / 100 : 0;
+
+                setTeamTotalKPI({
+                    totalPoints,
+                    totalCards,
+                    totalMembers,
+                    averagePoints
+                });
+
+                // Update Issues tab KPI
+                setTabKPIs(prev => ({
+                    ...prev,
+                    issues: {
+                        totalPoints,
+                        totalCards,
+                        totalMembers,
+                        averagePoints
+                    }
+                }));
             } catch (error) {
                 console.error(error);
                 alert("Đã có lỗi khi lấy dữ liệu từ Trello.");
@@ -439,6 +474,13 @@ const IssuesKpiSummary = () => {
         setSelectedCard(null);
     };
 
+    const handleBugsKpiDataChange = (bugsKpiData) => {
+        setTabKPIs(prev => ({
+            ...prev,
+            bugs: bugsKpiData
+        }));
+    };
+
     const handleReset = async () => {
         setLoading(true);
         try {
@@ -536,6 +578,30 @@ const IssuesKpiSummary = () => {
                 setSingleMemberKPIs(singleKPI);
                 setNoLevelCards(noLevelCards);
                 setMultiLevelCards(multiLevelCards);
+
+                // Calculate team total KPI
+                const totalPoints = Object.values(singleKPI).reduce((sum, data) => sum + data.points, 0);
+                const totalCards = Object.values(singleKPI).reduce((sum, data) => sum + data.cards.length, 0);
+                const totalMembers = Object.keys(singleKPI).length;
+                const averagePoints = totalMembers > 0 ? Math.round(totalPoints / totalMembers * 100) / 100 : 0;
+
+                setTeamTotalKPI({
+                    totalPoints,
+                    totalCards,
+                    totalMembers,
+                    averagePoints
+                });
+
+                // Update Issues tab KPI
+                setTabKPIs(prev => ({
+                    ...prev,
+                    issues: {
+                        totalPoints,
+                        totalCards,
+                        totalMembers,
+                        averagePoints
+                    }
+                }));
             }
         } catch (error) {
             console.error('Error resetting data:', error);
@@ -630,6 +696,8 @@ const IssuesKpiSummary = () => {
                     </Box>
                 </Box>
             </Paper>
+
+
 
             {/* Tabs Section */}
             <Paper 
@@ -886,6 +954,75 @@ const IssuesKpiSummary = () => {
                                     </Box>
                                 </Box>
                             </Box>
+
+                            {/* Issues Tab KPI Summary */}
+                            <Paper 
+                                elevation={0}
+                                sx={{ 
+                                    mb: 4,
+                                    p: 3,
+                                    borderRadius: 3,
+                                    background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.primary.main, 0.03)} 100%)`,
+                                    border: `1px solid ${alpha(theme.palette.primary.main, 0.15)}`,
+                                }}
+                            >
+                                <Typography 
+                                    variant="h6" 
+                                    sx={{ 
+                                        mb: 3,
+                                        fontWeight: 600,
+                                        color: 'primary.main',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 2
+                                    }}
+                                >
+                                    <BarChartIcon sx={{ fontSize: 28 }} />
+                                    Tổng KPI Issues
+                                </Typography>
+                                <Grid container spacing={3}>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Box sx={{ textAlign: 'center', p: 2 }}>
+                                            <Typography variant="h4" sx={{ color: 'primary.main', fontWeight: 700, mb: 1 }}>
+                                                {tabKPIs.issues.totalPoints}
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                                Tổng điểm
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Box sx={{ textAlign: 'center', p: 2 }}>
+                                            <Typography variant="h4" sx={{ color: 'info.main', fontWeight: 700, mb: 1 }}>
+                                                {tabKPIs.issues.totalCards}
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                                Tổng cards
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Box sx={{ textAlign: 'center', p: 2 }}>
+                                            <Typography variant="h4" sx={{ color: 'success.main', fontWeight: 700, mb: 1 }}>
+                                                {tabKPIs.issues.totalMembers}
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                                Thành viên
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Box sx={{ textAlign: 'center', p: 2 }}>
+                                            <Typography variant="h4" sx={{ color: 'warning.main', fontWeight: 700, mb: 1 }}>
+                                                {tabKPIs.issues.averagePoints}
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                                Điểm trung bình
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                </Grid>
+                            </Paper>
 
                             {/* Leaderboard Section */}
                             <Box sx={{ mt: 4 }}>
@@ -1332,12 +1469,150 @@ const IssuesKpiSummary = () => {
                                     </Box>
                                 </Menu>
                             </Box>
-                            <BugsKpiSummary selectedList={bugsSelectedList} />
+
+                            {/* Bugs Tab KPI Summary */}
+                            <Paper 
+                                elevation={0}
+                                sx={{ 
+                                    mb: 4,
+                                    p: 3,
+                                    borderRadius: 3,
+                                    background: `linear-gradient(135deg, ${alpha(theme.palette.error.main, 0.08)} 0%, ${alpha(theme.palette.error.main, 0.03)} 100%)`,
+                                    border: `1px solid ${alpha(theme.palette.error.main, 0.15)}`,
+                                }}
+                            >
+                                <Typography 
+                                    variant="h6" 
+                                    sx={{ 
+                                        mb: 3,
+                                        fontWeight: 600,
+                                        color: 'error.main',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 2
+                                    }}
+                                >
+                                    <BugReportIcon sx={{ fontSize: 28 }} />
+                                    Tổng KPI Bugs
+                                </Typography>
+                                <Grid container spacing={3}>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Box sx={{ textAlign: 'center', p: 2 }}>
+                                            <Typography variant="h4" sx={{ color: 'error.main', fontWeight: 700, mb: 1 }}>
+                                                {tabKPIs.bugs.totalPoints}
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                                Tổng điểm
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Box sx={{ textAlign: 'center', p: 2 }}>
+                                            <Typography variant="h4" sx={{ color: 'info.main', fontWeight: 700, mb: 1 }}>
+                                                {tabKPIs.bugs.totalCards}
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                                Tổng cards
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Box sx={{ textAlign: 'center', p: 2 }}>
+                                            <Typography variant="h4" sx={{ color: 'success.main', fontWeight: 700, mb: 1 }}>
+                                                {tabKPIs.bugs.totalMembers}
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                                Thành viên
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Box sx={{ textAlign: 'center', p: 2 }}>
+                                            <Typography variant="h4" sx={{ color: 'warning.main', fontWeight: 700, mb: 1 }}>
+                                                {tabKPIs.bugs.averagePoints}
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                                Điểm trung bình
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                </Grid>
+                            </Paper>
+
+                            <BugsKpiSummary selectedList={bugsSelectedList} onKpiDataChange={handleBugsKpiDataChange} />
                         </Paper>
                     </Box>
 
                     {/* Speed Up KPI Tab */}
                     <Box sx={{ display: activeTab === 2 ? 'block' : 'none' }}>
+                        {/* Speed Up Tab KPI Summary */}
+                        <Paper 
+                            elevation={0}
+                            sx={{ 
+                                mb: 4,
+                                p: 3,
+                                borderRadius: 3,
+                                background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.08)} 0%, ${alpha(theme.palette.warning.main, 0.03)} 100%)`,
+                                border: `1px solid ${alpha(theme.palette.warning.main, 0.15)}`,
+                            }}
+                        >
+                            <Typography 
+                                variant="h6" 
+                                sx={{ 
+                                    mb: 3,
+                                    fontWeight: 600,
+                                    color: 'warning.main',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 2
+                                }}
+                            >
+                                <TrendingUpIcon sx={{ fontSize: 28 }} />
+                                Tổng KPI Speed Up
+                            </Typography>
+                            <Grid container spacing={3}>
+                                <Grid item xs={12} sm={6} md={3}>
+                                    <Box sx={{ textAlign: 'center', p: 2 }}>
+                                        <Typography variant="h4" sx={{ color: 'warning.main', fontWeight: 700, mb: 1 }}>
+                                            {tabKPIs.speedUp.totalPoints}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                            Tổng điểm
+                                        </Typography>
+                                    </Box>
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={3}>
+                                    <Box sx={{ textAlign: 'center', p: 2 }}>
+                                        <Typography variant="h4" sx={{ color: 'info.main', fontWeight: 700, mb: 1 }}>
+                                            {tabKPIs.speedUp.totalCards}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                            Tổng cards
+                                        </Typography>
+                                    </Box>
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={3}>
+                                    <Box sx={{ textAlign: 'center', p: 2 }}>
+                                        <Typography variant="h4" sx={{ color: 'success.main', fontWeight: 700, mb: 1 }}>
+                                            {tabKPIs.speedUp.totalMembers}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                            Thành viên
+                                        </Typography>
+                                    </Box>
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={3}>
+                                    <Box sx={{ textAlign: 'center', p: 2 }}>
+                                        <Typography variant="h4" sx={{ color: 'primary.main', fontWeight: 700, mb: 1 }}>
+                                            {tabKPIs.speedUp.averagePoints}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                                            Điểm trung bình
+                                        </Typography>
+                                    </Box>
+                                </Grid>
+                            </Grid>
+                        </Paper>
                         <SpeedUpKPI />
                     </Box>
 

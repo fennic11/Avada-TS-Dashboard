@@ -50,7 +50,7 @@ const AllKpiTsTeam = () => {
                 setKpiTsTeam(cleanedData);
                 
                 // Get list IDs for "Fix done from dev" and "Done"
-                const fixDoneList = listsId.find(list => list.name === "Fix done from dev");
+                const fixDoneList = listsId.find(list => list.name === "fixDoneFromDev-T7-2025");
                 const doneLists = listsId.filter(list => list.name === "Done" || list.name === "Done-T7-2025");
                 
                 // Fetch cards from both lists separately

@@ -387,14 +387,6 @@
       "kpiName": "ChauHM"
     },
     {
-      "id": "683d27cb3fdd69ddec8f8169",
-      "fullName": "Ian",
-      "username": "ian_avada",
-      "slackId": "U0906HQUZTJ",
-      "role": "CS",
-      "group": "CS1"
-    },
-    {
       "id": "666fb133b64e1bc5d594d79b",
       "fullName": "Penelope",
       "email": "minhntm@avadagroup.com",
@@ -403,5 +395,15 @@
       "kpiName": "MinhNTM",
       "role": "CS",
       "group": "CS1"
+    },
+    {
+      "id": "684fb68d42e41bef96450446",
+      "fullName": "Trần Thị Ngọc Ánh",
+      "email": "anhttn@avadagroup.com",
+      "username": "annie_avada",
+      "slackId": "U091CDSGZ3Q",
+      "role": "CS",
+      "group": "CS3",
+      "kpiName": "AnhTTN"
     }
   ]

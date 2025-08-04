@@ -20,7 +20,7 @@ import members from '../../data/members.json';
 const BOARD_ID = '638d769884c52b05235a2310';
 const DEFAULT_LIST_ID = '663ae7d6feac5f2f8d7a1c86';
 
-const BugsKpiSummary = ({ selectedList = DEFAULT_LIST_ID }) => {
+const BugsKpiSummary = ({ selectedList = DEFAULT_LIST_ID, onKpiDataChange }) => {
     const [memberKPIs, setMemberKPIs] = useState({});
     const [loading, setLoading] = useState(true);
     const [lists, setLists] = useState([]);
@@ -34,6 +34,7 @@ const BugsKpiSummary = ({ selectedList = DEFAULT_LIST_ID }) => {
         const fetchLists = async () => {
             try {
                 const listsData = await getListsByBoardId(BOARD_ID);
+
                 if (listsData) {
                     setLists(listsData);
                 }
@@ -53,9 +54,11 @@ const BugsKpiSummary = ({ selectedList = DEFAULT_LIST_ID }) => {
                 setLoading(true);
 
                 const cards = await getCardsByList(currentList);
+                console.log(cards.length);
                 if (!cards) return;
 
                 const kpiData = {};
+                const totalCardsFetched = cards.length;
 
                 for (let card of cards) {
                     const memberIds = card.idMembers.filter(id => members.some(m => m.id === id));
@@ -91,6 +94,22 @@ const BugsKpiSummary = ({ selectedList = DEFAULT_LIST_ID }) => {
                 }
 
                 setMemberKPIs(kpiData);
+
+                // Calculate total KPI for Bugs tab
+                const totalPoints = Object.values(kpiData).reduce((sum, data) => sum + data.points, 0);
+                const totalCards = totalCardsFetched; // Use total cards fetched from the list
+                const totalMembers = Object.keys(kpiData).length;
+                const averagePoints = totalMembers > 0 ? Math.round(totalPoints / totalMembers * 100) / 100 : 0;
+
+                // Pass KPI data back to parent component
+                if (onKpiDataChange) {
+                    onKpiDataChange({
+                        totalPoints,
+                        totalCards,
+                        totalMembers,
+                        averagePoints
+                    });
+                }
             } catch (err) {
                 console.error(err);
                 alert("Đã xảy ra lỗi khi lấy dữ liệu tab Bugs.");
