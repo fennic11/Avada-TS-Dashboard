@@ -108,6 +108,8 @@ const determineUserRole = (email) => {
                 return ROLES.DEV;
             case 'pm':
                 return ROLES.PM;
+            case 'csl':
+                return ROLES.CSL;
             default:
                 return ROLES.BA;
         }

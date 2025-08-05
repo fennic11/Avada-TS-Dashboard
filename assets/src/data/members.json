@@ -133,7 +133,7 @@
       "initials": "E",
       "kpiName": "AnhBL",
       "slackId": "U02RT6QV57G",
-      "role": "CS"
+      "role": "CSL"
     },
     {
       "id": "62551dca9448af8ecea5ece8",
@@ -253,7 +253,7 @@
       "initials": "L",
       "kpiName": "LyHT",
       "slackId": "U02GT4PC6RH",
-      "role": "CS"
+      "role": "CSL"
     },
     {
       "id": "637af755c32e9d00297e0e14",
@@ -263,7 +263,7 @@
       "initials": "TL",
       "kpiName": "LinhTK",
       "slackId": "U04C4RE382V",
-      "role": "CS",
+      "role": "CSL",
       "group": "CS3"
     },
     {

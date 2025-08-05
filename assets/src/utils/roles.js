@@ -24,7 +24,8 @@ export const ROLES = {
     BA: 'ba',
     DEV: 'dev',
     TS_LEAD: 'ts-lead',
-    PM: 'pm'
+    PM: 'pm',
+    CSL: 'csl'
 };
 
 // Define permissions for each role
@@ -89,6 +90,14 @@ export const ROLE_PERMISSIONS = {
             TABS.PLAN_TS_TEAM
         ],
         description: 'Access to Plan Ts Team related features'
+    },
+    [ROLES.CSL]: {
+        allowedTabs: [
+            TABS.BUGS,
+            TABS.DEV_RESOLUTION_TIME,
+            TABS.PERFORMANCE_TS,
+        ],
+        description: 'Access to CSL related features'
     }
 };
 

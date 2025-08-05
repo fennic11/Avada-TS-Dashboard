@@ -23,6 +23,7 @@ import {
 } from '@mui/material';
 import { getCardsByList, getListsByBoardId } from '../api/trelloApi';
 import CardDetailModal from './CardDetailModal';
+import appData from '../data/app.json';
 
 const BaSummary = () => {
     const [selectedList, setSelectedList] = useState('');
@@ -101,6 +102,135 @@ const BaSummary = () => {
             });
         });
         return stats;
+    };
+
+    // Copy data organized by app
+    const handleCopyAppData = async () => {
+        try {
+            const today = new Date();
+            const formattedDate = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+            
+            // Group cards by app
+            const appStats = {};
+            
+            filteredCards.forEach(card => {
+                card.labels?.forEach(label => {
+                    if (label.name.startsWith('App')) {
+                        // Find app info from app.json
+                        const appInfo = appData.find(app => app.label_trello === label.name);
+                        if (appInfo) {
+                            const appName = appInfo.app_name;
+                            const productTeam = appInfo.product_team;
+                            const groupTS = appInfo.group_ts;
+                            
+                            if (!appStats[appName]) {
+                                appStats[appName] = {
+                                    product_team: productTeam,
+                                    group_ts: groupTS,
+                                    cardCount: 0
+                                };
+                            }
+                            
+                            appStats[appName].cardCount += 1;
+                        }
+                    }
+                });
+            });
+
+            // Convert to tab-separated format
+            const headers = ['Date', 'App Name', 'Card Count', 'Product Team', 'Group TS'];
+            const rows = [];
+            
+            Object.entries(appStats).forEach(([appName, data]) => {
+                rows.push([
+                    formattedDate,
+                    appName,
+                    data.cardCount,
+                    data.product_team,
+                    data.group_ts
+                ].join('\t'));
+            });
+
+            const exportData = [headers.join('\t'), ...rows].join('\n');
+            
+            await navigator.clipboard.writeText(exportData);
+            
+            setSnackbar({
+                open: true,
+                message: 'App data copied to clipboard successfully!',
+                severity: 'success'
+            });
+        } catch (error) {
+            console.error('Error copying app data:', error);
+            setSnackbar({
+                open: true,
+                message: 'Error copying app data to clipboard',
+                severity: 'error'
+            });
+        }
+    };
+
+    // Copy data organized by product team
+    const handleCopyTeamData = async () => {
+        try {
+            const today = new Date();
+            const formattedDate = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+            
+            // Group cards by product team
+            const teamStats = {};
+            
+            filteredCards.forEach(card => {
+                card.labels?.forEach(label => {
+                    if (label.name.startsWith('App')) {
+                        // Find app info from app.json
+                        const appInfo = appData.find(app => app.label_trello === label.name);
+                        if (appInfo) {
+                            const productTeam = appInfo.product_team;
+                            const groupTS = appInfo.group_ts;
+                            
+                            if (!teamStats[productTeam]) {
+                                teamStats[productTeam] = {
+                                    totalCards: 0,
+                                    groupTS: groupTS
+                                };
+                            }
+                            
+                            teamStats[productTeam].totalCards += 1;
+                        }
+                    }
+                });
+            });
+
+            // Convert to tab-separated format
+            const headers = ['Date', 'Product Team', 'Total Cards', 'Group TS'];
+            const rows = [];
+            
+            Object.entries(teamStats).forEach(([team, data]) => {
+                rows.push([
+                    formattedDate,
+                    team,
+                    data.totalCards,
+                    data.groupTS
+                ].join('\t'));
+            });
+
+            const exportData = [headers.join('\t'), ...rows].join('\n');
+            
+            await navigator.clipboard.writeText(exportData);
+            
+            setSnackbar({
+                open: true,
+                message: 'Team data copied to clipboard successfully!',
+                severity: 'success'
+            });
+        } catch (error) {
+            console.error('Error copying team data:', error);
+            setSnackbar({
+                open: true,
+                message: 'Error copying team data to clipboard',
+                severity: 'error'
+            });
+        }
     };
 
     useEffect(() => {
@@ -345,6 +475,54 @@ const BaSummary = () => {
                             ))}
                         </Select>
                     </FormControl>
+
+                    {/* Copy App Data Button */}
+                    <Button
+                        variant="contained"
+                        onClick={handleCopyAppData}
+                        disabled={filteredCards.length === 0}
+                        sx={{
+                            backgroundColor: '#2563eb',
+                            color: 'white',
+                            fontWeight: 600,
+                            borderRadius: 2,
+                            px: 3,
+                            py: 1.2,
+                            '&:hover': {
+                                backgroundColor: '#1d4ed8',
+                            },
+                            '&.Mui-disabled': {
+                                backgroundColor: '#9ca3af',
+                                color: '#6b7280'
+                            }
+                        }}
+                    >
+                        Copy App Data
+                    </Button>
+
+                    {/* Copy Team Data Button */}
+                    <Button
+                        variant="contained"
+                        onClick={handleCopyTeamData}
+                        disabled={filteredCards.length === 0}
+                        sx={{
+                            backgroundColor: '#16a34a',
+                            color: 'white',
+                            fontWeight: 600,
+                            borderRadius: 2,
+                            px: 3,
+                            py: 1.2,
+                            '&:hover': {
+                                backgroundColor: '#15803d',
+                            },
+                            '&.Mui-disabled': {
+                                backgroundColor: '#9ca3af',
+                                color: '#6b7280'
+                            }
+                        }}
+                    >
+                        Copy Team Data
+                    </Button>
                 </Box>
 
                 {/* Cards Display */}
