@@ -45,13 +45,13 @@ const AllKpiTsTeam = () => {
                 setLoading(true);
                 
                 // Fetch shift data
-                const kpiData = await getKpiTsTeam('2025-06-30', '2025-07-31');
+                const kpiData = await getKpiTsTeam('2025-07-31', '2025-08-30');
                 const cleanedData = kpiData.filter(item => item && Object.keys(item).length > 0);
                 setKpiTsTeam(cleanedData);
                 
                 // Get list IDs for "Fix done from dev" and "Done"
-                const fixDoneList = listsId.find(list => list.name === "fixDoneFromDev-T7-2025");
-                const doneLists = listsId.filter(list => list.name === "Done" || list.name === "Done-T7-2025");
+                const fixDoneList = listsId.find(list => list.name === "Fix done from dev");
+                const doneLists = listsId.filter(list => list.name === "Done");
                 
                 // Fetch cards from both lists separately
                 const fixDoneCards = [];
@@ -278,7 +278,7 @@ const AllKpiTsTeam = () => {
                             fontWeight: 300
                         }}
                     >
-                        Tháng 7/2025 (Ca trực + Issues)
+                        Tháng 8/2025 (Ca trực + Issues)
                     </Typography>
                 </Box>
 
