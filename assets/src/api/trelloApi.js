@@ -825,3 +825,156 @@ export async function getManyActionsOnBoard(since, before) {
         return [];
     }
 }
+
+/**
+ * Tạo webhook cho board
+ * @param {string} callbackURL - URL callback cho webhook
+ * @param {string} description - Mô tả webhook
+ * @param {string} idModel - ID của model (board, card, list, etc.)
+ * @returns {Promise<Object>} - Thông tin webhook đã tạo
+ */
+export async function createWebhook(callbackURL, description, idModel) {
+    try {
+        const { key, token } = getCredentials();
+        const url = `${API_URL}/webhooks?key=${key}&token=${token}`;
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json'
+            },
+            body: JSON.stringify({
+                callbackURL,
+                description,
+                idModel
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to create webhook: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('data', data);
+        return data;
+    } catch (error) {
+        console.error('Error creating webhook:', error);
+        throw error;
+    }
+}
+
+/**
+ * Lấy danh sách webhooks
+ * @returns {Promise<Array>} - Danh sách webhooks
+ */
+export async function getWebhooks() {
+    try {
+        const { key, token } = getCredentials();
+        const url = `${API_URL}/tokens/${token}/webhooks?key=${key}`;
+        
+        const response = await fetch(url, {
+            headers: {
+                Accept: 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to get webhooks: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error getting webhooks:', error);
+        throw error;
+    }
+}
+
+/**
+ * Lấy thông tin webhook theo ID
+ * @param {string} webhookId - ID của webhook
+ * @returns {Promise<Object>} - Thông tin webhook
+ */
+export async function getWebhookById(webhookId) {
+    try {
+        const { key, token } = getCredentials();
+        const url = `${API_URL}/webhooks/${webhookId}?key=${key}&token=${token}`;
+        
+        const response = await fetch(url, {
+            headers: {
+                Accept: 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to get webhook: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error getting webhook by ID:', error);
+        throw error;
+    }
+}
+
+/**
+ * Cập nhật webhook
+ * @param {string} webhookId - ID của webhook
+ * @param {Object} updateData - Dữ liệu cập nhật (callbackURL, description, active)
+ * @returns {Promise<Object>} - Thông tin webhook đã cập nhật
+ */
+export async function updateWebhook(webhookId, updateData) {
+    try {
+        const { key, token } = getCredentials();
+        const url = `${API_URL}/webhooks/${webhookId}?key=${key}&token=${token}`;
+        
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json'
+            },
+            body: JSON.stringify(updateData)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to update webhook: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error updating webhook:', error);
+        throw error;
+    }
+}
+
+/**
+ * Xóa webhook
+ * @param {string} webhookId - ID của webhook
+ * @returns {Promise<boolean>} - True nếu xóa thành công
+ */
+export async function deleteWebhook(webhookId) {
+    try {
+        const { key, token } = getCredentials();
+        const url = `${API_URL}/webhooks/${webhookId}?key=${key}&token=${token}`;
+        
+        const response = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+                Accept: 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to delete webhook: ${response.status} ${response.statusText}`);
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error deleting webhook:', error);
+        throw error;
+    }
+}

@@ -24,7 +24,10 @@ import {
     getActionsByCard,
     getListsByBoardId,
     getMembers,
-    getBoardLabels
+    getBoardLabels,
+    createWebhook,
+    getWebhooks,
+    deleteWebhook
 } from "../api/trelloApi";
 import { calculateResolutionTime } from "../utils/resolutionTime";
 import { postCards } from "../api/cardsApi";
@@ -96,6 +99,15 @@ const DevZone = () => {
 
     // Add new state for multiple lists
     const [listIds, setListIds] = useState(['']);
+
+    // Webhook states
+    const [webhooks, setWebhooks] = useState(null);
+    const [isWebhooksModalOpen, setIsWebhooksModalOpen] = useState(false);
+    const [webhookFormData, setWebhookFormData] = useState({
+        callbackURL: '',
+        description: '',
+        idModel: ''
+    });
 
     const [conversationNote, setConversationNote] = useState('');
 
@@ -650,6 +662,124 @@ const DevZone = () => {
         }
     };
 
+    // Webhook functions
+    const handleGetWebhooks = async () => {
+        try {
+            setIsLoading(true);
+            const webhooksData = await getWebhooks();
+            setWebhooks(webhooksData);
+            setIsWebhooksModalOpen(true);
+        } catch (error) {
+            console.error('Error fetching webhooks:', error);
+            setSnackbar({
+                open: true,
+                message: "Không thể lấy danh sách webhooks. Vui lòng thử lại.",
+                severity: "error"
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCreateWebhook = async () => {
+        if (!webhookFormData.callbackURL.trim() || !webhookFormData.description.trim() || !webhookFormData.idModel.trim()) {
+            setSnackbar({
+                open: true,
+                message: "Vui lòng nhập đầy đủ thông tin webhook",
+                severity: "warning"
+            });
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            const newWebhook = await createWebhook(
+                webhookFormData.callbackURL,
+                webhookFormData.description,
+                webhookFormData.idModel
+            );
+            
+            setSnackbar({
+                open: true,
+                message: "Tạo webhook thành công!",
+                severity: "success"
+            });
+            
+            // Reset form
+            setWebhookFormData({
+                callbackURL: '',
+                description: '',
+                idModel: ''
+            });
+        } catch (error) {
+            console.error('Create webhook error:', error);
+            setSnackbar({
+                open: true,
+                message: error.message || "Có lỗi xảy ra khi tạo webhook",
+                severity: "error"
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteWebhook = async (webhookId) => {
+        if (!webhookId) {
+            setSnackbar({
+                open: true,
+                message: "Vui lòng nhập Webhook ID",
+                severity: "warning"
+            });
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            await deleteWebhook(webhookId);
+            
+            setSnackbar({
+                open: true,
+                message: "Xóa webhook thành công!",
+                severity: "success"
+            });
+        } catch (error) {
+            console.error('Delete webhook error:', error);
+            setSnackbar({
+                open: true,
+                message: error.message || "Có lỗi xảy ra khi xóa webhook",
+                severity: "error"
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCloseWebhooksModal = () => {
+        setIsWebhooksModalOpen(false);
+        setWebhooks(null);
+    };
+
+    const handleCopyWebhooksJSON = () => {
+        if (webhooks) {
+            navigator.clipboard.writeText(JSON.stringify(webhooks, null, 2))
+                .then(() => {
+                    setSnackbar({
+                        open: true,
+                        message: "Đã sao chép JSON vào clipboard",
+                        severity: "success"
+                    });
+                })
+                .catch(err => {
+                    console.error('Failed to copy:', err);
+                    setSnackbar({
+                        open: true,
+                        message: "Không thể sao chép JSON",
+                        severity: "error"
+                    });
+                });
+        }
+    };
+
     return (
         <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -919,6 +1049,107 @@ const DevZone = () => {
                         >
                             Cập nhật
                         </Button>
+                    </Box>
+                </Paper>
+
+                {/* Phần quản lý Webhook */}
+                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
+                        Quản lý Webhook
+                    </Typography>
+                    
+                    {/* Get Webhooks */}
+                    <Box sx={{ mb: 3 }}>
+                        <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 500 }}>
+                            Lấy danh sách Webhooks
+                        </Typography>
+                        <Button 
+                            variant="contained" 
+                            onClick={handleGetWebhooks}
+                            disabled={isLoading}
+                            sx={{ 
+                                minWidth: 200,
+                                borderRadius: 1
+                            }}
+                        >
+                            Lấy danh sách Webhooks
+                        </Button>
+                    </Box>
+
+                    {/* Create Webhook */}
+                    <Box sx={{ mb: 3 }}>
+                        <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 500 }}>
+                            Tạo Webhook mới
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <TextField
+                                label="Callback URL"
+                                value={webhookFormData.callbackURL}
+                                onChange={(e) => setWebhookFormData({ ...webhookFormData, callbackURL: e.target.value })}
+                                fullWidth
+                                placeholder="https://your-domain.com/webhook"
+                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
+                            />
+                            <TextField
+                                label="Description"
+                                value={webhookFormData.description}
+                                onChange={(e) => setWebhookFormData({ ...webhookFormData, description: e.target.value })}
+                                fullWidth
+                                placeholder="Mô tả webhook"
+                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
+                            />
+                            <TextField
+                                label="Model ID"
+                                value={webhookFormData.idModel}
+                                onChange={(e) => setWebhookFormData({ ...webhookFormData, idModel: e.target.value })}
+                                fullWidth
+                                placeholder="ID của board, card, list, etc."
+                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
+                            />
+                            <Button 
+                                variant="contained" 
+                                onClick={handleCreateWebhook}
+                                disabled={isLoading}
+                                sx={{ 
+                                    alignSelf: 'flex-start',
+                                    minWidth: 120,
+                                    borderRadius: 1,
+                                    textTransform: 'none',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                Tạo Webhook
+                            </Button>
+                        </Box>
+                    </Box>
+
+                    {/* Delete Webhook */}
+                    <Box>
+                        <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 500 }}>
+                            Xóa Webhook
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                            <TextField
+                                label="Webhook ID"
+                                fullWidth
+                                placeholder="Nhập ID của webhook cần xóa"
+                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1 } }}
+                                onChange={(e) => setWebhookFormData({ ...webhookFormData, idModel: e.target.value })}
+                            />
+                            <Button 
+                                variant="contained" 
+                                color="error"
+                                onClick={() => handleDeleteWebhook(webhookFormData.idModel)}
+                                disabled={isLoading}
+                                sx={{ 
+                                    minWidth: 120,
+                                    height: '56px',
+                                    borderRadius: 1
+                                }}
+                            >
+                                Xóa Webhook
+                            </Button>
+                        </Box>
                     </Box>
                 </Paper>
 
@@ -1592,6 +1823,85 @@ const DevZone = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseExportModal}>Đóng</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Webhooks Modal */}
+            <Dialog
+                open={isWebhooksModalOpen}
+                onClose={handleCloseWebhooksModal}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center' 
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Typography variant="h6">
+                                Webhooks
+                            </Typography>
+                            {webhooks && (
+                                <Chip 
+                                    label={`${webhooks.length} webhooks`}
+                                    size="small"
+                                    sx={{ 
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                        color: 'primary.main',
+                                        fontWeight: 500
+                                    }}
+                                />
+                            )}
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {webhooks && (
+                                <Tooltip title="Copy JSON">
+                                    <IconButton 
+                                        onClick={handleCopyWebhooksJSON}
+                                        sx={{ 
+                                            color: 'primary.main',
+                                            '&:hover': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                                            }
+                                        }}
+                                    >
+                                        <ContentCopyIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+                            <IconButton onClick={handleCloseWebhooksModal}>
+                                <CloseIcon />
+                            </IconButton>
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    {webhooks && (
+                        <Paper 
+                            sx={{ 
+                                p: 2, 
+                                backgroundColor: '#f5f5f5',
+                                maxHeight: '60vh',
+                                overflow: 'auto'
+                            }}
+                        >
+                            <pre style={{ 
+                                margin: 0,
+                                whiteSpace: 'pre-wrap',
+                                wordWrap: 'break-word',
+                                fontFamily: 'monospace',
+                                fontSize: '14px',
+                                lineHeight: '1.5'
+                            }}>
+                                {JSON.stringify(webhooks, null, 2)}
+                            </pre>
+                        </Paper>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseWebhooksModal}>Đóng</Button>
                 </DialogActions>
             </Dialog>
 

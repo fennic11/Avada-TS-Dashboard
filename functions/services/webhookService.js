@@ -16,6 +16,12 @@ const createWebhook = async () => {
     });
 }
 
+const receiveWebhook = async (req, res) => {
+    console.log(req.body);
+    res.status(200).json({ message: "Webhook received" });
+}
+
 module.exports = {
-    createWebhook
+    createWebhook,
+    receiveWebhook
 }

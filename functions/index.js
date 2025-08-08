@@ -57,6 +57,10 @@ app.get('/', (req, res) => {
 
 // API Routes
 app.use('/api', api);
+app.head('/webhook', (req, res) => {
+    console.log(req.body);
+    res.status(200).json({ message: "Webhook received" });
+});
 app.use('/webhook', webhookRoutes);
 // 404 handler
 app.use((req, res, next) => {

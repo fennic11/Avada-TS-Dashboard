@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Card, Typography, Row, Col, Button, Select, DatePicker, Modal, Spin, Tag, Space, Divider, Progress, Statistic, Alert, Badge } from 'antd';
+import { Table, Card, Typography, Row, Col, Button, Select, DatePicker, Modal, Spin, Tag, Space, Divider, Progress, Statistic, Alert, Badge, Checkbox } from 'antd';
 import { getDevFixingCards } from '../../api/trelloApi';
 import appData from '../../data/app.json';
 import { ReloadOutlined, BugOutlined, TeamOutlined, AppstoreOutlined, ClockCircleOutlined } from '@ant-design/icons';
@@ -30,6 +30,16 @@ export default function DevFixingDashboard() {
   const [dateRange, setDateRange] = useState([]);
   const [selectedCard, setSelectedCard] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [filterOptions, setFilterOptions] = useState({
+    pending: true,
+    done: false
+  });
+
+  // List IDs for different statuses
+  const LIST_IDS = {
+    pending: '63c7b1a68e5576001577d65c', // Waiting to fix (from dev)
+    done: '663ae7d6feac5f2f8d7a1c86'     // Fix done from dev
+  };
 
   // Map app name to product_team
   const appToTeam = {};
@@ -99,9 +109,31 @@ export default function DevFixingDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const pendingData = await getDevFixingCards('63c7b1a68e5576001577d65c');
-      const mappedPendingCards = processCards(pendingData);
-      setCards(mappedPendingCards);
+      
+      let allCards = [];
+      
+      // Fetch pending cards if checkbox is checked
+      if (filterOptions.pending) {
+        const pendingData = await getDevFixingCards(LIST_IDS.pending);
+        const mappedPendingCards = processCards(pendingData);
+        allCards = [...allCards, ...mappedPendingCards];
+      }
+      
+      // Fetch done cards if checkbox is checked
+      if (filterOptions.done) {
+        const doneData = await getDevFixingCards(LIST_IDS.done);
+        const mappedDoneCards = processCards(doneData);
+        allCards = [...allCards, ...mappedDoneCards];
+      }
+      
+      // If no checkboxes are selected, default to pending
+      if (!filterOptions.pending && !filterOptions.done) {
+        const pendingData = await getDevFixingCards(LIST_IDS.pending);
+        const mappedPendingCards = processCards(pendingData);
+        allCards = mappedPendingCards;
+      }
+      
+      setCards(allCards);
     } catch (error) {
       console.error('Lỗi khi lấy dữ liệu:', error);
     } finally {
@@ -111,7 +143,7 @@ export default function DevFixingDashboard() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [filterOptions.pending, filterOptions.done]);
 
   // Filter logic
   let filteredCards = cards;
@@ -262,13 +294,13 @@ export default function DevFixingDashboard() {
             <BugOutlined style={{ marginRight: 12, color: '#2563eb' }} />
             Bugs Management Dashboard
           </Title>
-          <Text type="secondary">Monitor and control pending bugs across teams and applications</Text>
+          <Text type="secondary">Monitor and control bugs across teams and apps</Text>
         </div>
 
         {/* Key Metrics with animation */}
         <Row gutter={[24, 24]} style={{ marginBottom: 32 }}>
           {[{
-            title: 'Total Pending Bugs',
+            title: 'Total Bugs',
             value: totalBugs,
             valueStyle: { color: '#e53935', fontSize: 28, fontWeight: 700 },
             prefix: <BugOutlined style={{ marginRight: 8 }} />,
@@ -358,6 +390,26 @@ export default function DevFixingDashboard() {
               >
                 Refresh Data
               </Button>
+            </Col>
+          </Row>
+          
+          {/* Checkbox Filters */}
+          <Row style={{ marginTop: 16 }}>
+            <Col span={24}>
+              <Space>
+                <Checkbox
+                  checked={filterOptions.pending}
+                  onChange={(e) => setFilterOptions(prev => ({ ...prev, pending: e.target.checked }))}
+                >
+                  Pending
+                </Checkbox>
+                <Checkbox
+                  checked={filterOptions.done}
+                  onChange={(e) => setFilterOptions(prev => ({ ...prev, done: e.target.checked }))}
+                >
+                  Done
+                </Checkbox>
+              </Space>
             </Col>
           </Row>
         </Card>
