@@ -5,6 +5,7 @@ import appData from '../../data/app.json';
 import { ReloadOutlined, BugOutlined, TeamOutlined, AppstoreOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
+import CardDetailModal from '../CardDetailModal';
 
 const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
@@ -28,8 +29,8 @@ export default function DevFixingDashboard() {
   const [selectedApp, setSelectedApp] = useState('Tất cả');
   const [selectedTeam, setSelectedTeam] = useState('Tất cả');
   const [dateRange, setDateRange] = useState([]);
-  const [selectedCard, setSelectedCard] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedCardId, setSelectedCardId] = useState(null);
+  const [cardDetailModalOpen, setCardDetailModalOpen] = useState(false);
   const [filterOptions, setFilterOptions] = useState({
     pending: true,
     done: false
@@ -228,7 +229,7 @@ export default function DevFixingDashboard() {
       render: (text, record) => (
         <a 
           style={{ fontWeight: 500, color: '#2563eb' }}
-          onClick={() => { setSelectedCard(record); setModalOpen(true); }}
+          onClick={() => { setSelectedCardId(record.id); setCardDetailModalOpen(true); }}
         >
           {text}
         </a>
@@ -599,34 +600,12 @@ export default function DevFixingDashboard() {
           </Spin>
         </Card>
 
-        {/* Bug Detail Modal */}
-        <Modal
-          open={modalOpen}
-          onCancel={() => setModalOpen(false)}
-          footer={null}
-          width={600}
-          title="Bug Details"
-          style={{ borderRadius: 8 }}
-        >
-          {selectedCard && (
-            <div style={{ fontSize: 14, lineHeight: 1.6 }}>
-              <Row gutter={[16, 16]}>
-                <Col span={12}>
-                  <div><strong>Bug Name:</strong> {selectedCard.name}</div>
-                  <div><strong>App:</strong> {selectedCard.app}</div>
-                  <div><strong>Team:</strong> {selectedCard.productTeam || 'N/A'}</div>
-                </Col>
-                <Col span={12}>
-                  <div><strong>Days Pending:</strong> {selectedCard.daysPending} days</div>
-                  <div><strong>Due Date:</strong> {selectedCard.due ? new Date(selectedCard.due).toLocaleDateString('vi-VN') : 'N/A'}</div>
-                  <div><strong>Create Date:</strong> {selectedCard.createDate ? new Date(selectedCard.createDate).toLocaleDateString('vi-VN') : 'N/A'}</div>
-                </Col>
-              </Row>
-              <Divider />
-              <div><strong>Slack Link:</strong> {selectedCard.slackLink ? <a href={selectedCard.slackLink} target="_blank" rel="noopener noreferrer">Open Slack</a> : 'N/A'}</div>
-            </div>
-          )}
-        </Modal>
+        {/* Card Detail Modal */}
+        <CardDetailModal
+          open={cardDetailModalOpen}
+          onClose={() => setCardDetailModalOpen(false)}
+          cardId={selectedCardId}
+        />
       </div>
     </div>
   );

@@ -405,5 +405,15 @@
       "role": "CS",
       "group": "CS3",
       "kpiName": "AnhTTN"
+    },
+    {
+      "id": "685901a944b32ad41cfacab6",
+      "fullName": "Nguyễn Ngọc Sơn",
+      "email": "sonnn@avadagroup.com",
+      "username": "juno_avada",
+      "role": "TS",
+      "group": "TS1",
+      "kpiName": "SonNN",
+      "slackId": "U092JM558Q2"
     }
   ]

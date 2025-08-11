@@ -945,10 +945,11 @@
       "id": "684652eda44577c30bc60ec4",
       "fullName": "Thoai VQ",
       "username": "lias_avada",
+      "email": "thoaivq@avadagroup.com",
       "avatarUrl": "https://trello-members.s3.amazonaws.com/684652eda44577c30bc60ec4/dd6d129cef20b0f12632eaee7b5db8bb",
       "initials": "TV",
       "slackId": "U0902NJ53P1",
-      "role": "TS",
+      "role": "ts",
       "group": "TS1"
     },
     {
@@ -961,5 +962,17 @@
       "group": "CS3",
       "kpiName": "AnhPM",
       "slackId": "U091CDSGZ3Q"
+    },
+    {
+      "id": "685901a944b32ad41cfacab6",
+      "fullName": "Nguyễn Ngọc Sơn",
+      "email": "sonnn@avadagroup.com",
+      "username": "juno_avada",
+      "avatarUrl": "https://trello-members.s3.amazonaws.com/685901a944b32ad41cfacab6/c5ee96ea723afe5e7697adfc4de38d0a",
+      "initials": "NS",
+      "role": "ts",
+      "group": "TS1",
+      "kpiName": "SonNN",
+      "slackId": "U092JM558Q2"
     }
   ]

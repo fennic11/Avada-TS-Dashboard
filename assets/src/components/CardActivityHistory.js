@@ -6,7 +6,8 @@ import {
     Tag,
     Card,
     Button,
-    Divider
+    Divider,
+    Tooltip
 } from "antd";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -114,7 +115,14 @@ const CardActivityHistory = ({ actions }) => {
                                 />
                             </div>
                         )}
-                        <Text style={{ whiteSpace: "pre-line" }}>
+                        <Text style={{ 
+                            whiteSpace: "pre-line",
+                            fontSize: '14px',
+                            lineHeight: 1.6,
+                            color: 'rgba(0, 0, 0, 0.9)',
+                            fontWeight: 400,
+                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                        }}>
                             {slackMatch ? (
                                 text.split(slackLinkRegex)[0]
                             ) : loomMatch ? (
@@ -133,7 +141,8 @@ const CardActivityHistory = ({ actions }) => {
                                                     textDecoration: 'none',
                                                     wordBreak: 'break-all',
                                                     display: 'inline-block',
-                                                    maxWidth: '100%'
+                                                    maxWidth: '100%',
+                                                    fontWeight: 500
                                                 }}
                                             >
                                                 {part}
@@ -521,18 +530,20 @@ const CardActivityHistory = ({ actions }) => {
                                             <Text strong>
                                                 {action.memberCreator?.username || action.memberCreator?.fullName}
                                             </Text>
-                                            <Tag
-                                                style={{ 
-                                                    backgroundColor: "rgba(0,0,0,0.05)",
-                                                    padding: "2px 8px",
-                                                    borderRadius: 4,
-                                                    fontSize: '12px',
-                                                    color: 'rgba(0, 0, 0, 0.45)'
-                                                }}
-                                                title={format(new Date(action.date), 'MMM d, yyyy HH:mm:ss')}
-                                            >
-                                                {formatDistanceToNow(new Date(action.date), { addSuffix: true })}
-                                            </Tag>
+                                            <Tooltip title={format(new Date(action.date), 'MMM d, yyyy HH:mm:ss')}>
+                                                <Tag
+                                                    style={{ 
+                                                        backgroundColor: "rgba(0,0,0,0.05)",
+                                                        padding: "2px 8px",
+                                                        borderRadius: 4,
+                                                        fontSize: '12px',
+                                                        color: 'rgba(0, 0, 0, 0.65)',
+                                                        fontWeight: 500
+                                                    }}
+                                                >
+                                                    {formatDistanceToNow(new Date(action.date), { addSuffix: true })}
+                                                </Tag>
+                                            </Tooltip>
                                             {action.appCreator && (
                                                 <Tag
                                                     size="small"
@@ -547,9 +558,11 @@ const CardActivityHistory = ({ actions }) => {
                                         </Space>
                                         <div style={{ 
                                             marginTop: 8,
-                                            "& strong": {
-                                                color: "#1890ff"
-                                            }
+                                            fontSize: '14px',
+                                            lineHeight: 1.6,
+                                            color: 'rgba(0, 0, 0, 0.9)',
+                                            fontWeight: 400,
+                                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
                                         }}>
                                             {text.split(slackLinkRegex)[0]}
                                         </div>
@@ -612,21 +625,25 @@ const CardActivityHistory = ({ actions }) => {
                                     style={{
                                         fontSize: '14px',
                                         color: '#1e293b',
-                                        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                                        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                        fontWeight: 600
                                     }}
                                 >
                                     {action.memberCreator?.username || action.memberCreator?.fullName}
                                 </Text>
-                                <Text 
-                                    type="secondary"
-                                    style={{
-                                        fontSize: '12px',
-                                        color: 'rgba(0, 0, 0, 0.45)',
-                                        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-                                    }}
-                                >
-                                    {formatDistanceToNow(new Date(action.date), { addSuffix: true })}
-                                </Text>
+                                <Tooltip title={format(new Date(action.date), 'MMM d, yyyy HH:mm:ss')}>
+                                    <Text 
+                                        style={{
+                                            fontSize: '12px',
+                                            color: 'rgba(0, 0, 0, 0.65)',
+                                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                            fontWeight: 500,
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {formatDistanceToNow(new Date(action.date), { addSuffix: true })}
+                                    </Text>
+                                </Tooltip>
                             </div>
                             
                             {/* Action Content */}
@@ -634,8 +651,9 @@ const CardActivityHistory = ({ actions }) => {
                                 marginBottom: 8,
                                 fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                                 fontSize: '14px',
-                                lineHeight: 1.5,
-                                color: 'rgba(0, 0, 0, 0.85)'
+                                lineHeight: 1.6,
+                                color: 'rgba(0, 0, 0, 0.9)',
+                                fontWeight: 400
                             }}>
                                 {content}
                             </div>
