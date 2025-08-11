@@ -9,7 +9,7 @@ export const TABS = {
     // TS_WORKSPACE: 'TS-workspace',
     BA_PAGE: 'ba-page',
     DEV_ZONE: 'dev-zone',
-    // SLACK_CHANNEL: 'slack-channel',
+    SLACK_CHANNEL: 'slack-channel',
     // LEADERBOARD: 'leaderboard',
     // PLAN_TS_TEAM: 'plan-ts-team',
     PERFORMANCE_TS: 'performance-ts',
