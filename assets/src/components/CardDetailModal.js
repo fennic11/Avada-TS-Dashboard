@@ -7,7 +7,9 @@ import {
 import {
     CloseOutlined, PlusOutlined, SearchOutlined,
     PictureOutlined, SendOutlined, CopyOutlined,
-    DownOutlined
+    DownOutlined, BoldOutlined, ItalicOutlined,
+    UnderlineOutlined, OrderedListOutlined,
+    UnorderedListOutlined, LinkOutlined
 } from '@ant-design/icons';
 import {
     getActionsByCard,
@@ -112,6 +114,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
     const listMenuOpen = Boolean(listMenuAnchorEl);
     // Thêm state cho tìm kiếm label
     const [labelSearch, setLabelSearch] = useState('');
+    const [isEditorMode, setIsEditorMode] = useState(false);
 
     const safeCard = useMemo(() => {
         if (!card) return null;
@@ -545,6 +548,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
             await addCommentToCard(card.id, commentContent.trim());
             setCommentContent('');
             setImageUpload(null);
+            setIsEditorMode(false);
 
             // Load lại actions để hiển thị comment mới
             const updatedActions = await getActionsByCard(card.id);
@@ -571,6 +575,34 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                 const file = item.getAsFile();
                 setImageUpload(file);
                 break;
+            }
+        }
+    };
+
+    // Keyboard shortcuts for editor
+    const handleKeyDown = (e) => {
+        if (e.ctrlKey || e.metaKey) {
+            switch (e.key.toLowerCase()) {
+                case 'b':
+                    e.preventDefault();
+                    applyFormat('bold');
+                    break;
+                case 'i':
+                    e.preventDefault();
+                    applyFormat('italic');
+                    break;
+                case 'u':
+                    e.preventDefault();
+                    applyFormat('underline');
+                    break;
+                case 'enter':
+                    if (e.shiftKey) {
+                        // Allow new line
+                        return;
+                    }
+                    e.preventDefault();
+                    handleAddComment();
+                    break;
             }
         }
     };
@@ -752,6 +784,81 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
         });
     };
 
+    // Simple rich text editor functions
+    const applyFormat = (format) => {
+        const textarea = document.getElementById('comment-textarea');
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = commentContent.substring(start, end);
+        const beforeText = commentContent.substring(0, start);
+        const afterText = commentContent.substring(end);
+
+        let formattedText = '';
+        switch (format) {
+            case 'bold':
+                formattedText = `**${selectedText}**`;
+                break;
+            case 'italic':
+                formattedText = `*${selectedText}*`;
+                break;
+            case 'underline':
+                formattedText = `__${selectedText}__`;
+                break;
+            case 'list':
+                formattedText = selectedText.split('\n').map(line => `- ${line}`).join('\n');
+                break;
+            case 'numbered':
+                formattedText = selectedText.split('\n').map((line, index) => `${index + 1}. ${line}`).join('\n');
+                break;
+            case 'link':
+                const url = prompt('Enter URL:');
+                if (url) {
+                    formattedText = `[${selectedText}](${url})`;
+                } else {
+                    return;
+                }
+                break;
+            default:
+                formattedText = selectedText;
+        }
+
+        const newContent = beforeText + formattedText + afterText;
+        setCommentContent(newContent);
+
+        // Set cursor position after formatting
+        setTimeout(() => {
+            textarea.focus();
+            textarea.setSelectionRange(start, start + formattedText.length);
+        }, 0);
+    };
+
+    const renderFormattedText = (text) => {
+        if (!text) return '';
+        
+        // Convert markdown-like formatting to HTML
+        let formattedText = text
+            // Bold: **text** -> <strong>text</strong>
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            // Italic: *text* -> <em>text</em>
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            // Underline: __text__ -> <u>text</u>
+            .replace(/__(.*?)__/g, '<u>$1</u>')
+            // Links: [text](url) -> <a href="url">text</a>
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: #1890ff; text-decoration: underline;">$1</a>')
+            // Lists: - item -> • item
+            .replace(/^- (.+)$/gm, '• $1')
+            // Numbered lists: 1. item -> 1. item (keep as is)
+            .replace(/^\d+\. (.+)$/gm, '$&')
+            // URLs: http://... -> clickable links
+            .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: #1890ff; text-decoration: underline;">$1</a>')
+            // Line breaks
+            .replace(/\n/g, '<br>');
+
+        return formattedText;
+    };
+
     const renderTabContent = () => {
         switch (activeTab) {
             case 0: // Details & Comments
@@ -927,24 +1034,229 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                         position: 'relative'
                                     }}
                                 >
-                                    <Input.TextArea
-                                        rows={4}
-                                        value={commentContent}
-                                        onChange={(e) => setCommentContent(e.target.value)}
-                                        onPaste={handlePaste}
-                                        placeholder="Write a comment... You can also paste or drag & drop images"
-                                        style={{
-                                            backgroundColor: '#f8fafc',
-                                            fontSize: '0.9rem',
-                                            lineHeight: 1.6,
-                                            borderColor: 'rgba(0, 0, 0, 0.08)',
-                                            borderRadius: '8px',
-                                            padding: '12px 16px',
-                                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                                            transition: 'all 0.2s ease-in-out',
-                                            border: '1px solid rgba(0, 0, 0, 0.06)'
-                                        }}
-                                    />
+                                    {/* Editor Toolbar */}
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                        padding: '8px 12px',
+                                        backgroundColor: '#f1f5f9',
+                                        borderTop: '1px solid rgba(0, 0, 0, 0.06)',
+                                        borderLeft: '1px solid rgba(0, 0, 0, 0.06)',
+                                        borderRight: '1px solid rgba(0, 0, 0, 0.06)',
+                                        borderTopLeftRadius: '8px',
+                                        borderTopRightRadius: '8px',
+                                        borderBottom: 'none'
+                                    }}>
+                                        <Button
+                                            type="text"
+                                            size="small"
+                                            icon={<BoldOutlined />}
+                                            onClick={() => applyFormat('bold')}
+                                            title="Bold (Ctrl+B)"
+                                            style={{
+                                                padding: '4px 8px',
+                                                color: '#64748b',
+                                                minWidth: 'auto',
+                                                height: '28px'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+                                                e.currentTarget.style.color = '#374151';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.backgroundColor = 'transparent';
+                                                e.currentTarget.style.color = '#64748b';
+                                            }}
+                                        />
+                                        <Button
+                                            type="text"
+                                            size="small"
+                                            icon={<ItalicOutlined />}
+                                            onClick={() => applyFormat('italic')}
+                                            title="Italic (Ctrl+I)"
+                                            style={{
+                                                padding: '4px 8px',
+                                                color: '#64748b',
+                                                minWidth: 'auto',
+                                                height: '28px'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+                                                e.currentTarget.style.color = '#374151';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.backgroundColor = 'transparent';
+                                                e.currentTarget.style.color = '#64748b';
+                                            }}
+                                        />
+                                        <Button
+                                            type="text"
+                                            size="small"
+                                            icon={<UnderlineOutlined />}
+                                            onClick={() => applyFormat('underline')}
+                                            title="Underline (Ctrl+U)"
+                                            style={{
+                                                padding: '4px 8px',
+                                                color: '#64748b',
+                                                minWidth: 'auto',
+                                                height: '28px'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+                                                e.currentTarget.style.color = '#374151';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.backgroundColor = 'transparent';
+                                                e.currentTarget.style.color = '#64748b';
+                                            }}
+                                        />
+                                        <Divider type="vertical" style={{ margin: '0 4px', height: '20px' }} />
+                                        <Button
+                                            type="text"
+                                            size="small"
+                                            icon={<UnorderedListOutlined />}
+                                            onClick={() => applyFormat('list')}
+                                            title="Bullet List"
+                                            style={{
+                                                padding: '4px 8px',
+                                                color: '#64748b',
+                                                minWidth: 'auto',
+                                                height: '28px'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+                                                e.currentTarget.style.color = '#374151';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.backgroundColor = 'transparent';
+                                                e.currentTarget.style.color = '#64748b';
+                                            }}
+                                        />
+                                        <Button
+                                            type="text"
+                                            size="small"
+                                            icon={<OrderedListOutlined />}
+                                            onClick={() => applyFormat('numbered')}
+                                            title="Numbered List"
+                                            style={{
+                                                padding: '4px 8px',
+                                                color: '#64748b',
+                                                minWidth: 'auto',
+                                                height: '28px'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+                                                e.currentTarget.style.color = '#374151';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.backgroundColor = 'transparent';
+                                                e.currentTarget.style.color = '#64748b';
+                                            }}
+                                        />
+                                        <Divider type="vertical" style={{ margin: '0 4px', height: '20px' }} />
+                                        <Button
+                                            type="text"
+                                            size="small"
+                                            icon={<LinkOutlined />}
+                                            onClick={() => applyFormat('link')}
+                                            title="Add Link"
+                                            style={{
+                                                padding: '4px 8px',
+                                                color: '#64748b',
+                                                minWidth: 'auto',
+                                                height: '28px'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+                                                e.currentTarget.style.color = '#374151';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.backgroundColor = 'transparent';
+                                                e.currentTarget.style.color = '#64748b';
+                                            }}
+                                        />
+                                        <div style={{ flex: 1 }} />
+                                        <Tooltip 
+                                            title={
+                                                <div style={{ fontSize: '12px' }}>
+                                                    <div><strong>Keyboard Shortcuts:</strong></div>
+                                                    <div>Ctrl+B: Bold</div>
+                                                    <div>Ctrl+I: Italic</div>
+                                                    <div>Ctrl+U: Underline</div>
+                                                    <div>Ctrl+Enter: Send comment</div>
+                                                    <div>Shift+Enter: New line</div>
+                                                </div>
+                                            }
+                                            placement="bottom"
+                                        >
+                                            <Button
+                                                type="text"
+                                                size="small"
+                                                onClick={() => setIsEditorMode(!isEditorMode)}
+                                                style={{
+                                                    padding: '4px 8px',
+                                                    color: isEditorMode ? '#3b82f6' : '#64748b',
+                                                    minWidth: 'auto',
+                                                    height: '28px',
+                                                    fontSize: '12px',
+                                                    fontWeight: 500
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                                }}
+                                            >
+                                                {isEditorMode ? 'Preview' : 'Rich Text'}
+                                            </Button>
+                                        </Tooltip>
+                                    </div>
+
+                                    {isEditorMode ? (
+                                        <div
+                                            style={{
+                                                backgroundColor: '#f8fafc',
+                                                fontSize: '0.9rem',
+                                                lineHeight: 1.6,
+                                                borderColor: 'rgba(0, 0, 0, 0.08)',
+                                                borderRadius: '0 0 8px 8px',
+                                                padding: '12px 16px',
+                                                fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                                border: '1px solid rgba(0, 0, 0, 0.06)',
+                                                borderTop: 'none',
+                                                minHeight: '120px',
+                                                maxHeight: '300px',
+                                                overflow: 'auto'
+                                            }}
+                                            dangerouslySetInnerHTML={{
+                                                __html: renderFormattedText(commentContent) || '<span style="color: #94a3b8;">Write a comment... You can also paste or drag & drop images</span>'
+                                            }}
+                                        />
+                                    ) : (
+                                        <Input.TextArea
+                                            id="comment-textarea"
+                                            rows={4}
+                                            value={commentContent}
+                                            onChange={(e) => setCommentContent(e.target.value)}
+                                            onPaste={handlePaste}
+                                            onKeyDown={handleKeyDown}
+                                            placeholder="Write a comment... You can also paste or drag & drop images"
+                                            style={{
+                                                backgroundColor: '#f8fafc',
+                                                fontSize: '0.9rem',
+                                                lineHeight: 1.6,
+                                                borderColor: 'rgba(0, 0, 0, 0.08)',
+                                                borderRadius: '0 0 8px 8px',
+                                                padding: '12px 16px',
+                                                fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                                transition: 'all 0.2s ease-in-out',
+                                                border: '1px solid rgba(0, 0, 0, 0.06)',
+                                                borderTop: 'none'
+                                            }}
+                                        />
+                                    )}
                                     
                                     {/* Image Preview */}
                                     {imageUpload && (

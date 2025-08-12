@@ -11,6 +11,32 @@ import {
 } from "antd";
 import { format, formatDistanceToNow } from "date-fns";
 
+// Function to render formatted text (markdown-like to HTML)
+const renderFormattedText = (text) => {
+    if (!text) return '';
+    
+    // Convert markdown-like formatting to HTML
+    let formattedText = text
+        // Bold: **text** -> <strong>text</strong>
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        // Italic: *text* -> <em>text</em>
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        // Underline: __text__ -> <u>text</u>
+        .replace(/__(.*?)__/g, '<u>$1</u>')
+        // Links: [text](url) -> <a href="url">text</a>
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: #1890ff; text-decoration: underline;">$1</a>')
+        // Lists: - item -> • item
+        .replace(/^- (.+)$/gm, '• $1')
+        // Numbered lists: 1. item -> 1. item (keep as is)
+        .replace(/^\d+\. (.+)$/gm, '$&')
+        // URLs: http://... -> clickable links
+        .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: #1890ff; text-decoration: underline;">$1</a>')
+        // Line breaks
+        .replace(/\n/g, '<br>');
+
+    return formattedText;
+};
+
 const { Text, Title } = Typography;
 
 const getActionBackgroundColor = (type) => {
@@ -115,8 +141,7 @@ const CardActivityHistory = ({ actions }) => {
                                 />
                             </div>
                         )}
-                        <Text style={{ 
-                            whiteSpace: "pre-line",
+                        <div style={{ 
                             fontSize: '14px',
                             lineHeight: 1.6,
                             color: 'rgba(0, 0, 0, 0.9)',
@@ -124,35 +149,19 @@ const CardActivityHistory = ({ actions }) => {
                             fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
                         }}>
                             {slackMatch ? (
-                                text.split(slackLinkRegex)[0]
+                                <div dangerouslySetInnerHTML={{
+                                    __html: renderFormattedText(text.split(slackLinkRegex)[0])
+                                }} />
                             ) : loomMatch ? (
-                                text.split(loomRegex)[0]
+                                <div dangerouslySetInnerHTML={{
+                                    __html: renderFormattedText(text.split(loomRegex)[0])
+                                }} />
                             ) : (
-                                text.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
-                                    if (part.match(/^https?:\/\//)) {
-                                        return (
-                                            <a
-                                                key={index}
-                                                href={part}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                style={{
-                                                    color: '#1890ff',
-                                                    textDecoration: 'none',
-                                                    wordBreak: 'break-all',
-                                                    display: 'inline-block',
-                                                    maxWidth: '100%',
-                                                    fontWeight: 500
-                                                }}
-                                            >
-                                                {part}
-                                            </a>
-                                        );
-                                    }
-                                    return part;
-                                })
+                                <div dangerouslySetInnerHTML={{
+                                    __html: renderFormattedText(text)
+                                }} />
                             )}
-                        </Text>
+                        </div>
                         {action.data.attachments && action.data.attachments.map((attachment, index) => {
                             // Check if it's an image attachment
                             if (attachment.mimeType?.startsWith('image/') || 
