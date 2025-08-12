@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Table, Card, Typography, Row, Col, Button, Select, DatePicker, Modal, Spin, Tag, Space, Divider, Progress, Statistic, Alert, Badge, Checkbox } from 'antd';
 import { getDevFixingCards } from '../../api/trelloApi';
 import appData from '../../data/app.json';
-import { ReloadOutlined, BugOutlined, TeamOutlined, AppstoreOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { ReloadOutlined, BugOutlined, TeamOutlined, AppstoreOutlined, ClockCircleOutlined, TagOutlined } from '@ant-design/icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import CardDetailModal from '../CardDetailModal';
@@ -28,6 +28,7 @@ export default function DevFixingDashboard() {
   const [cards, setCards] = useState([]);
   const [selectedApp, setSelectedApp] = useState('Tất cả');
   const [selectedTeam, setSelectedTeam] = useState('Tất cả');
+  const [selectedLabel, setSelectedLabel] = useState('Tất cả');
   const [dateRange, setDateRange] = useState([]);
   const [selectedCardId, setSelectedCardId] = useState(null);
   const [cardDetailModalOpen, setCardDetailModalOpen] = useState(false);
@@ -95,6 +96,49 @@ export default function DevFixingDashboard() {
       const slackLink = extractSlackLink(card.desc || '');
       const daysPending = calculateDaysPending(card);
       
+      // Extract and categorize labels
+      const cardLabels = card.labels || [];
+      const labelCategories = {
+        bug: cardLabels.some(label => 
+          label.name.toLowerCase().includes('bug') || 
+          label.name.toLowerCase().includes('lỗi') ||
+          label.name.toLowerCase().includes('error')
+        ),
+        customize: cardLabels.some(label => 
+          label.name.toLowerCase().includes('customize') || 
+          label.name.toLowerCase().includes('tùy chỉnh')
+        ),
+        featureRequest: cardLabels.some(label => 
+          label.name.toLowerCase().includes('feature') || 
+          label.name.toLowerCase().includes('tính năng') ||
+          label.name.toLowerCase().includes('request')
+        ),
+        improvement: cardLabels.some(label => 
+          label.name.toLowerCase().includes('improvement') || 
+          label.name.toLowerCase().includes('cải thiện')
+        ),
+        other: cardLabels.length === 0 || cardLabels.every(label => 
+          !label.name.toLowerCase().includes('bug') &&
+          !label.name.toLowerCase().includes('lỗi') &&
+          !label.name.toLowerCase().includes('error') &&
+          !label.name.toLowerCase().includes('customize') &&
+          !label.name.toLowerCase().includes('tùy chỉnh') &&
+          !label.name.toLowerCase().includes('feature') &&
+          !label.name.toLowerCase().includes('tính năng') &&
+          !label.name.toLowerCase().includes('request') &&
+          !label.name.toLowerCase().includes('improvement') &&
+          !label.name.toLowerCase().includes('cải thiện')
+        )
+      };
+      
+      // Get primary label category with priority
+      let primaryLabel = 'Other';
+      // Priority order: Customize > Feature Request > Improvement > Bug > Other
+      if (labelCategories.customize) primaryLabel = 'Customize';
+      else if (labelCategories.featureRequest) primaryLabel = 'Feature Request';
+      else if (labelCategories.improvement) primaryLabel = 'Improvement';
+      else if (labelCategories.bug) primaryLabel = 'Bug';
+      
       return {
         ...card,
         app: appLabel ? appLabel.name : 'Không có app',
@@ -102,7 +146,10 @@ export default function DevFixingDashboard() {
         appKey: appKey,
         productTeam: productTeam,
         slackLink: slackLink,
-        daysPending: daysPending
+        daysPending: daysPending,
+        labelCategories: labelCategories,
+        primaryLabel: primaryLabel,
+        allLabels: cardLabels.map(label => label.name)
       };
     });
   };
@@ -154,6 +201,9 @@ export default function DevFixingDashboard() {
   if (selectedTeam !== 'Tất cả') {
     filteredCards = filteredCards.filter(card => card.productTeam === selectedTeam);
   }
+  if (selectedLabel !== 'Tất cả') {
+    filteredCards = filteredCards.filter(card => card.primaryLabel === selectedLabel);
+  }
   if (dateRange && dateRange.length === 2) {
     const [start, end] = dateRange;
     filteredCards = filteredCards.filter(card => {
@@ -167,23 +217,33 @@ export default function DevFixingDashboard() {
   const avgWaitTime = filteredCards.length > 0 
     ? (filteredCards.reduce((sum, card) => sum + card.daysPending, 0) / filteredCards.length).toFixed(1)
     : 0;
-  const todayBugs = cards.filter(card => {
+  const todayBugs = filteredCards.filter(card => {
     const today = new Date();
     const createDate = card.createDate;
     return createDate && today.toDateString() === createDate.toDateString();
   }).length;
 
   // Team statistics
-  const teamStats = cards.reduce((acc, card) => {
+  const teamStats = filteredCards.reduce((acc, card) => {
     if (!card.productTeam) return acc;
     if (!acc[card.productTeam]) {
       acc[card.productTeam] = {
         total: 0,
+        pending: 0,
+        done: 0,
         avgWaitTime: 0,
         totalWaitTime: 0
       };
     }
     acc[card.productTeam].total += 1;
+    
+    // Determine if card is pending or done based on list ID
+    const isPending = card.idList === LIST_IDS.pending;
+    const isDone = card.idList === LIST_IDS.done;
+    
+    if (isPending) acc[card.productTeam].pending += 1;
+    if (isDone) acc[card.productTeam].done += 1;
+    
     acc[card.productTeam].totalWaitTime += card.daysPending;
     acc[card.productTeam].avgWaitTime = (acc[card.productTeam].totalWaitTime / acc[card.productTeam].total).toFixed(1);
     return acc;
@@ -194,13 +254,38 @@ export default function DevFixingDashboard() {
     if (!acc[card.app]) {
       acc[card.app] = {
         total: 0,
+        pending: 0,
+        done: 0,
         avgWaitTime: 0,
         totalWaitTime: 0
       };
     }
     acc[card.app].total += 1;
+    
+    // Determine if card is pending or done based on list ID
+    const isPending = card.idList === LIST_IDS.pending;
+    const isDone = card.idList === LIST_IDS.done;
+    
+    if (isPending) acc[card.app].pending += 1;
+    if (isDone) acc[card.app].done += 1;
+    
     acc[card.app].totalWaitTime += card.daysPending;
     acc[card.app].avgWaitTime = (acc[card.app].totalWaitTime / acc[card.app].total).toFixed(1);
+    return acc;
+  }, {});
+
+  // Label statistics
+  const labelStats = filteredCards.reduce((acc, card) => {
+    if (!acc[card.primaryLabel]) {
+      acc[card.primaryLabel] = {
+        total: 0,
+        avgWaitTime: 0,
+        totalWaitTime: 0
+      };
+    }
+    acc[card.primaryLabel].total += 1;
+    acc[card.primaryLabel].totalWaitTime += card.daysPending;
+    acc[card.primaryLabel].avgWaitTime = (acc[card.primaryLabel].totalWaitTime / acc[card.primaryLabel].total).toFixed(1);
     return acc;
   }, {});
 
@@ -216,6 +301,14 @@ export default function DevFixingDashboard() {
     .slice(0, 8)
     .map(([app, stats]) => ({
       name: app,
+      bugs: stats.total,
+      avgWait: parseFloat(stats.avgWaitTime)
+    }));
+
+  const labelChartData = Object.entries(labelStats)
+    .sort(([, a], [, b]) => b.total - a.total)
+    .map(([label, stats]) => ({
+      name: label,
       bugs: stats.total,
       avgWait: parseFloat(stats.avgWaitTime)
     }));
@@ -247,7 +340,21 @@ export default function DevFixingDashboard() {
       key: 'productTeam',
       render: (team) => team ? <Tag color="geekblue">{team}</Tag> : <Tag>Không có</Tag>
     },
-
+    {
+      title: 'Label Type',
+      dataIndex: 'primaryLabel',
+      key: 'primaryLabel',
+      render: (label) => {
+        const colorMap = {
+          'Bug': 'red',
+          'Customize': 'orange',
+          'Feature Request': 'blue',
+          'Improvement': 'green',
+          'Other': 'default'
+        };
+        return <Tag color={colorMap[label] || 'default'}>{label}</Tag>;
+      }
+    },
     {
       title: 'Due Date',
       dataIndex: 'due',
@@ -382,7 +489,21 @@ export default function DevFixingDashboard() {
                 ))}
               </Select>
             </Col>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={24} sm={12} md={4}>
+              <Select
+                value={selectedLabel}
+                onChange={setSelectedLabel}
+                style={{ width: '100%' }}
+                placeholder="Select Label Type"
+                allowClear
+              >
+                <Select.Option value="Tất cả">All Labels</Select.Option>
+                {[...new Set(cards.map(card => card.primaryLabel))].map(label => (
+                  <Select.Option key={label} value={label}>{label}</Select.Option>
+                ))}
+              </Select>
+            </Col>
+            <Col xs={24} sm={12} md={4}>
               <Button
                 type="primary"
                 icon={<ReloadOutlined />}
@@ -444,22 +565,56 @@ export default function DevFixingDashboard() {
                       }}
                       onClick={() => setSelectedTeam(selectedTeam === team ? 'Tất cả' : team)}
                     >
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ 
-                          fontWeight: 600, 
-                          color: teamColors[idx % teamColors.length], 
-                          fontSize: 14, 
-                          marginBottom: 8 
-                        }}>
-                          {team}
+                                              <div style={{ textAlign: 'center' }}>
+                          <div style={{ 
+                            fontWeight: 600, 
+                            color: teamColors[idx % teamColors.length], 
+                            fontSize: 14, 
+                            marginBottom: 8 
+                          }}>
+                            {team}
+                          </div>
+                          <div style={{ fontWeight: 700, fontSize: 20, color: '#1e293b', marginBottom: 4 }}>
+                            {stats.total} cards
+                          </div>
+                          <div style={{ color: '#64748b', fontSize: 12 }}>
+                            {filterOptions.pending && filterOptions.done ? (
+                              <div style={{ marginTop: 8 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                  <span style={{ color: '#e53935', fontWeight: 600 }}>{stats.pending}</span>
+                                  <span style={{ color: '#2e7d32', fontWeight: 600 }}>{stats.done}</span>
+                                </div>
+                                <div style={{ 
+                                  height: 4, 
+                                  background: '#f1f5f9', 
+                                  borderRadius: 2, 
+                                  overflow: 'hidden',
+                                  marginBottom: 4,
+                                  display: 'flex'
+                                }}>
+                                  <div style={{
+                                    width: `${stats.total > 0 ? (stats.pending / stats.total) * 100 : 0}%`,
+                                    height: '100%',
+                                    background: '#e53935',
+                                    transition: 'width 0.3s ease'
+                                  }} />
+                                  <div style={{
+                                    width: `${stats.total > 0 ? (stats.done / stats.total) * 100 : 0}%`,
+                                    height: '100%',
+                                    background: '#2e7d32',
+                                    transition: 'width 0.3s ease'
+                                  }} />
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+                                  <span style={{ color: '#e53935' }}>Pending</span>
+                                  <span style={{ color: '#2e7d32' }}>Done</span>
+                                </div>
+                              </div>
+                            ) : (
+                              `${totalBugs > 0 ? ((stats.total / totalBugs) * 100).toFixed(1) : 0}% of total`
+                            )}
+                          </div>
                         </div>
-                        <div style={{ fontWeight: 700, fontSize: 20, color: '#1e293b', marginBottom: 4 }}>
-                          {stats.total} bugs
-                        </div>
-                        <div style={{ color: '#64748b', fontSize: 12 }}>
-                          {totalBugs > 0 ? ((stats.total / totalBugs) * 100).toFixed(1) : 0}% of total
-                        </div>
-                      </div>
                     </Card>
                   </motion.div>
                 </Col>
@@ -509,6 +664,174 @@ export default function DevFixingDashboard() {
                             {app}
                           </div>
                           <div style={{ fontWeight: 700, fontSize: 20, color: '#1e293b', marginBottom: 4 }}>
+                            {stats.total} cards
+                          </div>
+                          <div style={{ color: '#64748b', fontSize: 12 }}>
+                            {filterOptions.pending && filterOptions.done ? (
+                              <div style={{ marginTop: 8 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                  <span style={{ color: '#e53935', fontWeight: 600 }}>{stats.pending}</span>
+                                  <span style={{ color: '#2e7d32', fontWeight: 600 }}>{stats.done}</span>
+                                </div>
+                                <div style={{ 
+                                  height: 4, 
+                                  background: '#f1f5f9', 
+                                  borderRadius: 2, 
+                                  overflow: 'hidden',
+                                  marginBottom: 4,
+                                  display: 'flex'
+                                }}>
+                                  <div style={{
+                                    width: `${stats.total > 0 ? (stats.pending / stats.total) * 100 : 0}%`,
+                                    height: '100%',
+                                    background: '#e53935',
+                                    transition: 'width 0.3s ease'
+                                  }} />
+                                  <div style={{
+                                    width: `${stats.total > 0 ? (stats.done / stats.total) * 100 : 0}%`,
+                                    height: '100%',
+                                    background: '#2e7d32',
+                                    transition: 'width 0.3s ease'
+                                  }} />
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+                                  <span style={{ color: '#e53935' }}>Pending</span>
+                                  <span style={{ color: '#2e7d32' }}>Done</span>
+                                </div>
+                              </div>
+                            ) : (
+                              `${totalBugs > 0 ? ((stats.total / totalBugs) * 100).toFixed(1) : 0}% of total`
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    </motion.div>
+                  </Col>
+                ))}
+            </AnimatePresence>
+          </Row>
+        </Card>
+
+        {/* Charts Section (PieChart) */}
+        <Row gutter={[24, 24]} style={{ marginBottom: 32 }}>
+          <Col xs={24} lg={8}>
+            <Card
+              title="Team Cards Distribution"
+              style={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+            >
+              <ResponsiveContainer width="100%" height={320}>
+                <PieChart>
+                  <Pie
+                    data={teamChartData}
+                    dataKey="bugs"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                  >
+                    {teamChartData.map((entry, idx) => (
+                      <Cell key={`cell-team-${idx}`} fill={teamColors[idx % teamColors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value, name, props) => [`${value} cards`, '']} />
+                </PieChart>
+              </ResponsiveContainer>
+            </Card>
+          </Col>
+          <Col xs={24} lg={8}>
+            <Card
+              title="App Cards Distribution"
+              style={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+            >
+              <ResponsiveContainer width="100%" height={320}>
+                <PieChart>
+                  <Pie
+                    data={appChartData}
+                    dataKey="bugs"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                  >
+                    {appChartData.map((entry, idx) => (
+                      <Cell key={`cell-app-${idx}`} fill={teamColors[idx % teamColors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value, name, props) => [`${value} cards`, '']} />
+                </PieChart>
+              </ResponsiveContainer>
+            </Card>
+          </Col>
+          <Col xs={24} lg={8}>
+            <Card
+              title="Cards Type Distribution"
+              style={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+            >
+              <ResponsiveContainer width="100%" height={320}>
+                <PieChart>
+                  <Pie
+                    data={labelChartData}
+                    dataKey="bugs"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                  >
+                    {labelChartData.map((entry, idx) => (
+                      <Cell key={`cell-label-${idx}`} fill={teamColors[idx % teamColors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value, name, props) => [`${value} cards`, '']} />
+                </PieChart>
+              </ResponsiveContainer>
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Label Overview with animation */}
+        <Card
+          title="Cards Type Overview"
+          style={{ borderRadius: 8, marginBottom: 32, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+        >
+          <Row gutter={[16, 16]}>
+            <AnimatePresence>
+              {Object.entries(labelStats)
+                .sort(([, a], [, b]) => b.total - a.total)
+                .map(([label, stats], idx) => (
+                  <Col xs={24} sm={12} md={8} lg={6} key={label}>
+                    <motion.div
+                      custom={idx}
+                      initial="hidden"
+                      animate="visible"
+                      exit="hidden"
+                      variants={boxVariants}
+                      whileHover={{ scale: 1.06, boxShadow: `0 8px 32px ${teamColors[idx % teamColors.length]}33` }}
+                      style={{ borderRadius: 8 }}
+                    >
+                                             <Card
+                         size="small"
+                         style={{
+                           borderRadius: 8,
+                           border: `2px solid ${selectedLabel === label ? teamColors[idx % teamColors.length] : teamColors[idx % teamColors.length] + '33'}`,
+                           background: selectedLabel === label ? `${teamColors[idx % teamColors.length]}15` : `${teamColors[idx % teamColors.length]}08`,
+                           cursor: 'pointer',
+                           transition: 'all 0.2s'
+                         }}
+                         onClick={() => setSelectedLabel(selectedLabel === label ? 'Tất cả' : label)}
+                      >
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ 
+                            fontWeight: 600, 
+                            color: teamColors[idx % teamColors.length], 
+                            fontSize: 14, 
+                            marginBottom: 8 
+                          }}>
+                            {label}
+                          </div>
+                          <div style={{ fontWeight: 700, fontSize: 20, color: '#1e293b', marginBottom: 4 }}>
                             {stats.total} bugs
                           </div>
                           <div style={{ color: '#64748b', fontSize: 12 }}>
@@ -522,60 +845,6 @@ export default function DevFixingDashboard() {
             </AnimatePresence>
           </Row>
         </Card>
-
-        {/* Charts Section (PieChart) */}
-        <Row gutter={[24, 24]} style={{ marginBottom: 32 }}>
-          <Col xs={24} lg={12}>
-            <Card
-              title="Team Bug Distribution"
-              style={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-            >
-              <ResponsiveContainer width="100%" height={320}>
-                <PieChart>
-                  <Pie
-                    data={teamChartData}
-                    dataKey="bugs"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={110}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
-                  >
-                    {teamChartData.map((entry, idx) => (
-                      <Cell key={`cell-team-${idx}`} fill={teamColors[idx % teamColors.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value, name, props) => [`${value} bugs`, '']} />
-                </PieChart>
-              </ResponsiveContainer>
-            </Card>
-          </Col>
-          <Col xs={24} lg={12}>
-            <Card
-              title="App Bug Distribution"
-              style={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-            >
-              <ResponsiveContainer width="100%" height={320}>
-                <PieChart>
-                  <Pie
-                    data={appChartData}
-                    dataKey="bugs"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={110}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
-                  >
-                    {appChartData.map((entry, idx) => (
-                      <Cell key={`cell-app-${idx}`} fill={teamColors[idx % teamColors.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value, name, props) => [`${value} bugs`, '']} />
-                </PieChart>
-              </ResponsiveContainer>
-            </Card>
-          </Col>
-        </Row>
 
         {/* Bugs Table */}
         <Card

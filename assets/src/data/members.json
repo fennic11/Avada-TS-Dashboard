@@ -3,8 +3,6 @@
       "id": "66bce381e55b8d2d3ccb8135",
       "fullName": "Abby",
       "username": "abby_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/66bce381e55b8d2d3ccb8135/e53e410569bc90ba6e03f89ac4dcc0c1",
-      "initials": "A",
       "kpiName": "NganDT",
       "slackId": "U07GD3PHXKP",
       "role": "CS",
@@ -14,7 +12,6 @@
       "id": "66fbc0ccf242ee6afd7f0005",
       "fullName": "alicia_avada",
       "username": "alicia_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/66fbc0ccf242ee6afd7f0005/f953d0bf7c3f9b34826196fdef26cc03",
       "initials": "A",
       "kpiName": "AnhLN",
       "role": "CS"
@@ -23,7 +20,6 @@
       "id": "664d93558358e7bf9f4a421a",
       "fullName": "Alyssa",
       "username": "alyssa_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/664d93558358e7bf9f4a421a/612dfb4b3f31fc8650bd3d029f950e45",
       "initials": "A",
       "kpiName": "LyPK",
       "slackId": "U073WRYK763",
@@ -35,7 +31,6 @@
       "fullName": "Nguyễn Văn Hoài An",
       "email": "annvh@avadagroup.com",
       "username": "andrew_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/66557fb36a637c6c5535b081/feab84eb79ea906306db986d9b0b2dd8",
       "initials": "NA",
       "kpiName": "AnNVH",
       "role": "TS",
@@ -47,7 +42,6 @@
       "fullName": "Nguyễn Ngọc Anh",
       "email": "anivia@avadagroup.com",
       "username": "anivia_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/63b3a60ff51ce601421b0dd3/a8941248051f78d5d323bc1045ada156",
       "initials": "NA",
       "kpiName": "AnhNN",
       "role": "TS",
@@ -58,7 +52,6 @@
       "id": "67605043222bfecee6896646",
       "fullName": "April",
       "username": "april_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/67605043222bfecee6896646/b73359a7a0a5fbb4576ab2e7f4d0db26",
       "initials": "A",
       "kpiName": "PhuongVT",
       "role": "CS"
@@ -67,7 +60,6 @@
       "id": "65239d0b203ebdc55872fb9b",
       "fullName": "vanct",
       "username": "audrey_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/65239d0b203ebdc55872fb9b/0345223b807cf2c2c8a42e35f5e93bd4",
       "initials": "V",
       "kpiName": "VanCT",
       "slackId": "U0605TGBC2H",
@@ -78,7 +70,6 @@
       "id": "677b4f8cb6d6d9e17388245b",
       "fullName": "Brian",
       "username": "brian_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/677b4f8cb6d6d9e17388245b/8e64a65be4eb7f0aa42d06803528d6c3",
       "initials": "B",
       "kpiName": "BangDT",
       "slackId": "U087C8L4ZMH",
@@ -89,7 +80,6 @@
       "id": "67d0160fba5ed2157b47e738",
       "fullName": "Bùi Tuyết Minh",
       "username": "mirra_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/67d0160fba5ed2157b47e738/419460bae8c36cda7c60173241a14f20",
       "initials": "BM",
       "kpiName": "MinhBT",
       "role": "CS"
@@ -99,7 +89,6 @@
       "fullName": "Trần Thế Cương",
       "username": "max_avada",
       "email": "cuongtt@avadagroup.com",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/65f7bdde58e8e0a6ba703027/89889a161a7e4ab3d213c8fafb351e85",
       "initials": "CT",
       "role": "TS",
       "kpiName": "CuongTT",
@@ -111,7 +100,6 @@
       "fullName": "Daisy Vo",
       "username": "daisy_avada",
       "email": "daisy@avada.io",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/61a886478176518087f3e853/b1991650a1ea66228c8ed9329dd63ce7",
       "initials": "DV",
       "role": "admin",
       "kpiName": "ThuyVTP",
@@ -121,7 +109,6 @@
       "id": "6254f958985acf5b41a0d3f5",
       "fullName": "Emily",
       "username": "emily_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6254f958985acf5b41a0d3f5/695d45cdb0812998bb631962afe41696",
       "initials": "E"
     },
     {
@@ -129,7 +116,6 @@
       "fullName": "Esther",
       "username": "esther_avada",
       "email": "anhbl@avada.io",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6200bad14cad35022a4e4677/547c8a92338c2da8f66823f3309a2f7a",
       "initials": "E",
       "kpiName": "AnhBL",
       "slackId": "U02RT6QV57G",
@@ -139,7 +125,6 @@
       "id": "6808ae6ef1be57e9752f36af",
       "fullName": "Hana",
       "username": "hana_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/62551dca9448af8ecea5ece8/70c5294e7ad4bd0713a836862fdaa00e",
       "initials": "H",
       "kpiName": "HangHM",
       "slackId": "U07GG0A8NDQ",
@@ -150,14 +135,12 @@
       "id": "6464a42e5b7efc346aeeec3d",
       "fullName": "Hoàng Thanh Tùng",
       "username": "httung",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6464a42e5b7efc346aeeec3d/c62f830c7f5e9fc5da864b0a815c5369",
       "initials": "HT"
     },
     {
       "id": "650029f977f027a67aec7d6c",
       "fullName": "Hoàng Tuấn Anh",
       "username": "hoangtunanh35",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/650029f977f027a67aec7d6c/8db97e14a2cc931ce960e8ab4599acf4",
       "initials": "HA"
     },
     {
@@ -165,7 +148,6 @@
       "email": "huyhq@avada.io",
       "fullName": "Hà Quang Huy",
       "username": "haquanghuy21",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/666ba169c129d4abff526123/ba6eff7335b13ac35ea1e30b37c249f1",
       "initials": "HH",
       "role": "pm"
     },
@@ -173,7 +155,6 @@
       "id": "6695f9b8a2b3c9d3421309b4",
       "fullName": "Jade_avada",
       "username": "jade_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6695f9b8a2b3c9d3421309b4/eee5eabbed436adcd5eba7254788e322",
       "initials": "J",
       "kpiName": "PhuongNT",
       "slackId": "U07CGHSHNMB",
@@ -184,7 +165,6 @@
       "id": "620244182de1ad0c50185372",
       "fullName": "Jasmine",
       "username": "jasmine_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/620244182de1ad0c50185372/44cf98afd0e4838586c461a1a564f0d5",
       "initials": "J",
       "kpiName": "HienNT1",
       "slackId": "U01N5DULHV4",
@@ -195,7 +175,6 @@
       "id": "663308d0358eee256908233f",
       "fullName": "Judy",
       "username": "judy_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/663308d0358eee256908233f/36405b5f6695c44e0cb185ba013b3d21",
       "initials": "J",
       "kpiName": "KhanhNNV",
       "role": "CS"
@@ -204,7 +183,6 @@
       "id": "64261cca1fd7fa4c7df8517d",
       "fullName": "Juliana Cattaneo",
       "username": "julianacattaneo1",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/64261cca1fd7fa4c7df8517d/bd7d63d105a5e1d56319d921a9fc4aee",
       "initials": "JC",
       "kpiName": "Juliana Cattaneo"
     },
@@ -212,7 +190,6 @@
       "id": "629f2dec965a6c64743ee7ea",
       "fullName": "Juliana",
       "username": "juliana_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/629f2dec965a6c64743ee7ea/3ab9f44a912c0c55fcfa87d9c8d9b6ab",
       "initials": "J",
       "kpiName": "Juliana Cattaneo"
     },
@@ -221,7 +198,6 @@
       "fullName": "Kenny ND",
       "email": "kennynd@avada.io",
       "username": "kennynd",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/626bbe4266b9591833ebbc0e/37b6e0f60269601b6bbd62dd5ca0db6a",
       "initials": "KN",
       "role": "pm"
     },
@@ -229,7 +205,6 @@
       "id": "661f4ae73a0b54e66afd437b",
       "fullName": "Kevin",
       "username": "kevin_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/661f4ae73a0b54e66afd437b/df481a5d3e7e2b739dedfa01d0e6e918",
       "initials": "K",
       "kpiName": "KienNA",
       "slackId": "U06VBAQPKC0",
@@ -240,7 +215,6 @@
       "id": "6421423a728faf1f708e2151",
       "fullName": "Lang_avada",
       "username": "lang_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6421423a728faf1f708e2151/3a61ce9ebc12f333cf61e8f9a9fe2623",
       "initials": "L",
       "kpiName": "LamTD"
     },
@@ -249,7 +223,6 @@
       "fullName": "Liz",
       "username": "liz_avada",
       "email": "lyht@avada.io",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6377be0b552c7102c1b3a923/c3b43f3a661418cf50969da702ea0eb1",
       "initials": "L",
       "kpiName": "LyHT",
       "slackId": "U02GT4PC6RH",
@@ -259,7 +232,6 @@
       "id": "637af755c32e9d00297e0e14",
       "fullName": "Trần Khánh Linh",
       "username": "lydia_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/637af755c32e9d00297e0e14/e9d9a0a69acabaf8c31c4555a1278575",
       "initials": "TL",
       "kpiName": "LinhTK",
       "slackId": "U04C4RE382V",
@@ -270,7 +242,6 @@
       "id": "656d701d6284fef10b3b4677",
       "fullName": "Lại Minh Hằng",
       "username": "liminhhng1",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/656d701d6284fef10b3b4677/f36fed7864316f9281df335821388482",
       "initials": "LH"
     },
     {
@@ -278,7 +249,6 @@
       "email": "tungqt@avada.io",
       "fullName": "Quách Thanh Tùng",
       "username": "tungqt_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/629d618f2801948704ab5abb/b54786e3a135df615180280624056c4b",
       "initials": "QT",
       "role": "PM"
     },
@@ -287,7 +257,6 @@
       "fullName": "Nguyễn Thị Hiền",
       "username": "maison_avada",
       "email": "hiennt1@avadagroup.com",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/652379ca67556a7b753dd6d3/2a90d8a962df18b16de1f825e405abb1",
       "initials": "M",
       "role": "TS",
       "kpiName": "HienNT2",
@@ -298,7 +267,6 @@
       "id": "66d7c4e0bee239293b90cc16",
       "fullName": "Melody",
       "username": "melody_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/66d7c4e0bee239293b90cc16/b4285b8f65df667fd270fe1dfe69c8a0",
       "initials": "M",
       "kpiName": "DuongPT",
       "slackId": "U07KCQ08DFH",
@@ -309,7 +277,6 @@
       "id": "660a3953482f1c895810056d",
       "fullName": "Mia",
       "username": "mia_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/660a3953482f1c895810056d/e7c7818fb9633bd7b4daa87210795196",
       "initials": "M",
       "kpiName": "AnhTM"
     },
@@ -317,7 +284,6 @@
       "id": "646db562086550b760f37f25",
       "fullName": "Mạnh Thái Khắc",
       "username": "mnhthaikhc",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/646db562086550b760f37f25/c2e2547a80e655efbbfa8226a6e0de8d",
       "initials": "MK"
     },
     {
@@ -325,7 +291,6 @@
       "fullName": "lognh",
       "emai": "longnh@avadagroup.com",
       "username": "nguynhoanglong70",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/640ffe9c81a4978f46f6edb2/f4476e57685ef3c218afe1895bef592f",
       "initials": "L",
       "role": "pm"
     },
@@ -333,21 +298,18 @@
       "id": "64c87842344c161158e1a0d0",
       "fullName": "Tiến NH",
       "username": "tiennguyenhoang10",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/64c87842344c161158e1a0d0/3d19b380c79c1417a6d6fc8fbb48eff8",
       "initials": "TN"
     },
     {
       "id": "64d06d50e0f959d36fd72abe",
       "fullName": "Cương NH",
       "username": "cuongnhsaas",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/64d06d50e0f959d36fd72abe/466ffb4bdccf19552f6b48cb1757f78e",
       "initials": "CN"
     },
     {
       "id": "6641ba4ad264da0e9ba5819c",
       "fullName": "Nguyễn Hải Vũ",
       "username": "ricky_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6641ba4ad264da0e9ba5819c/a7dd5961f45d6759983d510c02c54c46",
       "initials": "NV",
       "kpiName": "VuNH",
       "slackId": "U04HQ5GRWEL",
@@ -358,21 +320,18 @@
       "id": "6577de9acf8562918aacf488",
       "fullName": "Nguyễn Hữu Chiến",
       "username": "chiennh02",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6577de9acf8562918aacf488/9800844bd55f2308891ead319f8f568e",
       "initials": "NC"
     },
     {
       "id": "65938659e7429da7240458c2",
       "fullName": "Nguyễn Khánh Linh",
       "username": "stewynguyen",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/65938659e7429da7240458c2/9c1cc25ed45203ccb3b7a56e1c1c3cb5",
       "initials": "NL"
     },
     {
       "id": "66384edf17169fd1b9b6c0ec",
       "fullName": "Quang Linh",
       "username": "dante_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/66384edf17169fd1b9b6c0ec/d0ff4dcfb691d5813938a967693ebd35",
       "initials": "QL"
     },
     {
@@ -380,7 +339,6 @@
       "fullName": "Sam Ng",
       "username": "imsamthomas",
       "email": "sam@avada.io",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/54db5532684901854786f6ba/50d3d3a2aaffbf4dd942682b018357e0",
       "initials": "SN",
       "role": "admin"
     },
@@ -388,21 +346,18 @@
       "id": "652ca9a07cc43484496a6e68",
       "fullName": "Quin",
       "username": "quynhnt2k1",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/652ca9a07cc43484496a6e68/c9e69e31c93a5e88e797c13d563196f7",
       "initials": "Q"
     },
     {
       "id": "65015cb17da08335fafad26f",
       "fullName": "Nguyễn Thị Mai",
       "username": "nguynthmai47",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/65015cb17da08335fafad26f/6e96ec8857b3a8f453d561f4c6c8f53f",
       "initials": "NM"
     },
     {
       "id": "652cac7f2780cd39539af7e5",
       "fullName": "Nguyễn Thị Phương Thảo",
       "username": "thao_ntp",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/652cac7f2780cd39539af7e5/3c205bfdfe57c83b202fcdd96faff57d",
       "initials": "NT"
     },
     {
@@ -410,7 +365,6 @@
       "email": "trangnt@avadagroup.com",
       "fullName": "Nguyễn Thị Trang",
       "username": "nguynthtrang112",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/65640e994007c4aa1e366d28/508a3764bbf1abfa5af47493f42143c7",
       "initials": "NT",
       "role": "ba"
     },
@@ -418,28 +372,24 @@
       "id": "65af3fcb29f1856b500b6016",
       "fullName": "Nguyễn Trọng Toàn",
       "username": "trtoan",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/65af3fcb29f1856b500b6016/f6d7035dcad29c060fcf4e92f2d72ba4",
       "initials": "NT"
     },
     {
       "id": "6678f4f599714127a25ff48d",
       "fullName": "Ngô Minh Đức",
       "username": "ngominhdc12",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6678f4f599714127a25ff48d/cadbb6a61557e2748fb7932a15fdb3b8",
       "initials": "NĐ"
     },
     {
       "id": "645da9f3f3180b0269eda144",
       "fullName": "Ngô Văn Tình",
       "username": "tinhvanngo",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/645da9f3f3180b0269eda144/fd12bea2122d86b89c5164b9bd69dd53",
       "initials": "NT"
     },
     {
       "id": "672aed3f1918e32f59415867",
       "fullName": "Nim",
       "username": "nim_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/672aed3f1918e32f59415867/6d822c69f84a7e17945a6e4d5a4d4f0a",
       "initials": "N",
       "kpiName": "ChiPL",
       "slackId": "U07U8JC4563",
@@ -450,21 +400,18 @@
       "id": "65e54892bc447bf2a6216265",
       "fullName": "nolan_avada",
       "username": "nolan_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/65e54892bc447bf2a6216265/573eb730eba1e03032dc5e3794a9c753",
       "initials": "N"
     },
     {
       "id": "6746895ee7159a08f9904afa",
       "fullName": "OL_CB_JS",
       "username": "ol_cb_js",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6746895ee7159a08f9904afa/fe3ecc76fb2c695bd85627c110005533",
       "initials": "O"
     },
     {
       "id": "655ca75f8ade6c99578f54b3",
       "fullName": "Pamela",
       "username": "pamela_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/655ca75f8ade6c99578f54b3/822c34db269fe8e03f9f7271ee0f5e48",
       "initials": "P",
       "kpiName": "HangHV"
     },
@@ -472,14 +419,12 @@
       "id": "675bbde42896d79737327a53",
       "fullName": "Pamela",
       "username": "pamelaa_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/675bbde42896d79737327a53/68e9d030b37feebdc5ad98f0a00d1caa",
       "initials": "P"
     },
     {
       "id": "666fb133b64e1bc5d594d79b",
       "fullName": "Penelope",
       "username": "penelope_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/666fb133b64e1bc5d594d79b/d21e3a6dcef6473a7644efd586fa5303",
       "initials": "P",
       "kpiName": "MinhNTM",
       "slackId": "U078R6F2X5X",
@@ -491,7 +436,6 @@
       "fullName": "Phạm Hồng Phúc",
       "username": "phmhngphuc8",
       "email": "phucph@avadagroup.com",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/67b2aff1ba80e817fe8149eb/1a8a94ac0c2bbd70448d1ba6fdfe09c8",
       "initials": "PP",
       "role": "ba"
     },
@@ -499,7 +443,6 @@
       "id": "66c2c2ff617470cbaccaa87a",
       "fullName": "Phạm Quang Tuấn Hoàng",
       "username": "damian_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/66c2c2ff617470cbaccaa87a/db898c0fe08b029b7c003d77ed5d4042",
       "initials": "PH",
       "kpiName": "HoangPQT"
     },
@@ -507,7 +450,6 @@
       "id": "6426c09eb182bb73c5f66b1e",
       "fullName": "Prakash",
       "username": "prakash_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6426c09eb182bb73c5f66b1e/abda0e49f3e42ae69b8c94825cd052f5",
       "initials": "P",
       "kpiName": "Prakash"
     },
@@ -516,7 +458,6 @@
       "fullName": "Quang NQ",
       "username": "fennic_avada",
       "email": "quangnq@avada.io",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6308e9353f075502098ff04b/fc2c08d439e460b7a2a446f794eec21e",
       "initials": "QN",
       "role": "admin",
       "kpiName": "QuangNQ",
@@ -526,14 +467,12 @@
       "id": "629d618f2801948704ab5abb",
       "fullName": "Quách Thanh Tùng",
       "username": "tungqt_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/629d618f2801948704ab5abb/b54786e3a135df615180280624056c4b",
       "initials": "QT"
     },
     {
       "id": "66c2c54cec9c32b23f77c580",
       "fullName": "Sonny_Avada",
       "username": "sonny_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/66c2c54cec9c32b23f77c580/c5f99fb3314241faee45a092fc01bdb3",
       "initials": "S",
       "kpiName": "HuyTC",
       "slackId": "U07HTBW4CRX",
@@ -545,7 +484,6 @@
       "email": "sonnv@avadagroup.com",
       "fullName": "Sơn Nguyên",
       "username": "sonnv212",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/651a39d6f837c8d90a40e715/8cc1ba715e2b0861b4442acfb3a671ed",
       "initials": "SN",
       "role": "pm"
     },
@@ -553,28 +491,24 @@
       "id": "5f0677e3c1396d449a43019a",
       "fullName": "Ryan",
       "username": "sonnb98",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/5f0677e3c1396d449a43019a/6e1fcf66b8b628489611983e675a1c28",
       "initials": "R"
     },
     {
       "id": "61f621f3d0e11360dcd6f59a",
       "fullName": "Anh NT",
       "username": "anhnt83",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/61f621f3d0e11360dcd6f59a/3de91b6662aa2d42978d1dee0c05d43e",
       "initials": "AN"
     },
     {
       "id": "63c4c2be2dd3d10041b2ff65",
       "fullName": "Thomas Pham",
       "username": "thomaspham48",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/63c4c2be2dd3d10041b2ff65/d987c4178081d5e4542891f70ef992fb",
       "initials": "TP"
     },
     {
       "id": "67bbde469c287b8f7e28f866",
       "fullName": "Thảo BP (Siel)",
       "username": "siel_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/67bbde469c287b8f7e28f866/e5a55639d23926fe377f18e2c68d1403",
       "initials": "T",
       "kpiName": "ThaoBP"
     },
@@ -582,14 +516,12 @@
       "id": "6445efe9ff10b7ae4666497d",
       "fullName": "Thắng Ngô Công",
       "username": "thawsngoo",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6445efe9ff10b7ae4666497d/b7b4439df5e3bc7f2aa2795627087e26",
       "initials": "TC"
     },
     {
       "id": "6577e030dfe18d53f8128566",
       "fullName": "Lê Phương Thảo",
       "username": "tiana_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6577e030dfe18d53f8128566/ee30ec2f79c99ce7f4c8d2b74c89f77b",
       "initials": "LT",
       "kpiName": "ThaoLP",
       "slackId": "U069LL5RBA9",
@@ -600,21 +532,18 @@
       "id": "64be307798183a11c8fe12f1",
       "fullName": "Toby",
       "username": "toby_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/64be307798183a11c8fe12f1/56b964494f08e75402626ba247999b75",
       "initials": "T"
     },
     {
       "id": "651a6e598c6bb08a0f4db052",
       "fullName": "Toàn Nguyễn Hữu Khánh",
       "username": "toannguynhukhanh",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/651a6e598c6bb08a0f4db052/bd1a1fbf3b9301f89c713b3435244109",
       "initials": "TK"
     },
     {
       "id": "64b4de8239532410deaee009",
       "fullName": "Tracy",
       "username": "tracy_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/64b4de8239532410deaee009/2172fcd46feb409c62ad1b5bf3604ab2",
       "initials": "T",
       "kpiName": "MinhLT"
     },
@@ -622,35 +551,30 @@
       "id": "65112df39903b28897cbd3f9",
       "fullName": "Trương Ngọc Huyền",
       "username": "huyentn1621",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/65112df39903b28897cbd3f9/56aec32f05142a96c151de87542e7d39",
       "initials": "TH"
     },
     {
       "id": "656d537b1019a01977b32c5b",
       "fullName": "Trần Lê Việt Nam",
       "username": "vietnam02",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/656d537b1019a01977b32c5b/e22994ea95037af27a7e644bea82a10b",
       "initials": "TN"
     },
     {
       "id": "65af3f5a952e54343d1b9375",
       "fullName": "Trần Minh Dũng",
       "username": "minhdungit2001",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/65af3f5a952e54343d1b9375/777a1d9e5a129d1cddad5cf69361150b",
       "initials": "TD"
     },
     {
       "id": "65152ca8ac2f3529a6c9b6e5",
       "fullName": "Đan TT",
       "username": "dantt25",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/65152ca8ac2f3529a6c9b6e5/b458325a7d3efa5e4024e82ca4d27073",
       "initials": "ĐT"
     },
     {
       "id": "66a3c9cda6c47893a3b36501",
       "fullName": "Trần Thùy Tiên",
       "username": "trnthuytien3",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/66a3c9cda6c47893a3b36501/a1360ee44c8404e2f4cee21a491c8d1a",
       "initials": "TT"
     },
     {
@@ -658,7 +582,6 @@
       "fullName": "Trần Thị Bích Phương",
       "username": "doris_avada",
       "email": "phuongttb@avadagroup.com",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/66385f83fe51bce2bd707ff6/641476cc8a35c87e5ac5915f49b58427",
       "initials": "TP",
       "role": "TS",
       "kpiName": "PhuongTTB",
@@ -669,42 +592,36 @@
       "id": "64d070a2fdfec7de5fb327c7",
       "fullName": "Trần Thủy Tiên",
       "username": "tientt6",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/64d070a2fdfec7de5fb327c7/b6c1654b0c928af0545b2ab1ddfeac48",
       "initials": "TT"
     },
     {
       "id": "645da9ad0fa887f6e7bd905e",
       "fullName": "Trần Văn Nghĩa",
       "username": "nghiatv26",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/645da9ad0fa887f6e7bd905e/95327407caed9a640e9a4044840c51e8",
       "initials": "TN"
     },
     {
       "id": "62a06d5020fbf41285055dda",
       "fullName": "Trịnh Thị Dung",
       "username": "duntt",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/62a06d5020fbf41285055dda/7601d2662a4cf507f1ca0bd266e1e836",
       "initials": "TD"
     },
     {
       "id": "63feb2e6004a877185319d56",
       "fullName": "Tony",
       "username": "tony_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/63feb2e6004a877185319d56/0965de04b45080f20eff6f52d2c2abb8",
       "initials": "T"
     },
     {
       "id": "6200c78aee15eb174eefcc27",
       "fullName": "Tạ Hồng Anh",
       "username": "tajanh99",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6200c78aee15eb174eefcc27/e732bd6d138630a089ce2330b3b0f8c4",
       "initials": "TA"
     },
     {
       "id": "6666b951a74d0d17d3faa7dc",
       "fullName": "Võ Nam Hiếu",
       "username": "charles_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6666b951a74d0d17d3faa7dc/f8b4d3c628db0df47ed473567016ec5e",
       "initials": "VH",
       "kpiName": "HieuVN"
     },
@@ -712,14 +629,12 @@
       "id": "674d38650bd61a483dc89d11",
       "fullName": "Hải Anh",
       "username": "rachel_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/674d38650bd61a483dc89d11/d28bd876f03a86b19206ba6a30f09859",
       "initials": "HA"
     },
     {
       "id": "65aa482e6d6edf68756101b6",
       "fullName": "Vũ Minh Hòa",
       "username": "vuminhhoa4",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/65aa482e6d6edf68756101b6/894b0cd8f13134c926261cfd3f0b155a",
       "initials": "VH"
     },
     {
@@ -727,7 +642,6 @@
       "fullName": "Vũ Trọng Nghĩa",
       "email": "nghiavt@avadagroup.com",
       "username": "vutrngnghia9",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6296e0963b6dd82348753a8c/007d2d37ec188c8e3f542f4fa6441b86",
       "initials": "VN",
       "role": "pm"
     },
@@ -736,7 +650,6 @@
       "fullName": "Trần Đức Tùng",
       "username": "william_avada",
       "email": "william@avadagroup.com",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/63b3a589a05c1801101fd5d2/2a326e17c53569098cc79d3cda60e72f",
       "initials": "W",
       "role": "TS",
       "kpiName": "TungTD",
@@ -747,14 +660,12 @@
       "id": "62f9c29c03e59937e0063fd8",
       "fullName": "anhmtl",
       "username": "anhmtl",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/62f9c29c03e59937e0063fd8/2fe0eb9c888492f94e9ccc9b3caa0748",
       "initials": "A"
     },
     {
       "id": "6683802e7422222239efe885",
       "fullName": "datpt",
       "username": "christian_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6683802e7422222239efe885/2c46e0b073adcb0b5636b30f2a987288",
       "initials": "D",
       "kpiName": "ĐatPT",
       "slackId": "U07AJ4NT2KX",
@@ -765,7 +676,6 @@
       "id": "62d7ad85c9d2d00d12937b9c",
       "fullName": "datvm",
       "username": "datvm2",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/62d7ad85c9d2d00d12937b9c/e23d9c5b618143765fd427e1997a30c9",
       "initials": "D"
     },
     {
@@ -773,8 +683,6 @@
       "email": "dongnv@avadagroup.com",
       "fullName": "Đông Nguyễn Văn",
       "username": "dong1207",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/64586bc3e4fb5e43136979bf/5a86806ec91ddd7db58a3d27f210c199",
-      "initials": "ĐV",
       "role": "dev",
       "kpiName": "DongNV"
     },
@@ -783,8 +691,6 @@
       "fullName": "Đỗ Minh Quân",
       "username": "raymond_avada",
       "email": "quandm@avadagroup.com",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/65dc1670ae5414d1dd11a26d/040127be60bf273f2c5b577c428ff508",
-      "initials": "ĐQ",
       "role": "ts-lead",
       "kpiName": "QuanDM",
       "slackId": "U06LNG16WG1",
@@ -795,8 +701,6 @@
       "fullName": "Nguyễn Tiến Dũng",
       "email": "dungnt01@avadagroup.com",
       "username": "heni_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/68185d03b9ba1c56c3ed3de9/81bc6f23817e31eb9298158c4ca23033",
-      "initials": "DT",
       "role": "TS",
       "slackId": "U08QY50KNFL",
       "group": "TS2",
@@ -807,16 +711,12 @@
       "email": "linhnk@avadagroup.com",
       "fullName": "Nguyễn Khánh Linh",
       "username": "Kaitlynne_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/68185ad36513ead08dc11eb1/da2bcb163a385b1ebbbd3c74db5594d7",
-      "initials": "K",
       "role": "ba"
     },
     {
       "id": "681857c0ad19d39f0ee0e78e",
       "fullName": "Ngô Thị Thu Thủy",
       "username": "tiffany_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/681857c0ad19d39f0ee0e78e/d15cf29d0f314fe2bfb9743b682e2655",
-      "initials": "T",
       "slackId": "U08QY52JK8A",
       "role": "CS",
       "group": "CS3",
@@ -826,8 +726,6 @@
       "id": "682175c3e94e4f5644a59d3d",
       "fullName": "Skylar",
       "username": "skylar_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/682175c3e94e4f5644a59d3d/282079abe60d8c016c10feece428506b",
-      "initials": "S",
       "slackId": "U08RFT315T9",
       "role": "CS",
       "group": "CS1"
@@ -836,8 +734,6 @@
       "id": "68219121e0c5d6cf93205fe4",
       "fullName": "Phạm Thị Nhật Sương",
       "username": "susan_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/68219121e0c5d6cf93205fe4/14f50353c92b589b15addd7e1a8894a4",
-      "initials": "PS",
       "slackId": "U08RFT43NCF",
       "role": "CS",
       "group": "CS3",
@@ -847,8 +743,6 @@
       "id": "6821929c5ec3709b731a2f80",
       "fullName": "Nguyễn Tuấn Linh",
       "username": "kyle_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6821929c5ec3709b731a2f80/43c860019946a941051dec955ab66819",
-      "initials": "NL",
       "slackId": "U08RFT1KWBZ",
       "role": "CS",
       "group": "CS3",
@@ -858,8 +752,6 @@
       "id": "6821786d902bc9ef54452b24",
       "fullName": "felicity_avada",
       "username": "felicity_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6821786d902bc9ef54452b24/b31ca546a1d2d8c5d998f6e8500997f1",
-      "initials": "F",
       "slackId": "U08RFT095UP",
       "role": "CS",
       "group": "CS4",
@@ -869,8 +761,6 @@
       "id": "6833e973f4e0c00790f5a4b5",
       "fullName": "Hela",
       "username": "hela_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6833e973f4e0c00790f5a4b5/a2fa5e9e62389ac20072ccfa71138e75",
-      "initials": "H",
       "slackId": "U08TZM5SF7U",
       "role": "CS",
       "group": "CS4",
@@ -880,8 +770,6 @@
       "id": "682acf5b54697f025107d7d5",
       "fullName": "Avery Pham",
       "username": "avery_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/682acf5b54697f025107d7d5/7d6d00ff75828889e66a84dae2467b01",
-      "initials": "AP",
       "slackId": "U08TAJ1T9UZ",
       "role": "CS",
       "group": "CS4",
@@ -891,8 +779,6 @@
       "id": "6833e891406b5906e83481cb",
       "fullName": "Tobias",
       "username": "tobias_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/6833e891406b5906e83481cb/3378b79cac28fc17f156182107503b53",
-      "initials": "T",
       "slackId": "U08TZM4551Q",
       "role": "CS",
       "group": "CS1",
@@ -902,8 +788,6 @@
       "id": "682acda74abe5baae821b52a",
       "fullName": "hiennt03",
       "username": "iris_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/682acda74abe5baae821b52a/27b7706de0aa8607661e6ca5350fe0b6",
-      "initials": "H",
       "slackId": "U08T11T6GDA",
       "role": "CS",
       "group": "CS4",
@@ -913,8 +797,6 @@
       "id": "682ab78028a7ac043be33dca",
       "fullName": "Nguyễn Kiều Thu",
       "username": "julie_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/682ab78028a7ac043be33dca/50a7ace973b93f4e0e5c1fb2a2a55733",
-      "initials": "NT",
       "slackId": "U08TAHXTV4Z",
       "role": "CS",
       "group": "CS4",
@@ -924,8 +806,6 @@
       "id": "68340cff129299b89d70bae6",
       "fullName": "cody_avada",
       "username": "cody_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/68340cff129299b89d70bae6/1c0396f317b290079f4d675619eaac64",
-      "initials": "C",
       "slackId": "U08TZM2LL74",
       "role": "CS",
       "group": "CS2",
@@ -935,8 +815,6 @@
       "id": "683d27cb3fdd69ddec8f8169",
       "fullName": "Ian",
       "username": "ian_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/683d27cb3fdd69ddec8f8169/3d7d4e8000e1b94d18aec5fa6fa7f4bf",
-      "initials": "I",
       "slackId": "U0906HQUZTJ",
       "role": "CS",
       "group": "CS1"
@@ -946,18 +824,15 @@
       "fullName": "Thoai VQ",
       "username": "lias_avada",
       "email": "thoaivq@avadagroup.com",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/684652eda44577c30bc60ec4/dd6d129cef20b0f12632eaee7b5db8bb",
-      "initials": "TV",
       "slackId": "U0902NJ53P1",
-      "role": "ts",
+      "kpiName": "ThoaiVQ",
+      "role": "TS",
       "group": "TS1"
     },
     {
       "id": "684fb68d42e41bef96450446",
       "fullName": "Trần Thị Ngọc Ánh",
       "username": "annie_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/684fb68d42e41bef96450446/e91dc5c4009c443ecc67a0b34ec85983",
-      "initials": "TÁ",
       "role": "CS",
       "group": "CS3",
       "kpiName": "AnhPM",
@@ -968,11 +843,19 @@
       "fullName": "Nguyễn Ngọc Sơn",
       "email": "sonnn@avadagroup.com",
       "username": "juno_avada",
-      "avatarUrl": "https://trello-members.s3.amazonaws.com/685901a944b32ad41cfacab6/c5ee96ea723afe5e7697adfc4de38d0a",
-      "initials": "NS",
-      "role": "ts",
+      "role": "TS",
       "group": "TS1",
       "kpiName": "SonNN",
       "slackId": "U092JM558Q2"
+    },
+    {
+      "id": "687495d36ab6d4ff0cb41320",
+      "fullName": "Tuấn ĐV",
+      "email": "tuandv1@avadagroup.com",
+      "username": "ryan_avada",
+      "role": "TS",
+      "group": "TS2",
+      "slackId": "U09699UTEQ0",
+      "kpiName": "TuanDV"
     }
   ]
