@@ -43,9 +43,13 @@ const CardsDetail = () => {
     const [resolutionTimes, setResolutionTimes] = useState({});
     const [selectedCardDetail, setSelectedCardDetail] = useState(null);
     const [isCardDetailModalOpen, setIsCardDetailModalOpen] = useState(false);
-    const [selectedShiftFilter, setSelectedShiftFilter] = useState('');
     const [selectedApp, setSelectedApp] = useState('');
     const [heatmapFilter, setHeatmapFilter] = useState(null);
+    const [createdCardsHeatmapFilter, setCreatedCardsHeatmapFilter] = useState(null);
+    const [heatmapFilterTS1, setHeatmapFilterTS1] = useState(null);
+    const [createdCardsHeatmapFilterTS1, setCreatedCardsHeatmapFilterTS1] = useState(null);
+    const [heatmapFilterTS2, setHeatmapFilterTS2] = useState(null);
+    const [createdCardsHeatmapFilterTS2, setCreatedCardsHeatmapFilterTS2] = useState(null);
 
     // Filter TS and TS-lead members
     const tsMembers = members.filter(member => 
@@ -183,8 +187,8 @@ const CardsDetail = () => {
         })
         : filteredCards;
 
-    // Filter by heatmap hour if selected
-    const filteredByHeatmap = heatmapFilter !== null
+    // Filter by heatmap hour if selected (Completed Cards)
+    const filteredByCompletedHeatmap = heatmapFilter !== null
         ? filteredByApp.filter(card => {
             if (Array.isArray(card.actions) && card.dueComplete) {
                 const completeAction = [...card.actions].reverse().find(action => 
@@ -211,6 +215,137 @@ const CardsDetail = () => {
             return false;
         })
         : filteredByApp;
+
+    // Filter by created cards heatmap hour if selected
+    const filteredByCreatedHeatmap = createdCardsHeatmapFilter !== null
+        ? filteredByCompletedHeatmap.filter(card => {
+            if (Array.isArray(card.actions)) {
+                const createAction = card.actions.find(action => action.type === 'createCard');
+                if (createAction && createAction.date) {
+                    const hour = dayjs(createAction.date).hour();
+                    return hour === createdCardsHeatmapFilter;
+                }
+            }
+            return false;
+        })
+        : filteredByCompletedHeatmap;
+
+    // Filter by TS1 completed cards heatmap hour if selected
+    const filteredByTS1CompletedHeatmap = heatmapFilterTS1 !== null
+        ? filteredByCreatedHeatmap.filter(card => {
+            // Check if card belongs to TS1
+            const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+            const belongsToTS1 = appLabels.some(label => {
+                const app = appData.find(a => a.label_trello === label.name);
+                return app && app.group_ts === 'TS1';
+            });
+            
+            if (belongsToTS1 && Array.isArray(card.actions) && card.dueComplete) {
+                const completeAction = [...card.actions].reverse().find(action => 
+                    action.type === 'updateCard' && 
+                    action.data?.old?.dueComplete === false &&
+                    action.data?.card?.dueComplete === true && 
+                    action.date
+                );
+                
+                // Fallback: if no old.dueComplete found, look for any updateCard with dueComplete: true
+                const fallbackAction = !completeAction ? [...card.actions].reverse().find(action => 
+                    action.type === 'updateCard' && 
+                    action.data?.card?.dueComplete === true && 
+                    action.date
+                ) : null;
+                
+                const finalAction = completeAction || fallbackAction;
+                
+                if (finalAction && finalAction.date) {
+                    const hour = dayjs(finalAction.date).hour();
+                    return hour === heatmapFilterTS1;
+                }
+            }
+            return false;
+        })
+        : filteredByCreatedHeatmap;
+
+    // Filter by TS1 created cards heatmap hour if selected
+    const filteredByTS1CreatedHeatmap = createdCardsHeatmapFilterTS1 !== null
+        ? filteredByTS1CompletedHeatmap.filter(card => {
+            // Check if card belongs to TS1
+            const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+            const belongsToTS1 = appLabels.some(label => {
+                const app = appData.find(a => a.label_trello === label.name);
+                return app && app.group_ts === 'TS1';
+            });
+            
+            if (belongsToTS1 && Array.isArray(card.actions)) {
+                const createAction = card.actions.find(action => action.type === 'createCard');
+                if (createAction && createAction.date) {
+                    const hour = dayjs(createAction.date).hour();
+                    return hour === createdCardsHeatmapFilterTS1;
+                }
+            }
+            return false;
+        })
+        : filteredByTS1CompletedHeatmap;
+
+    // Filter by TS2 completed cards heatmap hour if selected
+    const filteredByTS2CompletedHeatmap = heatmapFilterTS2 !== null
+        ? filteredByTS1CreatedHeatmap.filter(card => {
+            // Check if card belongs to TS2
+            const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+            const belongsToTS2 = appLabels.some(label => {
+                const app = appData.find(a => a.label_trello === label.name);
+                return app && app.group_ts === 'TS2';
+            });
+            
+            if (belongsToTS2 && Array.isArray(card.actions) && card.dueComplete) {
+                const completeAction = [...card.actions].reverse().find(action => 
+                    action.type === 'updateCard' && 
+                    action.data?.old?.dueComplete === false &&
+                    action.data?.card?.dueComplete === true && 
+                    action.date
+                );
+                
+                // Fallback: if no old.dueComplete found, look for any updateCard with dueComplete: true
+                const fallbackAction = !completeAction ? [...card.actions].reverse().find(action => 
+                    action.type === 'updateCard' && 
+                    action.data?.card?.dueComplete === true && 
+                    action.date
+                ) : null;
+                
+                const finalAction = completeAction || fallbackAction;
+                
+                if (finalAction && finalAction.date) {
+                    const hour = dayjs(finalAction.date).hour();
+                    return hour === heatmapFilterTS2;
+                }
+            }
+            return false;
+        })
+        : filteredByTS1CreatedHeatmap;
+
+    // Filter by TS2 created cards heatmap hour if selected
+    const filteredByTS2CreatedHeatmap = createdCardsHeatmapFilterTS2 !== null
+        ? filteredByTS2CompletedHeatmap.filter(card => {
+            // Check if card belongs to TS2
+            const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+            const belongsToTS2 = appLabels.some(label => {
+                const app = appData.find(a => a.label_trello === label.name);
+                return app && app.group_ts === 'TS2';
+            });
+            
+            if (belongsToTS2 && Array.isArray(card.actions)) {
+                const createAction = card.actions.find(action => action.type === 'createCard');
+                if (createAction && createAction.date) {
+                    const hour = dayjs(createAction.date).hour();
+                    return hour === createdCardsHeatmapFilterTS2;
+                }
+            }
+            return false;
+        })
+        : filteredByTS2CompletedHeatmap;
+
+    // Final filtered data
+    const filteredByHeatmap = filteredByTS2CreatedHeatmap;
 
     // Pie chart data: number of cards per TS (from filteredCards)
     const pieData = tsMembers
@@ -335,7 +470,7 @@ const CardsDetail = () => {
                 const since = dayjs(selectedDate).startOf('day').toISOString();
                 const before = dayjs(selectedDate).endOf('day').toISOString();
                 const data = await getCardsByBoardForPerformanceTS(since, before);
-                console.log(data);
+                console.log(data[0]);
                 setCards(data || []);
 
                 // Calculate resolution times for completed cards
@@ -352,47 +487,56 @@ const CardsDetail = () => {
         fetchCards();
     }, [selectedDate, selectedTS]);
 
-    // Function to get completed cards heatmap data
-    const getCompletedCardsHeatmap = () => {
+    // Function to get completed cards heatmap data by team
+    const getCompletedCardsHeatmapByTeam = (team) => {
         const heatmap = Array.from({ length: 24 }, () => ({ count: 0, cards: [] }));
         const cardsToProcess = filteredByApp;
         cardsToProcess.forEach(card => {
             if (card.dueComplete) {
-                let completeDate = null;
-                if (Array.isArray(card.actions)) {
-                    const completeAction = [...card.actions].reverse().find(action =>
-                        action.type === 'updateCard' &&
-                        action.data?.card?.dueComplete === true &&
-                        action.date
-                    );
-                    if (completeAction) {
-                        completeDate = completeAction.date;
+                // Check if card belongs to the specified team
+                const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+                const belongsToTeam = appLabels.some(label => {
+                    const app = appData.find(a => a.label_trello === label.name);
+                    return app && app.group_ts === team;
+                });
+                
+                if (belongsToTeam) {
+                    let completeDate = null;
+                    if (Array.isArray(card.actions)) {
+                        const completeAction = [...card.actions].reverse().find(action =>
+                            action.type === 'updateCard' &&
+                            action.data?.card?.dueComplete === true &&
+                            action.date
+                        );
+                        if (completeAction) {
+                            completeDate = completeAction.date;
+                        }
                     }
-                }
-                if (!completeDate) {
-                    completeDate = card.dateCompleted || card.due || null;
-                }
-                if (completeDate) {
-                    const hour = dayjs(completeDate).hour();
-                    heatmap[hour].count += 1;
-                    heatmap[hour].cards.push({
-                        id: card.id,
-                        name: card.name,
-                        completedAt: completeDate,
-                        memberNames: Array.isArray(card.idMembers)
-                            ? card.idMembers.map(id => {
-                                const m = tsMembers.find(mem => mem.id === id);
-                                return m ? m.fullName : null;
-                            }).filter(Boolean)
-                            : []
-                    });
+                    if (!completeDate) {
+                        completeDate = card.dateCompleted || card.due || null;
+                    }
+                    if (completeDate) {
+                        const hour = dayjs(completeDate).hour();
+                        heatmap[hour].count += 1;
+                        heatmap[hour].cards.push({
+                            id: card.id,
+                            name: card.name,
+                            completedAt: completeDate,
+                            memberNames: Array.isArray(card.idMembers)
+                                ? card.idMembers.map(id => {
+                                    const m = tsMembers.find(mem => mem.id === id);
+                                    return m ? m.fullName : null;
+                                }).filter(Boolean)
+                                : []
+                        });
+                    }
                 }
             }
         });
         return heatmap;
     };
 
-    // Function to get cell color based on count
+    // Function to get cell color based on count (Green for Completed Cards)
     const getHeatmapCellColor = (count) => {
         if (count === 0) return '#f1f5f9'; // gray-100
         if (count <= 2) return '#bbf7d0'; // green-200
@@ -403,20 +547,68 @@ const CardsDetail = () => {
         return '#15803d'; // green-700
     };
 
-    // Completed Cards Heatmap Component
-    const CompletedCardsHeatmap = () => {
-        const heatmapData = getCompletedCardsHeatmap();
-        const totalCompletedCards = heatmapData.reduce((sum, h) => sum + h.count, 0);
+    // Function to get cell color based on count (Red for Created Cards)
+    const getCreatedCardsCellColor = (count) => {
+        if (count === 0) return '#f1f5f9'; // gray-100
+        if (count <= 2) return '#fecaca'; // red-200
+        if (count <= 5) return '#fca5a5'; // red-300
+        if (count <= 10) return '#f87171'; // red-400
+        if (count <= 15) return '#ef4444'; // red-500
+        if (count <= 20) return '#dc2626'; // red-600
+        return '#b91c1c'; // red-700
+    };
+
+
+
+    // Function to get created cards heatmap data by team
+    const getCreatedCardsHeatmapByTeam = (team) => {
+        const heatmap = Array.from({ length: 24 }, () => ({ count: 0, cards: [] }));
+        const cardsToProcess = filteredByApp;
+        cardsToProcess.forEach(card => {
+            if (Array.isArray(card.actions)) {
+                const createAction = card.actions.find(action => action.type === 'createCard');
+                if (createAction && createAction.date) {
+                    // Check if card belongs to the specified team
+                    const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+                    const belongsToTeam = appLabels.some(label => {
+                        const app = appData.find(a => a.label_trello === label.name);
+                        return app && app.group_ts === team;
+                    });
+                    
+                    if (belongsToTeam) {
+                        const hour = dayjs(createAction.date).hour();
+                        heatmap[hour].count += 1;
+                        heatmap[hour].cards.push({
+                            id: card.id,
+                            name: card.name,
+                            createdAt: createAction.date,
+                            memberNames: Array.isArray(card.idMembers)
+                                ? card.idMembers.map(id => {
+                                    const m = tsMembers.find(mem => mem.id === id);
+                                    return m ? m.fullName : null;
+                                }).filter(Boolean)
+                                : []
+                        });
+                    }
+                }
+            }
+        });
+        return heatmap;
+    };
+
+    // Created Cards Heatmap Component for TS1
+    const CreatedCardsHeatmapTS1 = () => {
+        const heatmapData = getCreatedCardsHeatmapByTeam('TS1');
+        const totalCreatedCards = heatmapData.reduce((sum, h) => sum + h.count, 0);
         return (
             <Paper elevation={2} sx={{ 
-                p: 5,
+                p: { xs: 2, md: 5 },
                 borderRadius: 3, 
                 background: 'white', 
                 boxShadow: '0 6px 32px 0 #b6c2d955',
                 width: '100%',
-                maxWidth: 'none',
-                margin: '0 auto',
-                mb: 4
+                mb: 4,
+                overflow: 'hidden'
             }}>
                 <Box sx={{ 
                     display: 'flex', 
@@ -429,11 +621,11 @@ const CardsDetail = () => {
                     <Typography variant="h6" sx={{ 
                         fontWeight: 700, 
                         color: '#1976d2'
-                    }}>Completed Cards Heatmap - {dayjs(selectedDate).format('DD/MM/YYYY')} ({totalCompletedCards} total)</Typography>
-                    {heatmapFilter && (
+                    }}>Created Cards Heatmap - TS1 - {dayjs(selectedDate).format('DD/MM/YYYY')} ({totalCreatedCards} total)</Typography>
+                    {createdCardsHeatmapFilterTS1 && (
                         <Chip
-                            label={`Filter: ${heatmapFilter}h (${heatmapData[heatmapFilter].count} cards)`}
-                            onDelete={() => setHeatmapFilter(null)}
+                            label={`Filter: ${createdCardsHeatmapFilterTS1}h (${heatmapData[createdCardsHeatmapFilterTS1].count} cards)`}
+                            onDelete={() => setCreatedCardsHeatmapFilterTS1(null)}
                             color="primary"
                             size="small"
                             sx={{ 
@@ -450,22 +642,242 @@ const CardsDetail = () => {
                     )}
                 </Box>
                 {/* Color legend */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3, ml: 1 }}>
-                    <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#f1f5f9', border: '1.5px solid #cbd5e1', mr: 1 }} />
-                    <Typography sx={{ fontSize: 15, color: '#334155', mr: 2 }}>0</Typography>
-                    <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#bbf7d0', border: '1.5px solid #cbd5e1', mr: 1 }} />
-                    <Typography sx={{ fontSize: 15, color: '#334155', mr: 2 }}>1-2</Typography>
-                    <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#86efac', border: '1.5px solid #cbd5e1', mr: 1 }} />
-                    <Typography sx={{ fontSize: 15, color: '#334155', mr: 2 }}>3-5</Typography>
-                    <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#4ade80', border: '1.5px solid #cbd5e1', mr: 1 }} />
-                    <Typography sx={{ fontSize: 15, color: '#334155', mr: 2 }}>6-10</Typography>
-                    <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#22c55e', border: '1.5px solid #cbd5e1', mr: 1 }} />
-                    <Typography sx={{ fontSize: 15, color: '#334155', mr: 2 }}>11-15</Typography>
-                    <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#16a34a', border: '1.5px solid #cbd5e1', mr: 1 }} />
-                    <Typography sx={{ fontSize: 15, color: '#334155', mr: 2 }}>16-20</Typography>
-                    <Box sx={{ width: 28, height: 20, borderRadius: 1, background: '#15803d', border: '1.5px solid #cbd5e1', mr: 1 }} />
-                    <Typography sx={{ fontSize: 15, color: '#334155' }}>&gt;20</Typography>
-                </Box>
+                <Paper elevation={1} sx={{ 
+                    p: 3, 
+                    mb: 3, 
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%)', 
+                    border: '1px solid #e3e8ee',
+                    borderRadius: 3,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                }}>
+                    <Typography variant="subtitle2" sx={{ 
+                        fontWeight: 700, 
+                        color: '#1976d2', 
+                        mb: 2.5,
+                        fontSize: 15,
+                        textAlign: 'center',
+                        letterSpacing: 0.5
+                    }}>
+                    </Typography>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: { xs: 1.5, sm: 2.5 }, 
+                        flexWrap: 'wrap',
+                        justifyContent: 'center'
+                    }}>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#f1f5f9', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>0</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#fecaca', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>1-2</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#fca5a5', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>3-5</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#f87171', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>6-10</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#ef4444', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>11-15</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#dc2626', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>16-20</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#b91c1c', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>{'>'}20</Typography>
+                        </Box>
+                    </Box>
+                </Paper>
                 {/* Heatmap grid theo ca trực */}
                 <Box sx={{ 
                     display: 'flex', 
@@ -475,98 +887,1406 @@ const CardsDetail = () => {
                     margin: '0 auto',
                     minHeight: 300
                 }}>
-                    {shiftLabels.map((shift, idx) => (
-                        <Box key={shift.label} sx={{ display: 'flex', width: '100%', alignItems: 'center', gap: 1 }}>
-                            <Box sx={{ width: 60, textAlign: 'right', pr: 1 }}>
-                                <Typography sx={{ fontWeight: 700, color: '#1976d2', fontSize: 15 }}>{shift.label}</Typography>
-                            </Box>
-                            {shift.hours.map(hour => {
-                                const hourData = heatmapData[hour];
-                                return (
-                                    <Tooltip 
-                                        key={hour}
-                                        title={
-                                            hourData.count > 0 ? (
-                                                <Box>
-                                                    <Typography sx={{ fontWeight: 600, mb: 1 }}>
-                                                        {hour}h: {hourData.count} completed cards
-                                                    </Typography>
-                                                    <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
-                                                        {hourData.cards.slice(0, 5).map(card => (
-                                                            <Box key={card.id} sx={{ fontSize: 12, mb: 0.5 }}>
-                                                                • {card.name}
-                                                                <Typography sx={{ fontSize: 11, color: '#94a3b8', ml: 1 }}>
-                                                                    by {card.memberNames.join(', ')}
+                    {shiftLabels.map((shift, idx) => {
+                        // Calculate total cards for this shift
+                        const shiftTotal = shift.hours.reduce((sum, hour) => sum + heatmapData[hour].count, 0);
+                        
+                        return (
+                            <Box key={shift.label} sx={{ display: 'flex', width: '100%', alignItems: 'center', gap: 1 }}>
+                                <Box sx={{ width: 60, textAlign: 'right', pr: 1 }}>
+                                    <Typography sx={{ fontWeight: 700, color: '#1976d2', fontSize: 15 }}>{shift.label}</Typography>
+                                </Box>
+                                {shift.hours.map(hour => {
+                                    const hourData = heatmapData[hour];
+                                    return (
+                                        <Tooltip 
+                                            key={hour}
+                                            title={
+                                                hourData.count > 0 ? (
+                                                    <Box>
+                                                        <Typography sx={{ fontWeight: 600, mb: 1 }}>
+                                                            {hour}h: {hourData.count} created cards
+                                                        </Typography>
+                                                        <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
+                                                            {hourData.cards.slice(0, 5).map(card => (
+                                                                <Box key={card.id} sx={{ fontSize: 12, mb: 0.5 }}>
+                                                                    • {card.name}
+                                                                    <Typography sx={{ fontSize: 11, color: '#94a3b8', ml: 1 }}>
+                                                                        by {card.memberNames.join(', ')}
+                                                                    </Typography>
+                                                                </Box>
+                                                            ))}
+                                                            {hourData.cards.length > 5 && (
+                                                                <Typography sx={{ fontSize: 12, color: '#64748b' }}>
+                                                                    ... and {hourData.cards.length - 5} more
                                                                 </Typography>
-                                                            </Box>
-                                                        ))}
-                                                        {hourData.cards.length > 5 && (
-                                                            <Typography sx={{ fontSize: 12, color: '#64748b' }}>
-                                                                ... and {hourData.cards.length - 5} more
-                                                            </Typography>
-                                                        )}
+                                                            )}
+                                                        </Box>
                                                     </Box>
-                                                </Box>
-                                            ) : `No cards completed at ${hour}h`
-                                        }
-                                        arrow
-                                        slotProps={{ 
-                                            tooltip: { 
-                                                sx: { 
-                                                    fontSize: 14, 
-                                                    px: 2, 
-                                                    py: 1,
-                                                    maxWidth: 300,
-                                                    backgroundColor: 'rgba(0,0,0,0.9)',
-                                                    color: 'white'
+                                                ) : `No cards created at ${hour}h`
+                                            }
+                                            arrow
+                                            slotProps={{ 
+                                                tooltip: { 
+                                                    sx: { 
+                                                        fontSize: 14, 
+                                                        px: 2, 
+                                                        py: 1,
+                                                        maxWidth: 300,
+                                                        backgroundColor: 'rgba(0,0,0,0.9)',
+                                                        color: 'white'
+                                                    } 
                                                 } 
-                                            } 
-                                        }}
-                                    >
-                                        <Box
-                                            sx={{
-                                                aspectRatio: '1',
-                                                borderRadius: 2,
-                                                background: getHeatmapCellColor(hourData.count),
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                fontSize: 32,
-                                                fontWeight: 800,
-                                                color: hourData.count > 0 ? '#fff' : '#64748b',
-                                                cursor: hourData.count > 0 ? 'pointer' : 'default',
-                                                border: heatmapFilter === hour ? '3px solid #6366f1' : '2.5px solid #cbd5e1',
-                                                boxShadow: heatmapFilter === hour ? '0 0 0 2px #6366f155' : 'none',
-                                                transition: 'all 0.18s cubic-bezier(.4,2,.6,1)',
-                                                minWidth: 70,
-                                                minHeight: 50,
-                                                '&:hover': hourData.count > 0 ? {
-                                                    border: '3px solid #6366f1',
-                                                    boxShadow: '0 2px 8px 0 #6366f133',
-                                                    transform: 'scale(1.09)',
-                                                    zIndex: 2,
-                                                } : {},
-                                            }}
-                                            onClick={() => {
-                                                if (hourData.count > 0) {
-                                                    setHeatmapFilter(heatmapFilter === hour ? null : hour);
-                                                }
                                             }}
                                         >
-                                            <Box sx={{ textAlign: 'center' }}>
-                                                <Typography sx={{ fontSize: 20, fontWeight: 900, lineHeight: 1 }}>
-                                                    {hour}h
-                                                </Typography>
-                                                <Typography sx={{ fontSize: 20, fontWeight: 800, lineHeight: 1 }}>
-                                                    {hourData.count}
-                                                </Typography>
+                                            <Box
+                                                sx={{
+                                                    aspectRatio: '1',
+                                                    borderRadius: 2,
+                                                    background: getCreatedCardsCellColor(hourData.count),
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontSize: 32,
+                                                    fontWeight: 800,
+                                                    color: hourData.count > 0 ? '#fff' : '#64748b',
+                                                    cursor: hourData.count > 0 ? 'pointer' : 'default',
+                                                    border: createdCardsHeatmapFilterTS1 === hour ? '3px solid #6366f1' : '2.5px solid #cbd5e1',
+                                                    boxShadow: createdCardsHeatmapFilterTS1 === hour ? '0 0 0 2px #6366f155' : 'none',
+                                                    transition: 'all 0.18s cubic-bezier(.4,2,.6,1)',
+                                                    minWidth: { xs: 50, sm: 60, md: 70 },
+                                                    minHeight: { xs: 40, sm: 45, md: 50 },
+                                                    flex: 1,
+                                                    maxWidth: { xs: 60, sm: 70, md: 80 },
+                                                    '&:hover': hourData.count > 0 ? {
+                                                        border: '3px solid #6366f1',
+                                                        boxShadow: '0 2px 8px 0 #6366f133',
+                                                        transform: 'scale(1.09)',
+                                                        zIndex: 2,
+                                                    } : {},
+                                                }}
+                                                onClick={() => {
+                                                    if (hourData.count > 0) {
+                                                        setCreatedCardsHeatmapFilterTS1(createdCardsHeatmapFilterTS1 === hour ? null : hour);
+                                                    }
+                                                }}
+                                            >
+                                                <Box sx={{ textAlign: 'center' }}>
+                                                    <Typography sx={{ fontSize: 20, fontWeight: 900, lineHeight: 1 }}>
+                                                        {hour}h
+                                                    </Typography>
+                                                    <Typography sx={{ fontSize: 20, fontWeight: 800, lineHeight: 1 }}>
+                                                        {hourData.count}
+                                                    </Typography>
+                                                </Box>
                                             </Box>
-                                        </Box>
-                                    </Tooltip>
-                                );
-                            })}
+                                        </Tooltip>
+                                    );
+                                })}
+                                {/* Total box for this shift */}
+                                <Box sx={{ 
+                                    aspectRatio: '1',
+                                    borderRadius: 2,
+                                    background: getCreatedCardsCellColor(shiftTotal),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: 32,
+                                    fontWeight: 800,
+                                    color: shiftTotal > 0 ? '#fff' : '#64748b',
+                                    cursor: 'default',
+                                    border: '2.5px solid #cbd5e1',
+                                    transition: 'all 0.18s cubic-bezier(.4,2,.6,1)',
+                                    minWidth: { xs: 50, sm: 60, md: 70 },
+                                    minHeight: { xs: 40, sm: 45, md: 50 },
+                                    flex: 1,
+                                    maxWidth: { xs: 60, sm: 70, md: 80 },
+                                    ml: 2
+                                }}>
+                                    <Box sx={{ textAlign: 'center' }}>
+                                        <Typography sx={{ fontSize: 16, fontWeight: 900, lineHeight: 1 }}>
+                                            Total
+                                        </Typography>
+                                        <Typography sx={{ fontSize: 20, fontWeight: 800, lineHeight: 1 }}>
+                                            {shiftTotal}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            </Box>
+                        );
+                    })}
+                </Box>
+            </Paper>
+        );
+    };
+
+    // Completed Cards Heatmap Component for TS1
+    const CompletedCardsHeatmapTS1 = () => {
+        const heatmapData = getCompletedCardsHeatmapByTeam('TS1');
+        const totalCompletedCards = heatmapData.reduce((sum, h) => sum + h.count, 0);
+        return (
+            <Paper elevation={2} sx={{ 
+                p: { xs: 2, md: 5 },
+                borderRadius: 3, 
+                background: 'white', 
+                boxShadow: '0 6px 32px 0 #b6c2d955',
+                width: '100%',
+                mb: 4,
+                overflow: 'hidden'
+            }}>
+                <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    mb: 3,
+                    borderBottom: '2px solid #e3e8ee',
+                    pb: 2
+                }}>
+                    <Typography variant="h6" sx={{ 
+                        fontWeight: 700, 
+                        color: '#1976d2'
+                    }}>Completed Cards Heatmap - TS1 - {dayjs(selectedDate).format('DD/MM/YYYY')} ({totalCompletedCards} total)</Typography>
+                    {heatmapFilterTS1 && (
+                        <Chip
+                            label={`Filter: ${heatmapFilterTS1}h (${heatmapData[heatmapFilterTS1].count} cards)`}
+                            onDelete={() => setHeatmapFilterTS1(null)}
+                            color="primary"
+                            size="small"
+                            sx={{ 
+                                fontWeight: 600, 
+                                fontSize: 14,
+                                '& .MuiChip-deleteIcon': {
+                                    color: 'white',
+                                    '&:hover': {
+                                        color: '#e3e8ee'
+                                    }
+                                }
+                            }}
+                        />
+                    )}
+                </Box>
+                {/* Color legend */}
+                <Paper elevation={1} sx={{ 
+                    p: 3, 
+                    mb: 3, 
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%)', 
+                    border: '1px solid #e3e8ee',
+                    borderRadius: 3,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                }}>
+                    <Typography variant="subtitle2" sx={{ 
+                        fontWeight: 700, 
+                        color: '#1976d2', 
+                        mb: 2.5,
+                        fontSize: 15,
+                        textAlign: 'center',
+                        letterSpacing: 0.5
+                    }}>
+                    </Typography>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: { xs: 1.5, sm: 2.5 }, 
+                        flexWrap: 'wrap',
+                        justifyContent: 'center'
+                    }}>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#f1f5f9', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>0</Typography>
                         </Box>
-                    ))}
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#bbf7d0', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>1-2</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#86efac', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>3-5</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#4ade80', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>6-10</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#22c55e', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>11-15</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#16a34a', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>16-20</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#15803d', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>{'>'}20</Typography>
+                        </Box>
+                    </Box>
+                </Paper>
+                {/* Heatmap grid theo ca trực */}
+                <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: 2,
+                    maxWidth: 1900,
+                    margin: '0 auto',
+                    minHeight: 300
+                }}>
+                    {shiftLabels.map((shift, idx) => {
+                        // Calculate total cards for this shift
+                        const shiftTotal = shift.hours.reduce((sum, hour) => sum + heatmapData[hour].count, 0);
+                        
+                        return (
+                            <Box key={shift.label} sx={{ display: 'flex', width: '100%', alignItems: 'center', gap: 1 }}>
+                                <Box sx={{ width: 60, textAlign: 'right', pr: 1 }}>
+                                    <Typography sx={{ fontWeight: 700, color: '#1976d2', fontSize: 15 }}>{shift.label}</Typography>
+                                </Box>
+                                {shift.hours.map(hour => {
+                                    const hourData = heatmapData[hour];
+                                    return (
+                                        <Tooltip 
+                                            key={hour}
+                                            title={
+                                                hourData.count > 0 ? (
+                                                    <Box>
+                                                        <Typography sx={{ fontWeight: 600, mb: 1 }}>
+                                                            {hour}h: {hourData.count} completed cards
+                                                        </Typography>
+                                                        <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
+                                                            {hourData.cards.slice(0, 5).map(card => (
+                                                                <Box key={card.id} sx={{ fontSize: 12, mb: 0.5 }}>
+                                                                    • {card.name}
+                                                                    <Typography sx={{ fontSize: 11, color: '#94a3b8', ml: 1 }}>
+                                                                        by {card.memberNames.join(', ')}
+                                                                    </Typography>
+                                                                </Box>
+                                                            ))}
+                                                            {hourData.cards.length > 5 && (
+                                                                <Typography sx={{ fontSize: 12, color: '#64748b' }}>
+                                                                    ... and {hourData.cards.length - 5} more
+                                                                </Typography>
+                                                            )}
+                                                        </Box>
+                                                    </Box>
+                                                ) : `No cards completed at ${hour}h`
+                                            }
+                                            arrow
+                                            slotProps={{ 
+                                                tooltip: { 
+                                                    sx: { 
+                                                        fontSize: 14, 
+                                                        px: 2, 
+                                                        py: 1,
+                                                        maxWidth: 300,
+                                                        backgroundColor: 'rgba(0,0,0,0.9)',
+                                                        color: 'white'
+                                                    } 
+                                                } 
+                                            }}
+                                        >
+                                            <Box
+                                                sx={{
+                                                    aspectRatio: '1',
+                                                    borderRadius: 2,
+                                                    background: getHeatmapCellColor(hourData.count),
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontSize: 32,
+                                                    fontWeight: 800,
+                                                    color: hourData.count > 0 ? '#fff' : '#64748b',
+                                                    cursor: hourData.count > 0 ? 'pointer' : 'default',
+                                                    border: heatmapFilterTS1 === hour ? '3px solid #6366f1' : '2.5px solid #cbd5e1',
+                                                    boxShadow: heatmapFilterTS1 === hour ? '0 0 0 2px #6366f155' : 'none',
+                                                    transition: 'all 0.18s cubic-bezier(.4,2,.6,1)',
+                                                    minWidth: { xs: 50, sm: 60, md: 70 },
+                                                    minHeight: { xs: 40, sm: 45, md: 50 },
+                                                    flex: 1,
+                                                    maxWidth: { xs: 60, sm: 70, md: 80 },
+                                                    '&:hover': hourData.count > 0 ? {
+                                                        border: '3px solid #6366f1',
+                                                        boxShadow: '0 2px 8px 0 #6366f133',
+                                                        transform: 'scale(1.09)',
+                                                        zIndex: 2,
+                                                    } : {},
+                                                }}
+                                                onClick={() => {
+                                                    if (hourData.count > 0) {
+                                                        setHeatmapFilterTS1(heatmapFilterTS1 === hour ? null : hour);
+                                                    }
+                                                }}
+                                            >
+                                                <Box sx={{ textAlign: 'center' }}>
+                                                    <Typography sx={{ fontSize: 20, fontWeight: 900, lineHeight: 1 }}>
+                                                        {hour}h
+                                                    </Typography>
+                                                    <Typography sx={{ fontSize: 20, fontWeight: 800, lineHeight: 1 }}>
+                                                        {hourData.count}
+                                                    </Typography>
+                                                </Box>
+                                            </Box>
+                                        </Tooltip>
+                                    );
+                                })}
+                                {/* Total box for this shift */}
+                                <Box sx={{ 
+                                    aspectRatio: '1',
+                                    borderRadius: 2,
+                                    background: getHeatmapCellColor(shiftTotal),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: 32,
+                                    fontWeight: 800,
+                                    color: shiftTotal > 0 ? '#fff' : '#64748b',
+                                    cursor: 'default',
+                                    border: '2.5px solid #cbd5e1',
+                                    transition: 'all 0.18s cubic-bezier(.4,2,.6,1)',
+                                    minWidth: { xs: 50, sm: 60, md: 70 },
+                                    minHeight: { xs: 40, sm: 45, md: 50 },
+                                    flex: 1,
+                                    maxWidth: { xs: 60, sm: 70, md: 80 },
+                                    ml: 2
+                                }}>
+                                    <Box sx={{ textAlign: 'center' }}>
+                                        <Typography sx={{ fontSize: 16, fontWeight: 900, lineHeight: 1 }}>
+                                            Total
+                                        </Typography>
+                                        <Typography sx={{ fontSize: 20, fontWeight: 800, lineHeight: 1 }}>
+                                            {shiftTotal}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            </Box>
+                        );
+                    })}
+                </Box>
+            </Paper>
+        );
+    };
+
+    // Created Cards Heatmap Component for TS2
+    const CreatedCardsHeatmapTS2 = () => {
+        const heatmapData = getCreatedCardsHeatmapByTeam('TS2');
+        const totalCreatedCards = heatmapData.reduce((sum, h) => sum + h.count, 0);
+        return (
+            <Paper elevation={2} sx={{ 
+                p: { xs: 2, md: 5 },
+                borderRadius: 3, 
+                background: 'white', 
+                boxShadow: '0 6px 32px 0 #b6c2d955',
+                width: '100%',
+                mb: 4,
+                overflow: 'hidden'
+            }}>
+                <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    mb: 3,
+                    borderBottom: '2px solid #e3e8ee',
+                    pb: 2
+                }}>
+                    <Typography variant="h6" sx={{ 
+                        fontWeight: 700, 
+                        color: '#ff9800'
+                    }}>Created Cards Heatmap - TS2 - {dayjs(selectedDate).format('DD/MM/YYYY')} ({totalCreatedCards} total)</Typography>
+                    {createdCardsHeatmapFilterTS2 && (
+                        <Chip
+                            label={`Filter: ${createdCardsHeatmapFilterTS2}h (${heatmapData[createdCardsHeatmapFilterTS2].count} cards)`}
+                            onDelete={() => setCreatedCardsHeatmapFilterTS2(null)}
+                            color="warning"
+                            size="small"
+                            sx={{ 
+                                fontWeight: 600, 
+                                fontSize: 14,
+                                '& .MuiChip-deleteIcon': {
+                                    color: 'white',
+                                    '&:hover': {
+                                        color: '#e3e8ee'
+                                    }
+                                }
+                            }}
+                        />
+                    )}
+                </Box>
+                {/* Color legend */}
+                <Paper elevation={1} sx={{ 
+                    p: 3, 
+                    mb: 3, 
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%)', 
+                    border: '1px solid #e3e8ee',
+                    borderRadius: 3,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                }}>
+                    <Typography variant="subtitle2" sx={{ 
+                        fontWeight: 700, 
+                        color: '#ff9800', 
+                        mb: 2.5,
+                        fontSize: 15,
+                        textAlign: 'center',
+                        letterSpacing: 0.5
+                    }}>
+                    </Typography>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: { xs: 1.5, sm: 2.5 }, 
+                        flexWrap: 'wrap',
+                        justifyContent: 'center'
+                    }}>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#f1f5f9', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>0</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#fecaca', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>1-2</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#fca5a5', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>3-5</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#f87171', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>6-10</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#ef4444', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>11-15</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#dc2626', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>16-20</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#b91c1c', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>{'>'}20</Typography>
+                        </Box>
+                    </Box>
+                </Paper>
+                {/* Heatmap grid theo ca trực */}
+                <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: 2,
+                    maxWidth: 1900,
+                    margin: '0 auto',
+                    minHeight: 300
+                }}>
+                    {shiftLabels.map((shift, idx) => {
+                        // Calculate total cards for this shift
+                        const shiftTotal = shift.hours.reduce((sum, hour) => sum + heatmapData[hour].count, 0);
+                        
+                        return (
+                            <Box key={shift.label} sx={{ display: 'flex', width: '100%', alignItems: 'center', gap: 1 }}>
+                                <Box sx={{ width: 60, textAlign: 'right', pr: 1 }}>
+                                    <Typography sx={{ fontWeight: 700, color: '#ff9800', fontSize: 15 }}>{shift.label}</Typography>
+                                </Box>
+                                {shift.hours.map(hour => {
+                                    const hourData = heatmapData[hour];
+                                    return (
+                                        <Tooltip 
+                                            key={hour}
+                                            title={
+                                                hourData.count > 0 ? (
+                                                    <Box>
+                                                        <Typography sx={{ fontWeight: 600, mb: 1 }}>
+                                                            {hour}h: {hourData.count} created cards
+                                                        </Typography>
+                                                        <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
+                                                            {hourData.cards.slice(0, 5).map(card => (
+                                                                <Box key={card.id} sx={{ fontSize: 12, mb: 0.5 }}>
+                                                                    • {card.name}
+                                                                    <Typography sx={{ fontSize: 11, color: '#94a3b8', ml: 1 }}>
+                                                                        by {card.memberNames.join(', ')}
+                                                                    </Typography>
+                                                                </Box>
+                                                            ))}
+                                                            {hourData.cards.length > 5 && (
+                                                                <Typography sx={{ fontSize: 12, color: '#64748b' }}>
+                                                                    ... and {hourData.cards.length - 5} more
+                                                                </Typography>
+                                                            )}
+                                                        </Box>
+                                                    </Box>
+                                                ) : `No cards created at ${hour}h`
+                                            }
+                                            arrow
+                                            slotProps={{ 
+                                                tooltip: { 
+                                                    sx: { 
+                                                        fontSize: 14, 
+                                                        px: 2, 
+                                                        py: 1,
+                                                        maxWidth: 300,
+                                                        backgroundColor: 'rgba(0,0,0,0.9)',
+                                                        color: 'white'
+                                                    } 
+                                                } 
+                                            }}
+                                        >
+                                            <Box
+                                                sx={{
+                                                    aspectRatio: '1',
+                                                    borderRadius: 2,
+                                                    background: getCreatedCardsCellColor(hourData.count),
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontSize: 32,
+                                                    fontWeight: 800,
+                                                    color: hourData.count > 0 ? '#fff' : '#64748b',
+                                                    cursor: hourData.count > 0 ? 'pointer' : 'default',
+                                                    border: createdCardsHeatmapFilterTS2 === hour ? '3px solid #6366f1' : '2.5px solid #cbd5e1',
+                                                    boxShadow: createdCardsHeatmapFilterTS2 === hour ? '0 0 0 2px #6366f155' : 'none',
+                                                    transition: 'all 0.18s cubic-bezier(.4,2,.6,1)',
+                                                    minWidth: { xs: 50, sm: 60, md: 70 },
+                                                    minHeight: { xs: 40, sm: 45, md: 50 },
+                                                    flex: 1,
+                                                    maxWidth: { xs: 60, sm: 70, md: 80 },
+                                                    '&:hover': hourData.count > 0 ? {
+                                                        border: '3px solid #6366f1',
+                                                        boxShadow: '0 2px 8px 0 #6366f133',
+                                                        transform: 'scale(1.09)',
+                                                        zIndex: 2,
+                                                    } : {},
+                                                }}
+                                                onClick={() => {
+                                                    if (hourData.count > 0) {
+                                                        setCreatedCardsHeatmapFilterTS2(createdCardsHeatmapFilterTS2 === hour ? null : hour);
+                                                    }
+                                                }}
+                                            >
+                                                <Box sx={{ textAlign: 'center' }}>
+                                                    <Typography sx={{ fontSize: 20, fontWeight: 900, lineHeight: 1 }}>
+                                                        {hour}h
+                                                    </Typography>
+                                                    <Typography sx={{ fontSize: 20, fontWeight: 800, lineHeight: 1 }}>
+                                                        {hourData.count}
+                                                    </Typography>
+                                                </Box>
+                                            </Box>
+                                        </Tooltip>
+                                    );
+                                })}
+                                {/* Total box for this shift */}
+                                <Box sx={{ 
+                                    aspectRatio: '1',
+                                    borderRadius: 2,
+                                    background: getCreatedCardsCellColor(shiftTotal),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: 32,
+                                    fontWeight: 800,
+                                    color: shiftTotal > 0 ? '#fff' : '#64748b',
+                                    cursor: 'default',
+                                    border: '2.5px solid #cbd5e1',
+                                    transition: 'all 0.18s cubic-bezier(.4,2,.6,1)',
+                                    minWidth: { xs: 50, sm: 60, md: 70 },
+                                    minHeight: { xs: 40, sm: 45, md: 50 },
+                                    flex: 1,
+                                    maxWidth: { xs: 60, sm: 70, md: 80 },
+                                    ml: 2
+                                }}>
+                                    <Box sx={{ textAlign: 'center' }}>
+                                        <Typography sx={{ fontSize: 16, fontWeight: 900, lineHeight: 1 }}>
+                                            Total
+                                        </Typography>
+                                        <Typography sx={{ fontSize: 20, fontWeight: 800, lineHeight: 1 }}>
+                                            {shiftTotal}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            </Box>
+                        );
+                    })}
+                </Box>
+            </Paper>
+        );
+    };
+
+    // Completed Cards Heatmap Component for TS2
+    const CompletedCardsHeatmapTS2 = () => {
+        const heatmapData = getCompletedCardsHeatmapByTeam('TS2');
+        const totalCompletedCards = heatmapData.reduce((sum, h) => sum + h.count, 0);
+        return (
+            <Paper elevation={2} sx={{ 
+                p: { xs: 2, md: 5 },
+                borderRadius: 3, 
+                background: 'white', 
+                boxShadow: '0 6px 32px 0 #b6c2d955',
+                width: '100%',
+                mb: 4,
+                overflow: 'hidden'
+            }}>
+                <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    mb: 3,
+                    borderBottom: '2px solid #e3e8ee',
+                    pb: 2
+                }}>
+                    <Typography variant="h6" sx={{ 
+                        fontWeight: 700, 
+                        color: '#ff9800'
+                    }}>Completed Cards Heatmap - TS2 - {dayjs(selectedDate).format('DD/MM/YYYY')} ({totalCompletedCards} total)</Typography>
+                    {heatmapFilterTS2 && (
+                        <Chip
+                            label={`Filter: ${heatmapFilterTS2}h (${heatmapData[heatmapFilterTS2].count} cards)`}
+                            onDelete={() => setHeatmapFilterTS2(null)}
+                            color="warning"
+                            size="small"
+                            sx={{ 
+                                fontWeight: 600, 
+                                fontSize: 14,
+                                '& .MuiChip-deleteIcon': {
+                                    color: 'white',
+                                    '&:hover': {
+                                        color: '#e3e8ee'
+                                    }
+                                }
+                            }}
+                        />
+                    )}
+                </Box>
+                {/* Color legend */}
+                <Paper elevation={1} sx={{ 
+                    p: 3, 
+                    mb: 3, 
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%)', 
+                    border: '1px solid #e3e8ee',
+                    borderRadius: 3,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                }}>
+                    <Typography variant="subtitle2" sx={{ 
+                        fontWeight: 700, 
+                        color: '#ff9800', 
+                        mb: 2.5,
+                        fontSize: 15,
+                        textAlign: 'center',
+                        letterSpacing: 0.5
+                    }}>
+                    </Typography>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: { xs: 1.5, sm: 2.5 }, 
+                        flexWrap: 'wrap',
+                        justifyContent: 'center'
+                    }}>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#f1f5f9', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>0</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#bbf7d0', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>1-2</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#86efac', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>3-5</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#4ade80', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>6-10</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#22c55e', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>11-15</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#16a34a', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>16-20</Typography>
+                        </Box>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            px: 2, 
+                            py: 1, 
+                            borderRadius: 2.5, 
+                            background: 'rgba(255,255,255,0.9)', 
+                            border: '1px solid #e3e8ee',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                        }}>
+                            <Box sx={{ 
+                                width: 26, 
+                                height: 20, 
+                                borderRadius: 1.5, 
+                                background: '#15803d', 
+                                border: '2px solid #cbd5e1', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
+                            }} />
+                            <Typography sx={{ 
+                                fontSize: { xs: 13, sm: 14 }, 
+                                color: '#334155', 
+                                fontWeight: 600 
+                            }}>{'>'}20</Typography>
+                        </Box>
+                    </Box>
+                </Paper>
+                {/* Heatmap grid theo ca trực */}
+                <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: 2,
+                    maxWidth: 1900,
+                    margin: '0 auto',
+                    minHeight: 300
+                }}>
+                    {shiftLabels.map((shift, idx) => {
+                        // Calculate total cards for this shift
+                        const shiftTotal = shift.hours.reduce((sum, hour) => sum + heatmapData[hour].count, 0);
+                        
+                        return (
+                            <Box key={shift.label} sx={{ display: 'flex', width: '100%', alignItems: 'center', gap: 1 }}>
+                                <Box sx={{ width: 60, textAlign: 'right', pr: 1 }}>
+                                    <Typography sx={{ fontWeight: 700, color: '#ff9800', fontSize: 15 }}>{shift.label}</Typography>
+                                </Box>
+                                {shift.hours.map(hour => {
+                                    const hourData = heatmapData[hour];
+                                    return (
+                                        <Tooltip 
+                                            key={hour}
+                                            title={
+                                                hourData.count > 0 ? (
+                                                    <Box>
+                                                        <Typography sx={{ fontWeight: 600, mb: 1 }}>
+                                                            {hour}h: {hourData.count} completed cards
+                                                        </Typography>
+                                                        <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
+                                                            {hourData.cards.slice(0, 5).map(card => (
+                                                                <Box key={card.id} sx={{ fontSize: 12, mb: 0.5 }}>
+                                                                    • {card.name}
+                                                                    <Typography sx={{ fontSize: 11, color: '#94a3b8', ml: 1 }}>
+                                                                        by {card.memberNames.join(', ')}
+                                                                    </Typography>
+                                                                </Box>
+                                                            ))}
+                                                            {hourData.cards.length > 5 && (
+                                                                <Typography sx={{ fontSize: 12, color: '#64748b' }}>
+                                                                    ... and {hourData.cards.length - 5} more
+                                                                </Typography>
+                                                            )}
+                                                        </Box>
+                                                    </Box>
+                                                ) : `No cards completed at ${hour}h`
+                                            }
+                                            arrow
+                                            slotProps={{ 
+                                                tooltip: { 
+                                                    sx: { 
+                                                        fontSize: 14, 
+                                                        px: 2, 
+                                                        py: 1,
+                                                        maxWidth: 300,
+                                                        backgroundColor: 'rgba(0,0,0,0.9)',
+                                                        color: 'white'
+                                                    } 
+                                                } 
+                                            }}
+                                        >
+                                            <Box
+                                                sx={{
+                                                    aspectRatio: '1',
+                                                    borderRadius: 2,
+                                                    background: getHeatmapCellColor(hourData.count),
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontSize: 32,
+                                                    fontWeight: 800,
+                                                    color: hourData.count > 0 ? '#fff' : '#64748b',
+                                                    cursor: hourData.count > 0 ? 'pointer' : 'default',
+                                                    border: heatmapFilterTS2 === hour ? '3px solid #6366f1' : '2.5px solid #cbd5e1',
+                                                    boxShadow: heatmapFilterTS2 === hour ? '0 0 0 2px #6366f155' : 'none',
+                                                    transition: 'all 0.18s cubic-bezier(.4,2,.6,1)',
+                                                    minWidth: { xs: 50, sm: 60, md: 70 },
+                                                    minHeight: { xs: 40, sm: 45, md: 50 },
+                                                    flex: 1,
+                                                    maxWidth: { xs: 60, sm: 70, md: 80 },
+                                                    '&:hover': hourData.count > 0 ? {
+                                                        border: '3px solid #6366f1',
+                                                        boxShadow: '0 2px 8px 0 #6366f133',
+                                                        transform: 'scale(1.09)',
+                                                        zIndex: 2,
+                                                    } : {},
+                                                }}
+                                                onClick={() => {
+                                                    if (hourData.count > 0) {
+                                                        setHeatmapFilterTS2(heatmapFilterTS2 === hour ? null : hour);
+                                                    }
+                                                }}
+                                            >
+                                                <Box sx={{ textAlign: 'center' }}>
+                                                    <Typography sx={{ fontSize: 20, fontWeight: 900, lineHeight: 1 }}>
+                                                        {hour}h
+                                                    </Typography>
+                                                    <Typography sx={{ fontSize: 20, fontWeight: 800, lineHeight: 1 }}>
+                                                        {hourData.count}
+                                                    </Typography>
+                                                </Box>
+                                            </Box>
+                                        </Tooltip>
+                                    );
+                                })}
+                                {/* Total box for this shift */}
+                                <Box sx={{ 
+                                    aspectRatio: '1',
+                                    borderRadius: 2,
+                                    background: getHeatmapCellColor(shiftTotal),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: 32,
+                                    fontWeight: 800,
+                                    color: shiftTotal > 0 ? '#fff' : '#64748b',
+                                    cursor: 'default',
+                                    border: '2.5px solid #cbd5e1',
+                                    transition: 'all 0.18s cubic-bezier(.4,2,.6,1)',
+                                    minWidth: { xs: 50, sm: 60, md: 70 },
+                                    minHeight: { xs: 40, sm: 45, md: 50 },
+                                    flex: 1,
+                                    maxWidth: { xs: 60, sm: 70, md: 80 },
+                                    ml: 2
+                                }}>
+                                    <Box sx={{ textAlign: 'center' }}>
+                                        <Typography sx={{ fontSize: 16, fontWeight: 900, lineHeight: 1 }}>
+                                            Total
+                                        </Typography>
+                                        <Typography sx={{ fontSize: 20, fontWeight: 800, lineHeight: 1 }}>
+                                            {shiftTotal}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            </Box>
+                        );
+                    })}
                 </Box>
             </Paper>
         );
@@ -581,7 +2301,9 @@ const CardsDetail = () => {
                     minHeight: '100%',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 4
+                    gap: 4,
+                    maxWidth: '100vw',
+                    overflow: 'hidden'
                 }}>
                     {/* Filters Section */}
                     <Paper elevation={0} sx={{ 
@@ -817,7 +2539,7 @@ const CardsDetail = () => {
                             </Grid>
                         </Grid>
                         {/* Active filter chips */}
-                        {(selectedTS || selectedShift || selectedList || selectedApp || heatmapFilter !== null) && (
+                        {(selectedTS || selectedShift || selectedList || selectedApp || heatmapFilter !== null || createdCardsHeatmapFilter !== null || heatmapFilterTS1 !== null || createdCardsHeatmapFilterTS1 !== null || heatmapFilterTS2 !== null || createdCardsHeatmapFilterTS2 !== null) && (
                             <Box sx={{
                                 mt: 3,
                                 display: 'flex',
@@ -902,6 +2624,96 @@ const CardsDetail = () => {
                                         label={`Completed at ${heatmapFilter}h`}
                                         onDelete={() => setHeatmapFilter(null)}
                                         color="secondary"
+                                        size="small"
+                                        sx={{ 
+                                            fontWeight: 600, 
+                                            fontSize: 14,
+                                            '& .MuiChip-deleteIcon': {
+                                                color: 'white',
+                                                '&:hover': {
+                                                    color: '#e3e8ee'
+                                                }
+                                            }
+                                        }}
+                                    />
+                                )}
+                                {createdCardsHeatmapFilter !== null && (
+                                    <Chip
+                                        label={`Created at ${createdCardsHeatmapFilter}h`}
+                                        onDelete={() => setCreatedCardsHeatmapFilter(null)}
+                                        color="error"
+                                        size="small"
+                                        sx={{ 
+                                            fontWeight: 600, 
+                                            fontSize: 14,
+                                            '& .MuiChip-deleteIcon': {
+                                                color: 'white',
+                                                '&:hover': {
+                                                    color: '#e3e8ee'
+                                                }
+                                            }
+                                        }}
+                                    />
+                                )}
+                                {heatmapFilterTS1 !== null && (
+                                    <Chip
+                                        label={`TS1 Completed at ${heatmapFilterTS1}h`}
+                                        onDelete={() => setHeatmapFilterTS1(null)}
+                                        color="primary"
+                                        size="small"
+                                        sx={{ 
+                                            fontWeight: 600, 
+                                            fontSize: 14,
+                                            '& .MuiChip-deleteIcon': {
+                                                color: 'white',
+                                                '&:hover': {
+                                                    color: '#e3e8ee'
+                                                }
+                                            }
+                                        }}
+                                    />
+                                )}
+                                {createdCardsHeatmapFilterTS1 !== null && (
+                                    <Chip
+                                        label={`TS1 Created at ${createdCardsHeatmapFilterTS1}h`}
+                                        onDelete={() => setCreatedCardsHeatmapFilterTS1(null)}
+                                        color="primary"
+                                        size="small"
+                                        sx={{ 
+                                            fontWeight: 600, 
+                                            fontSize: 14,
+                                            '& .MuiChip-deleteIcon': {
+                                                color: 'white',
+                                                '&:hover': {
+                                                    color: '#e3e8ee'
+                                                }
+                                            }
+                                        }}
+                                    />
+                                )}
+                                {heatmapFilterTS2 !== null && (
+                                    <Chip
+                                        label={`TS2 Completed at ${heatmapFilterTS2}h`}
+                                        onDelete={() => setHeatmapFilterTS2(null)}
+                                        color="warning"
+                                        size="small"
+                                        sx={{ 
+                                            fontWeight: 600, 
+                                            fontSize: 14,
+                                            '& .MuiChip-deleteIcon': {
+                                                color: 'white',
+                                                '&:hover': {
+                                                    color: '#e3e8ee'
+                                                }
+                                            }
+                                        }}
+                                    />
+                                )}
+                                {createdCardsHeatmapFilterTS2 !== null && (
+                                    <Chip
+                                        label={`TS2 Created at ${createdCardsHeatmapFilterTS2}h`}
+                                        onDelete={() => setCreatedCardsHeatmapFilterTS2(null)}
+                                        color="warning"
                                         size="small"
                                         sx={{ 
                                             fontWeight: 600, 
@@ -1283,8 +3095,52 @@ const CardsDetail = () => {
                                 </Paper>
                             </Fade>
 
-                            {/* Completed Cards Heatmap */}
-                            <CompletedCardsHeatmap />
+                            {/* Heatmaps Section - TS1 */}
+                            <Box sx={{ 
+                                display: 'flex', 
+                                flexDirection: { xs: 'column', xl: 'row' }, 
+                                gap: 4, 
+                                width: '100%',
+                                overflow: 'hidden',
+                                mb: 4
+                            }}>
+                                {/* Created Cards Heatmap - TS1 */}
+                                <Fade in={true} timeout={1200}>
+                                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                                        <CreatedCardsHeatmapTS1 />
+                                    </Box>
+                                </Fade>
+
+                                {/* Completed Cards Heatmap - TS1 */}
+                                <Fade in={true} timeout={1300}>
+                                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                                        <CompletedCardsHeatmapTS1 />
+                                    </Box>
+                                </Fade>
+                            </Box>
+
+                            {/* Heatmaps Section - TS2 */}
+                            <Box sx={{ 
+                                display: 'flex', 
+                                flexDirection: { xs: 'column', xl: 'row' }, 
+                                gap: 4, 
+                                width: '100%',
+                                overflow: 'hidden'
+                            }}>
+                                {/* Created Cards Heatmap - TS2 */}
+                                <Fade in={true} timeout={1400}>
+                                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                                        <CreatedCardsHeatmapTS2 />
+                                    </Box>
+                                </Fade>
+
+                                {/* Completed Cards Heatmap - TS2 */}
+                                <Fade in={true} timeout={1500}>
+                                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                                        <CompletedCardsHeatmapTS2 />
+                                    </Box>
+                                </Fade>
+                            </Box>
 
                             {/* Card Grid Section - Hiển thị dưới bảng */}
                             <Box sx={{ mt: 5 }}>
