@@ -41,13 +41,17 @@ const getCardById = async (cardId) => {
     // Filter and transform the data
     const filteredData = {
         ...data,
-        labels: data.labels ? data.labels.map(label => ({ name: label.name })) : [],
         createAt: data.actions && data.actions.length > 0 ? data.actions[0].date : null,
         idMemberCreator: data.actions && data.actions.length > 0 ? data.actions[0].idMemberCreator : null
     };
     
     // Remove the original actions array
     delete filteredData.actions;
+    
+    // Log labels for debugging
+    console.log('📋 Card labels processed:', filteredData.labels);
+    console.log('📋 Original labels count:', data.labels ? data.labels.length : 0);
+    console.log('📋 Filtered labels count:', filteredData.labels.length);
     
     return filteredData;
 }
