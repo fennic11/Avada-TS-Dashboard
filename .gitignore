@@ -3,6 +3,7 @@
 .env.local
 .env.*.local
 functions/.env
+functions/serviceAccount.development.json
 functions/.env.local
 functions/.env.*.local
 
@@ -22,3 +23,8 @@ functions/.env.*.local
 # OS files
 .DS_Store
 Thumbs.db 
+
+# Firebase
+serviceAccount.development.json
+.firebase/
+

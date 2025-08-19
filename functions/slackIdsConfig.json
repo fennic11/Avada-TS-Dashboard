@@ -415,5 +415,25 @@
       "group": "TS1",
       "kpiName": "SonNN",
       "slackId": "U092JM558Q2"
+    },
+    {
+      "id": "684652eda44577c30bc60ec4",
+      "fullName": "Vũ Quang Thoại",
+      "username": "lias_avada",
+      "email": "thoaivq@avadagroup.com",
+      "slackId": "U0902NJ53P1",
+      "kpiName": "ThoaiVQ",
+      "role": "TS",
+      "group": "TS1"
+    },
+    {
+      "id": "687495d36ab6d4ff0cb41320",
+      "fullName": "Đỗ Văn Tuấn",
+      "email": "tuandv1@avadagroup.com",
+      "username": "ryan_avada",
+      "role": "TS",
+      "group": "TS2",
+      "slackId": "U09699UTEQ0",
+      "kpiName": "TuanDV"
     }
   ]

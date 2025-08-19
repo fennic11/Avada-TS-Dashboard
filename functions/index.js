@@ -2,6 +2,7 @@
 require('dotenv').config();
 const express = require('express');
 const connectDB = require('./config/db');
+const { initializeFirebase } = require('./config/firebase');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const { startSlackNotificationCron } = require('./cron/slackNotificationCron');
@@ -44,6 +45,14 @@ connectDB().then(() => {
 }).catch(err => {
     console.error('MongoDB connection error:', err);
 });
+
+// Initialize Firebase
+try {
+    initializeFirebase();
+    console.log('Firebase initialized successfully');
+} catch (error) {
+    console.error('Firebase initialization error:', error);
+}
 
 // Health check endpoint
 app.get('/', (req, res) => {

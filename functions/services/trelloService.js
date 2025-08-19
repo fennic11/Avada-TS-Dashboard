@@ -30,8 +30,30 @@ const getBoardActionsByMemberAndDate = async (since, before, limit = 1000) => {
         return [];
     }
 }
+const getCardById = async (cardId) => {
+    const response = await fetch(`https://api.trello.com/1/cards/${cardId}?key=${key}&token=${token}&fields=name,shortUrl,labels,idBoard&actions=createCard&action_fields=date,idMemberCreator`, {
+        headers: {
+            Accept: "application/json"
+        }
+    });
+    const data = await response.json();
+    
+    // Filter and transform the data
+    const filteredData = {
+        ...data,
+        labels: data.labels ? data.labels.map(label => ({ name: label.name })) : [],
+        createAt: data.actions && data.actions.length > 0 ? data.actions[0].date : null,
+        idMemberCreator: data.actions && data.actions.length > 0 ? data.actions[0].idMemberCreator : null
+    };
+    
+    // Remove the original actions array
+    delete filteredData.actions;
+    
+    return filteredData;
+}
 
 module.exports = {
     getCardsByList,
-    getBoardActionsByMemberAndDate
+    getBoardActionsByMemberAndDate,
+    getCardById
 }
