@@ -2,7 +2,7 @@ const cron = require('node-cron');
 const members = require('../slackIdsConfig.json');
 const { getBoardActionsByMemberAndDate, getCardsByList } = require('../services/trelloService');
 const { sendMessageToChannel } = require('../services/slackService');
-const schedule = '59 * * * *';
+const schedule = '30 * * * *';
 
 const reportWorkShift = () => {
     console.log('Report work shift cron job...');
@@ -10,15 +10,15 @@ const reportWorkShift = () => {
         try {
             console.log('Report work shift cron job running...');
             
-            // Calculate time range: 1 hour ago until now (accounting for 7-hour time difference in production)
+            // Calculate time range: 1 hour ago until now
             const now = new Date();
             
             const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
             
-            // Adjust for 7-hour time difference in production
+            // Add 7 hours to adjust for timezone difference
             const timeZoneOffset = 7 * 60 * 60 * 1000; // 7 hours in milliseconds
-            const adjustedNow = new Date(now.getTime() + timeZoneOffset);
             const adjustedOneHourAgo = new Date(oneHourAgo.getTime() + timeZoneOffset);
+            const adjustedNow = new Date(now.getTime() + timeZoneOffset);
             
             const since = adjustedOneHourAgo.toISOString();
             const before = adjustedNow.toISOString();
