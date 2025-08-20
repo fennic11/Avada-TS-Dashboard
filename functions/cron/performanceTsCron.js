@@ -143,7 +143,7 @@ const filterActionsAndCards = (actions, cards) => {
         message += `*Chi tiết theo từng member:*\n`;
         Object.entries(memberStats).forEach(([name, stats]) => {
             const latestTime = stats.latestAction ? 
-                new Date(stats.latestAction.date).toLocaleString('vi-VN') : 'Không có';
+                new Date(stats.latestAction.date.getTime() + 7 * 60 * 60 * 1000).toLocaleString('vi-VN') : 'Không có';
             
             // Get card status for this member
             const cardStatus = memberCards[name] || { pending: 0, process: 0, completed: 0 };
