@@ -6,7 +6,7 @@ const { initializeFirebase } = require('./config/firebase');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const { startSlackNotificationCron } = require('./cron/slackNotificationCron');
-const { startPerformanceTsCron } = require('./cron/performanceTsCron');
+const { reportWorkShift } = require('./cron/performanceTsCron');
 // Import routes
 const api = require('./routes/api');
 const notionRoutes = require('./routes/notionRoutes');
@@ -114,7 +114,7 @@ const server = app.listen(port, () => {
     console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
     // Start cron jobs
     startSlackNotificationCron();
-    // startPerformanceTsCron();
+    reportWorkShift();
 });
 
 // Handle unhandled promise rejections

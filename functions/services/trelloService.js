@@ -3,7 +3,7 @@ const token = process.env.TRELLO_TOKEN;
 const BOARD_ID = process.env.BOARD_ID;
 
 const getCardsByList = async (listId) => {
-    const response = await fetch(`https://api.trello.com/1/lists/${listId}/cards?key=${key}&token=${token}&fields=name,idMembers,shortUrl,idList,desc`, {
+    const response = await fetch(`https://api.trello.com/1/lists/${listId}/cards?key=${key}&token=${token}&fields=name,idMembers,shortUrl,idList,desc,dueComplete`, {
         headers: {
             Accept: "application/json"
         }
@@ -14,9 +14,8 @@ const getCardsByList = async (listId) => {
 
 const getBoardActionsByMemberAndDate = async (since, before, limit = 1000) => {
     try {
-        const { key, token } = getCredentials();
-        let url = `${API_URL}/boards/${BOARD_ID}/actions?key=${key}&token=${token}`;
-        url += `&filter=createCard,removeMemberFromCard,updateCard,addMemberToCard,commentCard`;
+        let url = `https://api.trello.com/1/boards/${BOARD_ID}/actions?key=${key}&token=${token}`;
+        url += `&filter=all`;
         url += `&limit=${limit}`;
         if (since) url += `&since=${since}`;
         if (before) url += `&before=${before}`;
@@ -41,6 +40,7 @@ const getCardById = async (cardId) => {
     // Filter and transform the data
     const filteredData = {
         ...data,
+        labels: data.labels.map(label => ({name: label.name})),
         createAt: data.actions && data.actions.length > 0 ? data.actions[0].date : null,
         idMemberCreator: data.actions && data.actions.length > 0 ? data.actions[0].idMemberCreator : null
     };
