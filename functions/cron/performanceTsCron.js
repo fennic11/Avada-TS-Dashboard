@@ -10,13 +10,18 @@ const reportWorkShift = () => {
         try {
             console.log('Report work shift cron job running...');
             
-            // Calculate time range: 1 hour ago until now
+            // Calculate time range: 1 hour ago until now (accounting for 7-hour time difference in production)
             const now = new Date();
             
             const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
             
-            const since = oneHourAgo.toISOString();
-            const before = now.toISOString();
+            // Adjust for 7-hour time difference in production
+            const timeZoneOffset = 7 * 60 * 60 * 1000; // 7 hours in milliseconds
+            const adjustedNow = new Date(now.getTime() + timeZoneOffset);
+            const adjustedOneHourAgo = new Date(oneHourAgo.getTime() + timeZoneOffset);
+            
+            const since = adjustedOneHourAgo.toISOString();
+            const before = adjustedNow.toISOString();
             
             console.log(`Time range: ${since} to ${before}`);
             
