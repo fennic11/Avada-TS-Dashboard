@@ -2,7 +2,7 @@ const cron = require('node-cron');
 const members = require('../slackIdsConfig.json');
 const { getBoardActionsByMemberAndDate, getCardsByList } = require('../services/trelloService');
 const { sendMessageToChannel } = require('../services/slackService');
-const schedule = '40 * * * *';
+const schedule = '59 * * * *';
 
 const reportWorkShift = () => {
     console.log('Report work shift cron job...');
