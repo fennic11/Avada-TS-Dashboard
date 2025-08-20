@@ -20,6 +20,7 @@ const getBoardActionsByMemberAndDate = async (since, before, limit = 1000) => {
         if (since) url += `&since=${since}`;
         if (before) url += `&before=${before}`;
         const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+        console.log('resp', url);
         if (!resp.ok) throw new Error(`Failed to fetch board actions: ${resp.statusText}`);
         const actions = await resp.json();
         // Trả về toàn bộ actions, không lọc theo memberId nữa
