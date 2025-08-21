@@ -31,6 +31,7 @@ import { calculateResolutionTime } from '../utils/resolutionTime';
 import { searchArticles } from '../api/notionApi';
 import { postCards } from '../api/cardsApi';
 import { format, formatDistanceToNow } from 'date-fns';
+import { postErrorCards } from '../api/errorCards';
 
 // Label color mapping
 const LABEL_COLORS = {
@@ -115,6 +116,9 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
     // Thêm state cho tìm kiếm label
     const [labelSearch, setLabelSearch] = useState('');
     const [isEditorMode, setIsEditorMode] = useState(false);
+    const [qaNotes, setQaNotes] = useState('');
+    const [qaLoading, setQaLoading] = useState(false);
+    const [penaltyPoints, setPenaltyPoints] = useState('');
 
     const safeCard = useMemo(() => {
         if (!card) return null;
@@ -677,6 +681,50 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
             message: `${type} copied to clipboard`,
             severity: 'success'
         });
+    };
+
+    const handleQASubmit = async () => {
+        if (!qaNotes.trim() || !card?.id) {
+            setSnackbar({
+                open: true,
+                message: 'Please enter QA notes before submitting',
+                severity: 'warning'
+            });
+            return;
+        }
+
+        setQaLoading(true);
+        try {
+            const dataToSave = {
+                cardId: card.id,
+                cardName: card.name || "",
+                cardUrl: card.shortUrl || `https://trello.com/c/${card.idShort}`,
+                note: qaNotes.trim(),
+                penaltyPoints: penaltyPoints ? parseInt(penaltyPoints) : 0,
+                labels: card.labels?.map(l => l.name) || [],
+                members: card.idMembers || [],
+                createdAt: new Date()
+            };
+
+            await postErrorCards(dataToSave);
+            
+            setQaNotes('');
+            setPenaltyPoints('');
+            setSnackbar({
+                open: true,
+                message: 'QA review submitted successfully',
+                severity: 'success'
+            });
+        } catch (error) {
+            console.error('Error submitting QA review:', error);
+            setSnackbar({
+                open: true,
+                message: 'Failed to submit QA review: ' + error.message,
+                severity: 'error'
+            });
+        } finally {
+            setQaLoading(false);
+        }
     };
 
     const filteredAgents = useMemo(() => {
@@ -2964,6 +3012,121 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
 
                                 {/* Resolution Times */}
                                 {renderResolutionTimes()}
+
+                                {/* QA Box */}
+                                <Card style={{
+                                    backgroundColor: '#ffffff',
+                                    padding: 16,
+                                    borderRadius: '12px',
+                                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                                    border: '1px solid rgba(0, 0, 0, 0.06)',
+                                    transition: 'all 0.2s ease-in-out'
+                                }}>
+                                    <Typography.Title 
+                                        level={5} 
+                                        style={{ 
+                                            color: '#1e293b',
+                                            fontWeight: 700,
+                                            fontSize: '1rem',
+                                            marginBottom: 20,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 10,
+                                            letterSpacing: '0.01em',
+                                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                            margin: 0,
+                                            borderBottom: '2px solid rgba(0, 0, 0, 0.06)',
+                                            paddingBottom: 12
+                                        }}
+                                    >
+                                        🔍 QA Review
+                                    </Typography.Title>
+                                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                                        <Input.TextArea
+                                            value={qaNotes}
+                                            onChange={(e) => setQaNotes(e.target.value)}
+                                            placeholder="Enter QA notes, feedback, or review comments..."
+                                            rows={4}
+                                            style={{
+                                                backgroundColor: '#f8fafc',
+                                                fontSize: '0.9rem',
+                                                lineHeight: 1.6,
+                                                borderColor: 'rgba(0, 0, 0, 0.08)',
+                                                borderRadius: '8px',
+                                                padding: '12px 16px',
+                                                fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                                transition: 'all 0.2s ease-in-out',
+                                                border: '1px solid rgba(0, 0, 0, 0.06)',
+                                                resize: 'vertical'
+                                            }}
+                                        />
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <Typography.Text style={{ 
+                                                fontSize: '14px', 
+                                                fontWeight: 600, 
+                                                color: '#374151',
+                                                whiteSpace: 'nowrap'
+                                            }}>
+                                                Penalty Points:
+                                            </Typography.Text>
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                value={penaltyPoints}
+                                                onChange={(e) => setPenaltyPoints(e.target.value)}
+                                                placeholder="0"
+                                                style={{
+                                                    backgroundColor: '#f8fafc',
+                                                    fontSize: '0.9rem',
+                                                    borderColor: 'rgba(0, 0, 0, 0.08)',
+                                                    borderRadius: '8px',
+                                                    padding: '8px 12px',
+                                                    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                                    transition: 'all 0.2s ease-in-out',
+                                                    border: '1px solid rgba(0, 0, 0, 0.06)',
+                                                    width: '80px'
+                                                }}
+                                            />
+                                        </div>
+                                        <Button
+                                            type="primary"
+                                            onClick={handleQASubmit}
+                                            disabled={qaLoading || !qaNotes.trim()}
+                                            loading={qaLoading}
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px 20px',
+                                                backgroundColor: qaLoading || !qaNotes.trim() ? '#94a3b8' : '#3b82f6',
+                                                color: '#ffffff',
+                                                fontWeight: 700,
+                                                fontSize: '14px',
+                                                borderRadius: '10px',
+                                                border: 'none',
+                                                height: '44px',
+                                                boxShadow: qaLoading || !qaNotes.trim() ? 'none' : '0 4px 12px rgba(59, 130, 246, 0.3)',
+                                                transition: 'all 0.3s ease-in-out',
+                                                fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                                letterSpacing: '0.02em'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (!qaLoading && qaNotes.trim()) {
+                                                    e.currentTarget.style.backgroundColor = '#2563eb';
+                                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (!qaLoading && qaNotes.trim()) {
+                                                    e.currentTarget.style.backgroundColor = '#3b82f6';
+                                                    e.currentTarget.style.transform = 'translateY(0)';
+                                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+                                                }
+                                            }}
+                                        >
+                                            {qaLoading ? 'Submitting...' : 'Submit QA Review'}
+                                        </Button>
+                                    </Space>
+                                </Card>
                             </Space>
                         </div>
                     </div>

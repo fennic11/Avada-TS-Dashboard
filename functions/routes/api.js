@@ -9,6 +9,7 @@ const leaderboardController = require('../controllers/leaderboardController');
 const crispController = require('../controllers/crispController');
 const devCardController = require('../controllers/devCardController');
 const firebaseController = require('../controllers/firebaseController');
+const errorCardController = require('../controllers/errorCardController');
 // Auth routes
 router.put('/auth/user', authController.createOrUpdateUser);
 router.get('/auth/user/:email', authController.getUserByEmail);
@@ -16,6 +17,10 @@ router.get('/auth/user/:email', authController.getUserByEmail);
 router.post('/cards', cardController.createOrUpdateCard);
 router.get('/cards', cardController.getCards);
 router.get('/cards/:cardUrl', cardController.getCardByUrl);
+
+// Error Card routes
+router.post('/error-cards', errorCardController.createOrUpdateErrorCard);
+
 // Dev Card routes
 router.post('/dev-cards', devCardController.createOrUpdateDevCard);
 router.get('/dev-cards', devCardController.getDevCards);
