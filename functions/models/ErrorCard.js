@@ -1,15 +1,18 @@
 const mongoose = require('mongoose');
 
 const ErrorCardSchema = new mongoose.Schema({
-    cardName: String,
-    cardId: {
+    uniqueId: {
         type: String,
         unique: true,
         required: true
     },
+    cardName: String,
+    cardId: {
+        type: String,
+        required: true
+    },
     cardUrl: {
         type: String,
-        unique: true,
         required: true
     },
     createdAt: {

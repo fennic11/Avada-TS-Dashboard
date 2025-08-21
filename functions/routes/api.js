@@ -19,7 +19,7 @@ router.get('/cards', cardController.getCards);
 router.get('/cards/:cardUrl', cardController.getCardByUrl);
 
 // Error Card routes
-router.post('/error-cards', errorCardController.createOrUpdateErrorCard);
+router.post('/error-cards', errorCardController.createErrorCard);
 
 // Dev Card routes
 router.post('/dev-cards', devCardController.createOrUpdateDevCard);
