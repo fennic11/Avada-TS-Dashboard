@@ -28,6 +28,7 @@ import PerformanceTS from './pages/PerformanceTS';
 import CheckoutPage from './pages/CheckoutPage';
 import KpiTsTeamPage from './pages/KpiTsTeamPage';
 import DevResolutionTime from './pages/DevResolutionTime';
+import ErrorCardPage from './pages/ErrorCardPage';
 
 const theme = createTheme({
     palette: {
@@ -285,6 +286,16 @@ const App = () => {
                                     <PrivateRoute>
                                         <Layout>
                                             <DevResolutionTime />
+                                        </Layout>
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path="/error-cards"
+                                element={
+                                    <PrivateRoute>
+                                        <Layout>
+                                            <ErrorCardPage />
                                         </Layout>
                                     </PrivateRoute>
                                 }

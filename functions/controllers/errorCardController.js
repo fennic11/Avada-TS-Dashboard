@@ -9,4 +9,14 @@ const createErrorCard = async (req, res) => {
     }
 };
 
-module.exports = { createErrorCard };
+const getErrorCardsByMonth = async (req, res) => {
+    try {
+        const { year, month } = req.query;
+        const errorCards = await errorCardService.getErrorCardsByMonth(year, month);
+        res.json(errorCards);
+    } catch (err) {
+        res.status(500).json({ error: 'Lỗi khi lấy card', details: err.message });
+    }
+};
+
+module.exports = { createErrorCard, getErrorCardsByMonth };

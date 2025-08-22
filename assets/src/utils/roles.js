@@ -14,7 +14,8 @@ export const TABS = {
     // PLAN_TS_TEAM: 'plan-ts-team',
     PERFORMANCE_TS: 'performance-ts',
     CHECKOUT: 'checkout',
-    KPI_TS_TEAM: 'kpi-ts-team'
+    KPI_TS_TEAM: 'kpi-ts-team',
+    ERROR_CARDS: 'error-cards'
 };
 
 // Define roles and their permissions

@@ -76,4 +76,28 @@ const createErrorCard = async (cardData) => {
     }
 };
 
-module.exports = { createErrorCard, setupIndexes };
+const getErrorCardsByMonth = async (year, month) => {
+    try {
+        // Create start and end dates for the specified month
+        const startDate = new Date(year, month - 1, 1); // month is 0-indexed in JS Date
+        const endDate = new Date(year, month, 0); // Last day of the month
+        
+        // Set time to start and end of day
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+        
+        const errorCards = await ErrorCard.find({
+            createdAt: {
+                $gte: startDate,
+                $lte: endDate
+            }
+        }).sort({ createdAt: -1 }); // Sort by createdAt descending (newest first)
+        
+        return errorCards;
+    } catch (error) {
+        console.error('❌ Error in getErrorCardsByMonth service:', error);
+        throw error;
+    }
+};
+
+module.exports = { createErrorCard, setupIndexes, getErrorCardsByMonth };
