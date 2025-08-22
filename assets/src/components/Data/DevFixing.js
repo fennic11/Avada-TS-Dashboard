@@ -832,7 +832,7 @@ export default function DevFixingDashboard() {
                             {label}
                           </div>
                           <div style={{ fontWeight: 700, fontSize: 20, color: '#1e293b', marginBottom: 4 }}>
-                            {stats.total} bugs
+                            {stats.total} cards
                           </div>
                           <div style={{ color: '#64748b', fontSize: 12 }}>
                             {totalBugs > 0 ? ((stats.total / totalBugs) * 100).toFixed(1) : 0}% of total

@@ -864,5 +864,15 @@
       "email": "lamln@avadagroup.com",
       "username": "lamln",
       "role": "ba"
+    },
+    {
+      "id": "687dbfdeed55208c6c035cdb",
+      "fullName": "Nguyễn Sỹ Mạnh",
+      "email": "manhns@avadagroup.com",
+      "username": "mark_avada",
+      "role": "TS",
+      "group": "TS2",
+      "kpiName": "ManhNS",
+      "slackId": "U0967UEHXP1"
     }
   ]
