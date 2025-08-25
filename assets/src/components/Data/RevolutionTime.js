@@ -5,12 +5,13 @@ import members from "../../data/members.json";
 import appData from "../../data/app.json";
 import {
     DatePicker, Button, Select, Row, Col, Card, Typography, 
-    Table, Tag, Space, Spin, Badge, Modal
+    Table, Tag, Space, Spin, Badge, Modal, Tabs
 } from "antd";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area, LineChart, Line } from "recharts";
 import { 
     ReloadOutlined, TeamOutlined,
-    TrophyOutlined, FireOutlined, StarOutlined
+    TrophyOutlined, FireOutlined, StarOutlined,
+    ArrowUpOutlined, ArrowDownOutlined, MinusOutlined
 } from '@ant-design/icons';
 import HeatmapOfWeek from '../Heatmap/HeatmapOfWeek';
 import CardDetailModal from '../CardDetailModal';
@@ -18,6 +19,7 @@ import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
+const { TabPane } = Tabs;
 
 const memberMap = members.reduce((acc, m) => {
     acc[m.id] = m.name;
@@ -264,6 +266,74 @@ function calculateAgentLeaderboard(cards) {
         .sort((a, b) => a.averageTime - b.averageTime);
 }
 
+// Helper functions for trending analysis
+function calculateTrendingMetrics(cards) {
+    if (!cards || cards.length === 0) {
+        return {
+            totalCards: 0,
+            avgResolutionTime: 0,
+            avgFirstActionTime: 0,
+            avgResolutionTimeTS: 0,
+            totalResolutionTime: 0,
+            totalFirstActionTime: 0,
+            totalResolutionTimeTS: 0
+        };
+    }
+
+    const validCards = cards.filter(card => 
+        !isNaN(Number(card.resolutionTime)) && 
+        Number(card.resolutionTime) > 0
+    );
+
+    const totalCards = validCards.length;
+    const totalResolutionTime = validCards.reduce((sum, card) => sum + (Number(card.resolutionTime) || 0), 0);
+    const totalFirstActionTime = validCards.reduce((sum, card) => sum + (Number(card.firstActionTime) || 0), 0);
+    const totalResolutionTimeTS = validCards.reduce((sum, card) => sum + (Number(card.resolutionTimeTS) || 0), 0);
+
+    return {
+        totalCards,
+        avgResolutionTime: totalCards > 0 ? Math.round((totalResolutionTime / totalCards) * 10) / 10 : 0,
+        avgFirstActionTime: totalCards > 0 ? Math.round((totalFirstActionTime / totalCards) * 10) / 10 : 0,
+        avgResolutionTimeTS: totalCards > 0 ? Math.round((totalResolutionTimeTS / totalCards) * 10) / 10 : 0,
+        totalResolutionTime,
+        totalFirstActionTime,
+        totalResolutionTimeTS
+    };
+}
+
+function calculateTrendPercentage(current, previous) {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return Math.round(((current - previous) / previous) * 100);
+}
+
+function getTrendColor(percentage, metricType = 'general') {
+    // For time-based metrics, decreasing is good (green), increasing is bad (red)
+    if (metricType === 'time') {
+        if (percentage < 0) return '#52c41a'; // Green for decreasing time (good)
+        if (percentage > 0) return '#ff4d4f'; // Red for increasing time (bad)
+        return '#8c8c8c'; // Gray for no change
+    }
+    
+    // For count-based metrics, increasing is good (green), decreasing is bad (red)
+    if (percentage > 0) return '#52c41a';
+    if (percentage < 0) return '#ff4d4f';
+    return '#8c8c8c';
+}
+
+function getTrendIcon(percentage, metricType = 'general') {
+    // For time-based metrics, decreasing is good (green), increasing is bad (red)
+    if (metricType === 'time') {
+        if (percentage < 0) return <ArrowDownOutlined style={{ color: '#52c41a' }} />;
+        if (percentage > 0) return <ArrowUpOutlined style={{ color: '#ff4d4f' }} />;
+        return <MinusOutlined style={{ color: '#8c8c8c' }} />;
+    }
+    
+    // For count-based metrics, increasing is good (green), decreasing is bad (red)
+    if (percentage > 0) return <ArrowUpOutlined style={{ color: '#52c41a' }} />;
+    if (percentage < 0) return <ArrowDownOutlined style={{ color: '#ff4d4f' }} />;
+    return <MinusOutlined style={{ color: '#8c8c8c' }} />;
+}
+
 const teamColors = ['#1976d2', '#2e7d32', '#ed6c02', '#9c27b0', '#d32f2f', '#7b1fa2', '#388e3c'];
 
 const ResolutionTimeList = () => {
@@ -292,6 +362,19 @@ const ResolutionTimeList = () => {
 
     const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
+    // New state for trending comparison
+    const [trendingData, setTrendingData] = useState({
+        current: [],
+        previous: []
+    });
+    const [trendingLoading, setTrendingLoading] = useState(false);
+
+    // Remove separate trending controls since we'll use date range
+    // const [trendingPeriod, setTrendingPeriod] = useState('week');
+    // const [customDateRange, setCustomDateRange] = useState([...]);
+    // const [comparisonType, setComparisonType] = useState('previous');
+    // const [customComparisonRange, setCustomComparisonRange] = useState([...]);
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
@@ -311,13 +394,95 @@ const ResolutionTimeList = () => {
         }
     }, [dateRange]);
 
+    // New function to fetch trending data - previous year comparison
+    const fetchTrendingData = useCallback(async () => {
+        setTrendingLoading(true);
+        try {
+            // Calculate previous year date range - exact same period
+            const currentStartDate = dateRange[0];
+            const currentEndDate = dateRange[1];
+            
+            // Get the exact same dates from last year
+            const previousYearStart = currentStartDate.subtract(1, 'year');
+            const previousYearEnd = currentEndDate.subtract(1, 'year');
+
+            console.log('Current period:', currentStartDate.format('YYYY-MM-DD'), 'to', currentEndDate.format('YYYY-MM-DD'));
+            console.log('Previous year period:', previousYearStart.format('YYYY-MM-DD'), 'to', previousYearEnd.format('YYYY-MM-DD'));
+
+            // Fetch previous year data
+            const previousYearResults = await getResolutionTimes(
+                previousYearStart.format('YYYY-MM-DD'), 
+                previousYearEnd.format('YYYY-MM-DD')
+            );
+            
+            const previousYearValidCards = previousYearResults.filter(card =>
+                !isNaN(Number(card.resolutionTime)) &&
+                Number(card.resolutionTime) > 0 &&
+                card.members?.some(id => memberIds.includes(id))
+            );
+
+            console.log('Previous year cards found:', previousYearValidCards.length);
+
+            setTrendingData({
+                current: [], // This will be set by filteredData
+                previous: previousYearValidCards
+            });
+        } catch (err) {
+            console.error("❌ Lỗi xử lý trending data:", err);
+        } finally {
+            setTrendingLoading(false);
+        }
+    }, [dateRange]);
+
     // Initial data fetch
     useEffect(() => {
         if (isInitialLoad) {
             fetchData();
+            fetchTrendingData();
             setIsInitialLoad(false);
         }
-    }, [isInitialLoad, fetchData]);
+    }, [isInitialLoad, fetchData, fetchTrendingData]);
+
+    // Fetch trending data when dateRange changes
+    useEffect(() => {
+        const fetchTrending = async () => {
+            setTrendingLoading(true);
+            try {
+                // Calculate previous period based on current date range
+                const currentStart = dateRange[0];
+                const currentEnd = dateRange[1];
+                const duration = currentEnd.diff(currentStart, 'day');
+                
+                // Previous period is the same duration before current period
+                const previousStart = currentStart.subtract(duration + 1, 'day');
+                const previousEnd = currentStart.subtract(1, 'day');
+
+                const previousResults = await getResolutionTimes(
+                    previousStart.format('YYYY-MM-DD'), 
+                    previousEnd.format('YYYY-MM-DD')
+                );
+
+                const previousValidCards = previousResults.filter(card =>
+                    !isNaN(Number(card.resolutionTime)) &&
+                    Number(card.resolutionTime) > 0 &&
+                    card.members?.some(id => memberIds.includes(id))
+                );
+
+                setTrendingData(prev => ({
+                    ...prev,
+                    previous: previousValidCards
+                }));
+            } catch (err) {
+                console.error("❌ Lỗi xử lý trending data:", err);
+            } finally {
+                setTrendingLoading(false);
+            }
+        };
+
+        if (!isInitialLoad) {
+            fetchTrending();
+        }
+    }, [dateRange, isInitialLoad]);
 
     // Update filtered data when filters change
     useEffect(() => {
@@ -668,7 +833,7 @@ const ResolutionTimeList = () => {
                                     ))}
                             </Select>
                         </Col>
-                        <Col xs={24} sm={12} md={6}>
+                        <Col xs={24} sm={12} md={4}>
                             <Button
                                 type="primary"
                                 icon={<ReloadOutlined />}
@@ -680,6 +845,26 @@ const ResolutionTimeList = () => {
                             </Button>
                         </Col>
                     </Row>
+                    
+                    {/* Comparison Info */}
+                    {trendingData.previous.length > 0 && (
+                        <Row style={{ marginTop: 16 }}>
+                            <Col span={24}>
+                                <div style={{ 
+                                    background: '#f8fafc', 
+                                    padding: '8px 16px', 
+                                    borderRadius: 8,
+                                    border: '1px solid #e2e8f0',
+                                    textAlign: 'center'
+                                }}>
+                                    <Text style={{ fontSize: 12, color: '#64748b' }}>
+                                        📊 Comparing: <strong>{dateRange[0].format('MMM DD, YYYY')} - {dateRange[1].format('MMM DD, YYYY')}</strong> vs{' '}
+                                        <strong>{dateRange[0].subtract(dateRange[1].diff(dateRange[0], 'day') + 1, 'day').format('MMM DD, YYYY')} - {dateRange[0].subtract(1, 'day').format('MMM DD, YYYY')}</strong>
+                                    </Text>
+                                </div>
+                            </Col>
+                        </Row>
+                    )}
                 </Card>
 
                 {loading ? (
@@ -688,7 +873,7 @@ const ResolutionTimeList = () => {
                     </div>
                 ) : (
                     <>
-                        {/* Key Metrics */}
+                        {/* Key Metrics with Trending */}
                         <Row gutter={[24, 24]} style={{ marginBottom: 32 }}>
                             <Col xs={24} sm={12} md={6}>
                                 <Card style={{ 
@@ -702,6 +887,21 @@ const ResolutionTimeList = () => {
                                             <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b' }}>
                                                 {filteredData.length.toLocaleString()}
                                             </div>
+                                            {trendingData.previous.length > 0 && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                                                    {getTrendIcon(calculateTrendPercentage(filteredData.length, trendingData.previous.length), 'count')}
+                                                    <Text style={{ 
+                                                        color: getTrendColor(calculateTrendPercentage(filteredData.length, trendingData.previous.length), 'count'),
+                                                        fontWeight: 600,
+                                                        fontSize: 12
+                                                    }}>
+                                                        {calculateTrendPercentage(filteredData.length, trendingData.previous.length) > 0 ? '+' : ''}{calculateTrendPercentage(filteredData.length, trendingData.previous.length)}%
+                                                    </Text>
+                                                    <Text style={{ fontSize: 10, color: '#64748b', marginLeft: 4 }}>
+                                                        vs {trendingData.previous.length}
+                                                    </Text>
+                                                </div>
+                                            )}
                                         </div>
                                         <div style={{ 
                                             width: 24, 
@@ -757,7 +957,6 @@ const ResolutionTimeList = () => {
                                             </AreaChart>
                                         </ResponsiveContainer>
                                     </div>
-
                                 </Card>
                             </Col>
                             <Col xs={24} sm={12} md={6}>
@@ -772,6 +971,21 @@ const ResolutionTimeList = () => {
                                             <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b' }}>
                                                 {formatMinutes(averages.resolutionTime)}
                                             </div>
+                                            {trendingData.previous.length > 0 && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                                                    {getTrendIcon(calculateTrendPercentage(averages.resolutionTime, averageTime(trendingData.previous, "resolutionTime")), 'time')}
+                                                    <Text style={{ 
+                                                        color: getTrendColor(calculateTrendPercentage(averages.resolutionTime, averageTime(trendingData.previous, "resolutionTime")), 'time'),
+                                                        fontWeight: 600,
+                                                        fontSize: 12
+                                                    }}>
+                                                        {calculateTrendPercentage(averages.resolutionTime, averageTime(trendingData.previous, "resolutionTime")) > 0 ? '+' : ''}{calculateTrendPercentage(averages.resolutionTime, averageTime(trendingData.previous, "resolutionTime"))}%
+                                                    </Text>
+                                                    <Text style={{ fontSize: 10, color: '#64748b', marginLeft: 4 }}>
+                                                        vs {formatMinutes(averageTime(trendingData.previous, "resolutionTime"))}
+                                                    </Text>
+                                                </div>
+                                            )}
                                         </div>
                                         <div style={{ 
                                             width: 24, 
@@ -827,7 +1041,6 @@ const ResolutionTimeList = () => {
                                             </BarChart>
                                         </ResponsiveContainer>
                                     </div>
-
                                 </Card>
                             </Col>
                             <Col xs={24} sm={12} md={6}>
@@ -842,6 +1055,21 @@ const ResolutionTimeList = () => {
                                             <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b' }}>
                                                 {formatMinutes(averages.firstActionTime)}
                                             </div>
+                                            {trendingData.previous.length > 0 && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                                                    {getTrendIcon(calculateTrendPercentage(averages.firstActionTime, averageTime(trendingData.previous, "firstActionTime")), 'time')}
+                                                    <Text style={{ 
+                                                        color: getTrendColor(calculateTrendPercentage(averages.firstActionTime, averageTime(trendingData.previous, "firstActionTime")), 'time'),
+                                                        fontWeight: 600,
+                                                        fontSize: 12
+                                                    }}>
+                                                        {calculateTrendPercentage(averages.firstActionTime, averageTime(trendingData.previous, "firstActionTime")) > 0 ? '+' : ''}{calculateTrendPercentage(averages.firstActionTime, averageTime(trendingData.previous, "firstActionTime"))}%
+                                                    </Text>
+                                                    <Text style={{ fontSize: 10, color: '#64748b', marginLeft: 4 }}>
+                                                        vs {formatMinutes(averageTime(trendingData.previous, "firstActionTime"))}
+                                                    </Text>
+                                                </div>
+                                            )}
                                         </div>
                                         <div style={{ 
                                             width: 24, 
@@ -897,7 +1125,6 @@ const ResolutionTimeList = () => {
                                             </BarChart>
                                         </ResponsiveContainer>
                                     </div>
-
                                 </Card>
                             </Col>
                             <Col xs={24} sm={12} md={6}>
@@ -912,6 +1139,21 @@ const ResolutionTimeList = () => {
                                             <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b' }}>
                                                 {formatMinutes(averages.resolutionTimeTS)}
                                             </div>
+                                            {trendingData.previous.length > 0 && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                                                    {getTrendIcon(calculateTrendPercentage(averages.resolutionTimeTS, averageTime(trendingData.previous, "resolutionTimeTS")), 'time')}
+                                                    <Text style={{ 
+                                                        color: getTrendColor(calculateTrendPercentage(averages.resolutionTimeTS, averageTime(trendingData.previous, "resolutionTimeTS")), 'time'),
+                                                        fontWeight: 600,
+                                                        fontSize: 12
+                                                    }}>
+                                                        {calculateTrendPercentage(averages.resolutionTimeTS, averageTime(trendingData.previous, "resolutionTimeTS")) > 0 ? '+' : ''}{calculateTrendPercentage(averages.resolutionTimeTS, averageTime(trendingData.previous, "resolutionTimeTS"))}%
+                                                    </Text>
+                                                    <Text style={{ fontSize: 10, color: '#64748b', marginLeft: 4 }}>
+                                                        vs {formatMinutes(averageTime(trendingData.previous, "resolutionTimeTS"))}
+                                                    </Text>
+                                                </div>
+                                            )}
                                         </div>
                                         <div style={{ 
                                             width: 24, 
@@ -967,10 +1209,11 @@ const ResolutionTimeList = () => {
                                             </BarChart>
                                         </ResponsiveContainer>
                                     </div>
-
                                 </Card>
                             </Col>
                         </Row>
+
+
 
                         {/* Heatmap Section */}
                         <Card
@@ -1218,6 +1461,10 @@ const ResolutionTimeList = () => {
         </div>
     );
 };
+
+
+
+
 
 const AgentLeaderboard = ({ data }) => {
     const leaderboard = calculateAgentLeaderboard(data);

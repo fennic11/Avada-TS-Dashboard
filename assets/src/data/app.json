@@ -12,6 +12,12 @@
         "product_team": "Falcon"
     },
     {
+        "label_trello": "App: AEO optimizer",
+        "app_name": "AEO optimizer",
+        "group_ts": "TS1",
+        "product_team": "Falcon"
+    },
+    {
         "label_trello": "App: Image Optimizer",
         "app_name": "Image Optimizer",
         "group_ts": "TS1",
