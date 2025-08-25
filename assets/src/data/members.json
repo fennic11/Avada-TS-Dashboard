@@ -295,6 +295,14 @@
       "role": "pm"
     },
     {
+      "id": "633aab540ec1df01547984d3",
+      "fullName": "thangnd",
+      "email": "thangnd@avada.io",
+      "username": "thangnd55",
+      "initials": "T",
+      "role": "ba"
+    },
+    {
       "id": "64c87842344c161158e1a0d0",
       "fullName": "Tiến NH",
       "username": "tiennguyenhoang10",
@@ -304,7 +312,26 @@
       "id": "64d06d50e0f959d36fd72abe",
       "fullName": "Cương NH",
       "username": "cuongnhsaas",
-      "initials": "CN"
+      "email": "cuongnh@avadagroup.com",
+      "initials": "CN",
+      "kpiName": "CuongNH",
+      "role": "ba"
+    },
+    {
+      "id": "65b87c8c1dc6760dc21e0f8e",
+      "fullName": "Lê Văn Long",
+      "email": "longlv@avadagroup.com",
+      "username": "levanlong23",
+      "initials": "LL",
+      "role": "ba"
+    },
+    {
+      "id": "65b87c8c1dc6760dc21e0f8e",
+      "fullName": "Hạnh PH",
+      "email": "hanhph@avadagroup.com",
+      "username": "levanlong23",
+      "initials": "LL",
+      "role": "ba"
     },
     {
       "id": "6641ba4ad264da0e9ba5819c",

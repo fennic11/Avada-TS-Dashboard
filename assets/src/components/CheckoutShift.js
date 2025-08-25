@@ -296,13 +296,13 @@ const CheckoutShift = () => {
           actionCounts.removeMemberFromCard++;
         }
       }
-      if (action.type === 'updateCard' && action.data?.card?.dueComplete === true) actionCounts.completeCard++;
       if (action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('done')) actionCounts.moveToDone++;
       if (action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('doing')) actionCounts.moveToDoing++;
       if (action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('waiting to fix')) actionCounts.moveToWaitingToFix++;
       if (action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('fix done from dev')) actionCounts.moveToFixDoneFromDev++;
       if (action.type === 'updateCard' && action.data?.listAfter?.name && (action.data.listAfter.name.toLowerCase().includes('update workflow required') || action.data.listAfter.name.toLowerCase().includes('waiting for access'))) actionCounts.moveToUpdateWorkflowOrWaitingAccess++;
     });
+    
     // Đếm số card khác nhau mà user được add vào
     const addedCardIds = new Set();
     filteredActions.forEach(action => {
@@ -315,6 +315,20 @@ const CheckoutShift = () => {
       }
     });
     actionCounts.addMemberToCard = addedCardIds.size;
+    
+    // Đếm số card khác nhau mà user đã complete (chỉ tính mỗi card một lần)
+    const completedCardIds = new Set();
+    filteredActions.forEach(action => {
+      if (
+        action.type === 'updateCard' &&
+        action.data?.card?.dueComplete === true &&
+        action.data?.card?.id
+      ) {
+        completedCardIds.add(action.data.card.id);
+      }
+    });
+    actionCounts.completeCard = completedCardIds.size;
+    
     return actionCounts;
   }, [actions, currentUser]);
 
@@ -470,7 +484,22 @@ const CheckoutShift = () => {
     if (!actions.length || !currentUser?.trelloId) return [];
     switch (type) {
       case 'completeCard':
-        return actions.filter(action => action.type === 'updateCard' && action.data?.card?.dueComplete === true && action.idMemberCreator === currentUser?.trelloId);
+        // Chỉ trả về actions complete cho các card khác nhau (không trùng lặp)
+        const completedCardIds = new Set();
+        const uniqueCompleteActions = [];
+        actions.forEach(action => {
+          if (
+            action.type === 'updateCard' && 
+            action.data?.card?.dueComplete === true && 
+            action.idMemberCreator === currentUser?.trelloId &&
+            action.data?.card?.id &&
+            !completedCardIds.has(action.data.card.id)
+          ) {
+            completedCardIds.add(action.data.card.id);
+            uniqueCompleteActions.push(action);
+          }
+        });
+        return uniqueCompleteActions;
       case 'moveToDev':
         return actions.filter(action => action.type === 'updateCard' && action.data?.listAfter?.name && action.data.listAfter.name.toLowerCase().includes('dev') && action.idMemberCreator === currentUser?.trelloId);
       case 'moveToDoing':

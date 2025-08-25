@@ -326,7 +326,7 @@ const ActionsDetail = () => {
                         });
                         // Tổng hợp số lượng từng loại action đã tô màu
                         const coloredActionCounts = {
-                            complete: memberActions.filter(a => a.type === 'updateCard' && a.data?.card?.dueComplete === true).length,
+                            complete: new Set(memberActions.filter(a => a.type === 'updateCard' && a.data?.card?.dueComplete === true).map(a => a.data?.card?.id)).size,
                             moveToDone: memberActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.name && a.data.listAfter.name.toLowerCase().includes('done') && !a.data.listAfter.name.toLowerCase().includes('fix done from dev')).length,
                             moveToDoing: memberActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.name && a.data.listAfter.name.toLowerCase().includes('doing')).length,
                             moveToWaitingToFixFromDev: memberActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.name && a.data.listAfter.name.toLowerCase().includes('waiting to fix (from dev)')).length,
@@ -727,7 +727,7 @@ const ActionsDetail = () => {
 
                                 // Tổng hợp số lượng từng loại action cho card
                                 const cardActionCounts = {
-                                    complete: cardActions.filter(a => a.type === 'updateCard' && a.data?.card?.dueComplete === true).length,
+                                    complete: new Set(cardActions.filter(a => a.type === 'updateCard' && a.data?.card?.dueComplete === true).map(a => a.data?.card?.id)).size,
                                     moveToDone: cardActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.name && a.data.listAfter.name.toLowerCase().includes('done') && !a.data.listAfter.name.toLowerCase().includes('fix done from dev')).length,
                                     moveToDoing: cardActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.name && a.data.listAfter.name.toLowerCase().includes('doing')).length,
                                     moveToWaitingToFixFromDev: cardActions.filter(a => a.type === 'updateCard' && a.data?.listAfter?.name && a.data.listAfter.name.toLowerCase().includes('waiting to fix (from dev)')).length,
