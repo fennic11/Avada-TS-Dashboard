@@ -10,7 +10,7 @@ const crispController = require('../controllers/crispController');
 const devCardController = require('../controllers/devCardController');
 const firebaseController = require('../controllers/firebaseController');
 const errorCardController = require('../controllers/errorCardController');
-const assignCardsController = require('../controllers/AssignCardsController');
+const assignCardsController = require('../controllers/cardAssignController');
 // Auth routes
 router.put('/auth/user', authController.createOrUpdateUser);
 router.get('/auth/user/:email', authController.getUserByEmail);
