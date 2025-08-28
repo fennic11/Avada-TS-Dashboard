@@ -25,6 +25,7 @@ import { calculateResolutionTime } from '../utils/resolutionTime';
 import CardDetailModal from './CardDetailModal';
 import { sendMessageToChannel } from '../api/slackApi';
 import { calculateDevResolutionTime } from '../utils/devResolutionTime';
+import assignCard from '../api/assignCard';
 
 const CheckoutShift = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -143,14 +144,18 @@ const CheckoutShift = () => {
     }
   }, [selectedDate, selectedShift, currentUser]);
 
-  // Handler to calculate avg resolution time
+  // Handler to calculate avg resolution time and submit data
   const handleCalculateAvgResolutionTime = async () => {
     if (!actions.length || !currentUser?.trelloId) return;
     setResLoading(true);
     setResError('');
     setShowResDetails(true);
+    
     try {
-    // 1. Card đã complete bởi current user
+      // 1. Submit assign card data first
+      await handleSubmitToDatabase();
+      
+      // 2. Card đã complete bởi current user
       const completedCardIds = Array.from(new Set(actions.filter(action =>
         action.type === 'updateCard' &&
         action.data?.card?.dueComplete === true &&
@@ -169,102 +174,123 @@ const CheckoutShift = () => {
         return;
       }
 
-    // 2. Lấy actions cho từng card
-    const allCardActions = await Promise.all(
-      completedCardIds.map(cardId => getActionsByCard(cardId).then(
-        actions => ({ cardId, actions }),
-        err => ({ cardId, actions: [] })
-      ))
-    );
-
-    // 3. Phân loại card dev và card TS
-    const devCards = [];
-    const tsCards = [];
-
-    allCardActions.forEach(({ cardId, actions }) => {
-      // Kiểm tra xem card có ở cột "Waiting to fix (from dev)" không
-      const isDevCard = actions.some(action => 
-        action.type === 'updateCard' && 
-        action.data?.listAfter?.name === 'Waiting to fix (from dev)'
+      // 3. Lấy actions cho từng card
+      const allCardActions = await Promise.all(
+        completedCardIds.map(cardId => getActionsByCard(cardId).then(
+          actions => ({ cardId, actions }),
+          err => ({ cardId, actions: [] })
+        ))
       );
 
-      // Get card name from actions
-      const cardAction = actions.find(action => action.data?.card?.name);
-      const cardName = cardAction?.data?.card?.name || `Card ${cardId.slice(-8)}`;
+      // 4. Phân loại card dev và card TS
+      const devCards = [];
+      const tsCards = [];
 
-      if (isDevCard) {
-        // Tính dev resolution time
-        const devResolution = calculateDevResolutionTime(actions);
-        if (devResolution && devResolution.resolutionTime) {
-          devCards.push({
-            id: cardId,
-            name: cardName,
-            resolutionTime: Math.round(devResolution.resolutionTime * 100) / 100,
-            devResolutionTime: Math.round(devResolution.devResolutionTime * 100) / 100,
-            firstActionTime: Math.round(devResolution.firstActionTime * 100) / 100,
-            type: 'dev'
-          });
+      allCardActions.forEach(({ cardId, actions }) => {
+        // Kiểm tra xem card có ở cột "Waiting to fix (from dev)" không
+        const isDevCard = actions.some(action => 
+          action.type === 'updateCard' && 
+          action.data?.listAfter?.name === 'Waiting to fix (from dev)'
+        );
+
+        // Get card name from actions
+        const cardAction = actions.find(action => action.data?.card?.name);
+        const cardName = cardAction?.data?.card?.name || `Card ${cardId.slice(-8)}`;
+
+        if (isDevCard) {
+          // Tính dev resolution time
+          const devResolution = calculateDevResolutionTime(actions);
+          if (devResolution && devResolution.resolutionTime) {
+            devCards.push({
+              id: cardId,
+              name: cardName,
+              resolutionTime: Math.round(devResolution.resolutionTime * 100) / 100,
+              devResolutionTime: Math.round(devResolution.devResolutionTime * 100) / 100,
+              firstActionTime: Math.round(devResolution.firstActionTime * 100) / 100,
+              type: 'dev'
+            });
+          }
+        } else {
+          // Tính TS resolution time
+          const tsResolution = calculateResolutionTime(actions);
+          if (tsResolution && tsResolution.resolutionTime) {
+            tsCards.push({
+              id: cardId,
+              name: cardName,
+              resolutionTime: Math.round(tsResolution.resolutionTime * 100) / 100,
+              totalTime: Math.round(tsResolution.resolutionTime * 100) / 100,
+              firstActionTime: Math.round(tsResolution.firstActionTime * 100) / 100,
+              type: 'ts'
+            });
+          }
         }
-      } else {
-        // Tính TS resolution time
-        const tsResolution = calculateResolutionTime(actions);
-        if (tsResolution && tsResolution.resolutionTime) {
-          tsCards.push({
-            id: cardId,
-            name: cardName,
-            resolutionTime: Math.round(tsResolution.resolutionTime * 100) / 100,
-            totalTime: Math.round(tsResolution.resolutionTime * 100) / 100,
-            firstActionTime: Math.round(tsResolution.firstActionTime * 100) / 100,
-            type: 'ts'
-          });
-        }
-      }
-    });
+      });
 
-    // 4. Tính resolution time trung bình cho từng loại
-    const devTotal = devCards.reduce((sum, card) => sum + card.resolutionTime, 0);
-    const tsTotal = tsCards.reduce((sum, card) => sum + card.resolutionTime, 0);
-    
-    const avgDev = devCards.length > 0 ? Math.round((devTotal / devCards.length) * 100) / 100 : 0;
-    const avgTS = tsCards.length > 0 ? Math.round((tsTotal / tsCards.length) * 100) / 100 : 0;
-    const avgTotal = (devCards.length + tsCards.length) > 0 ? 
-      Math.round(((devTotal + tsTotal) / (devCards.length + tsCards.length)) * 100) / 100 : 0;
+      // 5. Tính resolution time trung bình cho từng loại
+      const devTotal = devCards.reduce((sum, card) => sum + card.resolutionTime, 0);
+      const tsTotal = tsCards.reduce((sum, card) => sum + card.resolutionTime, 0);
+      
+      const avgDev = devCards.length > 0 ? Math.round((devTotal / devCards.length) * 100) / 100 : 0;
+      const avgTS = tsCards.length > 0 ? Math.round((tsTotal / tsCards.length) * 100) / 100 : 0;
+      const avgTotal = (devCards.length + tsCards.length) > 0 ? 
+        Math.round(((devTotal + tsTotal) / (devCards.length + tsCards.length)) * 100) / 100 : 0;
 
-    // 5. Cập nhật state
-    setDevResDetails(devCards);
-    setTsResDetails(tsCards);
-    setResDetails([...devCards, ...tsCards]); // Tất cả cards
-    setAvgDevResTime(avgDev);
-    setAvgTSResTime(avgTS);
-    setAvgResTime(avgTotal);
+      // 6. Cập nhật state
+      setDevResDetails(devCards);
+      setTsResDetails(tsCards);
+      setResDetails([...devCards, ...tsCards]); // Tất cả cards
+      setAvgDevResTime(avgDev);
+      setAvgTSResTime(avgTS);
+      setAvgResTime(avgTotal);
 
-    // Tạo message Slack
-    const slackMessage = messageSlackConvert({
-      avgResolutionTime: avgTotal,
-      avgDevResolutionTime: avgDev,
-      avgTSResolutionTime: avgTS,
-      devCardCount: devCards.length,
-      tsCardCount: tsCards.length,
-      completeCardCount: getFilteredActionsByType('completeCard').length,
-      moveToDevCount: getFilteredActionsByType('moveToDev').length,
-      moveToDoingCount: getFilteredActionsByType('moveToDoing').length,
-      assignedCardCount: getFilteredActionsByType('assignedCard').length,
-      memberName: currentUser?.fullName || currentUser?.name || '',
-      currentShiftName: getShiftName(selectedShift),
-      currentDate: dayjs(selectedDate).format('DD/MM/YYYY')
-    });
-    await sendMessageToChannel(slackMessage, 'ts-shift-report');
-  } catch (err) {
-    setResError('Có lỗi khi tính resolution time');
-  } finally {
-    setResLoading(false);
-  }
+      // 7. Tạo message Slack
+      const slackMessage = messageSlackConvert({
+        avgResolutionTime: avgTotal,
+        avgDevResolutionTime: avgDev,
+        avgTSResolutionTime: avgTS,
+        devCardCount: devCards.length,
+        tsCardCount: tsCards.length,
+        completeCardCount: getFilteredActionsByType('completeCard').length,
+        moveToDevCount: getFilteredActionsByType('moveToDev').length,
+        moveToDoingCount: getFilteredActionsByType('moveToDoing').length,
+        assignedCardCount: getFilteredActionsByType('assignedCard').length,
+        memberName: currentUser?.fullName || currentUser?.name || '',
+        currentShiftName: getShiftName(selectedShift),
+        currentDate: dayjs(selectedDate).format('DD/MM/YYYY')
+      });
+      
+      await sendMessageToChannel(slackMessage, 'ts-shift-report');
+    } catch (err) {
+      setResError('Có lỗi khi tính resolution time');
+    } finally {
+      setResLoading(false);
+    }
   };
 
   const getShiftName = (shiftId) => {
     const shift = shifts.find(s => s.id === shiftId);
     return shift ? shift.name : '';
   };
+
+  // Calculate assign card count for display
+  const assignCardCount = useMemo(() => {
+    if (!actions.length || !currentUser?.trelloId) return 0;
+    const assignActions = actions.filter(action => 
+      action.type === 'addMemberToCard' && 
+      action.idMemberCreator === currentUser.trelloId &&
+      action.data?.card?.id &&
+      action.data?.idMember &&
+      action.data.idMember !== currentUser.trelloId // Không tính trường hợp tự add chính mình
+    );
+    
+    // Đếm unique cards (không trùng lặp)
+    const uniqueCardIds = new Set();
+    assignActions.forEach(action => {
+      uniqueCardIds.add(action.data.card.id);
+    });
+    
+    return uniqueCardIds.size;
+  }, [actions, currentUser]);
 
   // Memoize action counts to prevent infinite re-render
   const actionCounts = useMemo(() => {
@@ -479,6 +505,82 @@ const CheckoutShift = () => {
     );
   }
 
+  // Hàm submit data lên database (internal use)
+  const handleSubmitToDatabase = async () => {
+    if (!currentUser?.trelloId || !selectedDate || !selectedShift) {
+      console.warn('Missing required data for submission');
+      return false;
+    }
+
+    try {
+      // Lọc các actions addMemberToCard mà current user là người tạo và KHÔNG tự add chính mình
+      const assignActions = actions.filter(action => 
+        action.type === 'addMemberToCard' && 
+        action.idMemberCreator === currentUser.trelloId &&
+        action.data?.card?.id &&
+        action.data?.idMember &&
+        action.data.idMember !== currentUser.trelloId // Không tính trường hợp tự add chính mình
+      );
+
+      if (assignActions.length === 0) {
+        console.log('No assign card data to submit');
+        return true; // Return true even if no data to submit
+      }
+
+      // Loại bỏ duplicate cards (cùng card được assign nhiều lần)
+      const uniqueAssignActions = [];
+      const seenCardIds = new Set();
+      
+      assignActions.forEach(action => {
+        const cardId = action.data.card.id;
+        if (!seenCardIds.has(cardId)) {
+          seenCardIds.add(cardId);
+          uniqueAssignActions.push(action);
+        }
+      });
+
+      console.log(`Found ${assignActions.length} assign actions, ${uniqueAssignActions.length} unique cards`);
+
+      // Tạo cấu trúc dữ liệu theo yêu cầu
+      const submitData = {
+        shift: selectedShift,
+        createdAt: selectedDate.format('YYYY-MM-DD'),
+        memberId: currentUser.trelloId,
+        cards: uniqueAssignActions.map(action => ({
+          cardUrl: action.data.card.url || `https://trello.com/c/${action.data.card.shortLink}`,
+          cardName: action.data.card.name || `Card ${action.data.card.id.slice(-8)}`,
+          idMember: action.data.idMember,
+          status: "pending"
+        }))
+      };
+
+      console.log('Submitting assign card data:', submitData);
+      console.log('Cards to be submitted:');
+      submitData.cards.forEach((card, index) => {
+        console.log(`${index + 1}. ${card.cardName} -> ${card.idMember}`);
+      });
+
+      // Gọi API để submit data
+      const response = await assignCard.createAssignCards(submitData);
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      if (response.message && response.message.includes('already exists')) {
+        console.log('Assign card data already exists for this shift and date:', response);
+        return true; // Vẫn return true vì không phải lỗi
+      }
+
+      console.log('Assign card data submitted successfully:', response);
+      return true;
+
+    } catch (error) {
+      console.error('Error submitting assign card data:', error);
+      throw error; // Re-throw để handle ở function gọi
+    }
+  };
+
   // Hàm filter action theo type (tối ưu, dùng lại cho các thống kê)
   function getFilteredActionsByType(type) {
     if (!actions.length || !currentUser?.trelloId) return [];
@@ -615,7 +717,7 @@ const CheckoutShift = () => {
                 </FormControl>
               </Grid>
             </Grid>
-            {/* Box dưới: Current Shift + User */}
+            {/* Box dưới: Current Shift + User + Submit Button */}
             <Box
               sx={{
                 mt: 2,
@@ -623,36 +725,43 @@ const CheckoutShift = () => {
                 background: '#f1f7ff',
                 borderRadius: 2,
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
+                flexDirection: 'column',
+                gap: 1
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Chip label="ACTIVE" color="primary" size="small" sx={{ fontWeight: 700 }} />
-                <Typography sx={{ fontWeight: 600 }}>
-                  Current Shift: {getShiftName(selectedShift)}
-                </Typography>
-              </Box>
-              {currentUser && (
+              {/* First row: Current Shift + User + Submit Button */}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box
-                    sx={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: '50%',
-                      background: '#e3e9f7',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <svg width="18" height="18" fill="#1976d2" viewBox="0 0 24 24">
-                      <path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v3h20v-3c0-3.3-6.7-5-10-5z"/>
-                    </svg>
-                  </Box>
-                  <Typography sx={{ fontWeight: 500 }}>{currentUser.fullName || currentUser.name}</Typography>
+                  <Chip label="ACTIVE" color="primary" size="small" sx={{ fontWeight: 700 }} />
+                  <Typography sx={{ fontWeight: 600 }}>
+                    Current Shift: {getShiftName(selectedShift)}
+                  </Typography>
                 </Box>
-              )}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {currentUser && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box
+                        sx={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: '50%',
+                          background: '#e3e9f7',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        <svg width="18" height="18" fill="#1976d2" viewBox="0 0 24 24">
+                          <path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v3h20v-3c0-3.3-6.7-5-10-5z"/>
+                        </svg>
+                      </Box>
+                      <Typography sx={{ fontWeight: 500 }}>{currentUser.fullName || currentUser.name}</Typography>
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+              
+
             </Box>
           </Paper>
         </Grid>
@@ -664,6 +773,7 @@ const CheckoutShift = () => {
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
         )}
+
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
             <CircularProgress size={32} sx={{ color: '#06038D' }} />
@@ -748,7 +858,11 @@ const CheckoutShift = () => {
                   }}
                   disabled={resLoading}
                 >
-                  {resLoading ? <CircularProgress size={18} sx={{ color: '#fff' }} /> : (showResDetails ? 'Đóng' : 'Tính Resolution Time')}
+                  {resLoading ? (
+                    <CircularProgress size={18} sx={{ color: '#fff' }} />
+                  ) : (
+                    showResDetails ? 'Đóng' : `📊 Tính & Submit (${assignCardCount})`
+                  )}
                 </Button>
               </Paper>
             </Grid>

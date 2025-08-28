@@ -90,6 +90,7 @@ function groupTimes(cards, field) {
 }
 
 function averageTime(cards, field) {
+    if (!cards || !Array.isArray(cards) || cards.length === 0) return null;
     const values = cards.map(c => Number(c[field])).filter(v => !isNaN(v) && v > 0);
     if (values.length === 0) return null;
     const total = values.reduce((a, b) => a + b, 0);
@@ -302,7 +303,7 @@ function calculateTrendingMetrics(cards) {
 }
 
 function calculateTrendPercentage(current, previous) {
-    if (previous === 0) return current > 0 ? 100 : 0;
+    if (!previous || previous === 0) return current > 0 ? 100 : 0;
     return Math.round(((current - previous) / previous) * 100);
 }
 
@@ -378,6 +379,13 @@ const ResolutionTimeList = () => {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
+            // Check if dateRange is null or undefined
+            if (!dateRange || !dateRange[0] || !dateRange[1]) {
+                console.warn("Date range is not set, skipping data fetch");
+                setData([]);
+                return;
+            }
+            
             const startDate = dateRange[0].format('YYYY-MM-DD');
             const endDate = dateRange[1].format('YYYY-MM-DD');
             const results = await getResolutionTimes(startDate, endDate);
@@ -398,6 +406,13 @@ const ResolutionTimeList = () => {
     const fetchTrendingData = useCallback(async () => {
         setTrendingLoading(true);
         try {
+            // Check if dateRange is null or undefined
+            if (!dateRange || !dateRange[0] || !dateRange[1]) {
+                console.warn("Date range is not set, skipping trending data fetch");
+                setTrendingData({ current: [], previous: [] });
+                return;
+            }
+            
             // Calculate previous year date range - exact same period
             const currentStartDate = dateRange[0];
             const currentEndDate = dateRange[1];
@@ -448,6 +463,13 @@ const ResolutionTimeList = () => {
         const fetchTrending = async () => {
             setTrendingLoading(true);
             try {
+                // Check if dateRange is null or undefined
+                if (!dateRange || !dateRange[0] || !dateRange[1]) {
+                    console.warn("Date range is not set, skipping trending data fetch");
+                    setTrendingData(prev => ({ ...prev, previous: [] }));
+                    return;
+                }
+                
                 // Calculate previous period based on current date range
                 const currentStart = dateRange[0];
                 const currentEnd = dateRange[1];
@@ -760,7 +782,15 @@ const ResolutionTimeList = () => {
                         <Col xs={24} sm={12} md={6}>
                             <RangePicker
                                 value={dateRange}
-                                onChange={setDateRange}
+                                onChange={(dates) => {
+                                    setDateRange(dates);
+                                    // If dates are cleared, reset the data
+                                    if (!dates || !dates[0] || !dates[1]) {
+                                        setData([]);
+                                        setFilteredData([]);
+                                        setTrendingData({ current: [], previous: [] });
+                                    }
+                                }}
                                 format="YYYY-MM-DD"
                                 allowClear
                                 style={{ width: '100%' }}
@@ -847,7 +877,7 @@ const ResolutionTimeList = () => {
                     </Row>
                     
                     {/* Comparison Info */}
-                    {trendingData.previous.length > 0 && (
+                    {trendingData.previous.length > 0 && dateRange && dateRange[0] && dateRange[1] && (
                         <Row style={{ marginTop: 16 }}>
                             <Col span={24}>
                                 <div style={{ 
@@ -887,7 +917,7 @@ const ResolutionTimeList = () => {
                                             <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b' }}>
                                                 {filteredData.length.toLocaleString()}
                                             </div>
-                                            {trendingData.previous.length > 0 && (
+                                            {trendingData.previous && trendingData.previous.length > 0 && (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                                                     {getTrendIcon(calculateTrendPercentage(filteredData.length, trendingData.previous.length), 'count')}
                                                     <Text style={{ 
@@ -971,7 +1001,7 @@ const ResolutionTimeList = () => {
                                             <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b' }}>
                                                 {formatMinutes(averages.resolutionTime)}
                                             </div>
-                                            {trendingData.previous.length > 0 && (
+                                            {trendingData.previous && trendingData.previous.length > 0 && (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                                                     {getTrendIcon(calculateTrendPercentage(averages.resolutionTime, averageTime(trendingData.previous, "resolutionTime")), 'time')}
                                                     <Text style={{ 
@@ -1055,7 +1085,7 @@ const ResolutionTimeList = () => {
                                             <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b' }}>
                                                 {formatMinutes(averages.firstActionTime)}
                                             </div>
-                                            {trendingData.previous.length > 0 && (
+                                            {trendingData.previous && trendingData.previous.length > 0 && (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                                                     {getTrendIcon(calculateTrendPercentage(averages.firstActionTime, averageTime(trendingData.previous, "firstActionTime")), 'time')}
                                                     <Text style={{ 
@@ -1139,7 +1169,7 @@ const ResolutionTimeList = () => {
                                             <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b' }}>
                                                 {formatMinutes(averages.resolutionTimeTS)}
                                             </div>
-                                            {trendingData.previous.length > 0 && (
+                                            {trendingData.previous && trendingData.previous.length > 0 && (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                                                     {getTrendIcon(calculateTrendPercentage(averages.resolutionTimeTS, averageTime(trendingData.previous, "resolutionTimeTS")), 'time')}
                                                     <Text style={{ 

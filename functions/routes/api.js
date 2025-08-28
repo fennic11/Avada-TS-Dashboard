@@ -10,6 +10,7 @@ const crispController = require('../controllers/crispController');
 const devCardController = require('../controllers/devCardController');
 const firebaseController = require('../controllers/firebaseController');
 const errorCardController = require('../controllers/errorCardController');
+const assignCardsController = require('../controllers/AssignCardsController');
 // Auth routes
 router.put('/auth/user', authController.createOrUpdateUser);
 router.get('/auth/user/:email', authController.getUserByEmail);
@@ -26,6 +27,9 @@ router.get('/error-cards', errorCardController.getErrorCardsByMonth);
 router.post('/dev-cards', devCardController.createOrUpdateDevCard);
 router.get('/dev-cards', devCardController.getDevCards);
 
+// Assign Cards routes
+router.post('/assign-cards', assignCardsController.createAssignCards);
+router.get('/assign-cards', assignCardsController.getAssignCards);
 // Notion routes
 router.get('/notion/search', notionController.search);
 

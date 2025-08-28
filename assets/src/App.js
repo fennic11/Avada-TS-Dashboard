@@ -29,6 +29,7 @@ import CheckoutPage from './pages/CheckoutPage';
 import KpiTsTeamPage from './pages/KpiTsTeamPage';
 import DevResolutionTime from './pages/DevResolutionTime';
 import ErrorCardPage from './pages/ErrorCardPage';
+import AssignCardPage from './pages/AssignCardPage';
 
 const theme = createTheme({
     palette: {
@@ -296,6 +297,16 @@ const App = () => {
                                     <PrivateRoute>
                                         <Layout>
                                             <ErrorCardPage />
+                                        </Layout>
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path="/assign-cards"
+                                element={
+                                    <PrivateRoute>
+                                        <Layout>
+                                            <AssignCardPage />
                                         </Layout>
                                     </PrivateRoute>
                                 }
