@@ -85,7 +85,8 @@ export const ROLE_PERMISSIONS = {
             TABS.PERFORMANCE_TS,
             TABS.CHECKOUT,
             TABS.KPI_TS_TEAM,
-            TABS.ERROR_CARDS
+            TABS.ERROR_CARDS,
+            TABS.ASSIGN_CARDS
         ],
         description: 'Access to TS Lead related features'
         },
