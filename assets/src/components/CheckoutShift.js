@@ -26,6 +26,7 @@ import CardDetailModal from './CardDetailModal';
 import { sendMessageToChannel } from '../api/slackApi';
 import { calculateDevResolutionTime } from '../utils/devResolutionTime';
 import assignCard from '../api/assignCard';
+import members from '../data/members.json';
 
 const CheckoutShift = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -74,6 +75,12 @@ const CheckoutShift = () => {
     if (hour >= 18 && hour < 20) return 'shift5.2';
     if (hour >= 20 && hour < 24) return 'shift6';
     return 'shift1';
+  };
+
+  // Function để kiểm tra member có role là TS hay không
+  const isTSMember = (memberId) => {
+    const member = members.find(m => m.id === memberId);
+    return member && member.role === 'TS';
   };
 
   useEffect(() => {
@@ -272,15 +279,18 @@ const CheckoutShift = () => {
     return shift ? shift.name : '';
   };
 
-  // Calculate assign card count for display
+  // Calculate assign card count for display - chỉ count card assign cho TS khác
   const assignCardCount = useMemo(() => {
     if (!actions.length || !currentUser?.trelloId) return 0;
+    
+    // Lọc actions addMemberToCard mà current user là người tạo và assign cho TS khác
     const assignActions = actions.filter(action => 
       action.type === 'addMemberToCard' && 
       action.idMemberCreator === currentUser.trelloId &&
       action.data?.card?.id &&
       action.data?.idMember &&
-      action.data.idMember !== currentUser.trelloId // Không tính trường hợp tự add chính mình
+      action.data.idMember !== currentUser.trelloId && // Không tính trường hợp tự add chính mình
+      isTSMember(action.data.idMember) // Chỉ tính khi assign cho member có role là TS
     );
     
     // Đếm unique cards (không trùng lặp)
@@ -513,13 +523,14 @@ const CheckoutShift = () => {
     }
 
     try {
-      // Lọc các actions addMemberToCard mà current user là người tạo và KHÔNG tự add chính mình
+      // Lọc các actions addMemberToCard mà current user là người tạo và assign cho TS khác
       const assignActions = actions.filter(action => 
         action.type === 'addMemberToCard' && 
         action.idMemberCreator === currentUser.trelloId &&
         action.data?.card?.id &&
         action.data?.idMember &&
-        action.data.idMember !== currentUser.trelloId // Không tính trường hợp tự add chính mình
+        action.data.idMember !== currentUser.trelloId && // Không tính trường hợp tự add chính mình
+        isTSMember(action.data.idMember) // Chỉ tính khi assign cho member có role là TS
       );
 
       if (assignActions.length === 0) {
@@ -861,7 +872,7 @@ const CheckoutShift = () => {
                   {resLoading ? (
                     <CircularProgress size={18} sx={{ color: '#fff' }} />
                   ) : (
-                    showResDetails ? 'Đóng' : `📊 Tính & Submit (${assignCardCount})`
+                    showResDetails ? 'Đóng' : ` Tính Resolution Time`
                   )}
                 </Button>
               </Paper>

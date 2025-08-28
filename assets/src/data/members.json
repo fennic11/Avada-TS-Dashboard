@@ -494,7 +494,7 @@
       "username": "fennic_avada",
       "email": "quangnq@avada.io",
       "initials": "QN",
-      "role": "ts",
+      "role": "admin",
       "kpiName": "QuangNQ",
       "slackId": "U01N91HCC3F"
     },
@@ -894,7 +894,7 @@
       "kpiName": "TuanDV"
     },
     {
-      "id": "687495d36ab6d4ff0cb41320",
+      "id": "6296e0963b6dd82348753a8c",
       "fullName": "Lại Ngọc Lâm",
       "email": "lamln@avadagroup.com",
       "username": "lamln",

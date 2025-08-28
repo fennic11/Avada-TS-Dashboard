@@ -29,6 +29,19 @@ import {
   DialogActions
 } from '@mui/material';
 import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend
+} from 'recharts';
+import {
   Refresh as RefreshIcon,
   FilterList as FilterIcon,
   Sort as SortIcon,
@@ -103,29 +116,87 @@ const AssignCardPage = () => {
         stats[assignerId] = {
           assignerId,
           assignerName,
-          totalCards: 0,
-          requestedCards: 0,
-          pendingCards: 0
+          approvedCards: 0,
+          requestedCards: 0
         };
       }
       
-      // Đếm tổng số card mà người này đã assign
-      stats[assignerId].totalCards += record.cards.length;
-      
       // Đếm số card theo status
       record.cards.forEach(card => {
-        if (card.status === 'requested') {
+        if (card.status === 'approved') {
+          stats[assignerId].approvedCards++;
+        } else if (card.status === 'requested') {
           stats[assignerId].requestedCards++;
-        } else if (card.status === 'approved' || card.status === 'rejected') {
-          // Approved và rejected không tính vào pending
-        } else {
-          stats[assignerId].pendingCards++;
         }
       });
     });
     
-    return Object.values(stats).sort((a, b) => b.totalCards - a.totalCards);
+    return Object.values(stats).sort((a, b) => (b.approvedCards + b.requestedCards) - (a.approvedCards + a.requestedCards));
   }, [data, memberMap]);
+
+  const formatDate = (dateString) => {
+    return dayjs(dateString).format('DD/MM/YYYY');
+  };
+
+  // Calculate chart data for daily assign trends (only approved cards)
+  const dailyAssignData = useMemo(() => {
+    const dailyStats = {};
+    
+    data.forEach(record => {
+      const date = record.createdAt;
+      if (!dailyStats[date]) {
+        dailyStats[date] = {
+          date,
+          approvedAssigns: 0
+        };
+      }
+      
+      record.cards.forEach(card => {
+        if (card.status === 'approved') {
+          dailyStats[date].approvedAssigns++;
+        }
+      });
+    });
+    
+    return Object.values(dailyStats)
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .map(item => ({
+        ...item,
+        date: formatDate(item.date)
+      }));
+  }, [data]);
+
+  // Calculate pie chart data for member assign distribution (only approved cards)
+  const memberAssignData = useMemo(() => {
+    const memberStats = {};
+    
+    data.forEach(record => {
+      const assignerId = record.memberId;
+      const assignerName = memberMap[assignerId] || assignerId;
+      
+      if (!memberStats[assignerId]) {
+        memberStats[assignerId] = {
+          name: assignerName,
+          value: 0,
+          memberId: assignerId
+        };
+      }
+      
+      record.cards.forEach(card => {
+        if (card.status === 'approved') {
+          memberStats[assignerId].value++;
+        }
+      });
+    });
+    
+    return Object.values(memberStats)
+      .filter(stat => stat.value > 0) // Only show members with approved cards
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10); // Top 10 members
+  }, [data, memberMap]);
+
+  // Colors for pie chart
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF6B6B', '#4ECDC4', '#45B7D1'];
 
   const fetchData = async () => {
     setLoading(true);
@@ -212,8 +283,8 @@ const AssignCardPage = () => {
   };
 
   const handleOpenSubmitModal = (record, cardIndex, card) => {
-    if (card.status === 'requested') {
-      console.log('Card already requested');
+    if (card.status === 'requested' || card.status === 'rejected') {
+      console.log('Card already requested or rejected');
       return;
     }
     
@@ -370,10 +441,6 @@ const AssignCardPage = () => {
     return shiftNames[shiftId] || shiftId;
   };
 
-  const formatDate = (dateString) => {
-    return dayjs(dateString).format('DD/MM/YYYY');
-  };
-
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
@@ -521,16 +588,12 @@ const AssignCardPage = () => {
               <TableHead>
                 <TableRow sx={{ background: '#f8fafc' }}>
                   <TableCell sx={{ fontWeight: 600 }}>Assigner</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 600 }}>Total Assigned</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600 }}>Approved</TableCell>
                   <TableCell align="center" sx={{ fontWeight: 600 }}>Requested</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 600 }}>Pending</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 600 }}>Progress</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {assignerStats.map((stat, index) => {
-                  const progressPercentage = stat.totalCards > 0 ? Math.round((stat.requestedCards / stat.totalCards) * 100) : 0;
-                  
                   return (
                     <TableRow key={stat.assignerId} hover>
                       <TableCell>
@@ -561,9 +624,9 @@ const AssignCardPage = () => {
                       </TableCell>
                       <TableCell align="center">
                         <Chip 
-                          label={stat.totalCards} 
+                          label={stat.approvedCards} 
                           size="small" 
-                          color="primary"
+                          color="success"
                           sx={{ fontWeight: 600 }}
                         />
                       </TableCell>
@@ -574,37 +637,6 @@ const AssignCardPage = () => {
                           color="warning"
                           sx={{ fontWeight: 600 }}
                         />
-                      </TableCell>
-                      <TableCell align="center">
-                        <Chip 
-                          label={stat.pendingCards} 
-                          size="small" 
-                          color="default"
-                          variant="outlined"
-                          sx={{ fontWeight: 600 }}
-                        />
-                      </TableCell>
-                      <TableCell align="center">
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Box sx={{
-                            width: 60,
-                            height: 8,
-                            background: '#e0e0e0',
-                            borderRadius: 4,
-                            overflow: 'hidden'
-                          }}>
-                            <Box sx={{
-                              width: `${progressPercentage}%`,
-                              height: '100%',
-                              background: progressPercentage >= 80 ? '#4caf50' : 
-                                         progressPercentage >= 50 ? '#ff9800' : '#f44336',
-                              transition: 'width 0.3s ease'
-                            }} />
-                          </Box>
-                          <Typography variant="caption" sx={{ fontWeight: 600, minWidth: 30 }}>
-                            {progressPercentage}%
-                          </Typography>
-                        </Box>
                       </TableCell>
                     </TableRow>
                   );
@@ -621,6 +653,100 @@ const AssignCardPage = () => {
             </Box>
           )}
         </Paper>
+
+        {/* Charts Section */}
+        <Grid container spacing={3} sx={{ mb: 3 }}>
+          {/* Daily Assign Trend Chart */}
+          <Grid item xs={12} lg={8}>
+            <Paper sx={{ p: 3, borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.08)', height: 400 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                <ScheduleIcon sx={{ color: '#1976d2' }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  Daily Approved Cards Trend
+                </Typography>
+              </Box>
+              
+              {dailyAssignData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={320}>
+                  <LineChart data={dailyAssignData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <RechartsTooltip 
+                      formatter={(value, name) => [value, 'Approved Cards']}
+                      labelFormatter={(label) => `Date: ${label}`}
+                    />
+                    <Legend />
+                    <Line 
+                      type="monotone" 
+                      dataKey="approvedAssigns" 
+                      stroke="#4caf50" 
+                      strokeWidth={3}
+                      name="Approved Cards"
+                      dot={{ fill: '#4caf50', strokeWidth: 2, r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 320 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    No data available for chart
+                  </Typography>
+                </Box>
+              )}
+            </Paper>
+          </Grid>
+
+          {/* Member Assign Distribution Chart */}
+          <Grid item xs={12} lg={4}>
+            <Paper sx={{ p: 3, borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.08)', height: 400 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                <PersonIcon sx={{ color: '#1976d2' }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  Member Approved Cards Distribution
+                </Typography>
+              </Box>
+              
+              {memberAssignData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={320}>
+                  <PieChart>
+                    <Pie
+                      data={memberAssignData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {memberAssignData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip 
+                      formatter={(value, name) => [value, 'Approved Cards']}
+                      labelFormatter={(label) => `Member: ${label}`}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 320 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    No data available for chart
+                  </Typography>
+                </Box>
+              )}
+            </Paper>
+          </Grid>
+        </Grid>
 
         {/* Filters */}
         <Paper sx={{ p: 3, mb: 3, borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
@@ -849,15 +975,15 @@ const AssignCardPage = () => {
                                   
                                   {/* Submit Request Button (for non-admin or pending cards) */}
                                   {(!isAdmin || card.status === 'pending') && (
-                                    <Tooltip title={record.memberId !== currentUser?.trelloId ? "You can only submit requests for cards you assigned" : "Submit Request"}>
+                                    <Tooltip title={record.memberId !== currentUser?.trelloId ? "You can only submit requests for cards you assigned" : card.status === 'rejected' ? "Cannot submit request for rejected cards" : "Submit Request"}>
                                       <IconButton 
                                         size="small"
                                         onClick={() => handleOpenSubmitModal(record, cardIndex, card)}
-                                        disabled={card.status === 'requested' || record.memberId !== currentUser?.trelloId}
+                                        disabled={card.status === 'requested' || card.status === 'rejected' || record.memberId !== currentUser?.trelloId}
                                         sx={{
-                                          color: (card.status === 'requested' || record.memberId !== currentUser?.trelloId) ? '#ccc' : '#1976d2',
+                                          color: (card.status === 'requested' || card.status === 'rejected' || record.memberId !== currentUser?.trelloId) ? '#ccc' : '#1976d2',
                                           '&:hover': {
-                                            background: (card.status === 'requested' || record.memberId !== currentUser?.trelloId) ? 'transparent' : '#e3f2fd'
+                                            background: (card.status === 'requested' || card.status === 'rejected' || record.memberId !== currentUser?.trelloId) ? 'transparent' : '#e3f2fd'
                                           }
                                         }}
                                       >
@@ -866,37 +992,80 @@ const AssignCardPage = () => {
                                     </Tooltip>
                                   )}
                                   
-                                  {/* Admin Buttons for Requested Cards */}
-                                  {isAdmin && card.status === 'requested' && (
+                                  {/* Admin Buttons - hiển thị 2 button còn lại dựa trên status hiện tại */}
+                                  {isAdmin && (
                                     <>
-                                      <Tooltip title="Approve Card">
-                                        <IconButton 
-                                          size="small"
-                                          onClick={() => handleApproveCard(record, cardIndex)}
-                                          sx={{
-                                            color: '#4caf50',
-                                            '&:hover': {
-                                              background: '#e8f5e8'
-                                            }
-                                          }}
-                                        >
-                                          <CheckCircleIcon sx={{ fontSize: 16 }} />
-                                        </IconButton>
-                                      </Tooltip>
-                                      <Tooltip title="Reject Card">
-                                        <IconButton 
-                                          size="small"
-                                          onClick={() => handleRejectCard(record, cardIndex)}
-                                          sx={{
-                                            color: '#f44336',
-                                            '&:hover': {
-                                              background: '#ffebee'
-                                            }
-                                          }}
-                                        >
-                                          <CancelIcon sx={{ fontSize: 16 }} />
-                                        </IconButton>
-                                      </Tooltip>
+                                      {/* Nếu status là 'pending' hoặc 'rejected' thì hiển thị Approve */}
+                                      {(card.status === 'pending' || card.status === 'rejected') && (
+                                        <Tooltip title="Approve Card">
+                                          <IconButton 
+                                            size="small"
+                                            onClick={() => handleApproveCard(record, cardIndex)}
+                                            sx={{
+                                              color: '#4caf50',
+                                              '&:hover': {
+                                                background: '#e8f5e8'
+                                              }
+                                            }}
+                                          >
+                                            <CheckCircleIcon sx={{ fontSize: 16 }} />
+                                          </IconButton>
+                                        </Tooltip>
+                                      )}
+                                      
+                                      {/* Nếu status là 'requested' thì hiển thị Approve */}
+                                      {card.status === 'requested' && (
+                                        <Tooltip title="Approve Card">
+                                          <IconButton 
+                                            size="small"
+                                            onClick={() => handleApproveCard(record, cardIndex)}
+                                            sx={{
+                                              color: '#4caf50',
+                                              '&:hover': {
+                                                background: '#e8f5e8'
+                                              }
+                                            }}
+                                          >
+                                            <CheckCircleIcon sx={{ fontSize: 16 }} />
+                                          </IconButton>
+                                        </Tooltip>
+                                      )}
+                                      
+                                      {/* Nếu status là 'pending' hoặc 'requested' thì hiển thị Reject */}
+                                      {(card.status === 'pending' || card.status === 'requested') && (
+                                        <Tooltip title="Reject Card">
+                                          <IconButton 
+                                            size="small"
+                                            onClick={() => handleRejectCard(record, cardIndex)}
+                                            sx={{
+                                              color: '#f44336',
+                                              '&:hover': {
+                                                background: '#ffebee'
+                                              }
+                                            }}
+                                          >
+                                            <CancelIcon sx={{ fontSize: 16 }} />
+                                          </IconButton>
+                                        </Tooltip>
+                                      )}
+                                      
+                                      {/* Nếu status là 'approved' thì hiển thị Request */}
+                                      {card.status === 'approved' && (
+                                        <Tooltip title="Request Card">
+                                          <IconButton 
+                                            size="small"
+                                            onClick={() => handleOpenSubmitModal(record, cardIndex, card)}
+                                            sx={{
+                                              color: '#ff9800',
+                                              '&:hover': {
+                                                background: '#fff3e0'
+                                              }
+                                            }}
+                                          >
+                                            <SendIcon sx={{ fontSize: 16 }} />
+                                          </IconButton>
+                                        </Tooltip>
+                                      )}
                                     </>
                                   )}
                                 </Box>
@@ -979,10 +1148,6 @@ const AssignCardPage = () => {
               variant="outlined"
               sx={{ mb: 2 }}
             />
-            
-            <Typography variant="caption" color="text.secondary">
-              Please provide detailed information about your request to help us process it efficiently.
-            </Typography>
           </DialogContent>
           
           <DialogActions sx={{ p: 3, pt: 1 }}>
