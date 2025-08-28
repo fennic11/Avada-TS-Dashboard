@@ -5,6 +5,7 @@ const WEBHOOK_URL_CS3 = process.env.WEBHOOK_URL_CS3;
 const WEBHOOK_URL_CS4 = process.env.WEBHOOK_URL_CS4;
 const WEBHOOK_URL_TS_SHIFT_REPORT = process.env.FENNIC_WEBHOOK_URL;
 const WEBHOOK_URL_TS_SHIFT_REPORT_2 = process.env.FENNIC_WEBHOOK_URL_TS_SHIFT_REPORT;
+const ASSIGN_CARD_URL = process.env.ASSIGN_CARD_URL;
 
 
 const sendMessage = async (message) => {
@@ -54,6 +55,9 @@ const sendMessageToChannel = async (message, group = 'ts') => {
                 break;
             case 'TS-SHIFT-REPORT-2':
                 webhookUrl = WEBHOOK_URL_TS_SHIFT_REPORT_2;
+                break;
+            case 'ASSIGN-CARD':
+                webhookUrl = ASSIGN_CARD_URL;
                 break;
             default:
                 webhookUrl = WEBHOOK_URL_TS;

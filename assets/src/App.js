@@ -79,54 +79,26 @@ const PrivateRoute = ({ children }) => {
 const Layout = ({ children }) => {
     const [sidebarOpen, setSidebarOpen] = React.useState(true);
     const drawerWidth = 220;
-    const headerHeight = 64; // Giả sử header cao 64px
+    
     return (
-        <Box sx={{ 
+        <div style={{ 
             minHeight: '100vh', 
             width: '100%',
             overflow: 'hidden' // Prevent horizontal scroll
         }}>
-            {/* Sticky Header */}
-            <Box sx={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                width: '100vw',
-                zIndex: 1201
+            <Header drawerWidth={drawerWidth} sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen(o => !o)} />
+            
+            {/* Content Area */}
+            <div style={{ 
+                marginLeft: sidebarOpen ? drawerWidth : 80,
+                transition: 'margin-left 0.2s',
+                padding: '24px',
+                paddingTop: '84px', // Header height + padding
+                minHeight: '100vh'
             }}>
-                <Header drawerWidth={drawerWidth} sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen(o => !o)} />
-            </Box>
-            {sidebarOpen ? (
-                <Container 
-                    component="main" 
-                    maxWidth={false} 
-                    sx={{ 
-                        flex: 1, 
-                        py: 3, 
-                        ml: `${drawerWidth}px`, 
-                        width: `calc(100% - ${drawerWidth}px)`,
-                        maxWidth: 'none',
-                        px: { xs: 2, sm: 3, md: 4 },
-                        pt: `${headerHeight + 16}px` // Thêm padding-top để không bị che header
-                    }}
-                >
-                    {children}
-                </Container>
-            ) : (
-                <Container 
-                    component="main" 
-                    maxWidth={false}
-                    sx={{ 
-                        flex: 1, 
-                        py: 3,
-                        px: { xs: 2, sm: 3, md: 4 },
-                        pt: `${headerHeight + 16}px` // Thêm padding-top để không bị che header
-                    }}
-                >
-                    {children}
-                </Container>
-            )}
-        </Box>
+                {children}
+            </div>
+        </div>
     );
 };
 

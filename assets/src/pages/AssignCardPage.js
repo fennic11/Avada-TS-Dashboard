@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -22,7 +22,11 @@ import {
   Card,
   CardContent,
   Button,
-  Tooltip
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
@@ -32,14 +36,19 @@ import {
   Person as PersonIcon,
   Schedule as ScheduleIcon,
   CalendarToday as CalendarIcon,
-  Send as SendIcon
+  Send as SendIcon,
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 import assignCard from '../api/assignCard';
+import { sendMessageToChannel } from '../api/slackApi';
 import members from '../data/members.json';
+import { getCurrentUser } from '../api/usersApi';
+import { ROLES } from '../utils/roles';
 
 const AssignCardPage = () => {
   const [data, setData] = useState([]);
@@ -60,6 +69,16 @@ const AssignCardPage = () => {
   // Submit request states
   const [submittingCards, setSubmittingCards] = useState(new Set());
   const [submitError, setSubmitError] = useState('');
+  
+  // Modal states
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCard, setSelectedCard] = useState(null);
+  const [requestText, setRequestText] = useState('');
+  const [isSubmittingModal, setIsSubmittingModal] = useState(false);
+
+  // Get current user and check if admin
+  const currentUser = getCurrentUser();
+  const isAdmin = currentUser?.role === ROLES.ADMIN;
 
   // Create member map for ID to fullName conversion
   const memberMap = members.reduce((acc, member) => {
@@ -70,7 +89,43 @@ const AssignCardPage = () => {
   // Get unique values for filters
   const shifts = [...new Set(data.map(item => item.shift))].sort();
   const memberIds = [...new Set(data.map(item => item.memberId))].sort();
-  const dates = [...new Set(data.map(item => item.createdAt))].sort().reverse();
+    const dates = [...new Set(data.map(item => item.createdAt))].sort().reverse();
+
+  // Calculate assigner statistics (người assign)
+  const assignerStats = useMemo(() => {
+    const stats = {};
+    
+    data.forEach(record => {
+      const assignerId = record.memberId; // Người assign
+      const assignerName = memberMap[assignerId] || assignerId;
+      
+      if (!stats[assignerId]) {
+        stats[assignerId] = {
+          assignerId,
+          assignerName,
+          totalCards: 0,
+          requestedCards: 0,
+          pendingCards: 0
+        };
+      }
+      
+      // Đếm tổng số card mà người này đã assign
+      stats[assignerId].totalCards += record.cards.length;
+      
+      // Đếm số card theo status
+      record.cards.forEach(card => {
+        if (card.status === 'requested') {
+          stats[assignerId].requestedCards++;
+        } else if (card.status === 'approved' || card.status === 'rejected') {
+          // Approved và rejected không tính vào pending
+        } else {
+          stats[assignerId].pendingCards++;
+        }
+      });
+    });
+    
+    return Object.values(stats).sort((a, b) => b.totalCards - a.totalCards);
+  }, [data, memberMap]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -156,18 +211,36 @@ const AssignCardPage = () => {
     setSearchTerm('');
   };
 
-  const handleSubmitRequest = async (recordId, cardIndex, currentStatus) => {
-    if (currentStatus === 'submitted') {
-      console.log('Card already submitted');
+  const handleOpenSubmitModal = (record, cardIndex, card) => {
+    if (card.status === 'requested') {
+      console.log('Card already requested');
+      return;
+    }
+    
+    setSelectedCard({ record, cardIndex, card });
+    setRequestText('');
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedCard(null);
+    setRequestText('');
+    setIsSubmittingModal(false);
+  };
+
+  const handleSubmitRequest = async () => {
+    if (!selectedCard || !requestText.trim()) {
       return;
     }
 
-    const cardKey = `${recordId}-${cardIndex}`;
-    setSubmittingCards(prev => new Set(prev).add(cardKey));
+    const { record, cardIndex } = selectedCard;
+    const cardKey = `${record._id}-${cardIndex}`;
+    setIsSubmittingModal(true);
     setSubmitError('');
 
     try {
-      const response = await assignCard.updateCardStatus(recordId, cardIndex, 'submitted');
+      const response = await assignCard.updateCardStatus(record._id, cardIndex, 'requested');
       
       if (response.error) {
         throw new Error(response.error);
@@ -175,27 +248,110 @@ const AssignCardPage = () => {
 
       // Update local data
       setData(prevData => 
-        prevData.map(record => {
-          if (record._id === recordId) {
-            const updatedCards = [...record.cards];
-            updatedCards[cardIndex] = { ...updatedCards[cardIndex], status: 'submitted' };
-            return { ...record, cards: updatedCards };
+        prevData.map(recordItem => {
+          if (recordItem._id === record._id) {
+            const updatedCards = [...recordItem.cards];
+            updatedCards[cardIndex] = { 
+              ...updatedCards[cardIndex], 
+              status: 'requested',
+              requestText: requestText
+            };
+            return { ...recordItem, cards: updatedCards };
           }
-          return record;
+          return recordItem;
         })
       );
 
-      console.log('Card status updated successfully');
+      // Send Slack message
+      const slackMessage = createSlackMessage(selectedCard, requestText);
+      await sendMessageToChannel(slackMessage, 'ASSIGN-CARD');
+
+      console.log('Card status updated successfully and Slack message sent');
+      handleCloseModal();
     } catch (error) {
-      console.error('Error updating card status:', error);
+      console.error('Error updating card status or sending Slack message:', error);
       setSubmitError('Có lỗi khi submit request');
     } finally {
-      setSubmittingCards(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(cardKey);
-        return newSet;
-      });
+      setIsSubmittingModal(false);
     }
+  };
+
+  const handleApproveCard = async (record, cardIndex) => {
+    try {
+      const response = await assignCard.updateCardStatus(record._id, cardIndex, 'approved');
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      // Update local data
+      setData(prevData => 
+        prevData.map(recordItem => {
+          if (recordItem._id === record._id) {
+            const updatedCards = [...recordItem.cards];
+            updatedCards[cardIndex] = { 
+              ...updatedCards[cardIndex], 
+              status: 'approved'
+            };
+            return { ...recordItem, cards: updatedCards };
+          }
+          return recordItem;
+        })
+      );
+
+      console.log('Card approved successfully');
+    } catch (error) {
+      console.error('Error approving card:', error);
+      setSubmitError('Có lỗi khi approve card');
+    }
+  };
+
+  const handleRejectCard = async (record, cardIndex) => {
+    try {
+      const response = await assignCard.updateCardStatus(record._id, cardIndex, 'rejected');
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      // Update local data
+      setData(prevData => 
+        prevData.map(recordItem => {
+          if (recordItem._id === record._id) {
+            const updatedCards = [...recordItem.cards];
+            updatedCards[cardIndex] = { 
+              ...updatedCards[cardIndex], 
+              status: 'rejected'
+            };
+            return { ...recordItem, cards: updatedCards };
+          }
+          return recordItem;
+        })
+      );
+
+      console.log('Card rejected successfully');
+    } catch (error) {
+      console.error('Error rejecting card:', error);
+      setSubmitError('Có lỗi khi reject card');
+    }
+  };
+
+  const createSlackMessage = (selectedCard, requestText) => {
+    const { record, card } = selectedCard;
+    const memberName = memberMap[record.memberId] || record.memberId;
+    const assignedMemberName = memberMap[card.idMember] || card.idMember;
+    
+    return (
+      `*📋 New Card Request Submitted* <@U08UGHSA1B3>\n` +
+      `*Card:* ${card.cardName}\n` +
+      `*Card URL:* ${card.cardUrl}\n` +
+      `*Submitted by:* ${memberName}\n` +
+      `*Assigned to:* ${assignedMemberName}\n` +
+      `*Shift:* ${getShiftName(record.shift)}\n` +
+      `*Date:* ${formatDate(record.createdAt)}\n` +
+      `*Request Details:*\n${requestText}\n` +
+      `-------------------------------------------------\n`
+    );
   };
 
   const getShiftName = (shiftId) => {
@@ -350,6 +506,121 @@ const AssignCardPage = () => {
             </Card>
           </Grid>
         </Grid>
+
+        {/* Assigner Statistics Table */}
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+            <PersonIcon sx={{ color: '#1976d2' }} />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Assigner Statistics
+            </Typography>
+          </Box>
+          
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ background: '#f8fafc' }}>
+                  <TableCell sx={{ fontWeight: 600 }}>Assigner</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600 }}>Total Assigned</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600 }}>Requested</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600 }}>Pending</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600 }}>Progress</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {assignerStats.map((stat, index) => {
+                  const progressPercentage = stat.totalCards > 0 ? Math.round((stat.requestedCards / stat.totalCards) * 100) : 0;
+                  
+                  return (
+                    <TableRow key={stat.assignerId} hover>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: '50%',
+                            background: '#e3f2fd',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: '#1976d2'
+                          }}>
+                            {index + 1}
+                          </Box>
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              {stat.assignerName}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'monospace' }}>
+                              {stat.assignerId}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Chip 
+                          label={stat.totalCards} 
+                          size="small" 
+                          color="primary"
+                          sx={{ fontWeight: 600 }}
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        <Chip 
+                          label={stat.requestedCards} 
+                          size="small" 
+                          color="warning"
+                          sx={{ fontWeight: 600 }}
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        <Chip 
+                          label={stat.pendingCards} 
+                          size="small" 
+                          color="default"
+                          variant="outlined"
+                          sx={{ fontWeight: 600 }}
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{
+                            width: 60,
+                            height: 8,
+                            background: '#e0e0e0',
+                            borderRadius: 4,
+                            overflow: 'hidden'
+                          }}>
+                            <Box sx={{
+                              width: `${progressPercentage}%`,
+                              height: '100%',
+                              background: progressPercentage >= 80 ? '#4caf50' : 
+                                         progressPercentage >= 50 ? '#ff9800' : '#f44336',
+                              transition: 'width 0.3s ease'
+                            }} />
+                          </Box>
+                          <Typography variant="caption" sx={{ fontWeight: 600, minWidth: 30 }}>
+                            {progressPercentage}%
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          
+          {assignerStats.length === 0 && (
+            <Box sx={{ p: 2, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                No assigner data available
+              </Typography>
+            </Box>
+          )}
+        </Paper>
 
         {/* Filters */}
         <Paper sx={{ p: 3, mb: 3, borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
@@ -536,35 +807,37 @@ const AssignCardPage = () => {
                         {record.cards.map((card, cardIndex) => {
                           const cardKey = `${record._id}-${cardIndex}`;
                           const isSubmitting = submittingCards.has(cardKey);
-                          const isSubmitted = card.status === 'submitted';
+                          const isRequested = card.status === 'requested';
                           
                           return (
                             <Box key={cardIndex} sx={{ 
                               p: 1, 
-                              background: isSubmitted ? '#e8f5e8' : '#f8fafc', 
+                              background: '#f8fafc', 
                               borderRadius: 1,
-                              border: `1px solid ${isSubmitted ? '#4caf50' : '#e2e8f0'}`,
-                              position: 'relative'
+                              border: '1px solid #e2e8f0'
                             }}>
-                              {/* Status indicator */}
-                              {isSubmitted && (
-                                <Box sx={{
-                                  position: 'absolute',
-                                  top: -1,
-                                  right: -1,
-                                  width: 0,
-                                  height: 0,
-                                  borderLeft: '8px solid transparent',
-                                  borderRight: '8px solid transparent',
-                                  borderBottom: '8px solid #4caf50'
-                                }} />
-                              )}
                               
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                                 <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>
                                   {card.cardName}
                                 </Typography>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  {/* Status Chip */}
+                                  <Chip 
+                                    label={card.status || 'pending'} 
+                                    size="small" 
+                                    color={card.status === 'requested' ? 'warning' : 
+                                           card.status === 'approved' ? 'success' : 
+                                           card.status === 'rejected' ? 'error' : 'default'}
+                                    variant="outlined"
+                                    sx={{ 
+                                      fontSize: '0.7rem',
+                                      height: '20px',
+                                      '& .MuiChip-label': {
+                                        px: 1
+                                      }
+                                    }}
+                                  />
                                   <Tooltip title="Open Card">
                                     <IconButton 
                                       size="small" 
@@ -573,48 +846,71 @@ const AssignCardPage = () => {
                                       <OpenInNewIcon sx={{ fontSize: 16 }} />
                                     </IconButton>
                                   </Tooltip>
-                                  <Tooltip title={isSubmitted ? "Already Submitted" : "Submit Request"}>
-                                    <IconButton 
-                                      size="small"
-                                      disabled={isSubmitting || isSubmitted}
-                                      onClick={() => handleSubmitRequest(record._id, cardIndex, card.status)}
-                                      sx={{
-                                        color: isSubmitted ? '#4caf50' : '#1976d2',
-                                        '&:hover': {
-                                          background: isSubmitted ? 'transparent' : '#e3f2fd'
-                                        }
-                                      }}
-                                    >
-                                      {isSubmitting ? (
-                                        <CircularProgress size={16} />
-                                      ) : (
+                                  
+                                  {/* Submit Request Button (for non-admin or pending cards) */}
+                                  {(!isAdmin || card.status === 'pending') && (
+                                    <Tooltip title={record.memberId !== currentUser?.trelloId ? "You can only submit requests for cards you assigned" : "Submit Request"}>
+                                      <IconButton 
+                                        size="small"
+                                        onClick={() => handleOpenSubmitModal(record, cardIndex, card)}
+                                        disabled={card.status === 'requested' || record.memberId !== currentUser?.trelloId}
+                                        sx={{
+                                          color: (card.status === 'requested' || record.memberId !== currentUser?.trelloId) ? '#ccc' : '#1976d2',
+                                          '&:hover': {
+                                            background: (card.status === 'requested' || record.memberId !== currentUser?.trelloId) ? 'transparent' : '#e3f2fd'
+                                          }
+                                        }}
+                                      >
                                         <SendIcon sx={{ fontSize: 16 }} />
-                                      )}
-                                    </IconButton>
-                                  </Tooltip>
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
+                                  
+                                  {/* Admin Buttons for Requested Cards */}
+                                  {isAdmin && card.status === 'requested' && (
+                                    <>
+                                      <Tooltip title="Approve Card">
+                                        <IconButton 
+                                          size="small"
+                                          onClick={() => handleApproveCard(record, cardIndex)}
+                                          sx={{
+                                            color: '#4caf50',
+                                            '&:hover': {
+                                              background: '#e8f5e8'
+                                            }
+                                          }}
+                                        >
+                                          <CheckCircleIcon sx={{ fontSize: 16 }} />
+                                        </IconButton>
+                                      </Tooltip>
+                                      <Tooltip title="Reject Card">
+                                        <IconButton 
+                                          size="small"
+                                          onClick={() => handleRejectCard(record, cardIndex)}
+                                          sx={{
+                                            color: '#f44336',
+                                            '&:hover': {
+                                              background: '#ffebee'
+                                            }
+                                          }}
+                                        >
+                                          <CancelIcon sx={{ fontSize: 16 }} />
+                                        </IconButton>
+                                      </Tooltip>
+                                    </>
+                                  )}
                                 </Box>
                               </Box>
                               
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  <Typography variant="caption" color="text.secondary">
-                                    Assigned to:
-                                  </Typography>
-                                  <Chip 
-                                    label={memberMap[card.idMember] || card.idMember} 
-                                    size="small" 
-                                    variant="outlined"
-                                    sx={{ fontSize: '0.7rem' }}
-                                  />
-                                </Box>
-                                
-                                {/* Status chip */}
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="caption" color="text.secondary">
+                                  Assigned to:
+                                </Typography>
                                 <Chip 
-                                  label={isSubmitted ? "Submitted" : "Pending"} 
+                                  label={memberMap[card.idMember] || card.idMember} 
                                   size="small" 
-                                  color={isSubmitted ? "success" : "default"}
-                                  variant={isSubmitted ? "filled" : "outlined"}
-                                  sx={{ fontSize: '0.65rem' }}
+                                  variant="outlined"
+                                  sx={{ fontSize: '0.7rem' }}
                                 />
                               </Box>
                             </Box>
@@ -636,6 +932,78 @@ const AssignCardPage = () => {
             </Box>
           )}
         </Paper>
+
+        {/* Submit Request Modal */}
+        <Dialog 
+          open={isModalOpen} 
+          onClose={handleCloseModal}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle sx={{ 
+            background: '#f8fafc', 
+            borderBottom: '1px solid #e2e8f0',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}>
+            <SendIcon sx={{ color: '#1976d2' }} />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Submit Request
+            </Typography>
+          </DialogTitle>
+          
+          <DialogContent sx={{ pt: 3 }}>
+            {selectedCard && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+                  Card: {selectedCard.card.cardName}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Assigned to: {memberMap[selectedCard.card.idMember] || selectedCard.card.idMember}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Shift: {getShiftName(selectedCard.record.shift)} | Date: {formatDate(selectedCard.record.createdAt)}
+                </Typography>
+              </Box>
+            )}
+            
+            <TextField
+              fullWidth
+              multiline
+              rows={4}
+              label="Request Details"
+              placeholder="Please describe your request or provide additional information..."
+              value={requestText}
+              onChange={(e) => setRequestText(e.target.value)}
+              variant="outlined"
+              sx={{ mb: 2 }}
+            />
+            
+            <Typography variant="caption" color="text.secondary">
+              Please provide detailed information about your request to help us process it efficiently.
+            </Typography>
+          </DialogContent>
+          
+          <DialogActions sx={{ p: 3, pt: 1 }}>
+            <Button 
+              onClick={handleCloseModal}
+              disabled={isSubmittingModal}
+              sx={{ fontWeight: 600 }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="contained"
+              onClick={handleSubmitRequest}
+              disabled={!requestText.trim() || isSubmittingModal}
+              startIcon={isSubmittingModal ? <CircularProgress size={16} /> : <SendIcon />}
+              sx={{ fontWeight: 600 }}
+            >
+              {isSubmittingModal ? 'Submitting...' : 'Submit Request'}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </LocalizationProvider>
   );

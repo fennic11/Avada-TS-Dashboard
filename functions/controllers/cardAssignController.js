@@ -17,6 +17,21 @@ const assignCardsController = {
         } catch (error) {
             res.status(500).json({ message: error.message });
         }
+    },
+    updateAssignCards: async (req, res) => {
+        try {
+            const { recordId } = req.params;
+            const { cardIndex, status} = req.body;
+            
+            const updatedAssignCards = await assignCardService.updateCardStatus({
+                recordId,
+                cardIndex,
+                status
+            });
+            res.status(200).json(updatedAssignCards);
+        } catch (error) {
+            res.status(500).json({ message: error.message });
+        }
     }
 }
 

@@ -550,7 +550,7 @@ const CheckoutShift = () => {
           cardUrl: action.data.card.url || `https://trello.com/c/${action.data.card.shortLink}`,
           cardName: action.data.card.name || `Card ${action.data.card.id.slice(-8)}`,
           idMember: action.data.idMember,
-          status: "pending"
+          status: "approved"
         }))
       };
 

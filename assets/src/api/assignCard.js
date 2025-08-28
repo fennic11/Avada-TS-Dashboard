@@ -47,7 +47,7 @@ const assignCard = {
     updateCardStatus: async (recordId, cardIndex, status) => {
         try {
             const response = await fetch(`${API_URL}/assign-cards/${recordId}/card-status`, {
-                method: 'PATCH',
+                method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     ...getAuthHeaders()

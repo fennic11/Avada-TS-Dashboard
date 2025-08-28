@@ -30,6 +30,7 @@ router.get('/dev-cards', devCardController.getDevCards);
 // Assign Cards routes
 router.post('/assign-cards', assignCardsController.createAssignCards);
 router.get('/assign-cards', assignCardsController.getAssignCards);
+router.put('/assign-cards/:recordId/card-status', assignCardsController.updateAssignCards);
 // Notion routes
 router.get('/notion/search', notionController.search);
 

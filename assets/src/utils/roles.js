@@ -43,7 +43,8 @@ export const ROLE_PERMISSIONS = {
             TABS.RESOLUTION_TIME,
             // TABS.TS_WORKSPACE,
             TABS.CHECKOUT,
-            TABS.KPI_TS_TEAM
+            TABS.KPI_TS_TEAM,
+            TABS.ASSIGN_CARDS
         ],
         description: 'Access to TS related features'
     },

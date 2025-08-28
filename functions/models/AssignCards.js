@@ -13,10 +13,24 @@ const AssignCardsSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    cards: {
-        type: Array,
-        default: [],
-    }
+    cards: [{
+        cardName: {
+            type: String,
+            required: true
+        },
+        cardUrl: {
+            type: String,
+            required: true
+        },
+        idMember: {
+            type: String,
+            required: true
+        },
+        status: {
+            type: String,
+            default: 'approved'
+        }
+    }]
 }, {
     collection: 'assignCards', // 👈 tên collection cố định trong MongoDB
     dbName: 'AvadaTSTrelloDashboard' // 👈 tên database   

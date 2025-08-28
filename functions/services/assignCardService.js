@@ -27,23 +27,40 @@ const assignCardService = {
         const assignCards = await AssignCards.find();
         return assignCards;
     },
-    updateCardStatus: async (recordId, cardIndex, status) => {
+    updateCardStatus: async (assignCards) => {
+        const { recordId, cardIndex, status } = assignCards;
+        console.log('=== UPDATE CARD STATUS DEBUG ===');
+        console.log('Input data:', { recordId, cardIndex, status });
+        
         try {
             const record = await AssignCards.findById(recordId);
+            console.log('Found record:', record ? 'YES' : 'NO');
+            
             if (!record) {
                 throw new Error('Record not found');
             }
+
+            console.log('Record ID:', record._id);
+            console.log('Cards array length:', record.cards.length);
+            console.log('Card index to update:', cardIndex);
+            console.log('Current card status:', record.cards[cardIndex]?.status);
 
             if (cardIndex < 0 || cardIndex >= record.cards.length) {
                 throw new Error('Invalid card index');
             }
 
             // Update the status of the specific card
+            console.log('Before update - card status:', record.cards[cardIndex].status);
             record.cards[cardIndex].status = status;
-            await record.save();
+            console.log('After update - card status:', record.cards[cardIndex].status);
+            
+            console.log('Saving record...');
+            const savedRecord = await record.save();
+            console.log('Save successful:', savedRecord ? 'YES' : 'NO');
+            console.log('Final card status:', savedRecord.cards[cardIndex].status);
 
             console.log(`Updated card ${cardIndex} status to ${status} for record ${recordId}`);
-            return record;
+            return savedRecord;
         } catch (error) {
             console.error('Error updating card status:', error);
             throw error;
