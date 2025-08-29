@@ -91,7 +91,7 @@ const AssignCardPage = () => {
 
   // Get current user and check if admin
   const currentUser = getCurrentUser();
-  const isAdmin = currentUser?.role === ROLES.ADMIN;
+  const isAdmin = currentUser?.role === ROLES.ADMIN || currentUser?.role === ROLES.TS_LEAD;
 
   // Create member map for ID to fullName conversion
   const memberMap = members.reduce((acc, member) => {
