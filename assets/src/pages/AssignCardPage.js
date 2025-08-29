@@ -311,7 +311,7 @@ const AssignCardPage = () => {
     setSubmitError('');
 
     try {
-      const response = await assignCard.updateCardStatus(record._id, cardIndex, 'requested');
+      const response = await assignCard.updateCardStatus(record._id, cardIndex, 'requested', requestText);
       
       if (response.error) {
         throw new Error(response.error);
@@ -349,7 +349,7 @@ const AssignCardPage = () => {
 
   const handleApproveCard = async (record, cardIndex) => {
     try {
-      const response = await assignCard.updateCardStatus(record._id, cardIndex, 'approved');
+      const response = await assignCard.updateCardStatus(record._id, cardIndex, 'approved', '');
       
       if (response.error) {
         throw new Error(response.error);
@@ -362,7 +362,8 @@ const AssignCardPage = () => {
             const updatedCards = [...recordItem.cards];
             updatedCards[cardIndex] = { 
               ...updatedCards[cardIndex], 
-              status: 'approved'
+              status: 'approved',
+              requestText: ''
             };
             return { ...recordItem, cards: updatedCards };
           }
@@ -379,7 +380,7 @@ const AssignCardPage = () => {
 
   const handleRejectCard = async (record, cardIndex) => {
     try {
-      const response = await assignCard.updateCardStatus(record._id, cardIndex, 'rejected');
+      const response = await assignCard.updateCardStatus(record._id, cardIndex, 'rejected', '');
       
       if (response.error) {
         throw new Error(response.error);
@@ -392,7 +393,8 @@ const AssignCardPage = () => {
             const updatedCards = [...recordItem.cards];
             updatedCards[cardIndex] = { 
               ...updatedCards[cardIndex], 
-              status: 'rejected'
+              status: 'rejected',
+              requestText: ''
             };
             return { ...recordItem, cards: updatedCards };
           }
@@ -992,18 +994,19 @@ const AssignCardPage = () => {
                                     </Tooltip>
                                   )}
                                   
-                                  {/* Admin Buttons - luôn hiển thị đủ các button cho admin */}
+                                  {/* Admin Buttons - disable button tương ứng với status hiện tại */}
                                   {isAdmin && (
                                     <>
-                                      {/* Approve Button - luôn hiển thị */}
-                                      <Tooltip title="Approve Card">
+                                      {/* Approve Button - disable khi status là approved */}
+                                      <Tooltip title={card.status === 'approved' ? "Card already approved" : "Approve Card"}>
                                         <IconButton 
                                           size="small"
                                           onClick={() => handleApproveCard(record, cardIndex)}
+                                          disabled={card.status === 'approved'}
                                           sx={{
-                                            color: '#4caf50',
+                                            color: card.status === 'approved' ? '#ccc' : '#4caf50',
                                             '&:hover': {
-                                              background: '#e8f5e8'
+                                              background: card.status === 'approved' ? 'transparent' : '#e8f5e8'
                                             }
                                           }}
                                         >
@@ -1011,15 +1014,16 @@ const AssignCardPage = () => {
                                         </IconButton>
                                       </Tooltip>
                                       
-                                      {/* Reject Button - luôn hiển thị */}
-                                      <Tooltip title="Reject Card">
+                                      {/* Reject Button - disable khi status là rejected */}
+                                      <Tooltip title={card.status === 'rejected' ? "Card already rejected" : "Reject Card"}>
                                         <IconButton 
                                           size="small"
                                           onClick={() => handleRejectCard(record, cardIndex)}
+                                          disabled={card.status === 'rejected'}
                                           sx={{
-                                            color: '#f44336',
+                                            color: card.status === 'rejected' ? '#ccc' : '#f44336',
                                             '&:hover': {
-                                              background: '#ffebee'
+                                              background: card.status === 'rejected' ? 'transparent' : '#ffebee'
                                             }
                                           }}
                                         >
@@ -1027,15 +1031,16 @@ const AssignCardPage = () => {
                                         </IconButton>
                                       </Tooltip>
                                       
-                                      {/* Request Button - luôn hiển thị */}
-                                      <Tooltip title="Request Card">
+                                      {/* Request Button - disable khi status là requested */}
+                                      <Tooltip title={card.status === 'requested' ? "Card already requested" : "Request Card"}>
                                         <IconButton 
                                           size="small"
                                           onClick={() => handleOpenSubmitModal(record, cardIndex, card)}
+                                          disabled={card.status === 'requested'}
                                           sx={{
-                                            color: '#ff9800',
+                                            color: card.status === 'requested' ? '#ccc' : '#ff9800',
                                             '&:hover': {
-                                              background: '#fff3e0'
+                                              background: card.status === 'requested' ? 'transparent' : '#fff3e0'
                                             }
                                           }}
                                         >
@@ -1058,6 +1063,18 @@ const AssignCardPage = () => {
                                   sx={{ fontSize: '0.7rem' }}
                                 />
                               </Box>
+                              
+                              {/* Display request text if exists - chỉ hiển thị cho admin */}
+                              {card.requestText && isAdmin && (
+                                <Box sx={{ mt: 1, p: 1, background: '#fff3e0', borderRadius: 1, border: '1px solid #ffcc02' }}>
+                                  <Typography variant="caption" sx={{ fontWeight: 600, color: '#f57c00' }}>
+                                    Request Details:
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: '#e65100' }}>
+                                    {card.requestText}
+                                  </Typography>
+                                </Box>
+                              )}
                             </Box>
                           );
                         })}

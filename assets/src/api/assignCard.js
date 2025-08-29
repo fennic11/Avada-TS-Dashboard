@@ -44,7 +44,7 @@ const assignCard = {
             return error;
         }
     },
-    updateCardStatus: async (recordId, cardIndex, status) => {
+    updateCardStatus: async (recordId, cardIndex, status, requestText = '') => {
         try {
             const response = await fetch(`${API_URL}/assign-cards/${recordId}/card-status`, {
                 method: 'PUT',
@@ -52,7 +52,7 @@ const assignCard = {
                     'Content-Type': 'application/json',
                     ...getAuthHeaders()
                 },
-                body: JSON.stringify({ cardIndex, status })
+                body: JSON.stringify({ cardIndex, status, requestText })
             });
             return response.json();
         } catch (error) {

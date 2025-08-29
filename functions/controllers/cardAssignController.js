@@ -21,12 +21,13 @@ const assignCardsController = {
     updateAssignCards: async (req, res) => {
         try {
             const { recordId } = req.params;
-            const { cardIndex, status} = req.body;
+            const { cardIndex, status, requestText } = req.body;
             
             const updatedAssignCards = await assignCardService.updateCardStatus({
                 recordId,
                 cardIndex,
-                status
+                status,
+                requestText
             });
             res.status(200).json(updatedAssignCards);
         } catch (error) {

@@ -28,7 +28,7 @@ const assignCardService = {
         return assignCards;
     },
     updateCardStatus: async (assignCards) => {
-        const { recordId, cardIndex, status } = assignCards;
+        const { recordId, cardIndex, status, requestText } = assignCards;
         console.log('=== UPDATE CARD STATUS DEBUG ===');
         console.log('Input data:', { recordId, cardIndex, status });
         
@@ -52,6 +52,7 @@ const assignCardService = {
             // Update the status of the specific card
             console.log('Before update - card status:', record.cards[cardIndex].status);
             record.cards[cardIndex].status = status;
+            record.cards[cardIndex].requestText = requestText;
             console.log('After update - card status:', record.cards[cardIndex].status);
             
             console.log('Saving record...');

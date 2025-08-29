@@ -29,6 +29,10 @@ const AssignCardsSchema = new mongoose.Schema({
         status: {
             type: String,
             default: 'approved'
+        },
+        requestText: {
+            type: String,
+            default: ''
         }
     }]
 }, {
