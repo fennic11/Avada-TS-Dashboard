@@ -27,11 +27,13 @@ import WorkIcon from '@mui/icons-material/Work';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import PersonIcon from '@mui/icons-material/Person';
+import rateKpi from '../../data/rateKpi.json';
 
 const ModalKPIDetail = ({ open, onClose, kpiData }) => {
     if (!kpiData) return null;
 
     const { member, shiftDetails, bugCardDetails, issueCardDetails, shiftKpi, bugKpi, issueKpi, totalKpi } = kpiData;
+    const { shiftRate, issueRate } = rateKpi;
 
     // Group shifts by shift name
     const shiftSummary = shiftDetails.reduce((acc, shift) => {
@@ -155,6 +157,61 @@ const ModalKPIDetail = ({ open, onClose, kpiData }) => {
                         </Grid>
                     </Grid>
 
+                    {/* Rate Information */}
+                    <Grid item xs={12}>
+                        <Card sx={{ 
+                            background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
+                            border: '2px solid #dee2e6'
+                        }}>
+                            <CardContent>
+                                <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: '#495057' }}>
+                                    📊 Thông tin Rate KPI
+                                </Typography>
+                                <Grid container spacing={2}>
+                                    <Grid item xs={12} md={4}>
+                                        <Box sx={{ p: 2, backgroundColor: 'rgba(52, 152, 219, 0.1)', borderRadius: 2 }}>
+                                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#3498db', mb: 1 }}>
+                                                🕐 Rate Ca trực
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: '#495057' }}>
+                                                {Object.entries(shiftRate).map(([shift, rate]) => (
+                                                    <span key={shift}>
+                                                        • {shift}: {rate.toLocaleString()} điểm<br/>
+                                                    </span>
+                                                ))}
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                    <Grid item xs={12} md={4}>
+                                        <Box sx={{ p: 2, backgroundColor: 'rgba(231, 76, 60, 0.1)', borderRadius: 2 }}>
+                                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#e74c3c', mb: 1 }}>
+                                                🐛 Rate Bugs
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: '#495057' }}>
+                                                • 1 member: 20 điểm<br/>
+                                                • 2 members: 10 điểm/mỗi người
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                    <Grid item xs={12} md={4}>
+                                        <Box sx={{ p: 2, backgroundColor: 'rgba(243, 156, 18, 0.1)', borderRadius: 2 }}>
+                                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#f39c12', mb: 1 }}>
+                                                📋 Rate Issues
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: '#495057' }}>
+                                                {Object.entries(issueRate).map(([label, rate]) => (
+                                                    <span key={label}>
+                                                        • {label}: {rate.toLocaleString()} điểm<br/>
+                                                    </span>
+                                                ))}
+                                            </Typography>
+                                        </Box>
+                                    </Grid>
+                                </Grid>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+
                     {/* Shift Details */}
                     {shiftDetails.length > 0 && (
                         <Grid item xs={12} md={6}>
@@ -204,7 +261,7 @@ const ModalKPIDetail = ({ open, onClose, kpiData }) => {
                                 <CardContent>
                                     <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: '#f39c12' }}>
                                         <AssignmentIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                                        Chi tiết Issues theo Level
+                                        Chi tiết Issues theo Level (Rate theo label)
                                     </Typography>
                                     <TableContainer component={Paper} sx={{ maxHeight: 300 }}>
                                         <Table size="small">

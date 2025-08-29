@@ -240,9 +240,28 @@ function ResponsiveAppBar({ sidebarOpen = true, onToggleSidebar, drawerWidth = 2
     {
       key: 'header',
       label: (
-        <div style={{ padding: '16px', background: 'linear-gradient(135deg, #06038D 0%, #1B263B 100%)', color: 'white' }}>
+        <div style={{ 
+          padding: '20px', 
+          background: 'linear-gradient(135deg, #06038D 0%, #1B263B 100%)', 
+          color: 'white',
+          borderRadius: '12px 12px 0 0'
+        }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <Title level={5} style={{ color: 'white', margin: 0 }}>Notifications</Title>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <BellOutlined style={{ fontSize: '18px' }} />
+              <Title level={5} style={{ color: 'white', margin: 0, fontWeight: 600 }}>
+                Notifications
+              </Title>
+              <Badge 
+                count={notifications.filter(n => n.unread).length} 
+                size="small"
+                style={{ 
+                  backgroundColor: '#ff6b6b',
+                  fontSize: '10px',
+                  fontWeight: 'bold'
+                }}
+              />
+            </div>
             <Button
               type="text"
               size="small"
@@ -251,82 +270,166 @@ function ResponsiveAppBar({ sidebarOpen = true, onToggleSidebar, drawerWidth = 2
               disabled={!notifications.some(n => n.unread)}
               style={{
                 color: notifications.some(n => n.unread) ? 'white' : 'rgba(255,255,255,0.5)',
-                border: 'none'
+                border: 'none',
+                borderRadius: '6px',
+                fontWeight: 500
               }}
             >
-              Mark all as read
+              Mark all read
             </Button>
           </div>
-          <Space>
+          <div style={{ display: 'flex', gap: '8px' }}>
             <Button
               size="small"
               type={filter === 'unread' ? 'primary' : 'text'}
               onClick={() => setFilter('unread')}
-              style={{ color: filter === 'unread' ? '#06038D' : 'rgba(255,255,255,0.8)' }}
+              style={{ 
+                color: filter === 'unread' ? '#06038D' : 'rgba(255,255,255,0.9)',
+                borderRadius: '6px',
+                fontWeight: 500,
+                border: filter === 'unread' ? '1px solid white' : 'none'
+              }}
             >
-              Unread
+              Unread ({notifications.filter(n => n.unread).length})
             </Button>
             <Button
               size="small"
               type={filter === 'read' ? 'primary' : 'text'}
               onClick={() => setFilter('read')}
-              style={{ color: filter === 'read' ? '#06038D' : 'rgba(255,255,255,0.8)' }}
+              style={{ 
+                color: filter === 'read' ? '#06038D' : 'rgba(255,255,255,0.9)',
+                borderRadius: '6px',
+                fontWeight: 500,
+                border: filter === 'read' ? '1px solid white' : 'none'
+              }}
             >
-              Read
+              Read ({notifications.filter(n => !n.unread).length})
             </Button>
-          </Space>
+          </div>
         </div>
       ),
       disabled: true,
     },
     ...filteredNotifications.map((notification) => {
       const notificationText = getNotificationText(notification);
+      const isUnread = notification.unread;
+      
       return {
         key: notification.id,
         label: (
-          <List.Item
+          <div
             style={{
-              padding: '12px 16px',
+              padding: '16px',
               cursor: 'pointer',
-              backgroundColor: notification.unread ? 'rgba(6, 3, 141, 0.05)' : 'transparent',
+              backgroundColor: isUnread ? 'rgba(6, 3, 141, 0.08)' : 'transparent',
+              borderLeft: isUnread ? '4px solid #06038D' : '4px solid transparent',
               borderRadius: '8px',
-              margin: '4px 0'
+              margin: '8px 12px',
+              transition: 'all 0.2s ease',
+              border: '1px solid rgba(0,0,0,0.05)',
+              position: 'relative'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = isUnread ? 'rgba(6, 3, 141, 0.12)' : 'rgba(0,0,0,0.02)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = isUnread ? 'rgba(6, 3, 141, 0.08)' : 'transparent';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = 'none';
             }}
             onClick={() => handleNotificationClick(notification.data.card.id, notification.id, notification.unread)}
           >
-            <List.Item.Meta
-              avatar={
-                <Avatar
-                  src={notification.memberCreator?.avatarUrl}
-                  style={{ backgroundColor: '#06038D' }}
-                >
-                  {notification.memberCreator?.initials || '?'}
-                </Avatar>
-              }
-              title={
-                <Text
-                  strong={notification.unread}
-                  style={{ color: notification.unread ? '#06038D' : 'inherit' }}
-                >
-                  {notificationText.title}
-                </Text>
-              }
-              description={
-                <div>
-                  {notificationText.content && (
-                    <Text type="secondary" style={{ fontSize: '12px' }}>
-                      {notificationText.content}
-                    </Text>
-                  )}
-                  <div style={{ marginTop: '4px' }}>
-                    <Text type="secondary" style={{ fontSize: '11px' }}>
-                      {formatDistanceToNow(new Date(notification.date), { addSuffix: true })} • {notificationText.board}
-                    </Text>
-                  </div>
+            {/* Unread indicator */}
+            {isUnread && (
+              <div style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                width: '8px',
+                height: '8px',
+                                 backgroundColor: '#06038D',
+                 borderRadius: '50%',
+                 boxShadow: '0 0 0 2px rgba(6, 3, 141, 0.2)'
+              }} />
+            )}
+            
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+              <Avatar
+                src={notification.memberCreator?.avatarUrl}
+                size="large"
+                style={{ 
+                  backgroundColor: '#06038D',
+                  border: '2px solid rgba(6, 3, 141, 0.2)',
+                  flexShrink: 0
+                }}
+              >
+                {notification.memberCreator?.initials || '?'}
+              </Avatar>
+              
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px',
+                  marginBottom: '4px'
+                }}>
+                  <Text
+                    strong={isUnread}
+                    style={{ 
+                      color: isUnread ? '#06038D' : '#333',
+                      fontSize: '14px',
+                      fontWeight: isUnread ? 600 : 500,
+                      lineHeight: 1.4
+                    }}
+                  >
+                    {notificationText.title}
+                  </Text>
                 </div>
-              }
-            />
-          </List.Item>
+                
+                {notificationText.content && (
+                  <Text 
+                    type="secondary" 
+                    style={{ 
+                      fontSize: '13px',
+                      lineHeight: 1.4,
+                      color: '#666',
+                      display: 'block',
+                      marginBottom: '6px'
+                    }}
+                  >
+                    {notificationText.content}
+                  </Text>
+                )}
+                
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px',
+                  fontSize: '11px',
+                  color: '#999'
+                }}>
+                  <span style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '4px'
+                  }}>
+                    <ClockCircleOutlined style={{ fontSize: '10px' }} />
+                    {formatDistanceToNow(new Date(notification.date), { addSuffix: true })}
+                  </span>
+                  <span style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '4px'
+                  }}>
+                    <FileTextOutlined style={{ fontSize: '10px' }} />
+                    {notificationText.board}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         ),
       };
     }),
@@ -386,7 +489,7 @@ function ResponsiveAppBar({ sidebarOpen = true, onToggleSidebar, drawerWidth = 2
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
-          height: '60px',
+          height: '70px',
           justifyContent: 'center',
           borderBottom: '1px solid rgba(255,255,255,0.1)',
           cursor: 'pointer',
@@ -442,14 +545,15 @@ function ResponsiveAppBar({ sidebarOpen = true, onToggleSidebar, drawerWidth = 2
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          height: '60px',
+          height: '70px',
           position: 'fixed',
           top: 0,
           right: 0,
           left: collapsed ? 80 : drawerWidth,
           zIndex: 999,
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          transition: 'left 0.2s'
+          transition: 'left 0.2s',
+          overflow: 'visible'
         }}
       >
         {/* Left side - Empty for now */}
@@ -461,38 +565,69 @@ function ResponsiveAppBar({ sidebarOpen = true, onToggleSidebar, drawerWidth = 2
           alignItems: 'center', 
           gap: '16px',
           minWidth: 0,
-          overflow: 'hidden'
+          overflow: 'visible'
         }}>
           {/* Notification Dropdown */}
-          <Dropdown
-            menu={{ items: notificationItems }}
-            placement="bottomRight"
-            trigger={['click']}
-            overlayStyle={{ width: 400, maxHeight: 500 }}
-            onOpenChange={(open) => {
-              if (open) {
-                setLoading(true);
-                fetchNotifications().finally(() => setLoading(false));
-              }
-            }}
-          >
-            <Badge count={notifications.filter(n => n.unread).length} size="small">
-              <Button
-                type="text"
-                icon={<BellOutlined />}
-                style={{ 
-                  fontSize: '18px',
-                  height: '40px',
-                  width: '40px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: '8px',
-                  flexShrink: 0
+          <div style={{ position: 'relative', zIndex: 1001, display: 'inline-block' }}>
+            <Dropdown
+              menu={{ items: notificationItems }}
+              placement="bottomRight"
+              trigger={['click']}
+              getPopupContainer={() => document.body}
+              overlayStyle={{ 
+                width: 420, 
+                maxHeight: 600,
+                borderRadius: '12px',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                border: '1px solid rgba(0,0,0,0.08)',
+                position: 'fixed'
+              }}
+              onOpenChange={(open) => {
+                if (open) {
+                  setLoading(true);
+                  fetchNotifications().finally(() => setLoading(false));
+                }
+              }}
+            >
+              <Badge 
+                count={notifications.filter(n => n.unread).length} 
+                size="small"
+                style={{
+                  backgroundColor: '#ff6b6b',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  boxShadow: '0 2px 4px rgba(255, 107, 107, 0.3)'
                 }}
-              />
-            </Badge>
-          </Dropdown>
+              >
+                <Button
+                  type="text"
+                  icon={<BellOutlined />}
+                  style={{ 
+                    fontSize: '18px',
+                    height: '44px',
+                    width: '44px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '10px',
+                    flexShrink: 0,
+                                      backgroundColor: 'rgba(6, 3, 141, 0.05)',
+                  border: '1px solid rgba(6, 3, 141, 0.1)',
+                  transition: 'all 0.2s ease',
+                  color: '#06038D'
+                  }}
+                                  onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(6, 3, 141, 0.1)';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(6, 3, 141, 0.05)';
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+                />
+              </Badge>
+            </Dropdown>
+          </div>
 
           {/* User Account Dropdown */}
           <Dropdown
