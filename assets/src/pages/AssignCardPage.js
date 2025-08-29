@@ -992,80 +992,56 @@ const AssignCardPage = () => {
                                     </Tooltip>
                                   )}
                                   
-                                  {/* Admin Buttons - hiển thị 2 button còn lại dựa trên status hiện tại */}
+                                  {/* Admin Buttons - luôn hiển thị đủ các button cho admin */}
                                   {isAdmin && (
                                     <>
-                                      {/* Nếu status là 'pending' hoặc 'rejected' thì hiển thị Approve */}
-                                      {(card.status === 'pending' || card.status === 'rejected') && (
-                                        <Tooltip title="Approve Card">
-                                          <IconButton 
-                                            size="small"
-                                            onClick={() => handleApproveCard(record, cardIndex)}
-                                            sx={{
-                                              color: '#4caf50',
-                                              '&:hover': {
-                                                background: '#e8f5e8'
-                                              }
-                                            }}
-                                          >
-                                            <CheckCircleIcon sx={{ fontSize: 16 }} />
-                                          </IconButton>
-                                        </Tooltip>
-                                      )}
+                                      {/* Approve Button - luôn hiển thị */}
+                                      <Tooltip title="Approve Card">
+                                        <IconButton 
+                                          size="small"
+                                          onClick={() => handleApproveCard(record, cardIndex)}
+                                          sx={{
+                                            color: '#4caf50',
+                                            '&:hover': {
+                                              background: '#e8f5e8'
+                                            }
+                                          }}
+                                        >
+                                          <CheckCircleIcon sx={{ fontSize: 16 }} />
+                                        </IconButton>
+                                      </Tooltip>
                                       
-                                      {/* Nếu status là 'requested' thì hiển thị Approve */}
-                                      {card.status === 'requested' && (
-                                        <Tooltip title="Approve Card">
-                                          <IconButton 
-                                            size="small"
-                                            onClick={() => handleApproveCard(record, cardIndex)}
-                                            sx={{
-                                              color: '#4caf50',
-                                              '&:hover': {
-                                                background: '#e8f5e8'
-                                              }
-                                            }}
-                                          >
-                                            <CheckCircleIcon sx={{ fontSize: 16 }} />
-                                          </IconButton>
-                                        </Tooltip>
-                                      )}
+                                      {/* Reject Button - luôn hiển thị */}
+                                      <Tooltip title="Reject Card">
+                                        <IconButton 
+                                          size="small"
+                                          onClick={() => handleRejectCard(record, cardIndex)}
+                                          sx={{
+                                            color: '#f44336',
+                                            '&:hover': {
+                                              background: '#ffebee'
+                                            }
+                                          }}
+                                        >
+                                          <CancelIcon sx={{ fontSize: 16 }} />
+                                        </IconButton>
+                                      </Tooltip>
                                       
-                                      {/* Nếu status là 'pending' hoặc 'requested' thì hiển thị Reject */}
-                                      {(card.status === 'pending' || card.status === 'requested') && (
-                                        <Tooltip title="Reject Card">
-                                          <IconButton 
-                                            size="small"
-                                            onClick={() => handleRejectCard(record, cardIndex)}
-                                            sx={{
-                                              color: '#f44336',
-                                              '&:hover': {
-                                                background: '#ffebee'
-                                              }
-                                            }}
-                                          >
-                                            <CancelIcon sx={{ fontSize: 16 }} />
-                                          </IconButton>
-                                        </Tooltip>
-                                      )}
-                                      
-                                      {/* Nếu status là 'approved' thì hiển thị Request */}
-                                      {card.status === 'approved' && (
-                                        <Tooltip title="Request Card">
-                                          <IconButton 
-                                            size="small"
-                                            onClick={() => handleOpenSubmitModal(record, cardIndex, card)}
-                                            sx={{
-                                              color: '#ff9800',
-                                              '&:hover': {
-                                                background: '#fff3e0'
-                                              }
-                                            }}
-                                          >
-                                            <SendIcon sx={{ fontSize: 16 }} />
-                                          </IconButton>
-                                        </Tooltip>
-                                      )}
+                                      {/* Request Button - luôn hiển thị */}
+                                      <Tooltip title="Request Card">
+                                        <IconButton 
+                                          size="small"
+                                          onClick={() => handleOpenSubmitModal(record, cardIndex, card)}
+                                          sx={{
+                                            color: '#ff9800',
+                                            '&:hover': {
+                                              background: '#fff3e0'
+                                            }
+                                          }}
+                                        >
+                                          <SendIcon sx={{ fontSize: 16 }} />
+                                        </IconButton>
+                                      </Tooltip>
                                     </>
                                   )}
                                 </Box>
