@@ -56,10 +56,6 @@
     "name": "Trial Shop"
   },
   {
-    "id": "68b156878943fdac82dded66",
-    "name": "Done-T8-2025"
-  },
-  {
     "id": "638d769884c52b05235a2317",
     "name": "Backlog"
   },
@@ -90,6 +86,10 @@
   {
     "id": "67c68b22af77d39946a8b964",
     "name": "Done-T3-2025"
+  },
+  {
+    "id": "68b156878943fdac82dded66",
+    "name": "Done-T8-2025"
   },
   {
     "id": "660a60d92f4507db3f548b6f",
@@ -330,6 +330,10 @@
   {
     "id": "68a7cb605c382b644e3acaa8",
     "name": "Error Card 2024"
+  },
+  {
+    "id": "68b7abaeeb740662a3f1cb3d",
+    "name": "FixDoneFromDev-T8-2025"
   },
   {
     "id": "65cb73c6808298930c0b7fd1",

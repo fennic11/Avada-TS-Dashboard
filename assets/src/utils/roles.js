@@ -44,7 +44,8 @@ export const ROLE_PERMISSIONS = {
             // TABS.TS_WORKSPACE,
             TABS.CHECKOUT,
             TABS.KPI_TS_TEAM,
-            TABS.ASSIGN_CARDS
+            TABS.ASSIGN_CARDS,
+            TABS.ERROR_CARDS
         ],
         description: 'Access to TS related features'
     },
