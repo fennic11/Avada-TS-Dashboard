@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Card, Typography, Row, Col, Button, Select, DatePicker, Modal, Spin, Tag, Space, Divider, Progress, Statistic, Alert, Badge, Checkbox } from 'antd';
+import { Table, Card, Typography, Row, Col, Button, Select, DatePicker, Spin, Tag, Space, Statistic, Badge, Checkbox } from 'antd';
 import { getDevFixingCards } from '../../api/trelloApi';
 import appData from '../../data/app.json';
-import { ReloadOutlined, BugOutlined, TeamOutlined, AppstoreOutlined, ClockCircleOutlined, TagOutlined } from '@ant-design/icons';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { ReloadOutlined, BugOutlined, TeamOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import CardDetailModal from '../CardDetailModal';
 
@@ -326,19 +326,29 @@ export default function DevFixingDashboard() {
         >
           {text}
         </a>
-      )
+      ),
+      sorter: (a, b) => a.name.localeCompare(b.name),
+      sortDirections: ['ascend', 'descend'],
     },
     {
       title: 'App',
       dataIndex: 'app',
       key: 'app',
-      render: (app) => <Tag color="blue">{app}</Tag>
+      render: (app) => <Tag color="blue">{app}</Tag>,
+      sorter: (a, b) => a.app.localeCompare(b.app),
+      sortDirections: ['ascend', 'descend'],
     },
     {
       title: 'Team',
       dataIndex: 'productTeam',
       key: 'productTeam',
-      render: (team) => team ? <Tag color="geekblue">{team}</Tag> : <Tag>Không có</Tag>
+      render: (team) => team ? <Tag color="geekblue">{team}</Tag> : <Tag>Không có</Tag>,
+      sorter: (a, b) => {
+        const teamA = a.productTeam || 'Không có';
+        const teamB = b.productTeam || 'Không có';
+        return teamA.localeCompare(teamB);
+      },
+      sortDirections: ['ascend', 'descend'],
     },
     {
       title: 'Label Type',
@@ -353,7 +363,9 @@ export default function DevFixingDashboard() {
           'Other': 'default'
         };
         return <Tag color={colorMap[label] || 'default'}>{label}</Tag>;
-      }
+      },
+      sorter: (a, b) => a.primaryLabel.localeCompare(b.primaryLabel),
+      sortDirections: ['ascend', 'descend'],
     },
     {
       title: 'Due Date',
@@ -371,7 +383,19 @@ export default function DevFixingDashboard() {
             {dueDate.toLocaleDateString('vi-VN')}
           </span>
         );
-      }
+      },
+      sorter: (a, b) => {
+        // Handle null/undefined due dates
+        if (!a.due && !b.due) return 0;
+        if (!a.due) return 1; // Put cards without due date at the end
+        if (!b.due) return -1;
+        
+        const dateA = new Date(a.due);
+        const dateB = new Date(b.due);
+        return dateA - dateB;
+      },
+      sortDirections: ['ascend', 'descend'],
+      defaultSortOrder: 'ascend',
     },
     {
       title: 'Slack Link',

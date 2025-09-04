@@ -54,6 +54,21 @@ const TIME_GROUPS = [
     { label: ">24h", min: 1440, max: Infinity },
 ];
 
+const TARGETS = {
+    'Nguyễn Thị Hiền': '2h',
+    'Nguyễn Tiến Dũng': '2.8h',
+    'Trần Đức Tùng': '2.9h',
+    'Trần Thế Cương': '2.8h',
+    'Đỗ Văn Tuấn': '3.3h',
+    'Vũ Quang Thoại': '3.0h',
+    'Trần Thị Bích Phương': '3.9h',
+    'Nguyễn Văn Hoài An': '4h',
+    'Nguyễn Ngọc Anh': '5.0h',
+    'Nguyễn Ngọc Sơn': '4h',
+    'Nguyễn Sỹ Mạnh': '4h'
+};
+
+
 function formatMinutes(mins) {
     if (!mins || isNaN(mins)) return '—';
     if (mins < 60) return `${Math.round(mins * 10) / 10} min`;
@@ -729,6 +744,26 @@ const ResolutionTimeList = () => {
                     {formatMinutes(value)}
                 </div>
             )
+        },
+        {
+            title: 'Target',
+            key: 'target',
+            render: (_, record) => {
+                // Get the first member's target (assuming cards have multiple members)
+                const memberNames = record.members?.map(id => memberMap[id]).filter(Boolean) || [];
+                const firstMemberName = memberNames[0];
+                const target = TARGETS[firstMemberName] || 'N/A';
+                const isGoodTarget = target !== 'N/A' && parseFloat(target) <= 3.0;
+                
+                return (
+                    <Tag 
+                        color={isGoodTarget ? "green" : target === 'N/A' ? "default" : "orange"} 
+                        style={{ fontWeight: 600 }}
+                    >
+                        {target}
+                    </Tag>
+                );
+            }
         },
         {
             title: 'Link',
@@ -1578,6 +1613,23 @@ const AgentLeaderboard = ({ data }) => {
                     {formatMinutes(value)}
                 </Text>
             )
+        },
+        {
+            title: 'Target',
+            key: 'target',
+            render: (_, record) => {
+                const target = TARGETS[record.name] || 'N/A';
+                const isGoodTarget = target !== 'N/A' && parseFloat(target) <= 3.0;
+                
+                return (
+                    <Tag 
+                        color={isGoodTarget ? "green" : target === 'N/A' ? "default" : "orange"} 
+                        style={{ fontWeight: 600 }}
+                    >
+                        {target}
+                    </Tag>
+                );
+            }
         }
     ];
 

@@ -482,6 +482,13 @@ const IssuesKpiSummary = () => {
         }));
     };
 
+    const handleSpeedUpKpiDataChange = (speedUpKpiData) => {
+        setTabKPIs(prev => ({
+            ...prev,
+            speedUp: speedUpKpiData
+        }));
+    };
+
     const handleReset = async () => {
         setLoading(true);
         try {
@@ -1614,7 +1621,7 @@ const IssuesKpiSummary = () => {
                                 </Grid>
                             </Grid>
                         </Paper>
-                        <SpeedUpKPI />
+                        <SpeedUpKPI onKpiDataChange={handleSpeedUpKpiDataChange} />
                     </Box>
 
                     {/* Warning Sections */}

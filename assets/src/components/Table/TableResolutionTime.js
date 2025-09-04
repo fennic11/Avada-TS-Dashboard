@@ -22,18 +22,37 @@ const columns = [
         dataIndex: 'resolutionTime',
         key: 'resolutionTime',
         render: (v) => formatMinutes(Number(v)),
+        sorter: (a, b) => {
+            const aTime = Number(a.resolutionTime) || 0;
+            const bTime = Number(b.resolutionTime) || 0;
+            return aTime - bTime;
+        },
+        sortDirections: ['ascend', 'descend'],
+        defaultSortOrder: 'ascend',
     },
     {
         title: 'First Action Time',
         dataIndex: 'firstActionTime',
         key: 'firstActionTime',
         render: (v) => formatMinutes(Number(v)),
+        sorter: (a, b) => {
+            const aTime = Number(a.firstActionTime) || 0;
+            const bTime = Number(b.firstActionTime) || 0;
+            return aTime - bTime;
+        },
+        sortDirections: ['ascend', 'descend'],
     },
     {
         title: 'Resolution Time Dev',
         dataIndex: 'resolutionTimeDev',
         key: 'resolutionTimeDev',
         render: (v) => formatMinutes(Number(v)),
+        sorter: (a, b) => {
+            const aTime = Number(a.resolutionTimeDev) || 0;
+            const bTime = Number(b.resolutionTimeDev) || 0;
+            return aTime - bTime;
+        },
+        sortDirections: ['ascend', 'descend'],
     },
 ];
 
