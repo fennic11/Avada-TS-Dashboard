@@ -140,7 +140,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
     }, [card]);
 
     const extractLinksFromDescription = useCallback((desc) => {
-        if (!desc) return { shopUrl: '', crispUrl: '' };
+        if (!desc) return { shopUrl: '', crispUrl: '', slackUrl: '' };
         
         // Updated patterns to match both markdown-style links and direct URLs
         const shopUrlPatterns = [
@@ -154,9 +154,16 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
             /Crisp chat URL:\s*(https:\/\/app\.crisp\.chat\/[^\s]+)/i,  // Direct URL with "Crisp chat URL:" prefix
             /(https:\/\/app\.crisp\.chat\/website\/[^\/\s]+\/inbox\/session_[^\/\s]+)/i  // Direct crisp URL
         ];
+
+        const slackUrlPatterns = [
+            /\[(https:\/\/[^\/\]]+\.slack\.com\/[^\]]+)\]\([^\)]+\s*"smartCard-inline"\)/i,  // Markdown style
+            /Slack URL:\s*(https:\/\/[^\/\s]+\.slack\.com\/[^\s]+)/i,  // Direct URL with "Slack URL:" prefix
+            /(https:\/\/[^\/\s]+\.slack\.com\/[^\s]+)/i  // Direct slack URL
+        ];
         
         let shopUrl = '';
         let crispUrl = '';
+        let slackUrl = '';
 
         // Try each pattern for shop URL
         for (const pattern of shopUrlPatterns) {
@@ -175,14 +182,24 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                 break;
             }
         }
+
+        // Try each pattern for slack URL
+        for (const pattern of slackUrlPatterns) {
+            const match = desc.match(pattern);
+            if (match) {
+                slackUrl = match[1];
+                break;
+            }
+        }
         
         return {
             shopUrl,
-            crispUrl
+            crispUrl,
+            slackUrl
         };
     }, []);
 
-    const { shopUrl, crispUrl } = useMemo(() => {
+    const { shopUrl, crispUrl, slackUrl } = useMemo(() => {
         return extractLinksFromDescription(safeCard?.desc);
     }, [safeCard?.desc, extractLinksFromDescription]);
 
@@ -682,6 +699,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
             severity: 'success'
         });
     };
+
 
     const handleQASubmit = async () => {
         if (!qaNotes.trim() || !card?.id) {
@@ -2335,7 +2353,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                         }}>
                             <Space direction="vertical" size="large" style={{ width: '100%' }} divider={<Divider style={{ borderColor: 'rgba(0, 0, 0, 0.08)' }} />}>
                                 {/* Quick Links */}
-                                {(shopUrl || crispUrl || safeCard.shortUrl) && (
+                                {(shopUrl || crispUrl || slackUrl || safeCard.shortUrl) && (
                                                                     <Card style={{
                                     backgroundColor: '#ffffff',
                                     padding: 16,
@@ -2360,7 +2378,9 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                         }}>
                                             📋 Informations
                                         </Typography.Title>
-                                        <Space direction="horizontal" size="large" style={{ width: '100%' }}> 
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
+                                            {/* First Row */}
+                                            <div style={{ display: 'flex', gap: 12, width: '100%' }}> 
                                             {shopUrl && (
                                                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
                                                     <a
@@ -2555,95 +2575,225 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                     </a>
                                                 </div>
                                             )}
-                                        </Space>
-                                        {safeCard.shortUrl && (
-                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, marginTop: 16, width: '100%' }}>
-                                                <a
-                                                    href={safeCard.shortUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    style={{
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        alignItems: 'center',
-                                                        color: '#64748b',
-                                                        textDecoration: 'none',
-                                                        gap: 10,
-                                                        border: '1px solid rgba(0, 0, 0, 0.08)',
-                                                        borderRadius: '12px',
-                                                        padding: 16,
-                                                        position: 'relative',
-                                                        width: '100%',
-                                                        backgroundColor: 'rgba(0, 0, 0, 0.02)',
-                                                        transition: 'all 0.3s ease-in-out',
-                                                        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                                                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
-                                                    }}
-                                                    onMouseEnter={(e) => {
-                                                        e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
-                                                        e.currentTarget.style.transform = 'translateY(-2px)';
-                                                        e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.1)';
-                                                        e.currentTarget.style.color = '#1e293b';
-                                                        e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.12)';
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
-                                                        e.currentTarget.style.transform = 'translateY(0)';
-                                                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
-                                                        e.currentTarget.style.color = '#64748b';
-                                                        e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.08)';
-                                                    }}
-                                                >
-                                                    <div style={{ 
-                                                        width: 48,
-                                                        height: 48,
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        borderRadius: '12px',
-                                                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                                                        color: '#64748b',
-                                                        transition: 'all 0.3s ease-in-out',
-                                                        border: '1px solid rgba(0, 0, 0, 0.06)'
-                                                    }}>
-                                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                                            <path d="M19.5 3h-15A1.5 1.5 0 003 4.5v15A1.5 1.5 0 004.5 21h15a1.5 1.5 0 001.5-1.5v-15A1.5 1.5 0 0019.5 3zm-15 1.5h15v15h-15v-15zM6 6h12v2H6V6zm0 4h12v2H6v-2zm0 4h12v2H6v-2z"/>
-                                                        </svg>
-                                                    </div>
-                                                    <Typography.Text style={{ 
-                                                        fontSize: '14px', 
-                                                        textAlign: 'center',
-                                                        fontWeight: 700,
-                                                        letterSpacing: '0.02em',
-                                                        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                                                        textTransform: 'capitalize',
-                                                        lineHeight: 1.2,
-                                                        color: 'inherit'
-                                                    }}>
-                                                        View Trello
-                                                    </Typography.Text>
-                                                    <Button
-                                                        size="small"
-                                                        type="text"
-                                                        icon={<CopyOutlined />}
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            handleCopyLink(safeCard.shortUrl, 'Trello URL');
-                                                        }}
+                                        </div>
+
+                                        {/* Second Row */}
+                                        <div style={{ display: 'flex', gap: 12, width: '100%', marginTop: 16 }}>
+                                            {slackUrl && (
+                                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+                                                    <a
+                                                        href={slackUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
                                                         style={{
-                                                            position: 'absolute',
-                                                            top: 4,
-                                                            right: 4,
-                                                            padding: 2,
-                                                            color: '#94a3b8',
-                                                            minWidth: 'auto',
-                                                            width: 24,
-                                                            height: 24
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            alignItems: 'center',
+                                                            color: '#64748b',
+                                                            textDecoration: 'none',
+                                                            gap: 10,
+                                                            border: '1px solid rgba(0, 0, 0, 0.08)',
+                                                            borderRadius: '12px',
+                                                            padding: 16,
+                                                            position: 'relative',
+                                                            width: '100%',
+                                                            backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                                                            transition: 'all 0.3s ease-in-out',
+                                                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
                                                         }}
-                                                    />
-                                                </a>
-                                            </div>
-                                        )}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.backgroundColor = 'rgba(74, 144, 226, 0.08)';
+                                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(74, 144, 226, 0.2)';
+                                                            e.currentTarget.style.color = '#4a90e2';
+                                                            e.currentTarget.style.borderColor = 'rgba(74, 144, 226, 0.2)';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
+                                                            e.currentTarget.style.transform = 'translateY(0)';
+                                                            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
+                                                            e.currentTarget.style.color = '#64748b';
+                                                            e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.08)';
+                                                        }}
+                                                    >
+                                                        <div style={{ 
+                                                            width: 48,
+                                                            height: 48,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            borderRadius: '12px',
+                                                            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                                                            color: '#64748b',
+                                                            transition: 'all 0.3s ease-in-out',
+                                                            border: '1px solid rgba(0, 0, 0, 0.06)'
+                                                        }}>
+                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                                                <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 10.12h2.52v2.522a2.528 2.528 0 0 1-2.52 2.523zm0-6.582A2.528 2.528 0 0 1 2.522 6.06 2.528 2.528 0 0 1 5.042 3.537h2.52v2.523a2.528 2.528 0 0 1-2.52 2.523zm6.582 0A2.528 2.528 0 0 1 9.104 6.06a2.528 2.528 0 0 1 2.52-2.523h2.52v2.523a2.528 2.528 0 0 1-2.52 2.523zm0 6.582a2.528 2.528 0 0 1-2.52-2.523v-2.522h2.52a2.528 2.528 0 0 1 2.52 2.522v2.523a2.528 2.528 0 0 1-2.52 2.523zm6.582-6.582a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 18.206 3.537h2.52v2.523a2.528 2.528 0 0 1-2.52 2.523zm0 6.582a2.528 2.528 0 0 1-2.52-2.523v-2.522h2.52a2.528 2.528 0 0 1 2.52 2.522v2.523a2.528 2.528 0 0 1-2.52 2.523z"/>
+                                                            </svg>
+                                                        </div>
+                                                        <Typography.Text style={{ 
+                                                            fontSize: '14px', 
+                                                            textAlign: 'center',
+                                                            fontWeight: 700,
+                                                            letterSpacing: '0.02em',
+                                                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                                            textTransform: 'capitalize',
+                                                            lineHeight: 1.2,
+                                                            color: 'inherit'
+                                                        }}>
+                                                            View Slack
+                                                        </Typography.Text>
+                                                        <Button
+                                                            size="small"
+                                                            type="text"
+                                                            icon={<CopyOutlined />}
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                handleCopyLink(slackUrl, 'Slack URL');
+                                                            }}
+                                                            style={{
+                                                                position: 'absolute',
+                                                                top: 8,
+                                                                right: 8,
+                                                                padding: 6,
+                                                                color: '#94a3b8',
+                                                                minWidth: 'auto',
+                                                                width: 32,
+                                                                height: 32,
+                                                                borderRadius: '8px',
+                                                                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                                                border: '1px solid rgba(0, 0, 0, 0.08)',
+                                                                boxShadow: '0 3px 6px rgba(0, 0, 0, 0.12)',
+                                                                transition: 'all 0.3s ease-in-out',
+                                                                backdropFilter: 'blur(4px)'
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 1)';
+                                                                e.currentTarget.style.color = '#64748b';
+                                                                e.currentTarget.style.transform = 'scale(1.1)';
+                                                                e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
+                                                                e.currentTarget.style.color = '#94a3b8';
+                                                                e.currentTarget.style.transform = 'scale(1)';
+                                                                e.currentTarget.style.boxShadow = '0 3px 6px rgba(0, 0, 0, 0.12)';
+                                                            }}
+                                                        />
+                                                    </a>
+                                                </div>
+                                            )}
+                                            {safeCard.shortUrl && (
+                                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+                                                    <a
+                                                        href={safeCard.shortUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        style={{
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            alignItems: 'center',
+                                                            color: '#64748b',
+                                                            textDecoration: 'none',
+                                                            gap: 10,
+                                                            border: '1px solid rgba(0, 0, 0, 0.08)',
+                                                            borderRadius: '12px',
+                                                            padding: 16,
+                                                            position: 'relative',
+                                                            width: '100%',
+                                                            backgroundColor: 'rgba(0, 0, 0, 0.02)',
+                                                            transition: 'all 0.3s ease-in-out',
+                                                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+                                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.1)';
+                                                            e.currentTarget.style.color = '#1e293b';
+                                                            e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.12)';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
+                                                            e.currentTarget.style.transform = 'translateY(0)';
+                                                            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.05)';
+                                                            e.currentTarget.style.color = '#64748b';
+                                                            e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.08)';
+                                                        }}
+                                                    >
+                                                        <div style={{ 
+                                                            width: 48,
+                                                            height: 48,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            borderRadius: '12px',
+                                                            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                                                            color: '#64748b',
+                                                            transition: 'all 0.3s ease-in-out',
+                                                            border: '1px solid rgba(0, 0, 0, 0.06)'
+                                                        }}>
+                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                                                <path d="M19.5 3h-15A1.5 1.5 0 003 4.5v15A1.5 1.5 0 004.5 21h15a1.5 1.5 0 001.5-1.5v-15A1.5 1.5 0 0019.5 3zm-15 1.5h15v15h-15v-15zM6 6h12v2H6V6zm0 4h12v2H6v-2zm0 4h12v2H6v-2z"/>
+                                                            </svg>
+                                                        </div>
+                                                        <Typography.Text style={{ 
+                                                            fontSize: '14px', 
+                                                            textAlign: 'center',
+                                                            fontWeight: 700,
+                                                            letterSpacing: '0.02em',
+                                                            fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                                            textTransform: 'capitalize',
+                                                            lineHeight: 1.2,
+                                                            color: 'inherit'
+                                                        }}>
+                                                            View Trello
+                                                        </Typography.Text>
+                                                        <Button
+                                                            size="small"
+                                                            type="text"
+                                                            icon={<CopyOutlined />}
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                handleCopyLink(safeCard.shortUrl, 'Trello URL');
+                                                            }}
+                                                            style={{
+                                                                position: 'absolute',
+                                                                top: 8,
+                                                                right: 8,
+                                                                padding: 6,
+                                                                color: '#94a3b8',
+                                                                minWidth: 'auto',
+                                                                width: 32,
+                                                                height: 32,
+                                                                borderRadius: '8px',
+                                                                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                                                border: '1px solid rgba(0, 0, 0, 0.08)',
+                                                                boxShadow: '0 3px 6px rgba(0, 0, 0, 0.12)',
+                                                                transition: 'all 0.3s ease-in-out',
+                                                                backdropFilter: 'blur(4px)'
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 1)';
+                                                                e.currentTarget.style.color = '#64748b';
+                                                                e.currentTarget.style.transform = 'scale(1.1)';
+                                                                e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.15)';
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
+                                                                e.currentTarget.style.color = '#94a3b8';
+                                                                e.currentTarget.style.transform = 'scale(1)';
+                                                                e.currentTarget.style.boxShadow = '0 3px 6px rgba(0, 0, 0, 0.12)';
+                                                            }}
+                                                        />
+                                                    </a>
+                                                </div>
+                                            )}
+                                        </div>
+                                        </div>
+
                                     </Card>
                                 )}
 

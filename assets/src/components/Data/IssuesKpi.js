@@ -96,7 +96,8 @@ const IssuesKpiSummary = () => {
                         return member && (
                             member.role === 'TS' || 
                             member.role === 'ts-lead' || 
-                            member.username === 'ricky_avada'
+                            member.username === 'ricky_avada' || 
+                            member.username === 'jade_avada'
                         );
                     });
                 });
