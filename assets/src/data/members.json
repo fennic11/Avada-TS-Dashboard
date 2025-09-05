@@ -739,7 +739,7 @@
       "role": "TS",
       "slackId": "U08QY50KNFL",
       "group": "TS2",
-      "kpiName": "DungNT"
+      "kpiName": "DungNT1"
     },
     {
       "id": "68185ad36513ead08dc11eb1",
@@ -755,7 +755,7 @@
       "slackId": "U08QY52JK8A",
       "role": "CS",
       "group": "CS3",
-      "kpiName": "ThuyNNT1"
+      "kpiName": "ThuyNTT1"
     },
     {
       "id": "682175c3e94e4f5644a59d3d",
@@ -790,7 +790,7 @@
       "slackId": "U08RFT095UP",
       "role": "CS",
       "group": "CS4",
-      "kpiName": "PhươngPM"
+      "kpiName": "PhuongPM"
     },
     {
       "id": "6833e973f4e0c00790f5a4b5",
@@ -838,15 +838,6 @@
       "kpiName": "ThuNK"
     },
     {
-      "id": "68340cff129299b89d70bae6",
-      "fullName": "cody_avada",
-      "username": "cody_avada",
-      "slackId": "U08TZM2LL74",
-      "role": "CS",
-      "group": "CS2",
-      "kpiName": "ChauHM"
-    },
-    {
       "id": "683d27cb3fdd69ddec8f8169",
       "fullName": "Ian",
       "username": "ian_avada",
@@ -870,7 +861,7 @@
       "username": "annie_avada",
       "role": "CS",
       "group": "CS3",
-      "kpiName": "AnhPM",
+      "kpiName": "AnhTTN",
       "slackId": "U091CDSGZ3Q"
     },
     {

@@ -39,6 +39,8 @@ import { alpha } from '@mui/material/styles';
 import { useTheme } from '@mui/material/styles';
 import { postDevCards } from "../api/devCardsApi";
 import { calculateDevResolutionTime } from "../utils/devResolutionTime";
+import { checkOverdueConfirmationCards, getOverdueConfirmationSummary } from "../utils/qaConfirmCard";
+import CardDetailModal from "./CardDetailModal";
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -98,7 +100,6 @@ const DevZone = () => {
     const [exportData, setExportData] = useState(null);
 
     // Add new state for multiple lists
-    const [listIds, setListIds] = useState(['']);
 
     // Webhook states
     const [webhooks, setWebhooks] = useState(null);
@@ -109,7 +110,16 @@ const DevZone = () => {
         idModel: ''
     });
 
-    const [conversationNote, setConversationNote] = useState('');
+
+    // QA Cards states
+    const [qaProgress, setQaProgress] = useState(0);
+    const [isQaLoading, setIsQaLoading] = useState(false);
+    const [qaLog, setQaLog] = useState("");
+    const [overdueCards, setOverdueCards] = useState([]);
+
+    // CardDetailModal states
+    const [isCardDetailModalOpen, setIsCardDetailModalOpen] = useState(false);
+    const [selectedCardId, setSelectedCardId] = useState(null);
 
     const [devProgress, setDevProgress] = useState(0);
     const [isDevLoading, setIsDevLoading] = useState(false);
@@ -759,6 +769,80 @@ const DevZone = () => {
         setWebhooks(null);
     };
 
+    // QA Cards processing function
+    const handleProcessQaCards = async () => {
+        const WAITING_CONFIRMATION_LIST_ID = "63f489b961f3a274163459a2"; // "Waiting for Customer's Confirmation (SLA: 2 days)"
+        
+        setIsQaLoading(true);
+        setQaProgress(0);
+        setQaLog("Đang lấy cards từ cột Waiting for Customer's Confirmation...");
+
+        try {
+            // Get all cards from the waiting confirmation column
+            const cards = await getCardsByList(WAITING_CONFIRMATION_LIST_ID);
+            const total = cards.length;
+            
+            if (total === 0) {
+                setQaLog("Không có card nào trong cột Waiting for Customer's Confirmation");
+                setIsQaLoading(false);
+                return;
+            }
+
+            setQaLog(`Tìm thấy ${total} cards. Đang lấy actions cho từng card...`);
+
+            const batchSize = 5; // Smaller batch size for actions
+            let allActions = [];
+
+            // Process cards in batches to get their actions
+            for (let i = 0; i < total; i += batchSize) {
+                const batch = cards.slice(i, i + batchSize);
+                
+                await Promise.all(batch.map(async (card) => {
+                    try {
+                        const actions = await getActionsByCard(card.id);
+                        // Add cardId to each action for tracking
+                        const actionsWithCardId = actions.map(action => ({
+                            ...action,
+                            cardId: card.id
+                        }));
+                        allActions.push(...actionsWithCardId);
+                    } catch (err) {
+                        console.error(`❌ Lỗi lấy actions cho card ${card.id}:`, err);
+                    }
+                }));
+
+                const progress = Math.round(((i + batchSize) / total) * 50); // First 50% for getting actions
+                setQaProgress(progress);
+                setQaLog(`Đã lấy actions cho ${Math.min(i + batchSize, total)} / ${total} cards`);
+                await sleep(1000);
+            }
+
+            setQaLog("Đang kiểm tra cards quá hạn...");
+
+            // Check for overdue cards using the utility function
+            const overdueCardsResult = checkOverdueConfirmationCards(allActions);
+            const summary = getOverdueConfirmationSummary(allActions);
+
+            setOverdueCards(overdueCardsResult);
+            setQaProgress(100);
+            setQaLog(`✅ Hoàn thành! ${summary.summary}`);
+
+            // Results will be shown in the box below the button
+
+        } catch (error) {
+            console.error('Error processing QA cards:', error);
+            setQaLog(`❌ Lỗi: ${error.message}`);
+            setSnackbar({
+                open: true,
+                message: "Có lỗi xảy ra khi xử lý QA cards",
+                severity: "error"
+            });
+        } finally {
+            setIsQaLoading(false);
+        }
+    };
+
+
     const handleCopyWebhooksJSON = () => {
         if (webhooks) {
             navigator.clipboard.writeText(JSON.stringify(webhooks, null, 2))
@@ -778,6 +862,17 @@ const DevZone = () => {
                     });
                 });
         }
+    };
+
+    // CardDetailModal handlers
+    const handleOpenCardDetail = (cardId) => {
+        setSelectedCardId(cardId);
+        setIsCardDetailModalOpen(true);
+    };
+
+    const handleCloseCardDetail = () => {
+        setIsCardDetailModalOpen(false);
+        setSelectedCardId(null);
     };
 
     return (
@@ -1152,12 +1247,104 @@ const DevZone = () => {
                         </Box>
                     </Box>
                 </Paper>
+                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>QA Cards</Typography>
+                    <Typography variant="body1" sx={{ mb: 3, color: 'text.secondary' }}>Kiểm tra cards quá hạn trong cột Waiting for Customer's Confirmation (SLA: 2 days)</Typography>
+                    <Button 
+                        variant="contained" 
+                        onClick={handleProcessQaCards}
+                        disabled={isQaLoading}
+                        sx={{ 
+                            minWidth: 200,
+                            borderRadius: 1
+                        }}
+                    >
+                        Lấy QA Cards
+                    </Button>
+
+                    {/* QA Results Box */}
+                    {overdueCards.length > 0 && (
+                        <Box sx={{ mt: 3 }}>
+                            <Typography variant="h6" color="error.main" sx={{ mb: 2 }}>
+                                ⚠️ Có {overdueCards.length} card(s) quá hạn
+                            </Typography>
+                            
+                            {overdueCards.map((card, index) => (
+                                <Paper 
+                                    key={card.cardId} 
+                                    onClick={() => handleOpenCardDetail(card.cardId)}
+                                    sx={{ 
+                                        p: 2, 
+                                        mb: 2, 
+                                        border: '1px solid #ff4d4f',
+                                        backgroundColor: '#fff2f0',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease-in-out',
+                                        '&:hover': {
+                                            backgroundColor: '#ffebee',
+                                            transform: 'translateY(-2px)',
+                                            boxShadow: '0 4px 12px rgba(255, 77, 79, 0.2)'
+                                        }
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                                        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#d32f2f' }}>
+                                            {index + 1}. {card.cardName}
+                                        </Typography>
+                                        <Chip 
+                                            label={`${card.daysOverdue} ngày quá hạn`}
+                                            color="error"
+                                            size="small"
+                                        />
+                                    </Box>
+                                    
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                        <strong>Card ID:</strong> {card.cardId}
+                                    </Typography>
+                                    
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                        <strong>Chuyển vào cột:</strong> {new Date(card.movedToConfirmationDate).toLocaleDateString('vi-VN', {
+                                            year: 'numeric',
+                                            month: '2-digit',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}
+                                    </Typography>
+                                    
+                                    <Typography variant="body2" color="error.main" sx={{ fontWeight: 500 }}>
+                                        <strong>Lỗi:</strong> {card.errorMessage}
+                                    </Typography>
+                                </Paper>
+                            ))}
+                        </Box>
+                    )}
+
+                    {/* Success Message */}
+                    {!isQaLoading && overdueCards.length === 0 && qaLog.includes('Hoàn thành') && (
+                        <Box sx={{ mt: 3, textAlign: 'center', py: 2 }}>
+                            <Typography variant="h6" color="success.main" sx={{ mb: 1 }}>
+                                ✅ Tuyệt vời!
+                            </Typography>
+                            <Typography variant="body1" color="text.secondary">
+                                Không có card nào quá hạn trong cột Waiting for Customer's Confirmation
+                            </Typography>
+                        </Box>
+                    )}
+                </Paper>
 
 
                 {isLoading && (
                     <Box sx={{ mt: 2 }}>
                         <Typography sx={{ mb: 1 }}>{log}</Typography>
                         <LinearProgress variant="determinate" value={progress} />
+                    </Box>
+                )}
+
+                {isQaLoading && (
+                    <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ mb: 1 }}>{qaLog}</Typography>
+                        <LinearProgress variant="determinate" value={qaProgress} />
                     </Box>
                 )}
             </Box>
@@ -1909,7 +2096,15 @@ const DevZone = () => {
 
             {/* Dialog tạo conversation */}
 
+
             {/* Form tạo conversation */}
+
+            {/* CardDetailModal */}
+            <CardDetailModal
+                open={isCardDetailModalOpen}
+                onClose={handleCloseCardDetail}
+                cardId={selectedCardId}
+            />
         </Box>
     );
 };

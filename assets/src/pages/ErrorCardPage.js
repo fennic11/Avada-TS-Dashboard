@@ -16,9 +16,7 @@ import {
     Divider,
     Empty,
     Select,
-    Input,
-    Table,
-    Badge
+    Input
 } from 'antd';
 import {
     ExclamationCircleOutlined,
@@ -36,6 +34,7 @@ import {
 import { getErrorCardsByMonth } from '../api/errorCards';
 import dayjs from 'dayjs';
 import membersData from '../data/members.json';
+import penaltyPoints from '../data/penaltyPoint.json';
 import CardDetailModal from '../components/CardDetailModal';
 
 const { Title, Text, Paragraph } = Typography;
@@ -45,7 +44,7 @@ const ErrorCardPage = () => {
     const [errorCards, setErrorCards] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [selectedDate, setSelectedDate] = useState(dayjs('2025-08-01'));
+    const [selectedDate, setSelectedDate] = useState(dayjs());
     const [selectedMembers, setSelectedMembers] = useState([]);
     const [searchText, setSearchText] = useState('');
     const [modalOpen, setModalOpen] = useState(false);
@@ -65,7 +64,8 @@ const ErrorCardPage = () => {
     };
 
     useEffect(() => {
-        fetchErrorCards(2025, 8);
+        const currentDate = dayjs();
+        fetchErrorCards(currentDate.year(), currentDate.month() + 1);
     }, []);
 
     const handleDateChange = (date) => {
@@ -102,6 +102,12 @@ const ErrorCardPage = () => {
             .join('')
             .toUpperCase()
             .substring(0, 2);
+    };
+
+    const getPenaltyName = (penaltyId) => {
+        if (!penaltyId) return 'Unknown Penalty';
+        const penalty = penaltyPoints.find(p => p.id === penaltyId);
+        return penalty ? penalty.name : 'Unknown Penalty';
     };
 
     const groupCardsByCardId = (cards) => {
@@ -537,6 +543,78 @@ const ErrorCardPage = () => {
                                                         >
                                                             {totalPenaltyPoints} Points
                                                         </Tag>
+                                                    </div>
+                                                )}
+
+                                                {firstCard.penaltyId && (
+                                                    <div>
+                                                        <div style={{ 
+                                                            display: 'flex', 
+                                                            alignItems: 'center', 
+                                                            marginBottom: 6,
+                                                            padding: '6px 8px',
+                                                            backgroundColor: '#fff2e8',
+                                                            borderRadius: '4px',
+                                                            border: '1px solid #ffbb96'
+                                                        }}>
+                                                            <WarningOutlined style={{ 
+                                                                color: '#fa8c16', 
+                                                                marginRight: 6,
+                                                                fontSize: '14px'
+                                                            }} />
+                                                            <Text style={{ 
+                                                                fontSize: '13px', 
+                                                                fontWeight: 600,
+                                                                color: '#d46b08'
+                                                            }}>
+                                                                Penalty Type
+                                                            </Text>
+                                                        </div>
+                                                        <div style={{ 
+                                                            padding: '8px',
+                                                            backgroundColor: '#fff7e6',
+                                                            borderRadius: '6px',
+                                                            border: '2px solid #ffd591',
+                                                            boxShadow: '0 2px 4px rgba(250, 140, 22, 0.1)'
+                                                        }}>
+                                                            <div style={{
+                                                                display: 'flex',
+                                                                alignItems: 'flex-start',
+                                                                padding: '8px 10px',
+                                                                backgroundColor: '#ffffff',
+                                                                borderRadius: '4px',
+                                                                border: '1px solid #ffd591',
+                                                                fontSize: '12px',
+                                                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                                            }}>
+                                                                <FileTextOutlined style={{ 
+                                                                    color: '#fa8c16', 
+                                                                    marginRight: 8,
+                                                                    marginTop: 1,
+                                                                    fontSize: '12px'
+                                                                }} />
+                                                                <div>
+                                                                    <Text style={{ 
+                                                                        fontSize: '12px',
+                                                                        lineHeight: '1.4',
+                                                                        color: '#262626',
+                                                                        fontWeight: 600,
+                                                                        display: 'block',
+                                                                        marginBottom: 2
+                                                                    }}>
+                                                                        {getPenaltyName(firstCard.penaltyId)}
+                                                                    </Text>
+                                                                    <Text style={{ 
+                                                                        fontSize: '11px',
+                                                                        lineHeight: '1.4',
+                                                                        color: '#8c8c8c',
+                                                                        display: 'block'
+                                                                    }}>
+                                                                        ID: {firstCard.penaltyId}
+                                                                    </Text>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 )}
 

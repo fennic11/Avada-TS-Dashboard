@@ -26,6 +26,7 @@ import {
 import members from '../data/members.json';
 import lists from '../data/listsId.json';
 import labels from '../data/labels.json';
+import penaltyPoints from '../data/penaltyPoint.json';
 import CardActivityHistory from './CardActivityHistory';
 import { calculateResolutionTime } from '../utils/resolutionTime';
 import { searchArticles } from '../api/notionApi';
@@ -118,7 +119,9 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
     const [isEditorMode, setIsEditorMode] = useState(false);
     const [qaNotes, setQaNotes] = useState('');
     const [qaLoading, setQaLoading] = useState(false);
-    const [penaltyPoints, setPenaltyPoints] = useState('');
+    const [selectedPenaltyType, setSelectedPenaltyType] = useState('');
+    const [penaltySearch, setPenaltySearch] = useState('');
+    const [penaltyMenuOpen, setPenaltyMenuOpen] = useState(false);
 
     const safeCard = useMemo(() => {
         if (!card) return null;
@@ -702,10 +705,19 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
 
 
     const handleQASubmit = async () => {
-        if (!qaNotes.trim() || !card?.id) {
+        if (!card?.id) {
             setSnackbar({
                 open: true,
-                message: 'Please enter QA notes before submitting',
+                message: 'Card not found',
+                severity: 'error'
+            });
+            return;
+        }
+
+        if (!selectedPenaltyType) {
+            setSnackbar({
+                open: true,
+                message: 'Please select a penalty type',
                 severity: 'warning'
             });
             return;
@@ -713,12 +725,14 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
 
         setQaLoading(true);
         try {
+            const selectedPenalty = penaltyPoints.find(p => p.id === selectedPenaltyType);
             const dataToSave = {
                 cardId: card.id,
                 cardName: card.name || "",
                 cardUrl: card.shortUrl || `https://trello.com/c/${card.idShort}`,
-                note: qaNotes.trim(),
-                penaltyPoints: penaltyPoints ? parseInt(penaltyPoints) : 0,
+                note: qaNotes.trim() || '',
+                penaltyId: selectedPenalty ? selectedPenalty.id : '',
+                penaltyPoints: selectedPenalty ? selectedPenalty.points : 0,
                 labels: card.labels?.map(l => l.name) || [],
                 members: card.idMembers || [],
                 createdAt: new Date()
@@ -727,7 +741,7 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
             await postErrorCards(dataToSave);
             
             setQaNotes('');
-            setPenaltyPoints('');
+            setSelectedPenaltyType('');
             setSnackbar({
                 open: true,
                 message: 'QA review submitted successfully',
@@ -818,6 +832,15 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
             label.name.toLowerCase().includes(labelSearch.toLowerCase())
         );
     }, [availableLabels, labelSearch]);
+
+    // Thêm hàm lọc penalty types
+    const filteredPenaltyTypes = useMemo(() => {
+        if (!penaltySearch) return penaltyPoints;
+        return penaltyPoints.filter(penalty => 
+            penalty.name.toLowerCase().includes(penaltySearch.toLowerCase()) ||
+            penalty.id.toLowerCase().includes(penaltySearch.toLowerCase())
+        );
+    }, [penaltySearch]);
 
     // Add function to render description with clickable links
     const renderDescriptionWithLinks = (text) => {
@@ -3210,63 +3233,214 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                                 resize: 'vertical'
                                             }}
                                         />
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                             <Typography.Text style={{ 
                                                 fontSize: '14px', 
                                                 fontWeight: 600, 
                                                 color: '#374151',
                                                 whiteSpace: 'nowrap'
                                             }}>
-                                                Penalty Points:
+                                                Penalty Type:
                                             </Typography.Text>
-                                            <Input
-                                                type="number"
-                                                min="0"
-                                                value={penaltyPoints}
-                                                onChange={(e) => setPenaltyPoints(e.target.value)}
-                                                placeholder="0"
+                                            <Button
+                                                onClick={(e) => setPenaltyMenuOpen(true)}
                                                 style={{
+                                                    width: '100%',
+                                                    height: '40px',
+                                                    justifyContent: 'space-between',
                                                     backgroundColor: '#f8fafc',
-                                                    fontSize: '0.9rem',
-                                                    borderColor: 'rgba(0, 0, 0, 0.08)',
+                                                    border: '1px solid rgba(0, 0, 0, 0.12)',
                                                     borderRadius: '8px',
-                                                    padding: '8px 12px',
-                                                    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                                                    transition: 'all 0.2s ease-in-out',
-                                                    border: '1px solid rgba(0, 0, 0, 0.06)',
-                                                    width: '80px'
+                                                    color: '#1e293b',
+                                                    padding: '0 16px'
                                                 }}
-                                            />
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                                                    <div 
+                                                        style={{ 
+                                                            width: 8,
+                                                            height: 8,
+                                                            borderRadius: '50%',
+                                                            backgroundColor: selectedPenaltyType ? '#ef4444' : '#94a3b8',
+                                                            flexShrink: 0
+                                                        }} 
+                                                    />
+                                                    <Typography.Text 
+                                                        style={{ 
+                                                            fontSize: '14px', 
+                                                            fontWeight: 500,
+                                                            whiteSpace: 'nowrap',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis'
+                                                        }}
+                                                    >
+                                                        {selectedPenaltyType ? 
+                                                            penaltyPoints.find(p => p.id === selectedPenaltyType)?.name || 'Select penalty type' :
+                                                            'Select penalty type'
+                                                        }
+                                                    </Typography.Text>
+                                                </div>
+                                                <DownOutlined style={{ color: '#64748b' }} />
+                                            </Button>
+
+                                            <Dropdown
+                                                open={penaltyMenuOpen}
+                                                onOpenChange={(open) => {
+                                                    if (!open) {
+                                                        setPenaltyMenuOpen(false);
+                                                        setPenaltySearch('');
+                                                    }
+                                                }}
+                                                trigger={['click']}
+                                                overlay={
+                                                    <div style={{
+                                                        marginTop: 4,
+                                                        width: 320,
+                                                        maxHeight: 400,
+                                                        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                                                        borderRadius: '8px',
+                                                        backgroundColor: 'white',
+                                                        border: '1px solid #f0f0f0'
+                                                    }}>
+                                                        <div style={{ padding: 8, position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
+                                                            <Input
+                                                                size="small"
+                                                                placeholder="Search penalty types..."
+                                                                value={penaltySearch}
+                                                                onChange={(e) => setPenaltySearch(e.target.value)}
+                                                                prefix={<SearchOutlined />}
+                                                                style={{
+                                                                    fontSize: '14px',
+                                                                    backgroundColor: '#f8fafc',
+                                                                    borderColor: 'rgba(0, 0, 0, 0.08)'
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <Divider />
+                                                        <div style={{ 
+                                                            maxHeight: 320,
+                                                            overflow: 'auto',
+                                                            ...(filteredPenaltyTypes.length === 0 && {
+                                                                display: 'flex',
+                                                                justifyContent: 'center',
+                                                                alignItems: 'center',
+                                                                padding: '16px 0'
+                                                            })
+                                                        }}>
+                                                            {filteredPenaltyTypes.length > 0 ? (
+                                                                filteredPenaltyTypes.map(penalty => (
+                                                                    <div 
+                                                                        key={penalty.id}
+                                                                        onClick={() => {
+                                                                            setSelectedPenaltyType(penalty.id);
+                                                                            setPenaltyMenuOpen(false);
+                                                                            setPenaltySearch('');
+                                                                        }}
+                                                                        style={{
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'space-between',
+                                                                            minHeight: '50px',
+                                                                            padding: '12px 16px',
+                                                                            cursor: 'pointer',
+                                                                            borderBottom: '1px solid rgba(0, 0, 0, 0.06)'
+                                                                        }}
+                                                                        onMouseEnter={(e) => {
+                                                                            e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
+                                                                        }}
+                                                                        onMouseLeave={(e) => {
+                                                                            e.currentTarget.style.backgroundColor = 'transparent';
+                                                                        }}
+                                                                    >
+                                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                                            <Typography.Text style={{ 
+                                                                                fontSize: '14px',
+                                                                                fontWeight: 500,
+                                                                                color: 'rgba(0, 0, 0, 0.85)',
+                                                                                display: 'block',
+                                                                                marginBottom: 4
+                                                                            }}>
+                                                                                {penalty.name}
+                                                                            </Typography.Text>
+                                                                            <Typography.Text style={{ 
+                                                                                fontSize: '12px',
+                                                                                color: 'rgba(0, 0, 0, 0.45)',
+                                                                                display: 'block'
+                                                                            }}>
+                                                                                ID: {penalty.id}
+                                                                            </Typography.Text>
+                                                                        </div>
+                                                                        <div style={{
+                                                                            display: 'inline-flex',
+                                                                            alignItems: 'center',
+                                                                            backgroundColor: penalty.points >= 30 ? 'rgba(239, 68, 68, 0.12)' : 
+                                                                                           penalty.points >= 20 ? 'rgba(245, 158, 11, 0.12)' : 'rgba(34, 197, 94, 0.12)',
+                                                                            color: penalty.points >= 30 ? '#dc2626' : 
+                                                                                   penalty.points >= 20 ? '#d97706' : '#059669',
+                                                                            padding: '4px 8px',
+                                                                            borderRadius: '12px',
+                                                                            fontSize: '12px',
+                                                                            fontWeight: 700,
+                                                                            whiteSpace: 'nowrap',
+                                                                            flexShrink: 0,
+                                                                            border: '1px solid',
+                                                                            borderColor: penalty.points >= 30 ? 'rgba(239, 68, 68, 0.2)' : 
+                                                                                       penalty.points >= 20 ? 'rgba(245, 158, 11, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                                                                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                                                                        }}>
+                                                                            {penalty.points} pts
+                                                                        </div>
+                                                                    </div>
+                                                                ))
+                                                            ) : (
+                                                                <Typography.Text 
+                                                                    style={{ 
+                                                                        color: 'rgba(0, 0, 0, 0.45)',
+                                                                        fontStyle: 'italic',
+                                                                        padding: '16px',
+                                                                        textAlign: 'center',
+                                                                        display: 'block'
+                                                                    }}
+                                                                >
+                                                                    No penalty types found
+                                                                </Typography.Text>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                }
+                                            >
+                                                <div />
+                                            </Dropdown>
                                         </div>
                                         <Button
                                             type="primary"
                                             onClick={handleQASubmit}
-                                            disabled={qaLoading || !qaNotes.trim()}
+                                            disabled={qaLoading || !selectedPenaltyType}
                                             loading={qaLoading}
                                             style={{
                                                 width: '100%',
                                                 padding: '12px 20px',
-                                                backgroundColor: qaLoading || !qaNotes.trim() ? '#94a3b8' : '#3b82f6',
+                                                backgroundColor: qaLoading || !selectedPenaltyType ? '#94a3b8' : '#3b82f6',
                                                 color: '#ffffff',
                                                 fontWeight: 700,
                                                 fontSize: '14px',
                                                 borderRadius: '10px',
                                                 border: 'none',
                                                 height: '44px',
-                                                boxShadow: qaLoading || !qaNotes.trim() ? 'none' : '0 4px 12px rgba(59, 130, 246, 0.3)',
+                                                boxShadow: qaLoading || !selectedPenaltyType ? 'none' : '0 4px 12px rgba(59, 130, 246, 0.3)',
                                                 transition: 'all 0.3s ease-in-out',
                                                 fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                                                 letterSpacing: '0.02em'
                                             }}
                                             onMouseEnter={(e) => {
-                                                if (!qaLoading && qaNotes.trim()) {
+                                                if (!qaLoading && selectedPenaltyType) {
                                                     e.currentTarget.style.backgroundColor = '#2563eb';
                                                     e.currentTarget.style.transform = 'translateY(-2px)';
                                                     e.currentTarget.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
                                                 }
                                             }}
                                             onMouseLeave={(e) => {
-                                                if (!qaLoading && qaNotes.trim()) {
+                                                if (!qaLoading && selectedPenaltyType) {
                                                     e.currentTarget.style.backgroundColor = '#3b82f6';
                                                     e.currentTarget.style.transform = 'translateY(0)';
                                                     e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';

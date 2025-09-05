@@ -31,7 +31,7 @@ const setupIndexes = async () => {
 
 const createErrorCard = async (cardData) => {
     try {
-        const {cardId, cardUrl, cardName, labels, members, createdAt, note, penaltyPoints } = cardData;
+        const {cardId, cardUrl, cardName, labels, members, createdAt, note, penaltyPoints, penaltyId } = cardData;
 
         const errorCard = new ErrorCard({
             uniqueId: `${cardId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Create unique identifier
@@ -42,7 +42,8 @@ const createErrorCard = async (cardData) => {
             members, 
             createdAt: new Date(createdAt), // Use current timestamp for each submission
             note, 
-            penaltyPoints
+            penaltyPoints,
+            penaltyId
         });
 
         const savedErrorCard = await errorCard.save();

@@ -1,0 +1,57 @@
+[
+    {
+        "id": "TSP1",
+        "name": "Không để card đúng cột",
+        "points": 10
+    },
+    {
+        "id": "TSP2",
+        "name": "Không đảm bảo SLA của các cột",
+        "points": 10
+    },
+    {
+        "id": "TSP3",
+        "name": "Không báo dev ngay trong ca làm việc",
+        "points": 10
+    },
+    {
+        "id": "TSP4",
+        "name": "Không báo bug đúng quy định",
+        "points": 10
+    },
+    {
+        "id": "TSP5",
+        "name": "Không customize CSS đúng quy định",  
+        "points": 20
+    },
+    {
+        "id": "TSP6",
+        "name": "Không assign TS khác đúng quy định",
+        "points": 20
+    },
+    {
+        "id": "TSP7",
+        "name": "Không update khách trước khi kéo card",
+        "points": 30
+    },
+    {
+        "id": "TSP8",
+        "name": "Không note rõ thông tin và trả lời khách hàng đầy đủ",
+        "points": 30
+    },
+    {
+        "id": "TSP9",
+        "name": "Không được từ chối support khách hàng",
+        "points": 50
+    },
+    {
+        "id": "TSP10",
+        "name": "Không support đúng tính năng của app",
+        "points": 50
+    },
+    {
+        "id": "TSP11",
+        "name": "Không được gây lỗi ảnh hưởng uy tín store hoặc làm lỗi site",
+        "points": 50
+    }
+]

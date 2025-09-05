@@ -34,6 +34,10 @@ const ErrorCardSchema = new mongoose.Schema({
     penaltyPoints: {
         type: Number,
         default: 0,
+    },
+    penaltyId: {
+        type: String,
+        default: '',
     }
 }, {
     collection: 'errorCards', // 👈 tên collection cố định trong MongoDB
