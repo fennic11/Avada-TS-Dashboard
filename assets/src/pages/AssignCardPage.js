@@ -62,6 +62,7 @@ import { sendMessageToChannel } from '../api/slackApi';
 import members from '../data/members.json';
 import { getCurrentUser } from '../api/usersApi';
 import { ROLES } from '../utils/roles';
+import CardDetailModal from '../components/CardDetailModal';
 
 const AssignCardPage = () => {
   const [data, setData] = useState([]);
@@ -88,6 +89,10 @@ const AssignCardPage = () => {
   const [selectedCard, setSelectedCard] = useState(null);
   const [requestText, setRequestText] = useState('');
   const [isSubmittingModal, setIsSubmittingModal] = useState(false);
+  
+  // Card detail modal states
+  const [isCardDetailModalOpen, setIsCardDetailModalOpen] = useState(false);
+  const [selectedCardId, setSelectedCardId] = useState(null);
 
   // Get current user and check if admin
   const currentUser = getCurrentUser();
@@ -298,6 +303,23 @@ const AssignCardPage = () => {
     setSelectedCard(null);
     setRequestText('');
     setIsSubmittingModal(false);
+  };
+
+  const extractCardIdFromUrl = (cardUrl) => {
+    if (!cardUrl) return null;
+    // Extract card ID from Trello URL: https://trello.com/c/cardId
+    const match = cardUrl.match(/trello\.com\/c\/([a-zA-Z0-9]+)/);
+    return match ? match[1] : null;
+  };
+
+  const handleOpenCardDetail = (cardUrl) => {
+    const cardId = extractCardIdFromUrl(cardUrl);
+    if (cardId) {
+      setSelectedCardId(cardId);
+      setIsCardDetailModalOpen(true);
+    } else {
+      console.error('Could not extract card ID from URL:', cardUrl);
+    }
   };
 
   const handleSubmitRequest = async () => {
@@ -946,7 +968,19 @@ const AssignCardPage = () => {
                             }}>
                               
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    fontWeight: 600, 
+                                    flex: 1,
+                                    cursor: 'pointer',
+                                    color: '#1976d2',
+                                    '&:hover': {
+                                      textDecoration: 'underline'
+                                    }
+                                  }}
+                                  onClick={() => handleOpenCardDetail(card.cardUrl)}
+                                >
                                   {card.cardName}
                                 </Typography>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -1162,6 +1196,13 @@ const AssignCardPage = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Card Detail Modal */}
+        <CardDetailModal
+          open={isCardDetailModalOpen}
+          onClose={() => setIsCardDetailModalOpen(false)}
+          cardId={selectedCardId}
+        />
       </Box>
     </LocalizationProvider>
   );

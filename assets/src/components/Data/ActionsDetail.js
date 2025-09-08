@@ -222,7 +222,9 @@ const ActionsDetail = () => {
                         >
                             <MenuItem value="all">All</MenuItem>
                             {tsMembers.map(m => (
-                                <MenuItem key={m.id} value={m.id}>{m.fullName}</MenuItem>
+                                <MenuItem key={m.id} value={m.id}>
+                                    {m.fullName} {m.group ? `(${m.group})` : ''}
+                                </MenuItem>
                             ))}
                         </Select>
                     </FormControl>
