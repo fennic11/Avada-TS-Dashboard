@@ -45,13 +45,13 @@ const AllKpiTsTeam = () => {
                 setLoading(true);
                 
                 // Fetch shift data
-                const kpiData = await getKpiTsTeam('2025-07-31', '2025-08-30');
+                const kpiData = await getKpiTsTeam('2025-08-30', '2025-09-30');
                 const cleanedData = kpiData.filter(item => item && Object.keys(item).length > 0);
                 setKpiTsTeam(cleanedData);
                 
                 // Get list IDs for "Fix done from dev" and "Done"
-                const fixDoneList = listsId.find(list => list.name === "FixDoneFromDev-T8-2025");
-                const doneLists = listsId.filter(list => list.name === "Done" || list.name === "Done-T8-2025");
+                const fixDoneList = listsId.find(list => list.name === "Fix done from dev");
+                const doneLists = listsId.filter(list => list.name === "Done");
                 
                 // Fetch cards from both lists separately
                 const fixDoneCards = [];
