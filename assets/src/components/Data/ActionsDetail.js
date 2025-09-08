@@ -15,7 +15,7 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 const shiftLabels = [
-    'Ca 1', 'Ca 2', 'Ca 3', 'Ca 4', 'Ca 5.1', 'Ca 5.2', 'Ca 6'
+    'Ca 1', 'Ca 2', 'Ca 3', 'Ca 4', 'Ca 5.1', 'Ca 5', 'Ca 5.2', 'Ca 6'
 ];
 
 const shiftTimeRanges = {
@@ -24,6 +24,7 @@ const shiftTimeRanges = {
     'Ca 3': { start: '08:00', end: '11:59' },
     'Ca 4': { start: '12:00', end: '15:59' },
     'Ca 5.1': { start: '16:00', end: '17:59' },
+    'Ca 5': { start: '16:00', end: '19:59' },
     'Ca 5.2': { start: '18:00', end: '19:59' },
     'Ca 6': { start: '20:00', end: '23:59' },
 };
