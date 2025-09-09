@@ -209,7 +209,8 @@ const getAddMemberToCardActions = (actions) => {
             idMemberCreator: action.memberCreator.id,
             idMemberAssigned: action.data.member.id,
             date: action.date,
-            card: action.data.card
+            card: action.data.card,
+            note: ""
         }));
 }
 
