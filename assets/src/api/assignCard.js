@@ -62,4 +62,24 @@ const assignCard = {
     }
 }
 
+const errorAssignCard = {
+    createErrorAssignCards: async (errorAssignCards) => {
+        try {
+            const response = await fetch(`${API_URL}/error-assign-cards`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...getAuthHeaders()
+                },
+                body: JSON.stringify(errorAssignCards)
+            });
+            return response.json();
+        } catch (error) {
+            console.error(error);
+            return error;
+        }
+    }
+}
+
 export default assignCard;
+export { errorAssignCard };

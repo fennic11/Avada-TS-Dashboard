@@ -27,7 +27,8 @@ import {
     getBoardLabels,
     createWebhook,
     getWebhooks,
-    deleteWebhook
+    deleteWebhook,
+    getAddMemberToCardActionsByDate
 } from "../api/trelloApi";
 import { calculateResolutionTime } from "../utils/resolutionTime";
 import { postCards } from "../api/cardsApi";
@@ -124,6 +125,14 @@ const DevZone = () => {
     const [devProgress, setDevProgress] = useState(0);
     const [isDevLoading, setIsDevLoading] = useState(false);
     const [devLog, setDevLog] = useState("");
+
+    // AddMemberToCard states
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [addMemberActions, setAddMemberActions] = useState([]);
+    const [isAddMemberLoading, setIsAddMemberLoading] = useState(false);
+    const [selectedRole, setSelectedRole] = useState('all');
+    const [selectedAddedRole, setSelectedAddedRole] = useState('all');
+    const [filteredActions, setFilteredActions] = useState([]);
 
     useEffect(() => {
         const fetchLists = async () => {
@@ -875,6 +884,114 @@ const DevZone = () => {
         setSelectedCardId(null);
     };
 
+    // AddMemberToCard functions
+    const handleGetAddMemberActions = async () => {
+        if (!selectedDate) {
+            setSnackbar({
+                open: true,
+                message: "Vui lòng chọn ngày",
+                severity: "warning"
+            });
+            return;
+        }
+
+        try {
+            setIsAddMemberLoading(true);
+            
+            // Create date range from 00:00 to 23:59 of selected date
+            const since = new Date(selectedDate + 'T00:00:00.000Z').toISOString();
+            const before = new Date(selectedDate + 'T23:59:59.999Z').toISOString();
+            
+            console.log('Fetching addMemberToCard actions from:', since, 'to:', before);
+            
+            const actions = await getAddMemberToCardActionsByDate(since, before);
+            setAddMemberActions(actions);
+            setFilteredActions(actions); // Initialize filtered actions with all actions
+            setSelectedRole('all'); // Reset filters
+            setSelectedAddedRole('all');
+            
+            setSnackbar({
+                open: true,
+                message: `Đã lấy ${actions.length} addMemberToCard actions`,
+                severity: "success"
+            });
+        } catch (error) {
+            console.error('Error fetching addMemberToCard actions:', error);
+            setSnackbar({
+                open: true,
+                message: "Không thể lấy addMemberToCard actions. Vui lòng thử lại.",
+                severity: "error"
+            });
+        } finally {
+            setIsAddMemberLoading(false);
+        }
+    };
+
+
+    const handleCopyAddMemberJSON = () => {
+        if (filteredActions.length > 0) {
+            navigator.clipboard.writeText(JSON.stringify(filteredActions, null, 2))
+                .then(() => {
+                    setSnackbar({
+                        open: true,
+                        message: "Đã sao chép JSON vào clipboard",
+                        severity: "success"
+                    });
+                })
+                .catch(err => {
+                    console.error('Failed to copy:', err);
+                    setSnackbar({
+                        open: true,
+                        message: "Không thể sao chép JSON",
+                        severity: "error"
+                    });
+                });
+        }
+    };
+
+    // Filter actions by role
+    const handleRoleFilter = (role) => {
+        setSelectedRole(role);
+        applyFilters(role, selectedAddedRole);
+    };
+
+    // Filter actions by added member role
+    const handleAddedRoleFilter = (addedRole) => {
+        setSelectedAddedRole(addedRole);
+        applyFilters(selectedRole, addedRole);
+    };
+
+    // Apply both filters
+    const applyFilters = (creatorRole, addedRole) => {
+        let filtered = addMemberActions;
+
+        // Filter by creator role
+        if (creatorRole !== 'all') {
+            filtered = filtered.filter(action => {
+                const memberCreatorId = action.memberCreator?.id;
+                const member = members.find(m => m.id === memberCreatorId);
+                return member && member.role === creatorRole;
+            });
+        }
+
+        // Filter by added member role
+        if (addedRole !== 'all') {
+            filtered = filtered.filter(action => {
+                const memberAddedId = action.data?.member?.id;
+                const member = members.find(m => m.id === memberAddedId);
+                return member && member.role === addedRole;
+            });
+        }
+
+        setFilteredActions(filtered);
+    };
+
+    // Get unique roles from members
+    const getUniqueRoles = () => {
+        const roles = [...new Set(members.map(member => member.role).filter(role => role))];
+        return roles.sort();
+    };
+
     return (
         <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -1097,6 +1214,240 @@ const DevZone = () => {
                             Lấy Board Labels
                         </Button>
                     </Box>
+                </Paper>
+
+                {/* Phần lấy AddMemberToCard Actions */}
+                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
+                        Lấy AddMemberToCard Actions
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
+                        <TextField
+                            label="Chọn ngày"
+                            type="date"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            InputLabelProps={{
+                                shrink: true,
+                            }}
+                            sx={{ 
+                                minWidth: 200,
+                                '& .MuiOutlinedInput-root': { borderRadius: 1 } 
+                            }}
+                        />
+                        <Button 
+                            variant="contained" 
+                            onClick={handleGetAddMemberActions}
+                            disabled={isAddMemberLoading}
+                            sx={{ 
+                                minWidth: 200,
+                                borderRadius: 1
+                            }}
+                        >
+                            Lấy AddMemberToCard Actions
+                        </Button>
+                    </Box>
+                    
+                    {/* Role Filters */}
+                    {addMemberActions.length > 0 && (
+                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2, flexWrap: 'wrap' }}>
+                            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 80 }}>
+                                Lọc theo role:
+                            </Typography>
+                            <FormControl sx={{ minWidth: 150 }}>
+                                <InputLabel id="creator-role-filter-label">Creator Role</InputLabel>
+                                <Select
+                                    labelId="creator-role-filter-label"
+                                    value={selectedRole}
+                                    label="Creator Role"
+                                    onChange={(e) => handleRoleFilter(e.target.value)}
+                                    size="small"
+                                >
+                                    <MenuItem value="all">Tất cả</MenuItem>
+                                    {getUniqueRoles().map((role) => (
+                                        <MenuItem key={role} value={role}>
+                                            {role.toUpperCase()}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                            <FormControl sx={{ minWidth: 150 }}>
+                                <InputLabel id="added-role-filter-label">Added Role</InputLabel>
+                                <Select
+                                    labelId="added-role-filter-label"
+                                    value={selectedAddedRole}
+                                    label="Added Role"
+                                    onChange={(e) => handleAddedRoleFilter(e.target.value)}
+                                    size="small"
+                                >
+                                    <MenuItem value="all">Tất cả</MenuItem>
+                                    {getUniqueRoles().map((role) => (
+                                        <MenuItem key={role} value={role}>
+                                            {role.toUpperCase()}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Box>
+                    )}
+                    {addMemberActions.length > 0 && (
+                        <Box sx={{ mt: 3 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                                <Typography variant="body2" color="text.secondary">
+                                    Số lượng actions:
+                                </Typography>
+                                <Chip 
+                                    label={`${filteredActions.length} / ${addMemberActions.length}`} 
+                                    size="small"
+                                    sx={{ 
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                        color: 'primary.main',
+                                        fontWeight: 500
+                                    }}
+                                />
+                                {(selectedRole !== 'all' || selectedAddedRole !== 'all') && (
+                                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                        {selectedRole !== 'all' && (
+                                            <Chip 
+                                                label={`Creator: ${selectedRole.toUpperCase()}`} 
+                                                size="small"
+                                                color="primary"
+                                                variant="outlined"
+                                            />
+                                        )}
+                                        {selectedAddedRole !== 'all' && (
+                                            <Chip 
+                                                label={`Added: ${selectedAddedRole.toUpperCase()}`} 
+                                                size="small"
+                                                color="secondary"
+                                                variant="outlined"
+                                            />
+                                        )}
+                                    </Box>
+                                )}
+                                <Tooltip title="Copy JSON">
+                                    <IconButton 
+                                        onClick={handleCopyAddMemberJSON}
+                                        size="small"
+                                        sx={{ 
+                                            color: 'primary.main',
+                                            '&:hover': {
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                                            }
+                                        }}
+                                    >
+                                        <ContentCopyIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            </Box>
+                            
+                            {/* Display each action */}
+                            {filteredActions.map((action, index) => {
+                                const memberCreatorId = action.memberCreator?.id;
+                                const memberCreator = members.find(m => m.id === memberCreatorId);
+                                const memberCreatorRole = memberCreator?.role || 'Unknown';
+                                
+                                // Get member being added information
+                                const memberAddedId = action.data?.member?.id;
+                                const memberAdded = members.find(m => m.id === memberAddedId);
+                                const memberAddedRole = memberAdded?.role || 'Unknown';
+                                
+                                return (
+                                <Paper 
+                                    key={action.id || index} 
+                                    sx={{ 
+                                        p: 2, 
+                                        mb: 2, 
+                                        border: '1px solid #e0e0e0',
+                                        backgroundColor: '#fafafa',
+                                        borderRadius: 2
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                                        <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                                            Action #{index + 1}
+                                        </Typography>
+                                        <Chip 
+                                            label={new Date(action.date).toLocaleString('vi-VN')}
+                                            size="small"
+                                            color="primary"
+                                            variant="outlined"
+                                        />
+                                    </Box>
+                                    
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
+                                        <Box>
+                                            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                                                Member Creator:
+                                            </Typography>
+                                            <Typography variant="body2">
+                                                {memberCreator?.fullName || memberCreator?.username || action.memberCreator?.fullName || action.memberCreator?.username || 'Unknown'}
+                                            </Typography>
+                                            <Chip 
+                                                label={memberCreatorRole.toUpperCase()} 
+                                                size="small"
+                                                color={memberCreatorRole === 'TS' ? 'primary' : memberCreatorRole === 'CS' ? 'secondary' : 'default'}
+                                                variant="outlined"
+                                                sx={{ mt: 0.5, fontSize: '0.75rem' }}
+                                            />
+                                        </Box>
+                                        <Box>
+                                            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                                                Member Added:
+                                            </Typography>
+                                            <Typography variant="body2">
+                                                {memberAdded?.fullName || memberAdded?.username || action.data?.member?.fullName || action.data?.member?.username || 'Unknown'}
+                                            </Typography>
+                                            <Chip 
+                                                label={memberAddedRole.toUpperCase()} 
+                                                size="small"
+                                                color={memberAddedRole === 'TS' ? 'primary' : memberAddedRole === 'CS' ? 'secondary' : 'default'}
+                                                variant="outlined"
+                                                sx={{ mt: 0.5, fontSize: '0.75rem' }}
+                                            />
+                                        </Box>
+                                    </Box>
+                                    
+                                    <Box sx={{ mb: 1 }}>
+                                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                                            Card:
+                                        </Typography>
+                                        <Typography variant="body2">
+                                            {action.data?.card?.name || 'Unknown Card'}
+                                        </Typography>
+                                    </Box>
+                                    
+                                    <Box>
+                                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                                            Action ID:
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
+                                            {action.id}
+                                        </Typography>
+                                    </Box>
+                                </Paper>
+                                );
+                            })}
+                        </Box>
+                    )}
+                    
+                    {addMemberActions.length === 0 && !isAddMemberLoading && selectedDate && (
+                        <Box sx={{ mt: 3, textAlign: 'center', py: 2 }}>
+                            <Typography variant="body1" color="text.secondary">
+                                Không có addMemberToCard actions nào trong ngày đã chọn
+                            </Typography>
+                        </Box>
+                    )}
+                    
+                    {addMemberActions.length > 0 && filteredActions.length === 0 && (selectedRole !== 'all' || selectedAddedRole !== 'all') && (
+                        <Box sx={{ mt: 3, textAlign: 'center', py: 2 }}>
+                            <Typography variant="body1" color="text.secondary">
+                                Không có actions nào phù hợp với bộ lọc đã chọn
+                                {selectedRole !== 'all' && ` (Creator: ${selectedRole.toUpperCase()})`}
+                                {selectedAddedRole !== 'all' && ` (Added: ${selectedAddedRole.toUpperCase()})`}
+                            </Typography>
+                        </Box>
+                    )}
                 </Paper>
 
                 {/* Phần cập nhật thông tin user */}
@@ -2098,6 +2449,7 @@ const DevZone = () => {
 
 
             {/* Form tạo conversation */}
+
 
             {/* CardDetailModal */}
             <CardDetailModal

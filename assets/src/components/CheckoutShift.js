@@ -327,8 +327,12 @@ const CheckoutShift = () => {
     filteredActions.forEach(action => {
       if (action.type === 'updateCard') actionCounts.updateCard++;
       if (action.type === 'commentCard') actionCounts.commentCard++;
-      if (action.type === 'removeMemberFromCard') {
-        if (action.data?.idMember === currentUser?.trelloId && action.idMemberCreator === currentUser?.trelloId) {
+      if (action.type === 'addMemberToCard') {
+        // Count when current user adds another TS member to a card
+        if (action.idMemberCreator === currentUser?.trelloId && 
+            action.data?.idMember && 
+            action.data.idMember !== currentUser?.trelloId &&
+            isTSMember(action.data.idMember)) {
           actionCounts.removeMemberFromCard++;
         }
       }
@@ -412,7 +416,11 @@ const CheckoutShift = () => {
         return action.type === 'addMemberToCard' && action.data?.idMember === currentUser?.trelloId;
       }
       if (selectedActionType === 'removeMemberFromCard') {
-        return action.type === 'removeMemberFromCard' && action.data?.idMember === currentUser?.trelloId && action.idMemberCreator === currentUser?.trelloId;
+        return action.type === 'addMemberToCard' && 
+               action.idMemberCreator === currentUser?.trelloId && 
+               action.data?.idMember && 
+               action.data.idMember !== currentUser?.trelloId &&
+               isTSMember(action.data.idMember);
       }
       // Default: match by action.type
       return action.type === selectedActionType;
@@ -435,7 +443,7 @@ const CheckoutShift = () => {
       case 'updateCard': return 'Update Card';
       case 'commentCard': return 'Comment Card';
       case 'addMemberToCard': return 'Assigned';
-      case 'removeMemberFromCard': return 'Assign card again';
+      case 'removeMemberFromCard': return 'Assign TS to Card';
       case 'completeCard': return 'Complete card';
       case 'moveToDone': return 'Move Card to Done';
       case 'moveToDoing': return 'Move Card to Doing';
@@ -457,7 +465,7 @@ const CheckoutShift = () => {
       case 'addMemberToCard':
         return { icon: '👤', chipLabel: 'MEMBER', chipBg: '#e3f7e3', chipColor: '#2e7d32', bgColor: '#e3f7e3', color: '#2e7d32' };
       case 'removeMemberFromCard':
-        return { icon: '❌', chipLabel: 'MEMBER', chipBg: '#ffe3e3', chipColor: '#d32f2f', bgColor: '#ffe3e3', color: '#d32f2f' };
+        return { icon: '👥', chipLabel: 'ASSIGN', chipBg: '#fff3e0', chipColor: '#f57c00', bgColor: '#fff3e0', color: '#f57c00' };
       case 'completeCard':
         return { icon: '✅', chipLabel: 'COMPLETE', chipBg: '#e3f7e3', chipColor: '#2e7d32', bgColor: '#e3f7e3', color: '#2e7d32' };
       case 'moveToDone':

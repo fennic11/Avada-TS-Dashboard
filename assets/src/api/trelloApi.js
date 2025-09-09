@@ -978,3 +978,36 @@ export async function deleteWebhook(webhookId) {
         throw error;
     }
 }
+
+/**
+ * Lấy actions addMemberToCard theo ngày
+ * @param {string} since - ISO string bắt đầu
+ * @param {string} before - ISO string kết thúc
+ * @param {number} limit - số lượng action tối đa (max 1000/lần gọi)
+ * @returns {Promise<Array>} - Mảng actions addMemberToCard trong khoảng thời gian đó
+ */
+export async function getAddMemberToCardActionsByDate(since, before, limit = 1000) {
+    try {
+        const { key, token } = getCredentials();
+        let url = `${API_URL}/boards/${BOARD_ID}/actions?key=${key}&token=${token}`;
+        url += `&filter=addMemberToCard`;
+        url += `&limit=${limit}`;
+        if (since) url += `&since=${since}`;
+        if (before) url += `&before=${before}`;
+        
+        const resp = await fetch(url, { 
+            headers: { Accept: 'application/json' } 
+        });
+        
+        if (!resp.ok) {
+            throw new Error(`Failed to fetch addMemberToCard actions: ${resp.statusText}`);
+        }
+        
+        const actions = await resp.json();
+        return actions;
+    } catch (error) {
+        console.error('Error getAddMemberToCardActionsByDate:', error);
+        return [];
+    }
+}
+
