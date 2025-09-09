@@ -4,7 +4,6 @@ const { getBoardActionsByMemberAndDate, getCardsByList } = require('../services/
 const { sendMessageToChannel } = require('../services/slackService');
 const { createErrorAssignCard } = require('../services/errorAssignCardService');
 const schedule = '59 * * * *';
-
 const reportWorkShift = () => {
     console.log('Report work shift cron job...');
     cron.schedule(schedule, async () => {
