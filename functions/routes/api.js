@@ -11,6 +11,7 @@ const devCardController = require('../controllers/devCardController');
 const firebaseController = require('../controllers/firebaseController');
 const errorCardController = require('../controllers/errorCardController');
 const assignCardsController = require('../controllers/cardAssignController');
+const errorAssignCardController = require('../controllers/errorAssignCardController');
 // Auth routes
 router.put('/auth/user', authController.createOrUpdateUser);
 router.get('/auth/user/:email', authController.getUserByEmail);
@@ -22,6 +23,13 @@ router.get('/cards/:cardUrl', cardController.getCardByUrl);
 // Error Card routes
 router.post('/error-cards', errorCardController.createErrorCard);
 router.get('/error-cards', errorCardController.getErrorCardsByMonth);
+
+// Error Assign Cards routes
+router.post('/error-assign-cards', errorAssignCardController.createErrorAssignCards);
+// router.get('/error-assign-cards', errorAssignCardController.getErrorAssignCards);
+// router.put('/error-assign-cards/:recordId/card-status', errorAssignCardController.updateErrorAssignCards);
+// router.put('/error-assign-cards/:recordId/card-status', errorAssignCardController.updateCardStatus);
+// router.delete('/error-assign-cards/:recordId', errorAssignCardController.deleteErrorAssignCards);
 
 // Dev Card routes
 router.post('/dev-cards', devCardController.createOrUpdateDevCard);

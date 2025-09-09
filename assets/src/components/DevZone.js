@@ -42,6 +42,7 @@ import { postDevCards } from "../api/devCardsApi";
 import { calculateDevResolutionTime } from "../utils/devResolutionTime";
 import { checkOverdueConfirmationCards, getOverdueConfirmationSummary } from "../utils/qaConfirmCard";
 import CardDetailModal from "./CardDetailModal";
+import errorAssignCard from "../api/errorAssignCardApi";
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -133,6 +134,7 @@ const DevZone = () => {
     const [selectedRole, setSelectedRole] = useState('all');
     const [selectedAddedRole, setSelectedAddedRole] = useState('all');
     const [filteredActions, setFilteredActions] = useState([]);
+    const [isPushingData, setIsPushingData] = useState(false);
 
     useEffect(() => {
         const fetchLists = async () => {
@@ -992,6 +994,51 @@ const DevZone = () => {
         return roles.sort();
     };
 
+    // Push filtered data to database
+    const handlePushDataToDatabase = async () => {
+        if (filteredActions.length === 0) {
+            setSnackbar({
+                open: true,
+                message: "Không có dữ liệu để push lên database",
+                severity: "warning"
+            });
+            return;
+        }
+
+        try {
+            setIsPushingData(true);
+            
+            // Transform filtered actions to the format expected by errorAssignCard
+            const dataToPush = filteredActions.map(action => ({
+                idMemberCreator: action.memberCreator?.id,
+                idMemberAssigned: action.data?.member?.id,
+                date: action.date,
+                card: action.data?.card
+            }));
+
+            console.log('Pushing data to database:', dataToPush);
+            
+            // Call the errorAssignCard API
+            const response = await errorAssignCard.createErrorAssignCards(dataToPush);
+            
+            setSnackbar({
+                open: true,
+                message: `Đã push thành công ${dataToPush.length} records lên database`,
+                severity: "success"
+            });
+            
+        } catch (error) {
+            console.error('Error pushing data to database:', error);
+            setSnackbar({
+                open: true,
+                message: `Lỗi khi push dữ liệu: ${error.message || 'Unknown error'}`,
+                severity: "error"
+            });
+        } finally {
+            setIsPushingData(false);
+        }
+    };
+
     return (
         <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -1339,6 +1386,21 @@ const DevZone = () => {
                                         <ContentCopyIcon />
                                     </IconButton>
                                 </Tooltip>
+                                <Button
+                                    variant="contained"
+                                    color="success"
+                                    size="small"
+                                    onClick={handlePushDataToDatabase}
+                                    disabled={isPushingData || filteredActions.length === 0}
+                                    sx={{ 
+                                        ml: 1,
+                                        fontWeight: 600,
+                                        borderRadius: 1,
+                                        textTransform: 'none'
+                                    }}
+                                >
+                                    {isPushingData ? 'Đang push...' : 'Push to DB'}
+                                </Button>
                             </Box>
                             
                             {/* Display each action */}
