@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const members = require('../slackIdsConfig.json');
 const { getBoardActionsByMemberAndDate, getCardsByList } = require('../services/trelloService');
 const { sendMessageToChannel } = require('../services/slackService');
+const { createErrorAssignCard } = require('../services/errorAssignCardService');
 const schedule = '59 * * * *';
 
 const reportWorkShift = () => {
@@ -22,6 +23,13 @@ const reportWorkShift = () => {
             
             const actions = await getBoardActionsByMemberAndDate(since, before);
             console.log('actions', actions.length);
+
+            const addMemberToCardActions = getAddMemberToCardActions(actions);
+
+            if (addMemberToCardActions.length > 0) {
+                console.log('addMemberToCardActions', addMemberToCardActions.length);
+                await createErrorAssignCard(addMemberToCardActions);
+            }
             
             // Get cards from Pending and Doing lists
             const pendingCards = await getCardsByList(process.env.PENDING_CARD_LIST_ID);
@@ -163,6 +171,50 @@ const filterActionsAndCards = (actions, cards) => {
     return message;
 };
 
+const getAddMemberToCardActions = (actions) => {
+    // Filter members with role TS
+    const tsMembers = members.filter(member => member.role === 'TS');
+    
+    // Create a map of TS member IDs for quick lookup
+    const tsMemberIds = new Set(tsMembers.map(member => member.id));
+    
+    // Filter and transform actions for addMemberToCard where:
+    // 1. Action type is 'addMemberToCard'
+    // 2. The member who performed the action has role TS
+    // 3. The action adds another member to the card
+    return actions
+        .filter(action => {
+            // Check if action type is addMemberToCard
+            if (action.type !== 'addMemberToCard') {
+                return false;
+            }
+            
+            // Check if the member who performed the action has role TS
+            if (!action.memberCreator || !tsMemberIds.has(action.memberCreator.id)) {
+                return false;
+            }
+            
+            // Check if the action data contains member information (someone was added)
+            if (!action.data || !action.data.member) {
+                return false;
+            }
+            
+            // Check if the member being added is different from the member who created the action
+            if (action.memberCreator.id === action.data.member.id) {
+                return false;
+            }
+            
+            return true;
+        })
+        .map(action => ({
+            idMemberCreator: action.memberCreator.id,
+            idMemberAssigned: action.data.member.id,
+            date: action.date,
+            card: action.data.card
+        }));
+}
+
 module.exports = {
-    reportWorkShift
+    reportWorkShift,
+    getAddMemberToCardActions
 }
