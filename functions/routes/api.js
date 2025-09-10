@@ -26,7 +26,7 @@ router.get('/error-cards', errorCardController.getErrorCardsByMonth);
 
 // Error Assign Cards routes
 router.post('/error-assign-cards', errorAssignCardController.createErrorAssignCards);
-// router.get('/error-assign-cards', errorAssignCardController.getErrorAssignCards);
+router.get('/error-assign-cards', errorAssignCardController.getErrorAssignCards);
 // router.put('/error-assign-cards/:recordId/card-status', errorAssignCardController.updateErrorAssignCards);
 // router.put('/error-assign-cards/:recordId/card-status', errorAssignCardController.updateCardStatus);
 // router.delete('/error-assign-cards/:recordId', errorAssignCardController.deleteErrorAssignCards);

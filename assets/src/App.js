@@ -30,6 +30,7 @@ import KpiTsTeamPage from './pages/KpiTsTeamPage';
 import DevResolutionTime from './pages/DevResolutionTime';
 import ErrorCardPage from './pages/ErrorCardPage';
 import AssignCardPage from './pages/AssignCardPage';
+import ErrorAssigCardsPage from './pages/ErrorAssigCardsPage';
 
 const theme = createTheme({
     palette: {
@@ -279,6 +280,16 @@ const App = () => {
                                     <PrivateRoute>
                                         <Layout>
                                             <AssignCardPage />
+                                        </Layout>
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path="/error-assign-cards-admin"
+                                element={
+                                    <PrivateRoute>
+                                        <Layout>
+                                            <ErrorAssigCardsPage />
                                         </Layout>
                                     </PrivateRoute>
                                 }

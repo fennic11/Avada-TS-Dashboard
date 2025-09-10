@@ -16,7 +16,8 @@ export const TABS = {
     CHECKOUT: 'checkout',
     KPI_TS_TEAM: 'kpi-ts-team',
     ERROR_CARDS: 'error-cards',
-    ASSIGN_CARDS: 'assign-cards'
+    ASSIGN_CARDS: 'assign-cards',
+    ERROR_ASSIGN_CARDS: 'error-assign-cards-admin'
 };
 
 // Define roles and their permissions

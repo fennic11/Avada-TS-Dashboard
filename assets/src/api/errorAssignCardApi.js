@@ -11,6 +11,16 @@ const errorAssignCardApi = {
             body: JSON.stringify(errorAssignCards)
         });
         return response.json();
+    },
+
+    getErrorAssignCards: async () => {
+        const response = await fetch(`${API_URL}/error-assign-cards`, {
+            method: 'GET',
+            headers: {
+                ...getAuthHeaders()
+            }
+        });
+        return handleResponse(response);
     }
 }
 

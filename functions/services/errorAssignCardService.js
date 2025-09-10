@@ -24,6 +24,17 @@ const createErrorAssignCard = async (errorAssignCardData) => {
     }
 }
 
+const getErrorAssignCards = async () => {
+    try {
+        const errorAssignCards = await ErrorAssignCard.find();
+        return errorAssignCards;
+    } catch (error) {
+        console.error('Error getting error assign cards:', error);
+        throw error;
+    }
+}
+
 module.exports = {
-    createErrorAssignCard
+    createErrorAssignCard,
+    getErrorAssignCards
 }
