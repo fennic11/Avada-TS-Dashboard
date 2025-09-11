@@ -7,7 +7,9 @@ import {
     Card,
     Button,
     Divider,
-    Tooltip
+    Tooltip,
+    Image,
+    Modal
 } from "antd";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -15,26 +17,106 @@ import { format, formatDistanceToNow } from "date-fns";
 const renderFormattedText = (text) => {
     if (!text) return '';
     
+    // Remove markdown links that point to image URLs: [text](imageUrl) - keep the image URLs for @URL format
+    let textWithoutImageLinks = text
+        // Remove markdown links that point to image URLs: [text](imageUrl)
+        .replace(/\[([^\]]*)\]\((https?:\/\/[^\s<>"']+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s<>"']*)?)\)/gi, '$2');
+    
+    // Escape HTML characters first to prevent XSS
+    let escapedText = textWithoutImageLinks
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;');
+    
     // Convert markdown-like formatting to HTML
-    let formattedText = text
+    let formattedText = escapedText
         // Bold: **text** -> <strong>text</strong>
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         // Italic: *text* -> <em>text</em>
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
         // Underline: __text__ -> <u>text</u>
         .replace(/__(.*?)__/g, '<u>$1</u>')
-        // Links: [text](url) -> <a href="url">text</a>
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: #1890ff; text-decoration: underline;">$1</a>')
+        // Links: [text](url) -> <a href="url">text</a> (with proper URL validation)
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, linkText, url) => {
+            // Skip if it's an image URL
+            if (url.match(/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i)) {
+                return '';
+            }
+            // Validate URL
+            try {
+                new URL(url);
+                return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #1890ff; text-decoration: underline;">${linkText}</a>`;
+            } catch (e) {
+                return match; // Return original if URL is invalid
+            }
+        })
         // Lists: - item -> • item
         .replace(/^- (.+)$/gm, '• $1')
         // Numbered lists: 1. item -> 1. item (keep as is)
         .replace(/^\d+\. (.+)$/gm, '$&')
-        // URLs: http://... -> clickable links
-        .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: #1890ff; text-decoration: underline;">$1</a>')
+        // URLs: http://... -> clickable links (with proper URL validation) - but replace image URLs with @URL
+        .replace(/(https?:\/\/[^\s<>"']+)/g, (match) => {
+            // Replace image URLs with @URL format
+            if (match.match(/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i)) {
+                return `<span style="color: #1890ff; font-weight: 500;">@${match}</span>`;
+            }
+            // Validate URL
+            try {
+                new URL(match);
+                return `<a href="${match}" target="_blank" rel="noopener noreferrer" style="color: #1890ff; text-decoration: underline;">${match}</a>`;
+            } catch (e) {
+                return match; // Return original if URL is invalid
+            }
+        })
         // Line breaks
-        .replace(/\n/g, '<br>');
+        .replace(/\n/g, '<br>')
+        // Clean up multiple spaces and empty lines
+        .replace(/\s+/g, ' ')
+        .trim();
 
     return formattedText;
+};
+
+// Function to extract and render image URLs from text as @URL format
+const renderTextWithImages = (text) => {
+    if (!text) return null;
+    
+    // Regex to find image URLs (including Trello attachment URLs)
+    const imageUrlRegex = /(https?:\/\/[^\s<>"']+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s<>"']*)?)/gi;
+    const imageUrls = text.match(imageUrlRegex) || [];
+    
+    // If no images found, return null
+    if (imageUrls.length === 0) return null;
+    
+    return imageUrls.map((url, index) => (
+        <div key={index} style={{ marginTop: 8 }}>
+            <Image
+                src={url}
+                alt={`@${url}`}
+                style={{
+                    borderRadius: 8,
+                    maxHeight: 300,
+                    objectFit: "contain"
+                }}
+                preview={{
+                    mask: (
+                        <div style={{ 
+                            color: 'white', 
+                            fontSize: '14px',
+                            fontWeight: 500
+                        }}>
+                            <div style={{ marginBottom: 4 }}>📷</div>
+                            <div>Click to preview</div>
+                        </div>
+                    ),
+                    maskClassName: 'custom-image-mask'
+                }}
+                fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeHANwDrkl1AuO+pmgAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAAD9b/HnAAAHlklEQVR4Ae3dP3Ik1RnG4W+FgYxN"
+            />
+        </div>
+    ));
 };
 
 const { Text, Title } = Typography;
@@ -64,11 +146,23 @@ const getActionBackgroundColor = (type) => {
 
 const CardActivityHistory = ({ actions }) => {
     const [filter, setFilter] = useState('all'); // 'all' or 'comments'
+    const [previewVisible, setPreviewVisible] = useState(false);
+    const [previewImage, setPreviewImage] = useState('');
 
     const handleFilterChange = (newFilter) => {
         if (newFilter !== null) {
             setFilter(newFilter);
         }
+    };
+
+    const handleImagePreview = (imageUrl) => {
+        setPreviewImage(imageUrl);
+        setPreviewVisible(true);
+    };
+
+    const handlePreviewCancel = () => {
+        setPreviewVisible(false);
+        setPreviewImage('');
     };
 
     const filteredActions = actions.filter(action => {
@@ -162,80 +256,38 @@ const CardActivityHistory = ({ actions }) => {
                                 }} />
                             )}
                         </div>
+                        
+                        {/* Render images from text URLs */}
+                        {renderTextWithImages(text)}
                         {action.data.attachments && action.data.attachments.map((attachment, index) => {
                             // Check if it's an image attachment
                             if (attachment.mimeType?.startsWith('image/') || 
-                                attachment.name?.match(/\.(jpg|jpeg|png|gif)$/i)) {
+                                attachment.name?.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
                                 return (
-                                    <div
-                                        key={index}
-                                        style={{
-                                            position: "relative",
-                                            cursor: "pointer"
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            const overlay = e.currentTarget.querySelector('.image-overlay');
-                                            if (overlay) overlay.style.opacity = '1';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            const overlay = e.currentTarget.querySelector('.image-overlay');
-                                            if (overlay) overlay.style.opacity = '0';
-                                        }}
-                                    >
-                                        <Card
-                                            size="small"
+                                    <div key={index} style={{ marginTop: 8 }}>
+                                        <Image
+                                            src={attachment.url || attachment.previewUrl}
+                                            alt={attachment.name || "Comment attachment"}
                                             style={{
-                                                padding: 8,
-                                                borderRadius: 4,
-                                                borderColor: "rgba(0, 0, 0, 0.12)",
-                                                overflow: "hidden"
+                                                borderRadius: 8,
+                                                maxHeight: 300,
+                                                objectFit: "contain"
                                             }}
-                                        >
-                                            <img
-                                                src={attachment.url || attachment.previewUrl}
-                                                alt={attachment.name || "Comment attachment"}
-                                                style={{
-                                                    width: "100%",
-                                                    height: "auto",
-                                                    maxHeight: 300,
-                                                    objectFit: "contain",
-                                                    borderRadius: 2,
-                                                    cursor: "pointer"
-                                                }}
-                                                onClick={() => window.open(attachment.url || attachment.previewUrl, "_blank")}
-                                            />
-                                        </Card>
-                                        <div
-                                            className="image-overlay"
-                                            style={{
-                                                position: "absolute",
-                                                top: 0,
-                                                left: 0,
-                                                right: 0,
-                                                bottom: 0,
-                                                backgroundColor: "rgba(0, 0, 0, 0.5)",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                                opacity: 0,
-                                                transition: "opacity 0.2s",
-                                                borderRadius: 4,
-                                                cursor: "pointer"
+                                            preview={{
+                                                mask: (
+                                                    <div style={{ 
+                                                        color: 'white', 
+                                                        fontSize: '14px',
+                                                        fontWeight: 500
+                                                    }}>
+                                                        <div style={{ marginBottom: 4 }}>📷</div>
+                                                        <div>Click to preview</div>
+                                                    </div>
+                                                ),
+                                                maskClassName: 'custom-image-mask'
                                             }}
-                                            onClick={() => window.open(attachment.url || attachment.previewUrl, "_blank")}
-                                        >
-                                            <Text
-                                                style={{
-                                                    color: "white",
-                                                    backgroundColor: "rgba(0, 0, 0, 0.7)",
-                                                    padding: "8px 16px",
-                                                    borderRadius: 4,
-                                                    cursor: "pointer"
-                                                }}
-                                            >
-                                                View Full Size
-                                            </Text>
-                                        </div>
+                                            fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeHANwDrkl1AuO+pmgAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAAD9b/HnAAAHlklEQVR4Ae3dP3Ik1RnG4W+FgYxN"
+                                        />
                                     </div>
                                 );
                             }
@@ -310,76 +362,32 @@ const CardActivityHistory = ({ actions }) => {
             case "addAttachmentToCard":
                 const attachment = action.data.attachment;
                 if (attachment && (attachment.mimeType?.startsWith('image/') || 
-                    attachment.name?.match(/\.(jpg|jpeg|png|gif)$/i))) {
+                    attachment.name?.match(/\.(jpg|jpeg|png|gif|webp)$/i))) {
                     return (
-                        <div
-                            style={{
-                                position: "relative",
-                                cursor: "pointer"
-                            }}
-                            onMouseEnter={(e) => {
-                                const overlay = e.currentTarget.querySelector('.image-overlay');
-                                if (overlay) overlay.style.opacity = '1';
-                            }}
-                            onMouseLeave={(e) => {
-                                const overlay = e.currentTarget.querySelector('.image-overlay');
-                                if (overlay) overlay.style.opacity = '0';
-                            }}
-                        >
-                            <Card
-                                size="small"
+                        <div style={{ marginTop: 8 }}>
+                            <Image
+                                src={attachment.url || attachment.previewUrl}
+                                alt={attachment.name || "Attachment"}
                                 style={{
-                                    padding: 8,
-                                    borderRadius: 4,
-                                    borderColor: "rgba(0, 0, 0, 0.12)",
-                                    overflow: "hidden"
+                                    borderRadius: 8,
+                                    maxHeight: 300,
+                                    objectFit: "contain"
                                 }}
-                            >
-                                <img
-                                    src={attachment.url || attachment.previewUrl}
-                                    alt={attachment.name || "Attachment"}
-                                    style={{
-                                        width: "100%",
-                                        height: "auto",
-                                        maxHeight: 300,
-                                        objectFit: "contain",
-                                        borderRadius: 2,
-                                        cursor: "pointer"
-                                    }}
-                                    onClick={() => window.open(attachment.url || attachment.previewUrl, "_blank")}
-                                />
-                            </Card>
-                            <div
-                                className="image-overlay"
-                                style={{
-                                    position: "absolute",
-                                    top: 0,
-                                    left: 0,
-                                    right: 0,
-                                    bottom: 0,
-                                    backgroundColor: "rgba(0, 0, 0, 0.5)",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    opacity: 0,
-                                    transition: "opacity 0.2s",
-                                    borderRadius: 4,
-                                    cursor: "pointer"
+                                preview={{
+                                    mask: (
+                                        <div style={{ 
+                                            color: 'white', 
+                                            fontSize: '14px',
+                                            fontWeight: 500
+                                        }}>
+                                            <div style={{ marginBottom: 4 }}>📷</div>
+                                            <div>Click to preview</div>
+                                        </div>
+                                    ),
+                                    maskClassName: 'custom-image-mask'
                                 }}
-                                onClick={() => window.open(attachment.url || attachment.previewUrl, "_blank")}
-                            >
-                                <Text
-                                    style={{
-                                        color: "white",
-                                        backgroundColor: "rgba(0, 0, 0, 0.7)",
-                                        padding: "8px 16px",
-                                        borderRadius: 4,
-                                        cursor: "pointer"
-                                    }}
-                                >
-                                    View Full Size
-                                </Text>
-                            </div>
+                                fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeHANwDrkl1AuO+pmgAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAAD9b/HnAAAHlklEQVR4Ae3dP3Ik1RnG4W+FgYxN"
+                            />
                         </div>
                     );
                 }
@@ -573,8 +581,13 @@ const CardActivityHistory = ({ actions }) => {
                                             fontWeight: 400,
                                             fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
                                         }}>
-                                            {text.split(slackLinkRegex)[0]}
+                                            <div dangerouslySetInnerHTML={{
+                                                __html: renderFormattedText(text.split(slackLinkRegex)[0])
+                                            }} />
                                         </div>
+                                        
+                                        {/* Render images from text URLs */}
+                                        {renderTextWithImages(text)}
                                     </div>
                                 </Card>
                             </div>
@@ -783,6 +796,24 @@ const CardActivityHistory = ({ actions }) => {
                     </div>
                 );
             })}
+            
+            {/* Image Preview Modal */}
+            <Modal
+                open={previewVisible}
+                title="Image Preview"
+                footer={null}
+                onCancel={handlePreviewCancel}
+                width="80%"
+                style={{ top: 20 }}
+            >
+                <div style={{ textAlign: 'center' }}>
+                    <Image
+                        src={previewImage}
+                        style={{ maxWidth: '100%', maxHeight: '70vh' }}
+                        preview={false}
+                    />
+                </div>
+            </Modal>
         </Space>
     );
 };

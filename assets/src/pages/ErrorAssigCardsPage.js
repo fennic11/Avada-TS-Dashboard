@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Card, Avatar, Tag, Progress, Row, Col, Statistic, Typography, Timeline, Badge, DatePicker, Select, Space, Button } from 'antd';
-import { TrophyOutlined, UserOutlined, CrownOutlined, StarOutlined, LineChartOutlined, CalendarOutlined, FilterOutlined, ClearOutlined } from '@ant-design/icons';
+import { Table, Card, Avatar, Tag, Progress, Row, Col, Statistic, Typography, Timeline, Badge, DatePicker, Select, Space, Button, Modal, List, Divider } from 'antd';
+import { TrophyOutlined, UserOutlined, CrownOutlined, StarOutlined, LineChartOutlined, CalendarOutlined, FilterOutlined, ClearOutlined, EyeOutlined, LinkOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import errorAssignCardApi from '../api/errorAssignCardApi';
 import membersData from '../data/members.json';
@@ -16,6 +16,9 @@ const ErrorAssigCardsPage = () => {
     const [error, setError] = useState(null);
     const [dateRange, setDateRange] = useState(null);
     const [selectedRole, setSelectedRole] = useState(null);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [selectedMember, setSelectedMember] = useState(null);
+    const [memberCards, setMemberCards] = useState([]);
 
     useEffect(() => {
         const fetchErrorAssignCards = async () => {
@@ -95,6 +98,26 @@ const ErrorAssigCardsPage = () => {
     const getCreatorName = (creatorId) => {
         const member = getMemberById(creatorId);
         return member ? member.fullName || member.username || 'Unknown' : 'Unknown Creator';
+    };
+
+    // Function to handle member click and show modal
+    const handleMemberClick = (memberId) => {
+        const member = getMemberById(memberId);
+        if (!member) return;
+
+        // Get all cards created by this member
+        const cards = filteredData.filter(item => item.idMemberCreator === memberId);
+        
+        setSelectedMember(member);
+        setMemberCards(cards);
+        setModalVisible(true);
+    };
+
+    // Function to close modal
+    const handleCloseModal = () => {
+        setModalVisible(false);
+        setSelectedMember(null);
+        setMemberCards([]);
     };
 
     // Function to create leaderboard data
@@ -213,7 +236,7 @@ const ErrorAssigCardsPage = () => {
             title: 'Creator',
             dataIndex: 'member',
             key: 'creator',
-            render: (member) => (
+            render: (member, record) => (
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                     <Avatar 
                         size={40} 
@@ -226,7 +249,16 @@ const ErrorAssigCardsPage = () => {
                         {member ? (member.initials || member.fullName?.charAt(0) || '?') : '?'}
                     </Avatar>
                     <div>
-                        <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>
+                        <div 
+                            style={{ 
+                                fontWeight: 'bold', 
+                                marginBottom: '2px',
+                                cursor: 'pointer',
+                                color: '#1890ff',
+                                textDecoration: 'underline'
+                            }}
+                            onClick={() => handleMemberClick(record.id)}
+                        >
                             {member ? member.fullName || member.username : 'Unknown'}
                         </div>
                         <Text type="secondary" style={{ fontSize: '12px' }}>
@@ -456,6 +488,140 @@ const ErrorAssigCardsPage = () => {
                     </div>
                 )}
             </Card>
+
+            {/* Member Details Modal */}
+            <Modal
+                title={
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <Avatar 
+                            size={32} 
+                            icon={<UserOutlined />}
+                            style={{ 
+                                backgroundColor: '#1890ff',
+                                marginRight: '12px'
+                            }}
+                        >
+                            {selectedMember ? (selectedMember.initials || selectedMember.fullName?.charAt(0) || '?') : '?'}
+                        </Avatar>
+                        <div>
+                            <div style={{ fontWeight: 'bold', fontSize: '16px' }}>
+                                {selectedMember ? selectedMember.fullName || selectedMember.username : 'Unknown'}
+                            </div>
+                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                                {selectedMember ? selectedMember.kpiName || selectedMember.username : 'N/A'}
+                            </Text>
+                        </div>
+                    </div>
+                }
+                open={modalVisible}
+                onCancel={handleCloseModal}
+                footer={null}
+                width={800}
+                style={{ top: 20 }}
+            >
+                {selectedMember && (
+                    <div>
+                        {/* Member Info */}
+                        <Card size="small" style={{ marginBottom: '16px' }}>
+                            <Row gutter={16}>
+                                <Col span={8}>
+                                    <Statistic
+                                        title="Role"
+                                        value={selectedMember.role || 'N/A'}
+                                        valueStyle={{ color: '#1890ff' }}
+                                    />
+                                </Col>
+                                <Col span={8}>
+                                    <Statistic
+                                        title="Total Cards Created"
+                                        value={memberCards.length}
+                                        suffix="cards"
+                                        valueStyle={{ color: '#52c41a' }}
+                                    />
+                                </Col>
+                                <Col span={8}>
+                                    <Statistic
+                                        title="Percentage"
+                                        value={filteredData.length > 0 ? ((memberCards.length / filteredData.length) * 100).toFixed(1) : 0}
+                                        suffix="%"
+                                        valueStyle={{ color: '#fa8c16' }}
+                                    />
+                                </Col>
+                            </Row>
+                        </Card>
+
+                        <Divider />
+
+                        {/* Cards List */}
+                        <div>
+                            <Title level={4} style={{ marginBottom: '16px' }}>
+                                <EyeOutlined style={{ marginRight: '8px' }} />
+                                Cards Created by {selectedMember.fullName || selectedMember.username}
+                            </Title>
+                            
+                            <List
+                                dataSource={memberCards}
+                                renderItem={(item, index) => (
+                                    <List.Item
+                                        key={item._id || index}
+                                        style={{
+                                            border: '1px solid #f0f0f0',
+                                            borderRadius: '8px',
+                                            marginBottom: '8px',
+                                            padding: '16px',
+                                            backgroundColor: '#fafafa'
+                                        }}
+                                    >
+                                        <List.Item.Meta
+                                            title={
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <Text strong style={{ fontSize: '14px' }}>
+                                                        {item.card?.name || 'Unknown Card'}
+                                                    </Text>
+                                                    <Tag color="blue">#{item.card?.idShort || 'N/A'}</Tag>
+                                                </div>
+                                            }
+                                            description={
+                                                <div>
+                                                    <div style={{ marginBottom: '8px' }}>
+                                                        <Text type="secondary">
+                                                            <CalendarOutlined style={{ marginRight: '4px' }} />
+                                                            {dayjs(item.date).format('DD/MM/YYYY HH:mm')}
+                                                        </Text>
+                                                    </div>
+                                                    
+                                                    <div style={{ marginBottom: '8px' }}>
+                                                        <Text strong>Assigned to: </Text>
+                                                        <Tag color="green">
+                                                            {getMemberName(item.idMemberAssigned)}
+                                                        </Tag>
+                                                    </div>
+                                                    
+                                                    {item.card?.shortLink && (
+                                                        <div>
+                                                            <Button
+                                                                type="link"
+                                                                size="small"
+                                                                icon={<LinkOutlined />}
+                                                                href={`https://trello.com/c/${item.card.shortLink}`}
+                                                                target="_blank"
+                                                                style={{ padding: 0, height: 'auto' }}
+                                                            >
+                                                                View on Trello
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            }
+                                        />
+                                    </List.Item>
+                                )}
+                                locale={{ emptyText: 'No cards found' }}
+                            />
+                        </div>
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 };
