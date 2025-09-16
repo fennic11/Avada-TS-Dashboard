@@ -44,6 +44,7 @@ const CardsDetail = () => {
     const [selectedCardDetail, setSelectedCardDetail] = useState(null);
     const [isCardDetailModalOpen, setIsCardDetailModalOpen] = useState(false);
     const [selectedApp, setSelectedApp] = useState('');
+    const [selectedTSGroup, setSelectedTSGroup] = useState('');
     const [heatmapFilter, setHeatmapFilter] = useState(null);
     const [createdCardsHeatmapFilter, setCreatedCardsHeatmapFilter] = useState(null);
     const [heatmapFilterTS1, setHeatmapFilterTS1] = useState(null);
@@ -51,11 +52,28 @@ const CardsDetail = () => {
     const [heatmapFilterTS2, setHeatmapFilterTS2] = useState(null);
     const [createdCardsHeatmapFilterTS2, setCreatedCardsHeatmapFilterTS2] = useState(null);
 
-    // Filter TS and TS-lead members
-    const tsMembers = members.filter(member => 
-        member.role?.toLowerCase() === 'ts' || 
-        member.role?.toLowerCase() === 'ts-lead'
-    );
+    // Filter TS and TS-lead members, optionally by team
+    const tsMembers = members.filter(member => {
+        const isTSMember = member.role?.toLowerCase() === 'ts' || member.role?.toLowerCase() === 'ts-lead';
+        if (!isTSMember) return false;
+        
+        // If TS Group is selected, filter by team
+        if (selectedTSGroup) {
+            return member.group === selectedTSGroup;
+        }
+        
+        return true;
+    });
+
+    // Clear selected TS if the selected TS member is not in the current team
+    useEffect(() => {
+        if (selectedTS && selectedTSGroup) {
+            const selectedMember = members.find(member => member.id === selectedTS);
+            if (selectedMember && selectedMember.group !== selectedTSGroup) {
+                setSelectedTS('');
+            }
+        }
+    }, [selectedTSGroup, selectedTS]);
 
     // Get list name by ID
     const getListName = (listId) => {
@@ -66,6 +84,11 @@ const CardsDetail = () => {
     // Get count of cards by list ID
     const getCardCountByList = (listId) => {
         return filteredByHeatmap.filter(card => card.idList === listId).length;
+    };
+
+    // Get count of cards for a specific TS member
+    const getCardCountByTS = (memberId) => {
+        return filteredByHeatmap.filter(card => Array.isArray(card.idMembers) && card.idMembers.includes(memberId)).length;
     };
 
     // Status list IDs
@@ -187,9 +210,20 @@ const CardsDetail = () => {
         })
         : filteredCards;
 
+    // Filter by TS group if selected
+    const filteredByTSGroup = selectedTSGroup
+        ? filteredByApp.filter(card => {
+            const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+            return appLabels.some(label => {
+                const app = appData.find(a => a.label_trello === label.name);
+                return app && app.group_ts === selectedTSGroup;
+            });
+        })
+        : filteredByApp;
+
     // Filter by heatmap hour if selected (Completed Cards)
     const filteredByCompletedHeatmap = heatmapFilter !== null
-        ? filteredByApp.filter(card => {
+        ? filteredByTSGroup.filter(card => {
             if (Array.isArray(card.actions) && card.dueComplete) {
                 const completeAction = [...card.actions].reverse().find(action => 
                     action.type === 'updateCard' && 
@@ -485,12 +519,12 @@ const CardsDetail = () => {
             }
         };
         fetchCards();
-    }, [selectedDate, selectedTS]);
+    }, [selectedDate]);
 
     // Function to get completed cards heatmap data by team
     const getCompletedCardsHeatmapByTeam = (team) => {
         const heatmap = Array.from({ length: 24 }, () => ({ count: 0, cards: [] }));
-        const cardsToProcess = filteredByApp;
+        const cardsToProcess = filteredByTSGroup;
         cardsToProcess.forEach(card => {
             if (card.dueComplete) {
                 // Check if card belongs to the specified team
@@ -563,7 +597,7 @@ const CardsDetail = () => {
     // Function to get created cards heatmap data by team
     const getCreatedCardsHeatmapByTeam = (team) => {
         const heatmap = Array.from({ length: 24 }, () => ({ count: 0, cards: [] }));
-        const cardsToProcess = filteredByApp;
+        const cardsToProcess = filteredByTSGroup;
         cardsToProcess.forEach(card => {
             if (Array.isArray(card.actions)) {
                 const createAction = card.actions.find(action => action.type === 'createCard');
@@ -2496,6 +2530,83 @@ const CardsDetail = () => {
                                         '&.Mui-focused': { color: '#1565c0' }
                                     }
                                 }}>
+                                    <InputLabel>TS Group</InputLabel>
+                                    <Select
+                                        value={selectedTSGroup}
+                                        onChange={e => setSelectedTSGroup(e.target.value)}
+                                        label="TS Group"
+                                        MenuProps={{
+                                            PaperProps: {
+                                                sx: {
+                                                    borderRadius: 2,
+                                                    boxShadow: '0 4px 24px 0 #b6c2d933',
+                                                    mt: 1
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        <MenuItem value="">
+                                            <em>All</em>
+                                        </MenuItem>
+                                        <MenuItem value="TS1" sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 2,
+                                            py: 1.2,
+                                            px: 1.5,
+                                            borderRadius: 2,
+                                            fontWeight: 500,
+                                            backgroundColor: selectedTSGroup === 'TS1' ? '#e3f2fd' : 'inherit',
+                                            '&:hover': {
+                                                backgroundColor: '#e3e8ee'
+                                            }
+                                        }}>
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                                <Typography sx={{ fontWeight: 700, fontSize: 15, color: '#1976d2', lineHeight: 1 }}>TS1</Typography>
+                                                <Typography sx={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>Team 1</Typography>
+                                            </Box>
+                                        </MenuItem>
+                                        <MenuItem value="TS2" sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 2,
+                                            py: 1.2,
+                                            px: 1.5,
+                                            borderRadius: 2,
+                                            fontWeight: 500,
+                                            backgroundColor: selectedTSGroup === 'TS2' ? '#e3f2fd' : 'inherit',
+                                            '&:hover': {
+                                                backgroundColor: '#e3e8ee'
+                                            }
+                                        }}>
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                                <Typography sx={{ fontWeight: 700, fontSize: 15, color: '#1976d2', lineHeight: 1 }}>TS2</Typography>
+                                                <Typography sx={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>Team 2</Typography>
+                                            </Box>
+                                        </MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={2}>
+                                <FormControl fullWidth size="small" sx={{
+                                    background: 'white',
+                                    borderRadius: 2,
+                                    '& .MuiOutlinedInput-root': {
+                                        fontSize: 16,
+                                        fontWeight: 500,
+                                        background: 'white',
+                                        borderRadius: 2,
+                                        '& fieldset': { borderColor: '#e3e8ee' },
+                                        '&:hover fieldset': { borderColor: '#1976d2' },
+                                        '&.Mui-focused fieldset': { borderColor: '#1976d2', borderWidth: 2 }
+                                    },
+                                    '& .MuiInputLabel-root': {
+                                        color: '#1976d2',
+                                        fontWeight: 600,
+                                        fontSize: 15,
+                                        '&.Mui-focused': { color: '#1565c0' }
+                                    }
+                                }}>
                                     <InputLabel>TS</InputLabel>
                                     <Select
                                         value={selectedTS}
@@ -2514,32 +2625,62 @@ const CardsDetail = () => {
                                         <MenuItem value="">
                                             <em>All</em>
                                         </MenuItem>
-                                        {tsMembers.map(member => (
-                                            <MenuItem key={member.id} value={member.id} sx={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 2,
-                                                py: 1.2,
-                                                px: 1.5,
-                                                borderRadius: 2,
-                                                fontWeight: 500,
-                                                backgroundColor: selectedTS === member.id ? '#e3f2fd' : 'inherit',
-                                                '&:hover': {
-                                                    backgroundColor: '#e3e8ee'
-                                                }
-                                            }}>
-                                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                                    <Typography sx={{ fontWeight: 700, fontSize: 15, color: '#1976d2', lineHeight: 1 }}>{member.fullName}</Typography>
-                                                    <Typography sx={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>{member.role}</Typography>
-                                                </Box>
-                                            </MenuItem>
-                                        ))}
+                                        {tsMembers.map(member => {
+                                            const cardCount = getCardCountByTS(member.id);
+                                            return (
+                                                <MenuItem key={member.id} value={member.id} sx={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 2,
+                                                    py: 1.2,
+                                                    px: 1.5,
+                                                    borderRadius: 2,
+                                                    fontWeight: 500,
+                                                    backgroundColor: selectedTS === member.id ? '#e3f2fd' : 'inherit',
+                                                    '&:hover': {
+                                                        backgroundColor: '#e3e8ee'
+                                                    }
+                                                }}>
+                                                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', flex: 1 }}>
+                                                        <Typography sx={{ fontWeight: 700, fontSize: 15, color: '#1976d2', lineHeight: 1 }}>{member.fullName}</Typography>
+                                                        <Typography sx={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>{member.role}</Typography>
+                                                    </Box>
+                                                    <Box sx={{ 
+                                                        display: 'flex', 
+                                                        alignItems: 'center', 
+                                                        gap: 0.5,
+                                                        px: 1.5,
+                                                        py: 0.5,
+                                                        borderRadius: 2,
+                                                        backgroundColor: cardCount > 0 ? '#e3f2fd' : '#f5f5f5',
+                                                        border: cardCount > 0 ? '1px solid #1976d2' : '1px solid #e0e0e0'
+                                                    }}>
+                                                        <Typography sx={{ 
+                                                            fontSize: 12, 
+                                                            fontWeight: 700, 
+                                                            color: cardCount > 0 ? '#1976d2' : '#9e9e9e',
+                                                            minWidth: 20,
+                                                            textAlign: 'center'
+                                                        }}>
+                                                            {cardCount}
+                                                        </Typography>
+                                                        <Typography sx={{ 
+                                                            fontSize: 11, 
+                                                            color: cardCount > 0 ? '#1976d2' : '#9e9e9e',
+                                                            fontWeight: 500
+                                                        }}>
+                                                            cards
+                                                        </Typography>
+                                                    </Box>
+                                                </MenuItem>
+                                            );
+                                        })}
                                     </Select>
                                 </FormControl>
                             </Grid>
                         </Grid>
                         {/* Active filter chips */}
-                        {(selectedTS || selectedShift || selectedList || selectedApp || heatmapFilter !== null || createdCardsHeatmapFilter !== null || heatmapFilterTS1 !== null || createdCardsHeatmapFilterTS1 !== null || heatmapFilterTS2 !== null || createdCardsHeatmapFilterTS2 !== null) && (
+                        {(selectedTS || selectedShift || selectedList || selectedApp || selectedTSGroup || heatmapFilter !== null || createdCardsHeatmapFilter !== null || heatmapFilterTS1 !== null || createdCardsHeatmapFilterTS1 !== null || heatmapFilterTS2 !== null || createdCardsHeatmapFilterTS2 !== null) && (
                             <Box sx={{
                                 mt: 3,
                                 display: 'flex',
@@ -2606,6 +2747,24 @@ const CardsDetail = () => {
                                         label={`App: ${appData.find(a => a.label_trello === selectedApp)?.app_name || selectedApp}`}
                                         onDelete={() => setSelectedApp('')}
                                         color="primary"
+                                        size="small"
+                                        sx={{ 
+                                            fontWeight: 600, 
+                                            fontSize: 14,
+                                            '& .MuiChip-deleteIcon': {
+                                                color: 'white',
+                                                '&:hover': {
+                                                    color: '#e3e8ee'
+                                                }
+                                            }
+                                        }}
+                                    />
+                                )}
+                                {selectedTSGroup && (
+                                    <Chip
+                                        label={`TS Group: ${selectedTSGroup}`}
+                                        onDelete={() => setSelectedTSGroup('')}
+                                        color="secondary"
                                         size="small"
                                         sx={{ 
                                             fontWeight: 600, 
@@ -3095,52 +3254,55 @@ const CardsDetail = () => {
                                 </Paper>
                             </Fade>
 
-                            {/* Heatmaps Section - TS1 */}
-                            <Box sx={{ 
-                                display: 'flex', 
-                                flexDirection: { xs: 'column', xl: 'row' }, 
-                                gap: 4, 
-                                width: '100%',
-                                overflow: 'hidden',
-                                mb: 4
-                            }}>
-                                {/* Created Cards Heatmap - TS1 */}
-                                <Fade in={true} timeout={1200}>
-                                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                                        <CreatedCardsHeatmapTS1 />
-                                    </Box>
-                                </Fade>
+                            {/* Heatmaps Section - Conditional based on selected TS Group */}
+                            {(!selectedTSGroup || selectedTSGroup === 'TS1') && (
+                                <Box sx={{ 
+                                    display: 'flex', 
+                                    flexDirection: { xs: 'column', xl: 'row' }, 
+                                    gap: 4, 
+                                    width: '100%',
+                                    overflow: 'hidden',
+                                    mb: selectedTSGroup ? 0 : 4
+                                }}>
+                                    {/* Created Cards Heatmap - TS1 */}
+                                    <Fade in={true} timeout={1200}>
+                                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                                            <CreatedCardsHeatmapTS1 />
+                                        </Box>
+                                    </Fade>
 
-                                {/* Completed Cards Heatmap - TS1 */}
-                                <Fade in={true} timeout={1300}>
-                                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                                        <CompletedCardsHeatmapTS1 />
-                                    </Box>
-                                </Fade>
-                            </Box>
+                                    {/* Completed Cards Heatmap - TS1 */}
+                                    <Fade in={true} timeout={1300}>
+                                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                                            <CompletedCardsHeatmapTS1 />
+                                        </Box>
+                                    </Fade>
+                                </Box>
+                            )}
 
-                            {/* Heatmaps Section - TS2 */}
-                            <Box sx={{ 
-                                display: 'flex', 
-                                flexDirection: { xs: 'column', xl: 'row' }, 
-                                gap: 4, 
-                                width: '100%',
-                                overflow: 'hidden'
-                            }}>
-                                {/* Created Cards Heatmap - TS2 */}
-                                <Fade in={true} timeout={1400}>
-                                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                                        <CreatedCardsHeatmapTS2 />
-                                    </Box>
-                                </Fade>
+                            {(!selectedTSGroup || selectedTSGroup === 'TS2') && (
+                                <Box sx={{ 
+                                    display: 'flex', 
+                                    flexDirection: { xs: 'column', xl: 'row' }, 
+                                    gap: 4, 
+                                    width: '100%',
+                                    overflow: 'hidden'
+                                }}>
+                                    {/* Created Cards Heatmap - TS2 */}
+                                    <Fade in={true} timeout={1400}>
+                                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                                            <CreatedCardsHeatmapTS2 />
+                                        </Box>
+                                    </Fade>
 
-                                {/* Completed Cards Heatmap - TS2 */}
-                                <Fade in={true} timeout={1500}>
-                                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                                        <CompletedCardsHeatmapTS2 />
-                                    </Box>
-                                </Fade>
-                            </Box>
+                                    {/* Completed Cards Heatmap - TS2 */}
+                                    <Fade in={true} timeout={1500}>
+                                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                                            <CompletedCardsHeatmapTS2 />
+                                        </Box>
+                                    </Fade>
+                                </Box>
+                            )}
 
                             {/* Card Grid Section - Hiển thị dưới bảng */}
                             <Box sx={{ mt: 5 }}>
