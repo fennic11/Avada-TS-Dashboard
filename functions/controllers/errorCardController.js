@@ -19,4 +19,18 @@ const getErrorCardsByMonth = async (req, res) => {
     }
 };
 
-module.exports = { createErrorCard, getErrorCardsByMonth };
+const updateErrorCards = async (req, res) => {
+    try {
+        const { recordId } = req.params;
+        const { status, requestText } = req.body;
+        console.log('recordId', recordId);
+        console.log('status', status);
+        console.log('requestText', requestText);
+        const errorCard = await errorCardService.updateErrorCards(recordId, status, requestText);
+        res.json(errorCard);
+    }catch (err) {
+        res.status(500).json({ error: 'Lỗi khi cập nhật card', details: err.message });
+    }
+};
+
+module.exports = { createErrorCard, getErrorCardsByMonth , updateErrorCards };

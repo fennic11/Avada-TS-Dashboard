@@ -38,6 +38,14 @@ const ErrorCardSchema = new mongoose.Schema({
     penaltyId: {
         type: String,
         default: '',
+    },
+    status: {
+        type: String,
+        default: 'approved',
+    },
+    requestText: {
+        type: String,
+        default: '',
     }
 }, {
     collection: 'errorCards', // 👈 tên collection cố định trong MongoDB

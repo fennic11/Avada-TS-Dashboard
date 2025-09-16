@@ -86,9 +86,59 @@ const CardsDetail = () => {
         return filteredByHeatmap.filter(card => card.idList === listId).length;
     };
 
-    // Get count of cards for a specific TS member
+    // Get count of cards for a specific TS member (using data before TS member filtering)
     const getCardCountByTS = (memberId) => {
-        return filteredByHeatmap.filter(card => Array.isArray(card.idMembers) && card.idMembers.includes(memberId)).length;
+        // Use data before TS member filtering to show all members' counts
+        // Apply all filters except TS member filter
+        let dataForCount = cards;
+        
+        // Apply list filter if selected
+        if (selectedList) {
+            dataForCount = dataForCount.filter(card => card.idList === selectedList);
+        }
+        
+        // Apply shift filter if selected
+        if (selectedShift) {
+            dataForCount = dataForCount.filter(card => {
+                if (Array.isArray(card.actions)) {
+                    const createAction = card.actions.find(a => a.type === 'createCard');
+                    if (createAction && createAction.date) {
+                        const shift = getShift(createAction.date);
+                        if (selectedShift === 'Ca 5') {
+                            return shift === 'Ca 5.1' || shift === 'Ca 5.2';
+                        }
+                        return shift === selectedShift;
+                    }
+                }
+                return false;
+            });
+        }
+        
+        // Apply self-removal filter if selected
+        if (selectedRemovalTS) {
+            dataForCount = getSelfRemovedCards(selectedRemovalTS, dataForCount);
+        }
+        
+        // Apply app filter if selected
+        if (selectedApp) {
+            dataForCount = dataForCount.filter(card => {
+                const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+                return appLabels.some(label => label.name === selectedApp);
+            });
+        }
+        
+        // Apply TS group filter if selected
+        if (selectedTSGroup) {
+            dataForCount = dataForCount.filter(card => {
+                const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+                return appLabels.some(label => {
+                    const app = appData.find(a => a.label_trello === label.name);
+                    return app && app.group_ts === selectedTSGroup;
+                });
+            });
+        }
+        
+        return dataForCount.filter(card => Array.isArray(card.idMembers) && card.idMembers.includes(memberId)).length;
     };
 
     // Status list IDs

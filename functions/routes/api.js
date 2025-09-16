@@ -23,6 +23,7 @@ router.get('/cards/:cardUrl', cardController.getCardByUrl);
 // Error Card routes
 router.post('/error-cards', errorCardController.createErrorCard);
 router.get('/error-cards', errorCardController.getErrorCardsByMonth);
+router.put('/error-cards/:recordId/card-status', errorCardController.updateErrorCards);
 
 // Error Assign Cards routes
 router.post('/error-assign-cards', errorAssignCardController.createErrorAssignCards);

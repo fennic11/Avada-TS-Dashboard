@@ -43,7 +43,9 @@ const createErrorCard = async (cardData) => {
             createdAt: new Date(createdAt), // Use current timestamp for each submission
             note, 
             penaltyPoints,
-            penaltyId
+            penaltyId,
+            status: 'approved',
+            requestText: ''
         });
 
         const savedErrorCard = await errorCard.save();
@@ -101,4 +103,17 @@ const getErrorCardsByMonth = async (year, month) => {
     }
 };
 
-module.exports = { createErrorCard, setupIndexes, getErrorCardsByMonth };
+const updateErrorCards = async (recordId, status, requestText) => {
+    try {
+        console.log('recordId', recordId);
+        console.log('status', status);
+        console.log('requestText', requestText);
+        const errorCard = await ErrorCard.findByIdAndUpdate(recordId, { status, requestText }, { new: true });
+        return errorCard;
+    } catch (error) {
+        console.error('❌ Error in updateErrorCards service:', error);
+        throw error;
+    }
+};
+
+module.exports = { createErrorCard, setupIndexes, getErrorCardsByMonth, updateErrorCards };

@@ -7,7 +7,8 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "deploy": "firebase deploy --only functions",
-    "build": "echo 'No build step required'"
+    "build": "echo 'No build step required'",
+    "update-error-cards": "node commands/errorCard.js"
   },
   "keywords": [],
   "author": "",

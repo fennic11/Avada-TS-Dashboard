@@ -49,3 +49,26 @@ export const getErrorCardsByMonth = async (year, month) => {
         throw error;
     }
 };
+
+export const updateErrorCardStatus = async (recordId, status, requestText) => {
+    try {
+        const response = await fetch(`${API_URL}/error-cards/${recordId}/card-status`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ status, requestText }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to update error card status');
+        }
+
+        const result = await response.json();
+        console.log('✅ Error card status updated successfully:', result);
+        return result;
+    }
+    catch (error) {
+        console.error('❌ Error updating error card status:', error);
+        throw error;
+    }
+}

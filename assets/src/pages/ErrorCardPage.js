@@ -16,7 +16,8 @@ import {
     Divider,
     Empty,
     Select,
-    Input
+    Input,
+    Modal
 } from 'antd';
 import {
     ExclamationCircleOutlined,
@@ -29,9 +30,15 @@ import {
     FileTextOutlined,
     WarningOutlined,
     AlertOutlined,
-    StopOutlined
+    StopOutlined,
+    CheckCircleOutlined,
+    CloseCircleOutlined,
+    MessageOutlined
 } from '@ant-design/icons';
-import { getErrorCardsByMonth } from '../api/errorCards';
+import { getErrorCardsByMonth, updateErrorCardStatus } from '../api/errorCards';
+import { getCurrentUser } from '../api/usersApi';
+import { ROLES } from '../utils/roles';
+import { sendMessageToChannel } from '../api/slackApi';
 import dayjs from 'dayjs';
 import membersData from '../data/members.json';
 import penaltyPoints from '../data/penaltyPoint.json';
@@ -46,9 +53,14 @@ const ErrorCardPage = () => {
     const [error, setError] = useState(null);
     const [selectedDate, setSelectedDate] = useState(dayjs());
     const [selectedMembers, setSelectedMembers] = useState([]);
+    const [selectedTSGroup, setSelectedTSGroup] = useState(null);
     const [searchText, setSearchText] = useState('');
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedCardId, setSelectedCardId] = useState(null);
+    const [requestTextModalOpen, setRequestTextModalOpen] = useState(false);
+    const [requestText, setRequestText] = useState('');
+    const [selectedCardForRequest, setSelectedCardForRequest] = useState(null);
+    const [requestTextLoading, setRequestTextLoading] = useState(false);
 
     const fetchErrorCards = async (year, month) => {
         try {
@@ -67,6 +79,11 @@ const ErrorCardPage = () => {
         const currentDate = dayjs();
         fetchErrorCards(currentDate.year(), currentDate.month() + 1);
     }, []);
+
+    // Clear selected members when TS group changes
+    useEffect(() => {
+        setSelectedMembers([]);
+    }, [selectedTSGroup]);
 
     const handleDateChange = (date) => {
         if (date) {
@@ -154,7 +171,97 @@ const ErrorCardPage = () => {
                 };
             })
             .filter(member => member.memberInfo.role === 'TS') // Chỉ lấy TS members
+            .filter(member => {
+                // If TS group is selected, only show members from that group
+                if (selectedTSGroup) {
+                    return member.memberInfo.group === selectedTSGroup;
+                }
+                return true;
+            })
             .sort((a, b) => a.label.localeCompare(b.label));
+    };
+
+    const getTSGroupOptions = () => {
+        const tsGroups = new Set();
+        membersData.forEach(member => {
+            if (member.role === 'TS' && member.group) {
+                tsGroups.add(member.group);
+            }
+        });
+        return Array.from(tsGroups)
+            .sort()
+            .map(group => ({
+                value: group,
+                label: group
+            }));
+    };
+
+    const getCardTSGroup = (card) => {
+        if (!card.members || card.members.length === 0) return null;
+        
+        // Find the first TS member in the card to determine the group
+        for (const memberId of card.members) {
+            const memberInfo = getMemberInfo(memberId);
+            if (memberInfo.role === 'TS' && memberInfo.group) {
+                return memberInfo.group;
+            }
+        }
+        return null;
+    };
+
+    const sendSlackNotificationForRequest = async (card, requestText) => {
+        try {
+            const tsGroup = getCardTSGroup(card);
+            if (!tsGroup) {
+                console.log('No TS group found for card, skipping Slack notification');
+                return;
+            }
+
+            // Get current user info and find member details
+            const currentUser = getCurrentUser();
+            let currentUserName = 'Unknown User';
+            
+            if (currentUser) {
+                // Try to find member info from members.json by email or username
+                const memberInfo = membersData.find(member => 
+                    (member.email && member.email.toLowerCase() === currentUser.email?.toLowerCase()) ||
+                    (member.username && member.username === currentUser.username)
+                );
+                
+                if (memberInfo) {
+                    currentUserName = memberInfo.fullName;
+                } else {
+                    // Fallback to user data
+                    currentUserName = currentUser.fullName || currentUser.name || currentUser.username || 'Unknown User';
+                }
+            }
+
+            // Format the message similar to AssignCardPage.js
+            const message = `*🚨 Error Card Request*\n` +
+                `*Card:* ${card.cardName}\n` +
+                `*Card URL:* ${card.cardUrl}\n` +
+                `*Submitted by:* ${currentUserName}\n` +
+                `*TS Group:* ${tsGroup}\n` +
+                `*Date:* ${dayjs().format('DD/MM/YYYY')}\n` +
+                `*Request Details:*\n${requestText}\n` +
+                `-------------------------------------------------\n`;
+
+            // Determine who to tag based on TS group
+            let taggedMessage = message;
+            if (tsGroup === 'TS1') {
+                taggedMessage = `<@U08UGHSA1B3> ${message}`; // Tag fennic
+            } else if (tsGroup === 'TS2') {
+                taggedMessage = `<@U08UGHSA1B3> <@U08U7HS1XRS> ${message}`; // Tag fennic and raymond
+            }
+
+            // Send to appropriate channel based on group
+            await sendMessageToChannel(taggedMessage, 'ASSIGN-CARD');
+            
+            console.log(`Slack notification sent for ${tsGroup} group`);
+        } catch (error) {
+            console.error('Error sending Slack notification:', error);
+            // Don't throw error to avoid breaking the main flow
+        }
     };
 
     const filterCardsByMembers = (cards) => {
@@ -181,11 +288,31 @@ const ErrorCardPage = () => {
         });
     };
 
+    const filterCardsByTSGroup = (cards) => {
+        if (!selectedTSGroup) return cards;
+        
+        return cards.filter(card => {
+            if (!card.members) return false;
+            
+            // Check if any member in the card belongs to the selected TS group
+            return card.members.some(memberId => {
+                const memberInfo = getMemberInfo(memberId);
+                return memberInfo.group === selectedTSGroup;
+            });
+        });
+    };
+
     const getTSLeaderboard = () => {
         const memberStats = {};
         
-        // Chỉ lấy TS members từ members.json
-        const tsMembers = membersData.filter(member => member.role === 'TS');
+        // Chỉ lấy TS members từ members.json, filter theo TS group nếu có
+        const tsMembers = membersData.filter(member => {
+            if (member.role !== 'TS') return false;
+            if (selectedTSGroup) {
+                return member.group === selectedTSGroup;
+            }
+            return true;
+        });
         
         // Khởi tạo stats cho tất cả TS members
         tsMembers.forEach(member => {
@@ -225,7 +352,7 @@ const ErrorCardPage = () => {
             });
     };
 
-    const filteredCards = filterCardsBySearch(filterCardsByMembers(errorCards));
+    const filteredCards = filterCardsBySearch(filterCardsByMembers(filterCardsByTSGroup(errorCards)));
     const groupedCards = groupCardsByCardId(filteredCards);
     const tsLeaderboard = getTSLeaderboard();
 
@@ -238,6 +365,123 @@ const ErrorCardPage = () => {
         setModalOpen(false);
         setSelectedCardId(null);
     };
+
+    const handleRequestTextClick = (card) => {
+        setSelectedCardForRequest(card);
+        setRequestTextModalOpen(true);
+        setRequestText('');
+    };
+
+    const handleRequestTextModalClose = () => {
+        setRequestTextModalOpen(false);
+        setSelectedCardForRequest(null);
+        setRequestText('');
+    };
+
+    const handleRequestTextSubmit = async () => {
+        if (!requestText.trim() || !selectedCardForRequest) return;
+
+        setRequestTextLoading(true);
+        try {
+            // Call API to update the error card status and request text
+            await updateErrorCardStatus(
+                selectedCardForRequest._id, 
+                'requested', 
+                requestText.trim()
+            );
+            
+            // Update local state after successful API call
+            setErrorCards(prevCards => 
+                prevCards.map(card => 
+                    card._id === selectedCardForRequest._id 
+                        ? { 
+                            ...card, 
+                            status: 'requested',
+                            requestText: requestText.trim()
+                        }
+                        : card
+                )
+            );
+            
+            console.log(`Request text submitted for card ${selectedCardForRequest._id}:`, requestText);
+            
+            // Send Slack notification
+            await sendSlackNotificationForRequest(selectedCardForRequest, requestText.trim());
+            
+            // Close modal and reset state
+            handleRequestTextModalClose();
+        } catch (error) {
+            console.error('Error submitting request text:', error);
+            // You can add a notification here to show the error to the user
+        } finally {
+            setRequestTextLoading(false);
+        }
+    };
+
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'approved':
+                return '#52c41a';
+            case 'rejected':
+                return '#ff4d4f';
+            case 'requested':
+                return '#fa8c16';
+            default:
+                return '#d9d9d9';
+        }
+    };
+
+    const getStatusIcon = (status) => {
+        switch (status) {
+            case 'approved':
+                return <CheckCircleOutlined />;
+            case 'rejected':
+                return <CloseCircleOutlined />;
+            case 'requested':
+                return <MessageOutlined />;
+            default:
+                return <ExclamationCircleOutlined />;
+        }
+    };
+
+    const getStatusText = (status) => {
+        switch (status) {
+            case 'approved':
+                return 'Approved';
+            case 'rejected':
+                return 'Rejected';
+            case 'requested':
+                return 'Requested';
+            default:
+                return 'Unknown';
+        }
+    };
+
+    const handleStatusUpdate = async (recordId, newStatus) => {
+        try {
+            // Call API to update the error card status
+            await updateErrorCardStatus(recordId, newStatus, '');
+            
+            // Update local state after successful API call
+            setErrorCards(prevCards => 
+                prevCards.map(card => 
+                    card._id === recordId 
+                        ? { ...card, status: newStatus }
+                        : card
+                )
+            );
+            
+            console.log(`Status updated to ${newStatus} for record ${recordId}`);
+        } catch (error) {
+            console.error('Error updating status:', error);
+            // You can add a notification here to show the error to the user
+        }
+    };
+
+    // Get current user and check permissions
+    const currentUser = getCurrentUser();
+    const userRole = currentUser?.role;
+    const canApproveReject = userRole === ROLES.ADMIN || userRole === ROLES.TS_LEAD;
 
     return (
         <div style={{ padding: '24px', background: '#f5f5f5', minHeight: '100vh' }}>
@@ -272,7 +516,7 @@ const ErrorCardPage = () => {
                             </div>
 
                             <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-                                <Col span={12}>
+                                <Col span={8}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                         <Text strong style={{ minWidth: 80 }}>Search:</Text>
                                         <Input
@@ -284,7 +528,20 @@ const ErrorCardPage = () => {
                                         />
                                     </div>
                                 </Col>
-                                <Col span={12}>
+                                <Col span={8}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <Text strong style={{ minWidth: 80 }}>TS Group:</Text>
+                                        <Select
+                                            placeholder="Select TS group..."
+                                            value={selectedTSGroup}
+                                            onChange={setSelectedTSGroup}
+                                            style={{ flex: 1 }}
+                                            allowClear
+                                            options={getTSGroupOptions()}
+                                        />
+                                    </div>
+                                </Col>
+                                <Col span={8}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                         <Text strong style={{ minWidth: 80 }}>Members:</Text>
                                         <Select
@@ -507,12 +764,27 @@ const ErrorCardPage = () => {
                                                         }}
                                                     />
                                                     <div style={{ flex: 1 }}>
-                                                        <Paragraph
-                                                            ellipsis={{ rows: 2 }}
-                                                            style={{ margin: 0, fontWeight: 500 }}
-                                                        >
-                                                            {firstCard.cardName}
-                                                        </Paragraph>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                                                            <Paragraph
+                                                                ellipsis={{ rows: 2 }}
+                                                                style={{ margin: 0, fontWeight: 500, flex: 1 }}
+                                                            >
+                                                                {firstCard.cardName}
+                                                            </Paragraph>
+                                                            <Tag
+                                                                color={getStatusColor(firstCard.status || 'approved')}
+                                                                icon={getStatusIcon(firstCard.status || 'approved')}
+                                                                style={{ 
+                                                                    marginLeft: 8,
+                                                                    fontSize: '11px',
+                                                                    fontWeight: 600,
+                                                                    borderRadius: '12px',
+                                                                    padding: '2px 8px'
+                                                                }}
+                                                            >
+                                                                {getStatusText(firstCard.status || 'approved')}
+                                                            </Tag>
+                                                        </div>
                                                         <Text type="secondary" style={{ fontSize: '12px' }}>
                                                             ID: {firstCard.cardId}
                                                         </Text>
@@ -750,6 +1022,76 @@ const ErrorCardPage = () => {
                                                     </div>
                                                 )}
                                             </Space>
+
+                                            {/* Status Action Buttons */}
+                                            <Divider style={{ margin: '16px 0 12px 0' }} />
+                                            <div style={{ 
+                                                display: 'flex', 
+                                                gap: 8, 
+                                                justifyContent: 'center',
+                                                padding: '8px 0'
+                                            }}>
+                                                <Button
+                                                    size="small"
+                                                    type={firstCard.status === 'requested' ? 'primary' : 'default'}
+                                                    icon={<MessageOutlined />}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleRequestTextClick(firstCard);
+                                                    }}
+                                                    style={{
+                                                        fontSize: '11px',
+                                                        height: '28px',
+                                                        borderRadius: '6px',
+                                                        backgroundColor: firstCard.status === 'requested' ? '#fa8c16' : undefined,
+                                                        borderColor: firstCard.status === 'requested' ? '#fa8c16' : undefined
+                                                    }}
+                                                >
+                                                    Request
+                                                </Button>
+                                                
+                                                {/* Only show Approved and Reject buttons for Admin and TS-Lead */}
+                                                {canApproveReject && (
+                                                    <>
+                                                        <Button
+                                                            size="small"
+                                                            type={firstCard.status === 'approved' ? 'primary' : 'default'}
+                                                            icon={<CheckCircleOutlined />}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleStatusUpdate(firstCard._id, 'approved');
+                                                            }}
+                                                            style={{
+                                                                fontSize: '11px',
+                                                                height: '28px',
+                                                                borderRadius: '6px',
+                                                                backgroundColor: firstCard.status === 'approved' ? '#52c41a' : undefined,
+                                                                borderColor: firstCard.status === 'approved' ? '#52c41a' : undefined
+                                                            }}
+                                                        >
+                                                            Approved
+                                                        </Button>
+                                                        <Button
+                                                            size="small"
+                                                            type={firstCard.status === 'rejected' ? 'primary' : 'default'}
+                                                            icon={<CloseCircleOutlined />}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleStatusUpdate(firstCard._id, 'rejected');
+                                                            }}
+                                                            style={{
+                                                                fontSize: '11px',
+                                                                height: '28px',
+                                                                borderRadius: '6px',
+                                                                backgroundColor: firstCard.status === 'rejected' ? '#ff4d4f' : undefined,
+                                                                borderColor: firstCard.status === 'rejected' ? '#ff4d4f' : undefined
+                                                            }}
+                                                        >
+                                                            Reject
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
                                         </Card>
                                     </Col>
                                 );
@@ -758,6 +1100,81 @@ const ErrorCardPage = () => {
                     )}
                 </Col>
             </Row>
+
+            {/* Request Text Modal */}
+            <Modal
+                title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <MessageOutlined style={{ color: '#fa8c16' }} />
+                        <span>Request Reject Card</span>
+                    </div>
+                }
+                open={requestTextModalOpen}
+                onCancel={handleRequestTextModalClose}
+                onOk={handleRequestTextSubmit}
+                okText="Submit Request"
+                cancelText="Cancel"
+                confirmLoading={requestTextLoading}
+                okButtonProps={{
+                    disabled: !requestText.trim(),
+                    style: {
+                        backgroundColor: '#fa8c16',
+                        borderColor: '#fa8c16'
+                    }
+                }}
+                width={600}
+                style={{
+                    top: 100
+                }}
+            >
+                {selectedCardForRequest && (
+                    <div style={{ marginBottom: 16 }}>
+                        <div style={{ 
+                            padding: 12, 
+                            backgroundColor: '#fff7e6', 
+                            borderRadius: 8, 
+                            border: '1px solid #ffd591',
+                            marginBottom: 16
+                        }}>
+                            <Text strong style={{ color: '#d46b08', display: 'block', marginBottom: 4 }}>
+                                Card: {selectedCardForRequest.cardName}
+                            </Text>
+                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                                ID: {selectedCardForRequest.cardId}
+                            </Text>
+                        </div>
+                        
+                        <div style={{ marginBottom: 16 }}>
+                            <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                                Reason for rejecting the card?
+                            </Text>
+                            <Input.TextArea
+                                value={requestText}
+                                onChange={(e) => setRequestText(e.target.value)}
+                                placeholder="Please describe what additional information, clarification, or details you need for this error card..."
+                                rows={6}
+                                maxLength={500}
+                                showCount
+                                style={{
+                                    fontSize: '14px',
+                                    lineHeight: 1.6
+                                }}
+                            />
+                        </div>
+                        
+                        <div style={{ 
+                            padding: 12, 
+                            backgroundColor: '#f6ffed', 
+                            borderRadius: 8, 
+                            border: '1px solid #b7eb8f'
+                        }}>
+                            <Text style={{ color: '#389e0d', fontSize: '13px' }}>
+                                💡 <strong>Tip:</strong> Note rõ thông tin và lý do để được reject card.
+                            </Text>
+                        </div>
+                    </div>
+                )}
+            </Modal>
 
             {/* Card Detail Modal */}
             <CardDetailModal

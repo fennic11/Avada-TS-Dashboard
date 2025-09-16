@@ -1994,7 +1994,8 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                 style={{
                     maxWidth: 1400,
                     maxHeight: 400,
-                    top: 100
+                    top: 70,
+                    left: 100,
                 }}
                 bodyStyle={{
                     padding: 0,
