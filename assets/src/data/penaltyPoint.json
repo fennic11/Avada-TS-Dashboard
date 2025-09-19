@@ -58,5 +58,15 @@
         "id": "TSP12",
         "name": "Không được gây lỗi ảnh hưởng uy tín store hoặc làm lỗi site",
         "points": 50
+    },
+    {
+        "id": "TSP13",
+        "name": "Lỗi khác",
+        "points": 10
+    },
+    {
+        "id": "TSP14",
+        "name": "Không note rõ thông tin khi custom CSS trong app",
+        "points": 10
     }
 ]

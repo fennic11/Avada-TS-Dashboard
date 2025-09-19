@@ -327,8 +327,8 @@ const ErrorCardPage = () => {
             };
         });
         
-        // Đếm error cards cho từng TS member
-        filteredCards.forEach(card => {
+        // Đếm error cards cho từng TS member (chỉ tính cards có status approved)
+        filteredCards.filter(card => card.status === 'approved').forEach(card => {
             if (card.members) {
                 card.members.forEach(memberId => {
                     if (memberStats[memberId]) {
@@ -353,6 +353,7 @@ const ErrorCardPage = () => {
     };
 
     const filteredCards = filterCardsBySearch(filterCardsByMembers(filterCardsByTSGroup(errorCards)));
+    const approvedCards = filteredCards.filter(card => card.status === 'approved');
     const groupedCards = groupCardsByCardId(filteredCards);
     const tsLeaderboard = getTSLeaderboard();
 
@@ -565,8 +566,8 @@ const ErrorCardPage = () => {
                                 <Col span={8}>
                                     <Card>
                                         <Statistic
-                                            title="Total Error Cards"
-                                            value={filteredCards.length}
+                                            title="Total Error Cards (Approved)"
+                                            value={approvedCards.length}
                                             prefix={<ExclamationCircleOutlined />}
                                             valueStyle={{ color: '#1890ff' }}
                                         />
@@ -575,8 +576,8 @@ const ErrorCardPage = () => {
                                 <Col span={8}>
                                     <Card>
                                         <Statistic
-                                            title="Total Penalty Points"
-                                            value={filteredCards.reduce((total, card) => total + (card.penaltyPoints || 0), 0)}
+                                            title="Total Penalty Points (Approved)"
+                                            value={approvedCards.reduce((total, card) => total + (card.penaltyPoints || 0), 0)}
                                             prefix={<TrophyOutlined />}
                                             valueStyle={{ color: '#ff4d4f' }}
                                         />
@@ -585,8 +586,8 @@ const ErrorCardPage = () => {
                                 <Col span={8}>
                                     <Card>
                                         <Statistic
-                                            title="Average Points per Card"
-                                            value={filteredCards.length > 0 ? (filteredCards.reduce((total, card) => total + (card.penaltyPoints || 0), 0) / filteredCards.length).toFixed(1) : 0}
+                                            title="Average Points per Card (Approved)"
+                                            value={approvedCards.length > 0 ? (approvedCards.reduce((total, card) => total + (card.penaltyPoints || 0), 0) / approvedCards.length).toFixed(1) : 0}
                                             prefix={<TrophyOutlined />}
                                             valueStyle={{ color: '#52c41a' }}
                                         />
