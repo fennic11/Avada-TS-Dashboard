@@ -16,8 +16,7 @@ import {
     DialogActions,
     IconButton,
     Chip,
-    Tooltip,
-    Link
+    Tooltip
 } from "@mui/material";
 import {
     getCardsByList,
@@ -140,9 +139,10 @@ const DevZone = () => {
         const fetchLists = async () => {
             try {
                 const res = await getListsByBoardId("638d769884c52b05235a2310");
-                setLists(res);
+                setLists(res || []);
             } catch (err) {
                 console.error("Lỗi khi lấy danh sách list:", err);
+                setLists([]);
             }
         };
         fetchLists();
@@ -586,44 +586,6 @@ const DevZone = () => {
         }
     };
 
-    const formatDate = (dateString) => {
-        if (!dateString) return 'N/A';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('vi-VN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
-
-    const getLabelColor = (color) => {
-        const colorMap = {
-            'black_light': '#808080',
-            'yellow_dark': '#FFA000',
-            'sky_light': '#4FC3F7',
-            'orange_light': '#FFB74D',
-            'purple_light': '#CE93D8',
-            'red_dark': '#D32F2F',
-            'purple': '#9C27B0',
-            'null': '#E0E0E0'
-        };
-        return colorMap[color] || '#E0E0E0';
-    };
-
-    // Thêm hàm upload ảnh
-    const uploadImage = async (file) => {
-        const formData = new FormData();
-        formData.append('image', file);
-        const res = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData,
-        });
-        const data = await res.json();
-        return data.url; // server trả về { url: 'link ảnh' }
-    };
-
     // Add these new functions after other function declarations
 
     const handleCloseStatsModal = () => {
@@ -1056,7 +1018,7 @@ const DevZone = () => {
                                 label="Chọn List"
                                 onChange={(e) => setSelectedListId(e.target.value)}
                             >
-                                {lists.map((list) => (
+                                {lists && lists.map((list) => (
                                     <MenuItem key={list.id} value={list.id}>
                                         {list.name}
                                     </MenuItem>
@@ -1089,7 +1051,7 @@ const DevZone = () => {
                                 label="Chọn List"
                                 onChange={e => setSelectedListId(e.target.value)}
                             >
-                                {lists.map((list) => (
+                                {lists && lists.map((list) => (
                                     <MenuItem key={list.id} value={list.id}>
                                         {list.name}
                                     </MenuItem>

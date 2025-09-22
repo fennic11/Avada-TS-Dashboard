@@ -364,6 +364,11 @@ const ResolutionTimeList = () => {
     const [selectedChartTitle, setSelectedChartTitle] = useState("");
     const [selectedHeatmapField, setSelectedHeatmapField] = useState("resolutionTime");
     const [heatmapFilter, setHeatmapFilter] = useState(null);
+    const [timeRangeFilter, setTimeRangeFilter] = useState({
+        enabled: false,
+        startHour: 9,
+        endHour: 17
+    });
     const [cardDetailModalOpen, setCardDetailModalOpen] = useState(false);
     const [selectedCardId, setSelectedCardId] = useState(null);
 
@@ -532,7 +537,14 @@ const ResolutionTimeList = () => {
             const hasTeam = selectedTeam ? getCardTeam(card) === selectedTeam : true;
             const hasGroup = selectedGroup ? getCardGroup(card) === selectedGroup : true;
             
-            return hasApp && hasMember && hasTeam && hasGroup;
+            // Time range filter
+            const hasTimeRange = !timeRangeFilter.enabled ? true : (() => {
+                const cardDate = new Date(card.createdAt);
+                const cardHour = cardDate.getHours();
+                return cardHour >= timeRangeFilter.startHour && cardHour <= timeRangeFilter.endHour;
+            })();
+            
+            return hasApp && hasMember && hasTeam && hasGroup && hasTimeRange;
         });
 
         // Filter out cards that don't have any TS members
@@ -544,7 +556,13 @@ const ResolutionTimeList = () => {
         );
 
         setFilteredData(filtered);
-    }, [data, selectedApp, selectedMember, selectedTeam, selectedGroup, heatmapFilter]);
+        
+        // Update trending data current with filtered data
+        setTrendingData(prev => ({
+            ...prev,
+            current: filtered
+        }));
+    }, [data, selectedApp, selectedMember, selectedTeam, selectedGroup, heatmapFilter, timeRangeFilter]);
 
     // Handle manual data fetch
     const handleFetchData = () => {
@@ -651,6 +669,12 @@ const ResolutionTimeList = () => {
         
         // Update filtered data to show only cards from selected heatmap cell
         setFilteredData(filteredByHeatmap);
+        
+        // Update trending data current with heatmap filtered data
+        setTrendingData(prev => ({
+            ...prev,
+            current: filteredByHeatmap
+        }));
     };
 
     // Table columns
@@ -911,25 +935,39 @@ const ResolutionTimeList = () => {
                         </Col>
                     </Row>
                     
-                    {/* Comparison Info */}
-                    {trendingData.previous.length > 0 && dateRange && dateRange[0] && dateRange[1] && (
-                        <Row style={{ marginTop: 16 }}>
-                            <Col span={24}>
-                                <div style={{ 
-                                    background: '#f8fafc', 
-                                    padding: '8px 16px', 
-                                    borderRadius: 8,
-                                    border: '1px solid #e2e8f0',
-                                    textAlign: 'center'
-                                }}>
+                    {/* Filter Status and Comparison Info */}
+                    <Row style={{ marginTop: 16 }}>
+                        <Col span={24}>
+                            <div style={{ 
+                                background: '#f8fafc', 
+                                padding: '8px 16px', 
+                                borderRadius: 8,
+                                border: '1px solid #e2e8f0',
+                                textAlign: 'center'
+                            }}>
+                                {/* Active Filters Status */}
+                                <div style={{ marginBottom: 8 }}>
                                     <Text style={{ fontSize: 12, color: '#64748b' }}>
-                                        📊 Comparing: <strong>{dateRange[0].format('MMM DD, YYYY')} - {dateRange[1].format('MMM DD, YYYY')}</strong> vs{' '}
-                                        <strong>{dateRange[0].subtract(dateRange[1].diff(dateRange[0], 'day') + 1, 'day').format('MMM DD, YYYY')} - {dateRange[0].subtract(1, 'day').format('MMM DD, YYYY')}</strong>
+                                        📊 Showing <strong>{filteredData.length}</strong> cards
+                                        {selectedApp && ` • App: ${selectedApp}`}
+                                        {selectedMember && ` • Member: ${members.find(m => m.id === selectedMember)?.fullName}`}
+                                        {selectedTeam && ` • Team: ${selectedTeam}`}
+                                        {selectedGroup && ` • Group: ${selectedGroup}`}
+                                        {timeRangeFilter.enabled && ` • Time: ${timeRangeFilter.startHour}:00-${timeRangeFilter.endHour}:00`}
+                                        {heatmapFilter && ` • Heatmap: ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][heatmapFilter.weekday]} ${heatmapFilter.hour}:00`}
                                     </Text>
                                 </div>
-                            </Col>
-                        </Row>
-                    )}
+                                
+                                {/* Comparison Info */}
+                                {trendingData.previous.length > 0 && dateRange && dateRange[0] && dateRange[1] && (
+                                    <Text style={{ fontSize: 12, color: '#64748b' }}>
+                                        📈 Comparing: <strong>{dateRange[0].format('MMM DD, YYYY')} - {dateRange[1].format('MMM DD, YYYY')}</strong> vs{' '}
+                                        <strong>{dateRange[0].subtract(dateRange[1].diff(dateRange[0], 'day') + 1, 'day').format('MMM DD, YYYY')} - {dateRange[0].subtract(1, 'day').format('MMM DD, YYYY')}</strong>
+                                    </Text>
+                                )}
+                            </div>
+                        </Col>
+                    </Row>
                 </Card>
 
                 {loading ? (
@@ -1283,7 +1321,7 @@ const ResolutionTimeList = () => {
                         {/* Heatmap Section */}
                         <Card
                             title={
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                                     <span style={{ fontWeight: 700, fontSize: 18 }}>Resolution Time Heatmap</span>
                                     <Select
                                         value={selectedHeatmapField}
@@ -1295,6 +1333,42 @@ const ResolutionTimeList = () => {
                                         <Select.Option value="firstActionTime">First Action Time</Select.Option>
                                         <Select.Option value="resolutionTimeTS">TS Done Time</Select.Option>
                                     </Select>
+                                    
+                                    {/* Time Range Filter Controls */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+                                        <Text style={{ fontSize: 14, color: '#64748b' }}>Time Range:</Text>
+                                        <Select
+                                            value={timeRangeFilter.startHour}
+                                            onChange={(value) => setTimeRangeFilter(prev => ({ ...prev, startHour: value }))}
+                                            style={{ width: 80 }}
+                                            size="small"
+                                            disabled={!timeRangeFilter.enabled}
+                                        >
+                                            {Array.from({ length: 24 }, (_, i) => (
+                                                <Select.Option key={i} value={i}>{i}:00</Select.Option>
+                                            ))}
+                                        </Select>
+                                        <Text style={{ fontSize: 14, color: '#64748b' }}>to</Text>
+                                        <Select
+                                            value={timeRangeFilter.endHour}
+                                            onChange={(value) => setTimeRangeFilter(prev => ({ ...prev, endHour: value }))}
+                                            style={{ width: 80 }}
+                                            size="small"
+                                            disabled={!timeRangeFilter.enabled}
+                                        >
+                                            {Array.from({ length: 24 }, (_, i) => (
+                                                <Select.Option key={i} value={i}>{i}:00</Select.Option>
+                                            ))}
+                                        </Select>
+                                        <Button
+                                            type={timeRangeFilter.enabled ? "primary" : "default"}
+                                            size="small"
+                                            onClick={() => setTimeRangeFilter(prev => ({ ...prev, enabled: !prev.enabled }))}
+                                        >
+                                            {timeRangeFilter.enabled ? 'Disable' : 'Enable'}
+                                        </Button>
+                                    </div>
+                                    
                                     {heatmapFilter && (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                             <Text type="secondary" style={{ fontSize: 12 }}>
@@ -1304,12 +1378,22 @@ const ResolutionTimeList = () => {
                                                 size="small" 
                                                 onClick={() => {
                                                     setHeatmapFilter(null);
-                                                    setFilteredData(data.filter((card) => {
+                                                    const clearedFilteredData = data.filter((card) => {
                                                         const hasApp = selectedApp ? card.labels?.some(l => l === selectedApp) : true;
                                                         const hasMember = selectedMember ? card.members?.includes(selectedMember) : true;
                                                         const hasTeam = selectedTeam ? getCardTeam(card) === selectedTeam : true;
                                                         const hasGroup = selectedGroup ? getCardGroup(card) === selectedGroup : true;
-                                                        return hasApp && hasMember && hasTeam && hasGroup;
+                                                        const hasTimeRange = !timeRangeFilter.enabled ? true : (() => {
+                                                            const cardDate = new Date(card.createdAt);
+                                                            const cardHour = cardDate.getHours();
+                                                            return cardHour >= timeRangeFilter.startHour && cardHour <= timeRangeFilter.endHour;
+                                                        })();
+                                                        return hasApp && hasMember && hasTeam && hasGroup && hasTimeRange;
+                                                    });
+                                                    setFilteredData(clearedFilteredData);
+                                                    setTrendingData(prev => ({
+                                                        ...prev,
+                                                        current: clearedFilteredData
                                                     }));
                                                 }}
                                             >
@@ -1321,6 +1405,32 @@ const ResolutionTimeList = () => {
                             }
                             style={{ borderRadius: 16, marginBottom: 32, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
                         >
+                            {/* Time Range Filter Status */}
+                            {timeRangeFilter.enabled && (
+                                <div style={{ 
+                                    background: '#f0f9ff', 
+                                    padding: '12px 16px', 
+                                    borderRadius: 8,
+                                    border: '1px solid #0ea5e9',
+                                    marginBottom: 16,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8
+                                }}>
+                                    <Text style={{ color: '#0ea5e9', fontWeight: 600 }}>
+                                        ⏰ Time Range Filter Active: {timeRangeFilter.startHour}:00 - {timeRangeFilter.endHour}:00
+                                    </Text>
+                                    <Button 
+                                        size="small" 
+                                        type="text"
+                                        onClick={() => setTimeRangeFilter(prev => ({ ...prev, enabled: false }))}
+                                        style={{ color: '#0ea5e9' }}
+                                    >
+                                        Clear
+                                    </Button>
+                                </div>
+                            )}
+                            
                             <HeatmapOfWeek 
                                 cards={filteredData}
                                 field={selectedHeatmapField}

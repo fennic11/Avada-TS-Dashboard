@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Card, Avatar, Tag, Progress, Row, Col, Statistic, Typography, Timeline, Badge, DatePicker, Select, Space, Button, Modal, List, Divider } from 'antd';
-import { TrophyOutlined, UserOutlined, CrownOutlined, StarOutlined, LineChartOutlined, CalendarOutlined, FilterOutlined, ClearOutlined, EyeOutlined, LinkOutlined } from '@ant-design/icons';
+import { Table, Card, Avatar, Tag, Progress, Row, Col, Statistic, Typography, Timeline, Badge, DatePicker, Select, Space, Button, Modal, List, Divider, message } from 'antd';
+import { TrophyOutlined, UserOutlined, CrownOutlined, StarOutlined, LineChartOutlined, CalendarOutlined, FilterOutlined, ClearOutlined, EyeOutlined, LinkOutlined, FileExcelOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import errorAssignCardApi from '../api/errorAssignCardApi';
 import membersData from '../data/members.json';
@@ -118,6 +118,56 @@ const ErrorAssigCardsPage = () => {
         setModalVisible(false);
         setSelectedMember(null);
         setMemberCards([]);
+    };
+
+    // Function to export member cards to Excel
+    const exportToExcel = () => {
+        if (!selectedMember || memberCards.length === 0) {
+            message.warning('No data to export');
+            return;
+        }
+
+        try {
+            // Prepare CSV data
+            const csvData = [
+                ['Card Name', 'Card ID', 'Assigned To', 'Date', 'Trello Link']
+            ];
+
+            memberCards.forEach(item => {
+                const assignedMember = getMemberById(item.idMemberAssigned);
+                const assignedName = assignedMember ? assignedMember.fullName || assignedMember.username : 'Unknown';
+                const trelloLink = item.card?.shortLink ? `https://trello.com/c/${item.card.shortLink}` : '';
+                
+                csvData.push([
+                    item.card?.name || 'Unknown Card',
+                    item.card?.idShort || 'N/A',
+                    assignedName,
+                    dayjs(item.date).format('DD/MM/YYYY HH:mm'),
+                    trelloLink
+                ]);
+            });
+
+            // Convert to CSV string
+            const csvContent = csvData.map(row => 
+                row.map(field => `"${field}"`).join(',')
+            ).join('\n');
+
+            // Create and download file
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `error_assign_cards_${selectedMember.username || selectedMember.fullName}_${dayjs().format('YYYY-MM-DD')}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            message.success('Data exported successfully!');
+        } catch (error) {
+            console.error('Error exporting data:', error);
+            message.error('Failed to export data');
+        }
     };
 
     // Function to create leaderboard data
@@ -554,10 +604,20 @@ const ErrorAssigCardsPage = () => {
 
                         {/* Cards List */}
                         <div>
-                            <Title level={4} style={{ marginBottom: '16px' }}>
-                                <EyeOutlined style={{ marginRight: '8px' }} />
-                                Cards Created by {selectedMember.fullName || selectedMember.username}
-                            </Title>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                <Title level={4} style={{ margin: 0 }}>
+                                    <EyeOutlined style={{ marginRight: '8px' }} />
+                                    Cards Created by {selectedMember.fullName || selectedMember.username}
+                                </Title>
+                                <Button
+                                    type="primary"
+                                    icon={<FileExcelOutlined />}
+                                    onClick={exportToExcel}
+                                    style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                                >
+                                    Export to Excel
+                                </Button>
+                            </div>
                             
                             <List
                                 dataSource={memberCards}
