@@ -6,10 +6,9 @@ import {
   Avatar,
   Badge,
   Dropdown,
-  List,
   Typography,
-  Space,
-  notification
+  notification,
+  Drawer
 } from 'antd';
 import {
   DashboardOutlined,
@@ -25,7 +24,8 @@ import {
   DollarOutlined,
   BellOutlined,
   LogoutOutlined,
-  SettingOutlined
+  SettingOutlined,
+  MenuOutlined
 } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 import { getCurrentUser, logout } from '../api/usersApi';
@@ -35,7 +35,7 @@ import CardDetailModal from './CardDetailModal';
 import { ROLES, ROLE_PERMISSIONS } from '../utils/roles';
 import logo from '../Logo có nền/Logo có nền/Avada_Brandmark_PhienBanMauChinhTrenNenSang.jpg';
 
-const { Header: AntHeader, Sider, Content } = Layout;
+const { Header: AntHeader, Sider } = Layout;
 const { Text, Title } = Typography;
 
 // Convert TABS to menu items format
@@ -80,6 +80,9 @@ function ResponsiveAppBar({ sidebarOpen = true, onToggleSidebar, drawerWidth = 2
   const [selectedCardId, setSelectedCardId] = useState(null);
   const [previousUnreadCount, setPreviousUnreadCount] = useState(0);
   const [filter, setFilter] = useState('unread'); // 'unread', 'read'
+  const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false);
   const location = useLocation();
 
   // Get user role from localStorage
@@ -97,6 +100,26 @@ function ResponsiveAppBar({ sidebarOpen = true, onToggleSidebar, drawerWidth = 2
     if (currentUser) {
       setUser(currentUser);
     }
+  }, []);
+
+  // Screen size detection
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 768);
+      setIsTablet(width >= 768 && width < 1024);
+      
+      // Auto-collapse sidebar on mobile
+      if (width < 768) {
+        setCollapsed(true);
+        setDrawerVisible(false);
+      }
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    
+    return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
   // Add interval for realtime updates
@@ -205,6 +228,19 @@ function ResponsiveAppBar({ sidebarOpen = true, onToggleSidebar, drawerWidth = 2
   const handleLogout = () => {
     logout();
     window.location.href = '/login';
+  };
+
+  const handleToggleSidebar = () => {
+    if (isMobile) {
+      setDrawerVisible(!drawerVisible);
+    } else {
+      setCollapsed(!collapsed);
+      onToggleSidebar && onToggleSidebar();
+    }
+  };
+
+  const handleDrawerClose = () => {
+    setDrawerVisible(false);
   };
 
   const handleMarkAllAsRead = async () => {
@@ -464,84 +500,124 @@ function ResponsiveAppBar({ sidebarOpen = true, onToggleSidebar, drawerWidth = 2
     },
   ];
 
-  return (
+  // Render sidebar content
+  const renderSidebarContent = () => (
     <>
-      {/* Sidebar */}
-      <Sider
-        trigger={null}
-        collapsible
-        collapsed={collapsed}
-        width={drawerWidth}
-        style={{
-          background: 'linear-gradient(135deg, #06038D 0%, #1B263B 100%)',
-          position: 'fixed',
-          height: '100vh',
-          left: 0,
-          top: 0,
-          bottom: 0,
-          zIndex: 1000,
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '2px 0 8px rgba(0,0,0,0.1)'
-        }}
-      >
-        {/* Logo Section */}
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          height: '70px',
-          justifyContent: 'center',
-          borderBottom: '1px solid rgba(255,255,255,0.1)',
-          cursor: 'pointer',
-          flexDirection: 'row',
-          gap: '8px',
-          padding: '0 16px'
-        }}
-        onClick={() => {
+      {/* Logo Section */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        height: '70px',
+        justifyContent: 'center',
+        borderBottom: '1px solid rgba(255,255,255,0.1)',
+        cursor: 'pointer',
+        flexDirection: 'row',
+        gap: '8px',
+        padding: '0 16px'
+      }}
+      onClick={() => {
+        if (isMobile) {
+          setDrawerVisible(false);
+        } else {
           setCollapsed(!collapsed);
           onToggleSidebar && onToggleSidebar();
-        }}
+        }
+      }}
+      >
+        <img 
+          src={logo} 
+          alt="logo" 
+          height={32} 
+          style={{ borderRadius: 8 }} 
+        />
+        {(!collapsed || isMobile) && (
+          <Text style={{ 
+            fontSize: '14px', 
+            fontWeight: 600, 
+            color: 'white',
+            whiteSpace: 'nowrap'
+          }}>
+            Avada TS Team
+          </Text>
+        )}
+      </div>
+      
+      {/* Menu Section */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 0' }}>
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          items={currentMenuItems}
+          style={{
+            background: 'transparent',
+            border: 'none'
+          }}
+          onClick={() => {
+            if (isMobile) {
+              setDrawerVisible(false);
+            }
+          }}
+        />
+      </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop/Tablet Sidebar */}
+      {!isMobile && (
+        <Sider
+          trigger={null}
+          collapsible
+          collapsed={collapsed}
+          width={drawerWidth}
+          style={{
+            background: 'linear-gradient(135deg, #06038D 0%, #1B263B 100%)',
+            position: 'fixed',
+            height: '100vh',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            zIndex: 1000,
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '2px 0 8px rgba(0,0,0,0.1)'
+          }}
         >
-          <img 
-            src={logo} 
-            alt="logo" 
-            height={32} 
-            style={{ borderRadius: 8 }} 
-          />
-          {!collapsed && (
-            <Text style={{ 
-              fontSize: '14px', 
-              fontWeight: 600, 
-              color: 'white',
-              whiteSpace: 'nowrap'
-            }}>
-              Avada TS Team
-            </Text>
-          )}
-        </div>
-        
-        {/* Menu Section */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 0' }}>
-          <Menu
-            theme="dark"
-            mode="inline"
-            selectedKeys={[location.pathname]}
-            items={currentMenuItems}
-            style={{
-              background: 'transparent',
-              border: 'none'
-            }}
-          />
-        </div>
+          {renderSidebarContent()}
+        </Sider>
+      )}
 
-
-      </Sider>
+      {/* Mobile Drawer */}
+      {isMobile && (
+        <Drawer
+          title={null}
+          placement="left"
+          closable={false}
+          onClose={handleDrawerClose}
+          open={drawerVisible}
+          width={280}
+          bodyStyle={{
+            padding: 0,
+            background: 'linear-gradient(135deg, #06038D 0%, #1B263B 100%)',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+          style={{
+            zIndex: 1001
+          }}
+        >
+          {renderSidebarContent()}
+        </Drawer>
+      )}
 
       {/* Header */}
       <AntHeader
         style={{
           background: 'white',
-          padding: '0 24px',
+          padding: isMobile ? '0 16px' : '0 24px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -549,21 +625,45 @@ function ResponsiveAppBar({ sidebarOpen = true, onToggleSidebar, drawerWidth = 2
           position: 'fixed',
           top: 0,
           right: 0,
-          left: collapsed ? 80 : drawerWidth,
+          left: isMobile ? 0 : (collapsed ? 80 : drawerWidth),
           zIndex: 999,
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           transition: 'left 0.2s',
           overflow: 'visible'
         }}
       >
-        {/* Left side - Empty for now */}
-        <div></div>
+        {/* Left side - Mobile menu button */}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          {isMobile && (
+            <Button
+              type="text"
+              icon={<MenuOutlined />}
+              onClick={handleToggleSidebar}
+              style={{
+                fontSize: '18px',
+                height: '44px',
+                width: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(6, 3, 141, 0.05)',
+                border: '1px solid rgba(6, 3, 141, 0.1)',
+                color: '#06038D',
+                marginRight: '12px'
+              }}
+            />
+          )}
+          {!isMobile && (
+            <div></div>
+          )}
+        </div>
 
         {/* Right side - Notifications and Account */}
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
-          gap: '16px',
+          gap: isMobile ? '8px' : '16px',
           minWidth: 0,
           overflow: 'visible'
         }}>
@@ -571,11 +671,11 @@ function ResponsiveAppBar({ sidebarOpen = true, onToggleSidebar, drawerWidth = 2
           <div style={{ position: 'relative', zIndex: 1001, display: 'inline-block' }}>
             <Dropdown
               menu={{ items: notificationItems }}
-              placement="bottomRight"
+              placement={isMobile ? "bottomLeft" : "bottomRight"}
               trigger={['click']}
               getPopupContainer={() => document.body}
               overlayStyle={{ 
-                width: 420, 
+                width: isMobile ? Math.min(420, window.innerWidth - 32) : 420, 
                 maxHeight: 600,
                 borderRadius: '12px',
                 boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
@@ -603,27 +703,31 @@ function ResponsiveAppBar({ sidebarOpen = true, onToggleSidebar, drawerWidth = 2
                   type="text"
                   icon={<BellOutlined />}
                   style={{ 
-                    fontSize: '18px',
-                    height: '44px',
-                    width: '44px',
+                    fontSize: isMobile ? '16px' : '18px',
+                    height: isMobile ? '40px' : '44px',
+                    width: isMobile ? '40px' : '44px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderRadius: '10px',
                     flexShrink: 0,
-                                      backgroundColor: 'rgba(6, 3, 141, 0.05)',
-                  border: '1px solid rgba(6, 3, 141, 0.1)',
-                  transition: 'all 0.2s ease',
-                  color: '#06038D'
+                    backgroundColor: 'rgba(6, 3, 141, 0.05)',
+                    border: '1px solid rgba(6, 3, 141, 0.1)',
+                    transition: 'all 0.2s ease',
+                    color: '#06038D'
                   }}
-                                  onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(6, 3, 141, 0.1)';
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(6, 3, 141, 0.05)';
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
+                  onMouseEnter={(e) => {
+                    if (!isMobile) {
+                      e.currentTarget.style.backgroundColor = 'rgba(6, 3, 141, 0.1)';
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isMobile) {
+                      e.currentTarget.style.backgroundColor = 'rgba(6, 3, 141, 0.05)';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }
+                  }}
                 />
               </Badge>
             </Dropdown>
@@ -632,24 +736,24 @@ function ResponsiveAppBar({ sidebarOpen = true, onToggleSidebar, drawerWidth = 2
           {/* User Account Dropdown */}
           <Dropdown
             menu={{ items: userMenuItems }}
-            placement="bottomRight"
+            placement={isMobile ? "bottomLeft" : "bottomRight"}
             trigger={['click']}
           >
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: '8px',
-              padding: '8px',
+              gap: isMobile ? '4px' : '8px',
+              padding: isMobile ? '4px' : '8px',
               borderRadius: '50%',
               cursor: 'pointer',
               transition: 'background-color 0.2s',
-              maxWidth: '200px',
+              maxWidth: isMobile ? '150px' : '200px',
               minWidth: 0,
               overflow: 'hidden'
             }}>
               <Avatar
                 src={user?.picture}
-                size="small"
+                size={isMobile ? "small" : "small"}
                 style={{ 
                   backgroundColor: '#06038D',
                   color: 'white',

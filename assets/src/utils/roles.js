@@ -82,6 +82,7 @@ export const ROLE_PERMISSIONS = {
             TABS.ISSUES,
             TABS.TS_LEAD,
             TABS.DEV_RESOLUTION_TIME,
+            TABS.BA_PAGE,
             // TABS.TS_WORKSPACE,
             // TABS.SLACK_CHANNEL,
             TABS.PERFORMANCE_TS,

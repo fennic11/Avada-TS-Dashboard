@@ -42,6 +42,8 @@ import { calculateDevResolutionTime } from "../utils/devResolutionTime";
 import { checkOverdueConfirmationCards, getOverdueConfirmationSummary } from "../utils/qaConfirmCard";
 import CardDetailModal from "./CardDetailModal";
 import errorAssignCard from "../api/errorAssignCardApi";
+import listsIdData from "../data/listsId.json";
+import rateKpiData from "../data/rateKpi.json";
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -51,7 +53,7 @@ const DevZone = () => {
     const [progress, setProgress] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
     const [log, setLog] = useState("");
-    const [lists, setLists] = useState([]);
+    const [lists, setLists] = useState(listsIdData);
     const [selectedListId, setSelectedListId] = useState("");
     const [snackbar, setSnackbar] = useState({
         open: false,
@@ -80,7 +82,6 @@ const DevZone = () => {
 
     const [channels, setChannels] = useState(null);
     const [isChannelsModalOpen, setIsChannelsModalOpen] = useState(false);
-    const [appStats, setAppStats] = useState({});
     const theme = useTheme();
 
     // Tạo Set chứa các member ID hợp lệ
@@ -135,18 +136,15 @@ const DevZone = () => {
     const [filteredActions, setFilteredActions] = useState([]);
     const [isPushingData, setIsPushingData] = useState(false);
 
-    useEffect(() => {
-        const fetchLists = async () => {
-            try {
-                const res = await getListsByBoardId("638d769884c52b05235a2310");
-                setLists(res || []);
-            } catch (err) {
-                console.error("Lỗi khi lấy danh sách list:", err);
-                setLists([]);
-            }
-        };
-        fetchLists();
-    }, []);
+    // KPI Cards states
+    const [filteredCards, setFilteredCards] = useState([]);
+    const [isCardsLoading, setIsCardsLoading] = useState(false);
+    const [selectedApp, setSelectedApp] = useState('');
+    const [kpiStats, setKpiStats] = useState({});
+    const [isKPIStatsModalOpen, setIsKPIStatsModalOpen] = useState(false);
+
+
+    // Lists are now loaded from static JSON data
 
     const handleProcess = async () => {
         if (!selectedListId) {
@@ -428,19 +426,14 @@ const DevZone = () => {
     const handleGetLists = async () => {
         try {
             setIsLoading(true);
-            const lists = await getListsByBoardId("638d769884c52b05235a2310");
-            // Chỉ lấy id và name của mỗi list
-            const simplifiedLists = lists.map(list => ({
-                id: list.id,
-                name: list.name
-            }));
-            setListsData(simplifiedLists);
+            // Use static data instead of API call
+            setListsData(listsIdData);
             setIsListsModalOpen(true);
         } catch (error) {
-            console.error('Error fetching lists:', error);
+            console.error('Error loading lists:', error);
             setSnackbar({
                 open: true,
-                message: "Không thể lấy danh sách lists. Vui lòng thử lại.",
+                message: "Không thể tải danh sách lists. Vui lòng thử lại.",
                 severity: "error"
             });
         } finally {
@@ -593,24 +586,7 @@ const DevZone = () => {
     };
 
     const handleCopyStatsJSON = () => {
-      if (appStats) {
-        navigator.clipboard.writeText(JSON.stringify(appStats, null, 2))
-          .then(() => {
-            setSnackbar({
-              open: true,
-              message: "Đã sao chép JSON vào clipboard",
-              severity: "success"
-            });
-          })
-          .catch(err => {
-            console.error('Failed to copy:', err);
-            setSnackbar({
-              open: true,
-              message: "Không thể sao chép JSON",
-              severity: "error"
-            });
-          });
-      }
+      // Function removed - no longer needed
     };
 
 
@@ -1001,6 +977,137 @@ const DevZone = () => {
         }
     };
 
+    // KPI Cards functions
+    const handleGetCardsForKPI = async () => {
+        if (!selectedListId) {
+            setSnackbar({
+                open: true,
+                message: "Vui lòng chọn một list!",
+                severity: "warning"
+            });
+            return;
+        }
+
+        try {
+            setIsCardsLoading(true);
+            const cards = await getCardsByList(selectedListId);
+            setFilteredCards(cards);
+            
+            // Calculate KPI statistics
+            calculateKPIStatistics(cards);
+            
+            setSnackbar({
+                open: true,
+                message: `Đã lấy ${cards.length} cards từ list`,
+                severity: "success"
+            });
+        } catch (error) {
+            console.error('Error fetching cards:', error);
+            setSnackbar({
+                open: true,
+                message: "Không thể lấy cards từ list",
+                severity: "error"
+            });
+        } finally {
+            setIsCardsLoading(false);
+        }
+    };
+
+    const calculateKPIStatistics = (cards) => {
+        const stats = {};
+        
+        cards.forEach(card => {
+            // Extract app name from card name (assuming format like "AppName: Issue description")
+            const appName = card.name.split(':')[0].trim();
+            if (!stats[appName]) {
+                stats[appName] = {
+                    totalCards: 0,
+                    totalPoints: 0,
+                    levelBreakdown: {}
+                };
+            }
+            
+            stats[appName].totalCards++;
+            
+            // Calculate points based on labels and rateKpi
+            const cardPoints = calculateCardPoints(card);
+            stats[appName].totalPoints += cardPoints;
+            
+            // Track level breakdown
+            const level = getCardLevel(card);
+            if (!stats[appName].levelBreakdown[level]) {
+                stats[appName].levelBreakdown[level] = {
+                    count: 0,
+                    points: 0
+                };
+            }
+            stats[appName].levelBreakdown[level].count++;
+            stats[appName].levelBreakdown[level].points += cardPoints;
+        });
+        
+        setKpiStats(stats);
+    };
+
+    const calculateCardPoints = (card) => {
+        const level = getCardLevel(card);
+        const issueRate = rateKpiData.issueRate;
+        
+        // Find matching rate for the level
+        for (const [key, rate] of Object.entries(issueRate)) {
+            if (key.toLowerCase().includes(level.toLowerCase())) {
+                return rate;
+            }
+        }
+        
+        // Default rate if no match found
+        return 0;
+    };
+
+    const getCardLevel = (card) => {
+        // Check labels for level information
+        if (card.labels && card.labels.length > 0) {
+            for (const label of card.labels) {
+                const labelName = label.name.toLowerCase();
+                if (labelName.includes('level 0')) return 'level 0';
+                if (labelName.includes('level 1')) return 'level 1';
+                if (labelName.includes('level 2')) return 'level 2';
+                if (labelName.includes('level 3')) return 'level 3';
+                if (labelName.includes('level 4')) return 'level 4';
+            }
+        }
+        
+        // Check card name for level information
+        const cardName = card.name.toLowerCase();
+        if (cardName.includes('level 0')) return 'level 0';
+        if (cardName.includes('level 1')) return 'level 1';
+        if (cardName.includes('level 2')) return 'level 2';
+        if (cardName.includes('level 3')) return 'level 3';
+        if (cardName.includes('level 4')) return 'level 4';
+        
+        return 'unknown';
+    };
+
+    const handleFilterByApp = (appName) => {
+        setSelectedApp(appName);
+        if (appName === '') {
+            setFilteredCards([]);
+        } else {
+            const filtered = filteredCards.filter(card => 
+                card.name.split(':')[0].trim() === appName
+            );
+            setFilteredCards(filtered);
+        }
+    };
+
+    const handleOpenKPIStatsModal = () => {
+        setIsKPIStatsModalOpen(true);
+    };
+
+    const handleCloseKPIStatsModal = () => {
+        setIsKPIStatsModalOpen(false);
+    };
+
+
     return (
         <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -1018,7 +1125,7 @@ const DevZone = () => {
                                 label="Chọn List"
                                 onChange={(e) => setSelectedListId(e.target.value)}
                             >
-                                {lists && lists.map((list) => (
+                                {lists.map((list) => (
                                     <MenuItem key={list.id} value={list.id}>
                                         {list.name}
                                     </MenuItem>
@@ -1037,6 +1144,7 @@ const DevZone = () => {
                     </Box>
                 </Paper>
 
+
                 {/* Section xử lý Dev Cards */}
                 <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3, mt: 4 }}>
                     <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
@@ -1051,7 +1159,7 @@ const DevZone = () => {
                                 label="Chọn List"
                                 onChange={e => setSelectedListId(e.target.value)}
                             >
-                                {lists && lists.map((list) => (
+                                {lists.map((list) => (
                                     <MenuItem key={list.id} value={list.id}>
                                         {list.name}
                                     </MenuItem>
@@ -1074,6 +1182,7 @@ const DevZone = () => {
                         <LinearProgress variant="determinate" value={devProgress} />
                     </Box>
                 )}
+
 
                 {/* Phần lấy Card Details */}
                 <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
@@ -1203,6 +1312,266 @@ const DevZone = () => {
                             Lấy Board Lists
                         </Button>
                     </Box>
+                </Paper>
+
+                {/* Section mới - Xem tất cả Lists từ JSON */}
+                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3, background: 'linear-gradient(135deg, #f0f8ff 0%, #e0f2fe 100%)' }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
+                        🆕 Xem tất cả Lists từ JSON Data
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
+                        Hiển thị tất cả {lists.length} lists có sẵn từ file listsId.json
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                        <Button 
+                            variant="contained" 
+                            onClick={handleGetLists}
+                            disabled={isLoading}
+                            sx={{ 
+                                minWidth: 200,
+                                borderRadius: 2,
+                                background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                                '&:hover': {
+                                    background: 'linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)'
+                                }
+                            }}
+                        >
+                            📋 Xem tất cả Lists
+                        </Button>
+                        <Button 
+                            variant="outlined" 
+                            onClick={() => {
+                                const listNames = lists.map(list => `${list.name} (${list.id})`).join('\n');
+                                navigator.clipboard.writeText(listNames);
+                                setSnackbar({
+                                    open: true,
+                                    message: "Đã sao chép danh sách lists vào clipboard",
+                                    severity: "success"
+                                });
+                            }}
+                            sx={{ 
+                                minWidth: 200,
+                                borderRadius: 2,
+                                borderColor: '#3b82f6',
+                                color: '#3b82f6',
+                                '&:hover': {
+                                    borderColor: '#1d4ed8',
+                                    backgroundColor: 'rgba(59, 130, 246, 0.05)'
+                                }
+                            }}
+                        >
+                            📄 Copy danh sách Lists
+                        </Button>
+                    </Box>
+                    <Box sx={{ 
+                        mt: 2, 
+                        p: 2, 
+                        backgroundColor: 'rgba(59, 130, 246, 0.05)', 
+                        borderRadius: 2,
+                        border: '1px solid rgba(59, 130, 246, 0.1)'
+                    }}>
+                        <Typography variant="body2" color="primary.main" sx={{ fontWeight: 500, mb: 1 }}>
+                            📊 Thống kê Lists từ JSON:
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            • Tổng số lists: <strong>{lists.length}</strong>
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            • Lists có SLA: <strong>{lists.filter(list => list.name.includes('SLA')).length}</strong>
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            • Lists Done: <strong>{lists.filter(list => list.name.toLowerCase().includes('done')).length}</strong>
+                        </Typography>
+                    </Box>
+                </Paper>
+
+                {/* Section mới - Lấy Cards theo List và Filter theo App để tính KPI */}
+                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3, background: 'linear-gradient(135deg, #f0fff4 0%, #e6fffa 100%)' }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>
+                        🆕 Lấy Cards theo List & Filter theo App để tính KPI
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
+                        Lấy cards từ list, filter theo app và tính tổng points theo level dựa vào rateKpi.json
+                    </Typography>
+                    
+                    {/* Chọn List và lấy Cards */}
+                    <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                        <FormControl sx={{ minWidth: 300 }}>
+                            <InputLabel id="kpi-list-select-label">Chọn List để lấy Cards</InputLabel>
+                            <Select
+                                labelId="kpi-list-select-label"
+                                value={selectedListId}
+                                label="Chọn List để lấy Cards"
+                                onChange={(e) => setSelectedListId(e.target.value)}
+                                sx={{ 
+                                    '& .MuiOutlinedInput-root': { 
+                                        borderRadius: 2,
+                                        backgroundColor: 'white'
+                                    } 
+                                }}
+                            >
+                                {lists.map((list) => (
+                                    <MenuItem key={list.id} value={list.id}>
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                            <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                                {list.name}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                                                ID: {list.id}
+                                            </Typography>
+                                        </Box>
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                        <Button 
+                            variant="contained" 
+                            onClick={handleGetCardsForKPI}
+                            disabled={isCardsLoading || !selectedListId}
+                            sx={{ 
+                                minWidth: 200,
+                                borderRadius: 2,
+                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                '&:hover': {
+                                    background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)'
+                                }
+                            }}
+                        >
+                            {isCardsLoading ? 'Đang lấy...' : '📊 Lấy Cards & Tính KPI'}
+                        </Button>
+                    </Box>
+
+                    {/* Filter theo App */}
+                    {Object.keys(kpiStats).length > 0 && (
+                        <Box sx={{ mb: 3 }}>
+                            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 500 }}>
+                                🔍 Filter theo App:
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+                                <Button
+                                    variant={selectedApp === '' ? 'contained' : 'outlined'}
+                                    onClick={() => handleFilterByApp('')}
+                                    size="small"
+                                    sx={{ borderRadius: 2 }}
+                                >
+                                    Tất cả Apps
+                                </Button>
+                                {Object.keys(kpiStats).map(appName => (
+                                    <Button
+                                        key={appName}
+                                        variant={selectedApp === appName ? 'contained' : 'outlined'}
+                                        onClick={() => handleFilterByApp(appName)}
+                                        size="small"
+                                        sx={{ borderRadius: 2 }}
+                                    >
+                                        {appName} ({kpiStats[appName].totalCards})
+                                    </Button>
+                                ))}
+                            </Box>
+                        </Box>
+                    )}
+
+                    {/* Hiển thị thống kê KPI */}
+                    {Object.keys(kpiStats).length > 0 && (
+                        <Box sx={{ 
+                            p: 2, 
+                            backgroundColor: 'rgba(16, 185, 129, 0.05)', 
+                            borderRadius: 2,
+                            border: '1px solid rgba(16, 185, 129, 0.1)',
+                            mb: 2
+                        }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <Typography variant="h6" color="success.main" sx={{ fontWeight: 600 }}>
+                                    📈 Thống kê KPI theo App
+                                </Typography>
+                                <Button
+                                    variant="outlined"
+                                    onClick={handleOpenKPIStatsModal}
+                                    size="small"
+                                    sx={{ borderRadius: 2 }}
+                                >
+                                    📊 Xem chi tiết
+                                </Button>
+                            </Box>
+                            
+                            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
+                                {Object.entries(kpiStats).map(([appName, stats]) => (
+                                    <Box key={appName} sx={{ 
+                                        p: 2, 
+                                        backgroundColor: 'white', 
+                                        borderRadius: 2,
+                                        border: '1px solid rgba(16, 185, 129, 0.2)'
+                                    }}>
+                                        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                                            {appName}
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Cards: <strong>{stats.totalCards}</strong>
+                                        </Typography>
+                                        <Typography variant="body2" color="success.main" sx={{ fontWeight: 600 }}>
+                                            KPI Points: <strong>{stats.totalPoints}</strong>
+                                        </Typography>
+                                        <Box sx={{ mt: 1 }}>
+                                            {Object.entries(stats.levelBreakdown).map(([level, levelStats]) => (
+                                                <Typography key={level} variant="caption" display="block">
+                                                    {level}: {levelStats.count} cards ({levelStats.points} pts)
+                                                </Typography>
+                                            ))}
+                                        </Box>
+                                    </Box>
+                                ))}
+                            </Box>
+                        </Box>
+                    )}
+
+                    {/* Hiển thị cards đã filter */}
+                    {filteredCards.length > 0 && (
+                        <Box sx={{ 
+                            p: 2, 
+                            backgroundColor: 'rgba(16, 185, 129, 0.05)', 
+                            borderRadius: 2,
+                            border: '1px solid rgba(16, 185, 129, 0.1)'
+                        }}>
+                            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 500 }}>
+                                📋 Cards đã filter ({filteredCards.length} cards):
+                            </Typography>
+                            <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
+                                {filteredCards.map((card, index) => (
+                                    <Box key={card.id} sx={{ 
+                                        p: 2, 
+                                        mb: 1, 
+                                        backgroundColor: 'white', 
+                                        borderRadius: 2,
+                                        border: '1px solid rgba(0,0,0,0.1)'
+                                    }}>
+                                        <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
+                                            {index + 1}. {card.name}
+                                        </Typography>
+                                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                            <Chip 
+                                                label={`Level: ${getCardLevel(card)}`} 
+                                                size="small" 
+                                                color="primary"
+                                            />
+                                            <Chip 
+                                                label={`Points: ${calculateCardPoints(card)}`} 
+                                                size="small" 
+                                                color="success"
+                                            />
+                                            {card.labels && card.labels.map(label => (
+                                                <Chip 
+                                                    key={label.id} 
+                                                    label={label.name} 
+                                                    size="small" 
+                                                    variant="outlined"
+                                                />
+                                            ))}
+                                        </Box>
+                                    </Box>
+                                ))}
+                            </Box>
+                        </Box>
+                    )}
                 </Paper>
 
                 {/* Phần lấy board labels */}
@@ -2191,34 +2560,8 @@ const DevZone = () => {
                             <Typography variant="h6">
                                 Thống kê App
                             </Typography>
-                            {appStats && (
-                                <Chip 
-                                    label={`${Object.keys(appStats).length} apps`}
-                                    size="small"
-                                    sx={{ 
-                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                        color: 'primary.main',
-                                        fontWeight: 500
-                                    }}
-                                />
-                            )}
                         </Box>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {appStats && (
-                                <Tooltip title="Copy JSON">
-                                    <IconButton
-                                        onClick={handleCopyStatsJSON}
-                                        sx={{ 
-                                            color: 'primary.main',
-                                            '&:hover': {
-                                                backgroundColor: alpha(theme.palette.primary.main, 0.1)
-                                            }
-                                        }}
-                                    >
-                                        <ContentCopyIcon />
-                                    </IconButton>
-                                </Tooltip>
-                            )}
                             <IconButton onClick={handleCloseStatsModal}>
                                 <CloseIcon />
                             </IconButton>
@@ -2226,24 +2569,9 @@ const DevZone = () => {
                     </Box>
                 </DialogTitle>
                 <DialogContent>
-                    {appStats && (
-                        <Paper 
-                            sx={{ 
-                                p: 2, 
-                                backgroundColor: '#f5f5f5',
-                                maxHeight: '60vh',
-                                overflow: 'auto'
-                            }}
-                        >
-                            <pre style={{ 
-                                margin: 0,
-                                whiteSpace: 'pre-wrap',
-                                wordWrap: 'break-word'
-                            }}>
-                                {JSON.stringify(appStats, null, 2)}
-                            </pre>
-                        </Paper>
-                    )}
+                    <Typography variant="body1" color="text.secondary">
+                        Modal này đã được loại bỏ.
+                    </Typography>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseStatsModal}>Đóng</Button>
@@ -2481,6 +2809,130 @@ const DevZone = () => {
                 onClose={handleCloseCardDetail}
                 cardId={selectedCardId}
             />
+
+            {/* KPI Stats Modal */}
+            <Dialog
+                open={isKPIStatsModalOpen}
+                onClose={handleCloseKPIStatsModal}
+                maxWidth="lg"
+                fullWidth
+            >
+                <DialogTitle>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center' 
+                    }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Typography variant="h6">
+                                📊 Thống kê KPI chi tiết theo App
+                            </Typography>
+                            <Chip 
+                                label={`${Object.keys(kpiStats).length} apps`}
+                                size="small"
+                                sx={{ 
+                                    backgroundColor: alpha(theme.palette.success.main, 0.1),
+                                    color: 'success.main',
+                                    fontWeight: 500
+                                }}
+                            />
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Tooltip title="Copy JSON">
+                                <IconButton 
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(JSON.stringify(kpiStats, null, 2))
+                                            .then(() => {
+                                                setSnackbar({
+                                                    open: true,
+                                                    message: "Đã sao chép JSON vào clipboard",
+                                                    severity: "success"
+                                                });
+                                            });
+                                    }}
+                                    sx={{ 
+                                        color: 'success.main',
+                                        '&:hover': {
+                                            backgroundColor: alpha(theme.palette.success.main, 0.1)
+                                        }
+                                    }}
+                                >
+                                    <ContentCopyIcon />
+                                </IconButton>
+                            </Tooltip>
+                            <IconButton onClick={handleCloseKPIStatsModal}>
+                                <CloseIcon />
+                            </IconButton>
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
+                        {Object.entries(kpiStats).map(([appName, stats]) => (
+                            <Paper key={appName} sx={{ 
+                                p: 3, 
+                                backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                                border: '1px solid rgba(16, 185, 129, 0.2)',
+                                borderRadius: 2
+                            }}>
+                                <Typography variant="h6" sx={{ mb: 2, color: 'success.main', fontWeight: 600 }}>
+                                    {appName}
+                                </Typography>
+                                
+                                <Box sx={{ mb: 2 }}>
+                                    <Typography variant="body1" sx={{ fontWeight: 500, mb: 1 }}>
+                                        📈 Tổng quan:
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        • Tổng Cards: <strong>{stats.totalCards}</strong>
+                                    </Typography>
+                                    <Typography variant="body2" color="success.main" sx={{ fontWeight: 600 }}>
+                                        • Tổng KPI Points: <strong>{stats.totalPoints}</strong>
+                                    </Typography>
+                                </Box>
+
+                                <Box>
+                                    <Typography variant="body1" sx={{ fontWeight: 500, mb: 1 }}>
+                                        🎯 Phân tích theo Level:
+                                    </Typography>
+                                    {Object.entries(stats.levelBreakdown).map(([level, levelStats]) => (
+                                        <Box key={level} sx={{ 
+                                            p: 1, 
+                                            mb: 1, 
+                                            backgroundColor: 'white', 
+                                            borderRadius: 1,
+                                            border: '1px solid rgba(0,0,0,0.1)'
+                                        }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                                    {level.toUpperCase()}
+                                                </Typography>
+                                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                                    <Chip 
+                                                        label={`${levelStats.count} cards`} 
+                                                        size="small" 
+                                                        color="primary"
+                                                        variant="outlined"
+                                                    />
+                                                    <Chip 
+                                                        label={`${levelStats.points} pts`} 
+                                                        size="small" 
+                                                        color="success"
+                                                    />
+                                                </Box>
+                                            </Box>
+                                        </Box>
+                                    ))}
+                                </Box>
+                            </Paper>
+                        ))}
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseKPIStatsModal}>Đóng</Button>
+                </DialogActions>
+            </Dialog>
+
         </Box>
     );
 };
