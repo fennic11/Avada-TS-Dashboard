@@ -528,9 +528,7 @@ const ResolutionTimeList = () => {
 
     // Update filtered data when filters change
     useEffect(() => {
-        // Don't update if heatmap filter is active
-        if (heatmapFilter) return;
-        
+        // First apply all basic filters (app, member, team, group, time range)
         let filtered = data.filter((card) => {
             const hasApp = selectedApp ? card.labels?.some(l => l === selectedApp) : true;
             const hasMember = selectedMember ? card.members?.includes(selectedMember) : true;
@@ -554,6 +552,21 @@ const ResolutionTimeList = () => {
                 return member && member.role === 'TS';
             })
         );
+
+        // If heatmap filter is active, apply it on top of the basic filters
+        if (heatmapFilter) {
+            const { weekday, hour } = heatmapFilter;
+            filtered = filtered.filter(card => {
+                const cardDate = new Date(card.createdAt);
+                const cardDay = cardDate.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+                const cardHour = cardDate.getHours();
+                
+                // Convert to Monday-first index (0=Mon, 6=Sun)
+                const mondayFirstIndex = [1,2,3,4,5,6,0].indexOf(cardDay);
+                
+                return mondayFirstIndex === weekday && cardHour === hour;
+            });
+        }
 
         setFilteredData(filtered);
         
@@ -647,34 +660,8 @@ const ResolutionTimeList = () => {
 
     const handleHeatmapCellClick = (filter) => {
         setHeatmapFilter(filter);
-        
-        // Filter cards based on heatmap cell click
-        const { weekday, hour } = filter;
-        
-        // Convert weekday index (0=Mon, 6=Sun) to actual day names
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const selectedDay = dayNames[weekday];
-        
-        // Filter cards that were created on the selected day and hour
-        const filteredByHeatmap = data.filter(card => {
-            const cardDate = new Date(card.createdAt);
-            const cardDay = cardDate.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-            const cardHour = cardDate.getHours();
-            
-            // Convert to Monday-first index (0=Mon, 6=Sun)
-            const mondayFirstIndex = [1,2,3,4,5,6,0].indexOf(cardDay);
-            
-            return mondayFirstIndex === weekday && cardHour === hour;
-        });
-        
-        // Update filtered data to show only cards from selected heatmap cell
-        setFilteredData(filteredByHeatmap);
-        
-        // Update trending data current with heatmap filtered data
-        setTrendingData(prev => ({
-            ...prev,
-            current: filteredByHeatmap
-        }));
+        // The useEffect will handle the filtering automatically
+        // No need to manually filter here since useEffect will trigger
     };
 
     // Table columns
