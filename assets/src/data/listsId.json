@@ -32,10 +32,6 @@
     "name": "Done"
   },
   {
-    "id": "68be851c897bf59f4e0766eb",
-    "name": "Done-T9-2025"
-  },
-  {
     "id": "663ae7d6feac5f2f8d7a1c86",
     "name": "Fix done from dev"
   },
@@ -98,6 +94,10 @@
   {
     "id": "68b156878943fdac82dded66",
     "name": "Done-T8-2025"
+  },
+  {
+    "id": "68be851c897bf59f4e0766eb",
+    "name": "Done-T9-2025"
   },
   {
     "id": "660a60d92f4507db3f548b6f",
@@ -366,6 +366,18 @@
   {
     "id": "6860bca3ca1f180f4ccc2ee9",
     "name": "FixDoneFromDev-T6-2025"
+  },
+  {
+    "id": "68c3961f1ff29b75123bd11a",
+    "name": "Trial Shop T8"
+  },
+  {
+    "id": "68dc8f241035c53257e13d55",
+    "name": "trial shop t9"
+  },
+  {
+    "id": "68dc8f6de623cf394bca73a9",
+    "name": "FixDoneFromDev-T9-2025"
   },
   {
     "id": "67b297d9788d3e7d985323c7",

@@ -50,7 +50,7 @@ const AllKpiTsTeam = () => {
                 setKpiTsTeam(cleanedData);
                 
                 // Get list IDs for "Fix done from dev" and "Done"
-                const fixDoneList = listsId.find(list => list.name === "Fix done from dev");
+                const fixDoneList = listsId.find(list => list.name === "FixDoneFromDev-T9-2025");
                 const doneLists = listsId.filter(list => list.name === "Done" || list.name === "Done-T9-2025");
                 
                 // Fetch cards from both lists separately
@@ -137,35 +137,74 @@ const AllKpiTsTeam = () => {
                     if (allMembersInCard.includes(member.id)) {
                         const totalMemberCount = allMembersInCard.length;
                         
-                        // Apply BugsKpi.js logic: 1 member = 20 points, 2 members = 10 points each
-                        if (totalMemberCount === 1) {
-                            bugKpi += 20;
-                            totalBugs += 1;
-                            
-                            bugCardDetails.push({
-                                cardName: card.name,
-                                cardUrl: card.shortUrl,
-                                memberCount: totalMemberCount,
-                                points: 20,
-                                members: allMembersInCard.map(memberId => {
-                                    const member = members.find(m => m.id === memberId);
-                                    return member ? member.fullName : memberId;
-                                })
-                            });
-                        } else if (totalMemberCount === 2) {
-                            bugKpi += 10;
-                            totalBugs += 1;
-                            
-                            bugCardDetails.push({
-                                cardName: card.name,
-                                cardUrl: card.shortUrl,
-                                memberCount: totalMemberCount,
-                                points: 10,
-                                members: allMembersInCard.map(memberId => {
-                                    const member = members.find(m => m.id === memberId);
-                                    return member ? member.fullName : memberId;
-                                })
-                            });
+                        // Check if card has "Bug: level 3" tag
+                        const hasBugLevel3Tag = card.labels && card.labels.some(label => 
+                            label.name === 'Bug: level 3'
+                        );
+
+                        if (hasBugLevel3Tag) {
+                            // Bug: level 3 tag gets 30 points, split based on member count
+                            if (totalMemberCount === 1) {
+                                bugKpi += 30;
+                                totalBugs += 1;
+                                
+                                bugCardDetails.push({
+                                    cardName: card.name,
+                                    cardUrl: card.shortUrl,
+                                    memberCount: totalMemberCount,
+                                    points: 30,
+                                    members: allMembersInCard.map(memberId => {
+                                        const member = members.find(m => m.id === memberId);
+                                        return member ? member.fullName : memberId;
+                                    })
+                                });
+                            } else if (totalMemberCount === 2) {
+                                bugKpi += 15;
+                                totalBugs += 1;
+                                
+                                bugCardDetails.push({
+                                    cardName: card.name,
+                                    cardUrl: card.shortUrl,
+                                    memberCount: totalMemberCount,
+                                    points: 15,
+                                    members: allMembersInCard.map(memberId => {
+                                        const member = members.find(m => m.id === memberId);
+                                        return member ? member.fullName : memberId;
+                                    })
+                                });
+                            }
+                        } else {
+                            // Original logic for cards without Bug: level 3 tag
+                            // Apply BugsKpi.js logic: 1 member = 20 points, 2 members = 10 points each
+                            if (totalMemberCount === 1) {
+                                bugKpi += 20;
+                                totalBugs += 1;
+                                
+                                bugCardDetails.push({
+                                    cardName: card.name,
+                                    cardUrl: card.shortUrl,
+                                    memberCount: totalMemberCount,
+                                    points: 20,
+                                    members: allMembersInCard.map(memberId => {
+                                        const member = members.find(m => m.id === memberId);
+                                        return member ? member.fullName : memberId;
+                                    })
+                                });
+                            } else if (totalMemberCount === 2) {
+                                bugKpi += 10;
+                                totalBugs += 1;
+                                
+                                bugCardDetails.push({
+                                    cardName: card.name,
+                                    cardUrl: card.shortUrl,
+                                    memberCount: totalMemberCount,
+                                    points: 10,
+                                    members: allMembersInCard.map(memberId => {
+                                        const member = members.find(m => m.id === memberId);
+                                        return member ? member.fullName : memberId;
+                                    })
+                                });
+                            }
                         }
                         // 3+ members = no points (following BugsKpi.js logic)
                     }

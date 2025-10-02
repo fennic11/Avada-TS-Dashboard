@@ -426,8 +426,14 @@ const DevZone = () => {
     const handleGetLists = async () => {
         try {
             setIsLoading(true);
-            // Use static data instead of API call
-            setListsData(listsIdData);
+            // Use API call with BOARD_ID parameter
+            const ListsData = await getListsByBoardId();
+            // Filter to only include name and id fields
+            const filteredListsData = ListsData.map(list => ({
+                id: list.id,
+                name: list.name
+            }));
+            setListsData(filteredListsData);
             setIsListsModalOpen(true);
         } catch (error) {
             console.error('Error loading lists:', error);

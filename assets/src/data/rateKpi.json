@@ -17,7 +17,8 @@
     "Issue: level 2": 20,
     "Issue: level 3": 35,
     "Issues: Level 4": 45,
-    "Bug: level 2": 20
+    "Bug: level 2": 20,
+    "Bug: level 3": 30
   },
   "description": {
     "shiftRate": "Điểm KPI cho mỗi ca trực",
