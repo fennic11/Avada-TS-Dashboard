@@ -62,22 +62,16 @@ const BugsKpiSummary = ({ selectedList = DEFAULT_LIST_ID, onKpiDataChange }) => 
 
                 for (let card of cards) {
                     const memberIds = card.idMembers.filter(id => members.some(m => m.id === id));
+                    
+                    // Check if card has "Bug: level 3" tag
+                    const hasBugLevel3Tag = card.labels && card.labels.some(label => 
+                        label.name === 'Bug: level 3'
+                    );
 
-                    if (memberIds.length === 1) {
-                        const id = memberIds[0];
-                        if (!kpiData[id]) {
-                            kpiData[id] = {
-                                points: 0,
-                                cards: [],
-                                cardCount: 0
-                            };
-                        }
-
-                        kpiData[id].points += 20;
-                        kpiData[id].cardCount += 1;
-                        kpiData[id].cards.push({ ...card, point: 20});
-                    } else if (memberIds.length === 2) {
-                        for (let id of memberIds) {
+                    if (hasBugLevel3Tag) {
+                        // Bug: level 3 tag gets 30 points, split based on member count
+                        if (memberIds.length === 1) {
+                            const id = memberIds[0];
                             if (!kpiData[id]) {
                                 kpiData[id] = {
                                     points: 0,
@@ -86,9 +80,53 @@ const BugsKpiSummary = ({ selectedList = DEFAULT_LIST_ID, onKpiDataChange }) => 
                                 };
                             }
 
-                            kpiData[id].points += 10;
+                            kpiData[id].points += 30;
                             kpiData[id].cardCount += 1;
-                            kpiData[id].cards.push({ ...card, point: 10 });
+                            kpiData[id].cards.push({ ...card, point: 30 });
+                        } else if (memberIds.length === 2) {
+                            for (let id of memberIds) {
+                                if (!kpiData[id]) {
+                                    kpiData[id] = {
+                                        points: 0,
+                                        cards: [],
+                                        cardCount: 0
+                                    };
+                                }
+
+                                kpiData[id].points += 15;
+                                kpiData[id].cardCount += 1;
+                                kpiData[id].cards.push({ ...card, point: 15 });
+                            }
+                        }
+                    } else {
+                        // Original logic for cards without Bug: level 3 tag
+                        if (memberIds.length === 1) {
+                            const id = memberIds[0];
+                            if (!kpiData[id]) {
+                                kpiData[id] = {
+                                    points: 0,
+                                    cards: [],
+                                    cardCount: 0
+                                };
+                            }
+
+                            kpiData[id].points += 20;
+                            kpiData[id].cardCount += 1;
+                            kpiData[id].cards.push({ ...card, point: 20});
+                        } else if (memberIds.length === 2) {
+                            for (let id of memberIds) {
+                                if (!kpiData[id]) {
+                                    kpiData[id] = {
+                                        points: 0,
+                                        cards: [],
+                                        cardCount: 0
+                                    };
+                                }
+
+                                kpiData[id].points += 10;
+                                kpiData[id].cardCount += 1;
+                                kpiData[id].cards.push({ ...card, point: 10 });
+                            }
                         }
                     }
                 }
