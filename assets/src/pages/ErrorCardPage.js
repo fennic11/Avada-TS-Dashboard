@@ -332,9 +332,12 @@ const ErrorCardPage = () => {
             if (card.members) {
                 card.members.forEach(memberId => {
                     if (memberStats[memberId]) {
-                        memberStats[memberId].errorCount += 1;
-                        memberStats[memberId].totalPoints += (card.penaltyPoints || 0);
-                        memberStats[memberId].cards.push(card);
+                        // Chỉ tăng errorCount nếu card chưa được đếm cho member này
+                        if (!memberStats[memberId].cards.some(existingCard => existingCard._id === card._id)) {
+                            memberStats[memberId].errorCount += 1;
+                            memberStats[memberId].totalPoints += (card.penaltyPoints || 0);
+                            memberStats[memberId].cards.push(card);
+                        }
                     }
                 });
             }

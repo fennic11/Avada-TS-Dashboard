@@ -126,7 +126,7 @@
       "fullName": "Hana",
       "username": "hana_avada",
       "initials": "H",
-      "kpiName": "HangHM",
+      "kpiName": "HangHM1",
       "slackId": "U07GG0A8NDQ",
       "role": "CS",
       "group": "CS2"
@@ -882,7 +882,7 @@
       "role": "TS",
       "group": "TS2",
       "slackId": "U09699UTEQ0",
-      "kpiName": "TuanDV"
+      "kpiName": "TuanDV1"
     },
     {
       "id": "6296e0963b6dd82348753a8c",
@@ -900,5 +900,15 @@
       "group": "TS2",
       "kpiName": "ManhNS",
       "slackId": "U0967UEHXP1"
+    },
+    {
+      "id": "686365a4c605770978509570",
+      "fullName": "Viola",
+      "email": "phuongnt@avadagroup.com",
+      "username": "viola_avada",
+      "role": "CS",
+      "group": "CS1",
+      "kpiName": "PhuongNT2",
+      "slackId": "U093QRJBL77"
     }
   ]
