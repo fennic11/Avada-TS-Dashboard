@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
     Modal, Typography, Spin, Tag, Space, Button,
     Input, Avatar, Divider, message, Card, List,
-    Dropdown, Upload, Tooltip
+    Dropdown, Upload, Tooltip, Tabs
 } from 'antd';
 import {
     CloseOutlined, PlusOutlined, SearchOutlined,
@@ -76,7 +76,7 @@ const getLabelColor = (labelName) => {
 };
 
 const CardDetailModal = ({ open, onClose, cardId }) => {
-    const [activeTab, setActiveTab] = useState(0);
+    const [activeTab, setActiveTab] = useState('detail');
     const [actions, setActions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [agents, setAgents] = useState([]);
@@ -948,9 +948,171 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
         return formattedText;
     };
 
+    // Function to analyze card journey through different columns
+    const analyzeCardJourney = useMemo(() => {
+        if (!actions || actions.length === 0) return null;
+
+        const journey = {
+            cardCreated: null,
+            doingMoves: [],
+            updateWorkflowMoves: [],
+            waitingToFixMoves: [],
+            customerConfirmationMoves: [],
+            doneMoves: []
+        };
+
+        // Sort actions by date (oldest first)
+        const sortedActions = [...actions].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        sortedActions.forEach(action => {
+            const actionDate = new Date(action.date);
+            
+            if (action.type === 'createCard') {
+                journey.cardCreated = actionDate;
+            }
+            
+            if (action.type === 'updateCard' && action.data && action.data.listAfter) {
+                const listAfterName = action.data.listAfter.name;
+                const listBeforeName = action.data.listBefore ? action.data.listBefore.name : 'Unknown';
+                
+                // Get member who performed the action
+                const memberId = action.memberCreator?.id;
+                const memberName = action.memberCreator?.fullName || action.memberCreator?.username || 'Unknown';
+                const memberInitials = action.memberCreator?.initials || 'U';
+                const memberAvatar = action.memberCreator?.avatarUrl || 
+                    (action.memberCreator?.avatarHash ? 
+                        `https://trello-members.s3.amazonaws.com/${memberId}/${action.memberCreator.avatarHash}/170.png` : 
+                        null);
+
+                // Track moves to Doing
+                if (listAfterName === 'Doing (Inshift)') {
+                    journey.doingMoves.push({
+                        date: actionDate,
+                        from: listBeforeName,
+                        to: listAfterName,
+                        member: {
+                            id: memberId,
+                            name: memberName,
+                            initials: memberInitials,
+                            avatar: memberAvatar
+                        }
+                    });
+                }
+                
+                // Track moves to Update workflow required or Waiting for access
+                if (listAfterName === 'Update workflow required or Waiting for access (SLA:  4 days)') {
+                    journey.updateWorkflowMoves.push({
+                        date: actionDate,
+                        from: listBeforeName,
+                        to: listAfterName,
+                        member: {
+                            id: memberId,
+                            name: memberName,
+                            initials: memberInitials,
+                            avatar: memberAvatar
+                        }
+                    });
+                }
+                
+                // Track moves to Waiting to fix (from dev)
+                if (listAfterName === 'Waiting to fix (from dev)') {
+                    journey.waitingToFixMoves.push({
+                        date: actionDate,
+                        from: listBeforeName,
+                        to: listAfterName,
+                        member: {
+                            id: memberId,
+                            name: memberName,
+                            initials: memberInitials,
+                            avatar: memberAvatar
+                        }
+                    });
+                }
+                
+                // Track moves to Waiting for Customer's Confirmation
+                if (listAfterName === 'Waiting for Customer\'s Confirmation (SLA: 2 days)') {
+                    journey.customerConfirmationMoves.push({
+                        date: actionDate,
+                        from: listBeforeName,
+                        to: listAfterName,
+                        member: {
+                            id: memberId,
+                            name: memberName,
+                            initials: memberInitials,
+                            avatar: memberAvatar
+                        }
+                    });
+                }
+                
+                // Track moves to Done
+                if (listAfterName === 'Done') {
+                    journey.doneMoves.push({
+                        date: actionDate,
+                        from: listBeforeName,
+                        to: listAfterName,
+                        member: {
+                            id: memberId,
+                            name: memberName,
+                            initials: memberInitials,
+                            avatar: memberAvatar
+                        }
+                    });
+                }
+            }
+        });
+
+        return journey;
+    }, [actions]);
+
+    // Function to calculate days between dates
+    const calculateDaysBetween = (startDate, endDate) => {
+        if (!startDate || !endDate) return null;
+        const diffTime = Math.abs(endDate - startDate);
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    };
+
+    // Function to format date
+    const formatDate = (date) => {
+        if (!date) return 'N/A';
+        return format(date, 'MMM d, yyyy HH:mm');
+    };
+
+    // Function to get all TS members who were added to the card
+    const getAllTSMembersAdded = useMemo(() => {
+        if (!actions || actions.length === 0) return [];
+
+        const tsMembersAdded = [];
+        const sortedActions = [...actions].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        sortedActions.forEach(action => {
+            if (action.type === 'addMemberToCard' && action.member) {
+                const member = action.member;
+                const memberInfo = {
+                    id: member.id,
+                    name: member.fullName || member.username || 'Unknown',
+                    initials: member.initials || 'U',
+                    avatar: member.avatarUrl || 
+                        (member.avatarHash ? 
+                            `https://trello-members.s3.amazonaws.com/${member.id}/${member.avatarHash}/170.png` : 
+                            null),
+                    addedBy: action.memberCreator?.fullName || action.memberCreator?.username || 'Unknown',
+                    addedDate: new Date(action.date)
+                };
+                
+                // Check if member is already in the list
+                const existingMember = tsMembersAdded.find(m => m.id === member.id);
+                if (!existingMember) {
+                    tsMembersAdded.push(memberInfo);
+                }
+            }
+        });
+
+        return tsMembersAdded;
+    }, [actions]);
+
     const renderTabContent = () => {
         switch (activeTab) {
-            case 0: // Details & Comments
+            case 'detail': // Details & Comments
                 return (
                     <Space direction="vertical" size="large" style={{ width: '100%' }}>
                         {/* Description */}
@@ -1548,116 +1710,471 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                     </Space>
                 );
 
-            case 1: // Documentation
+            case 'summary': // Summary
                 return (
-                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                        <div>
-                            <Typography.Title level={5} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <SearchOutlined />
-                                Search Documentation
-                            </Typography.Title>
-                            <Card style={{ 
-                                padding: 12,
-                                borderRadius: 8,
-                                borderColor: 'rgba(0, 0, 0, 0.08)',
+                    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+
+                        {/* Card Journey Analysis */}
+                        {analyzeCardJourney && (
+                            <Card style={{
                                 backgroundColor: '#ffffff',
-                                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+                                padding: 20,
+                                borderRadius: '12px',
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                                border: '1px solid rgba(0, 0, 0, 0.06)'
                             }}>
-                                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                                    <Space style={{ 
-                                        display: 'flex', 
-                                        gap: 8,
-                                        alignItems: 'center',
-                                        width: '100%'
+                                <Typography.Title level={4} style={{ 
+                                    color: '#1e293b',
+                                    fontWeight: 700,
+                                    fontSize: '1.25rem',
+                                    marginBottom: 20,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 10,
+                                    letterSpacing: '0.01em',
+                                    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                    margin: 0,
+                                    borderBottom: '2px solid rgba(0, 0, 0, 0.06)',
+                                    paddingBottom: 12
+                                }}>
+                                    📈 Card Journey Analysis
+                                </Typography.Title>
+                                
+                                <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                                    {/* 1. Card Creation */}
+                                    <div style={{ 
+                                        padding: 16, 
+                                        backgroundColor: 'rgba(34, 197, 94, 0.05)', 
+                                        borderRadius: '8px',
+                                        border: '1px solid rgba(34, 197, 94, 0.1)'
                                     }}>
-                                        <Input
-                                            placeholder="Tìm kiếm tài liệu..."
-                                            value={notionQuery}
-                                            onChange={(e) => {
-                                                const newValue = e.target.value;
-                                                setNotionQuery(newValue);
-                                            }}
-                                            prefix={<SearchOutlined />}
-                                            suffix={notionLoading && <Spin size="small" />}
-                                            style={{
-                                                flex: 1,
-                                                borderColor: 'rgba(0, 0, 0, 0.23)'
-                                            }}
-                                        />
-                                        <Button
-                                            type="primary"
-                                            onClick={() => handleNotionSearch()}
-                                            disabled={notionLoading || !notionQuery}
-                                            style={{
-                                                minWidth: '100px',
-                                                fontWeight: 500
-                                            }}
-                                        >
-                                            Tìm kiếm
-                                        </Button>
-                                    </Space>
-                                    {notionResults.length > 0 && (
-                                        <List
-                                            style={{ 
-                                                backgroundColor: 'white',
-                                                borderRadius: 4,
-                                                border: '1px solid #f0f0f0',
-                                                maxHeight: '400px',
-                                                overflow: 'auto'
-                                            }}
-                                        >
-                                            {notionResults.map((article) => (
-                                                <List.Item
-                                                    key={article.id}
-                                                    style={{
-                                                        display: 'block',
-                                                        padding: '12px',
-                                                        borderBottom: '1px solid #f0f0f0',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                    onClick={() => window.open(article.url, '_blank')}
-                                                >
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                                                        <Typography.Text strong style={{ fontWeight: 600 }}>
-                                                            {article.properties.title || article.title}
-                                                        </Typography.Text>
-                                                        <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
-                                                            {new Date(article.lastEdited).toLocaleDateString()}
-                                                        </Typography.Text>
-                                                    </div>
-                                                    <Typography.Text type="secondary" style={{ 
-                                                        display: '-webkit-box',
-                                                        WebkitLineClamp: 2,
-                                                        WebkitBoxOrient: 'vertical',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis',
-                                                        fontSize: '14px'
+                                        <Typography.Text style={{ fontWeight: 600, color: '#059669', fontSize: '14px' }}>
+                                            1. Card được tạo khi nào:
+                                        </Typography.Text>
+                                        <Typography.Text style={{ 
+                                            display: 'block', 
+                                            marginTop: 4, 
+                                            color: '#1e293b',
+                                            fontWeight: 500
+                                        }}>
+                                            {analyzeCardJourney.cardCreated ? 
+                                                formatDate(analyzeCardJourney.cardCreated) : 
+                                                'Không tìm thấy thông tin'
+                                            }
+                                        </Typography.Text>
+                                    </div>
+
+                                    {/* 2. Doing Moves */}
+                                    <div style={{ 
+                                        padding: 16, 
+                                        backgroundColor: 'rgba(59, 130, 246, 0.05)', 
+                                        borderRadius: '8px',
+                                        border: '1px solid rgba(59, 130, 246, 0.1)'
+                                    }}>
+                                        <Typography.Text style={{ fontWeight: 600, color: '#3b82f6', fontSize: '14px' }}>
+                                            2. Kéo vào cột Doing: {analyzeCardJourney.doingMoves.length} lần
+                                        </Typography.Text>
+                                        {analyzeCardJourney.doingMoves.length > 0 && (
+                                            <div style={{ marginTop: 8 }}>
+                                                {analyzeCardJourney.doingMoves.map((move, index) => (
+                                                    <div key={index} style={{ 
+                                                        marginBottom: 8, 
+                                                        padding: '8px 12px', 
+                                                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                                        borderRadius: '6px',
+                                                        fontSize: '12px',
+                                                        border: '1px solid rgba(59, 130, 246, 0.2)'
                                                     }}>
-                                                        {article.preview}
-                                                    </Typography.Text>
-                                                </List.Item>
-                                            ))}
-                                        </List>
-                                    )}
-                                    {notionQuery && !notionLoading && notionResults.length === 0 && (
+                                                        <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                                                            Lần {index + 1}: {formatDate(move.date)}
+                                                        </div>
+                                                        <div style={{ color: '#64748b', marginBottom: 4 }}>
+                                                            Từ: {move.from}
+                                                        </div>
+                                                        {move.member && (
+                                                            <div style={{ 
+                                                                display: 'flex', 
+                                                                alignItems: 'center', 
+                                                                gap: 6,
+                                                                marginTop: 4
+                                                            }}>
+                                                                <Avatar
+                                                                    src={move.member.avatar}
+                                                                    size={16}
+                                                                    style={{ 
+                                                                        backgroundColor: '#3b82f6',
+                                                                        fontSize: '10px',
+                                                                        fontWeight: 500
+                                                                    }}
+                                                                >
+                                                                    {move.member.initials}
+                                                                </Avatar>
+                                                                <span style={{ color: '#3b82f6', fontWeight: 500 }}>
+                                                                    {move.member.name}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* 3. Update Workflow Moves */}
+                                    <div style={{ 
+                                        padding: 16, 
+                                        backgroundColor: 'rgba(245, 158, 11, 0.05)', 
+                                        borderRadius: '8px',
+                                        border: '1px solid rgba(245, 158, 11, 0.1)'
+                                    }}>
+                                        <Typography.Text style={{ fontWeight: 600, color: '#d97706', fontSize: '14px' }}>
+                                            3. Kéo vào cột "Update workflow required or Waiting for access": {analyzeCardJourney.updateWorkflowMoves.length} lần
+                                        </Typography.Text>
+                                        {analyzeCardJourney.updateWorkflowMoves.length > 0 && (
+                                            <div style={{ marginTop: 8 }}>
+                                                {analyzeCardJourney.updateWorkflowMoves.map((move, index) => {
+                                                    // Find next move out of this column
+                                                    const nextMove = analyzeCardJourney.doingMoves.find(m => m.date > move.date) ||
+                                                                   analyzeCardJourney.waitingToFixMoves.find(m => m.date > move.date) ||
+                                                                   analyzeCardJourney.customerConfirmationMoves.find(m => m.date > move.date) ||
+                                                                   analyzeCardJourney.doneMoves.find(m => m.date > move.date);
+                                                    
+                                                    const daysInColumn = nextMove ? calculateDaysBetween(move.date, nextMove.date) : null;
+                                                    
+                                                    return (
+                                                        <div key={index} style={{ 
+                                                            marginBottom: 8, 
+                                                            padding: '8px 12px', 
+                                                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                                                            borderRadius: '6px',
+                                                            fontSize: '12px',
+                                                            border: '1px solid rgba(245, 158, 11, 0.2)'
+                                                        }}>
+                                                            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                                                                Lần {index + 1}: {formatDate(move.date)}
+                                                                {daysInColumn && (
+                                                                    <span style={{ color: '#d97706', fontWeight: 600 }}>
+                                                                        {' '}({daysInColumn} ngày)
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div style={{ color: '#64748b', marginBottom: 4 }}>
+                                                                Từ: {move.from}
+                                                            </div>
+                                                            {move.member && (
                                                                 <div style={{ 
-                            textAlign: 'center', 
-                            padding: '24px 12px',
-                            backgroundColor: '#fafafa',
-                            borderRadius: 4
-                        }}>
-                                            <SearchOutlined style={{ fontSize: 40, color: 'rgba(0, 0, 0, 0.45)', marginBottom: 8 }} />
-                                            <Typography.Text type="secondary">
-                                                Không tìm thấy kết quả cho "{notionQuery}"
-                                            </Typography.Text>
-                                            <Typography.Text type="secondary" style={{ marginTop: 8, display: 'block', fontSize: '12px' }}>
-                                                Hãy thử từ khóa khác hoặc kiểm tra lại chính tả
-                                            </Typography.Text>
-                                        </div>
-                                    )}
+                                                                    display: 'flex', 
+                                                                    alignItems: 'center', 
+                                                                    gap: 6,
+                                                                    marginTop: 4
+                                                                }}>
+                                                                    <Avatar
+                                                                        src={move.member.avatar}
+                                                                        size={16}
+                                                                        style={{ 
+                                                                            backgroundColor: '#d97706',
+                                                                            fontSize: '10px',
+                                                                            fontWeight: 500
+                                                                        }}
+                                                                    >
+                                                                        {move.member.initials}
+                                                                    </Avatar>
+                                                                    <span style={{ color: '#d97706', fontWeight: 500 }}>
+                                                                        {move.member.name}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* 4. Waiting to Fix Moves */}
+                                    <div style={{ 
+                                        padding: 16, 
+                                        backgroundColor: 'rgba(239, 68, 68, 0.05)', 
+                                        borderRadius: '8px',
+                                        border: '1px solid rgba(239, 68, 68, 0.1)'
+                                    }}>
+                                        <Typography.Text style={{ fontWeight: 600, color: '#dc2626', fontSize: '14px' }}>
+                                            4. Kéo vào cột "Waiting to fix (from dev)": {analyzeCardJourney.waitingToFixMoves.length} lần
+                                        </Typography.Text>
+                                        {analyzeCardJourney.waitingToFixMoves.length > 0 && (
+                                            <div style={{ marginTop: 8 }}>
+                                                {analyzeCardJourney.waitingToFixMoves.map((move, index) => {
+                                                    // Find next move out of this column
+                                                    const nextMove = analyzeCardJourney.doingMoves.find(m => m.date > move.date) ||
+                                                                   analyzeCardJourney.customerConfirmationMoves.find(m => m.date > move.date) ||
+                                                                   analyzeCardJourney.doneMoves.find(m => m.date > move.date);
+                                                    
+                                                    const daysInColumn = nextMove ? calculateDaysBetween(move.date, nextMove.date) : null;
+                                                    
+                                                    return (
+                                                        <div key={index} style={{ 
+                                                            marginBottom: 8, 
+                                                            padding: '8px 12px', 
+                                                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                                            borderRadius: '6px',
+                                                            fontSize: '12px',
+                                                            border: '1px solid rgba(239, 68, 68, 0.2)'
+                                                        }}>
+                                                            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                                                                Lần {index + 1}: {formatDate(move.date)}
+                                                                {daysInColumn && (
+                                                                    <span style={{ color: '#dc2626', fontWeight: 600 }}>
+                                                                        {' '}({daysInColumn} ngày)
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div style={{ color: '#64748b', marginBottom: 4 }}>
+                                                                Từ: {move.from}
+                                                            </div>
+                                                            {move.member && (
+                                                                <div style={{ 
+                                                                    display: 'flex', 
+                                                                    alignItems: 'center', 
+                                                                    gap: 6,
+                                                                    marginTop: 4
+                                                                }}>
+                                                                    <Avatar
+                                                                        src={move.member.avatar}
+                                                                        size={16}
+                                                                        style={{ 
+                                                                            backgroundColor: '#dc2626',
+                                                                            fontSize: '10px',
+                                                                            fontWeight: 500
+                                                                        }}
+                                                                    >
+                                                                        {move.member.initials}
+                                                                    </Avatar>
+                                                                    <span style={{ color: '#dc2626', fontWeight: 500 }}>
+                                                                        {move.member.name}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* 5. Customer Confirmation Moves */}
+                                    <div style={{ 
+                                        padding: 16, 
+                                        backgroundColor: 'rgba(139, 92, 246, 0.05)', 
+                                        borderRadius: '8px',
+                                        border: '1px solid rgba(139, 92, 246, 0.1)'
+                                    }}>
+                                        <Typography.Text style={{ fontWeight: 600, color: '#8b5cf6', fontSize: '14px' }}>
+                                            5. Kéo vào cột "Waiting for Customer's Confirmation": {analyzeCardJourney.customerConfirmationMoves.length} lần
+                                        </Typography.Text>
+                                        {analyzeCardJourney.customerConfirmationMoves.length > 0 && (
+                                            <div style={{ marginTop: 8 }}>
+                                                {analyzeCardJourney.customerConfirmationMoves.map((move, index) => {
+                                                    // Find next move out of this column
+                                                    const nextMove = analyzeCardJourney.doingMoves.find(m => m.date > move.date) ||
+                                                                   analyzeCardJourney.doneMoves.find(m => m.date > move.date);
+                                                    
+                                                    const daysInColumn = nextMove ? calculateDaysBetween(move.date, nextMove.date) : null;
+                                                    
+                                                    return (
+                                                        <div key={index} style={{ 
+                                                            marginBottom: 8, 
+                                                            padding: '8px 12px', 
+                                                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                                                            borderRadius: '6px',
+                                                            fontSize: '12px',
+                                                            border: '1px solid rgba(139, 92, 246, 0.2)'
+                                                        }}>
+                                                            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                                                                Lần {index + 1}: {formatDate(move.date)}
+                                                                {daysInColumn && (
+                                                                    <span style={{ color: '#8b5cf6', fontWeight: 600 }}>
+                                                                        {' '}({daysInColumn} ngày)
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div style={{ color: '#64748b', marginBottom: 4 }}>
+                                                                Từ: {move.from}
+                                                            </div>
+                                                            {move.member && (
+                                                                <div style={{ 
+                                                                    display: 'flex', 
+                                                                    alignItems: 'center', 
+                                                                    gap: 6,
+                                                                    marginTop: 4
+                                                                }}>
+                                                                    <Avatar
+                                                                        src={move.member.avatar}
+                                                                        size={16}
+                                                                        style={{ 
+                                                                            backgroundColor: '#8b5cf6',
+                                                                            fontSize: '10px',
+                                                                            fontWeight: 500
+                                                                        }}
+                                                                    >
+                                                                        {move.member.initials}
+                                                                    </Avatar>
+                                                                    <span style={{ color: '#8b5cf6', fontWeight: 500 }}>
+                                                                        {move.member.name}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* 6. Done Moves */}
+                                    <div style={{ 
+                                        padding: 16, 
+                                        backgroundColor: 'rgba(34, 197, 94, 0.05)', 
+                                        borderRadius: '8px',
+                                        border: '1px solid rgba(34, 197, 94, 0.1)'
+                                    }}>
+                                        <Typography.Text style={{ fontWeight: 600, color: '#059669', fontSize: '14px' }}>
+                                            6. Kéo vào cột Done: {analyzeCardJourney.doneMoves.length} lần
+                                        </Typography.Text>
+                                        {analyzeCardJourney.doneMoves.length > 0 && (
+                                            <div style={{ marginTop: 8 }}>
+                                                {analyzeCardJourney.doneMoves.map((move, index) => (
+                                                    <div key={index} style={{ 
+                                                        marginBottom: 8, 
+                                                        padding: '8px 12px', 
+                                                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                                                        borderRadius: '6px',
+                                                        fontSize: '12px',
+                                                        border: '1px solid rgba(34, 197, 94, 0.2)'
+                                                    }}>
+                                                        <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                                                            Lần {index + 1}: {formatDate(move.date)}
+                                                        </div>
+                                                        <div style={{ color: '#64748b', marginBottom: 4 }}>
+                                                            Từ: {move.from}
+                                                        </div>
+                                                        {move.member && (
+                                                            <div style={{ 
+                                                                display: 'flex', 
+                                                                alignItems: 'center', 
+                                                                gap: 6,
+                                                                marginTop: 4
+                                                            }}>
+                                                                <Avatar
+                                                                    src={move.member.avatar}
+                                                                    size={16}
+                                                                    style={{ 
+                                                                        backgroundColor: '#059669',
+                                                                        fontSize: '10px',
+                                                                        fontWeight: 500
+                                                                    }}
+                                                                >
+                                                                    {move.member.initials}
+                                                                </Avatar>
+                                                                <span style={{ color: '#059669', fontWeight: 500 }}>
+                                                                    {move.member.name}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                 </Space>
                             </Card>
-                        </div>
+                        )}
+
+                        {/* TS Members Added to Card */}
+                        {getAllTSMembersAdded.length > 0 && (
+                            <Card style={{
+                                backgroundColor: '#ffffff',
+                                padding: 20,
+                                borderRadius: '12px',
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                                border: '1px solid rgba(0, 0, 0, 0.06)'
+                            }}>
+                                <Typography.Title level={4} style={{ 
+                                    color: '#1e293b',
+                                    fontWeight: 700,
+                                    fontSize: '1.25rem',
+                                    marginBottom: 20,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 10,
+                                    letterSpacing: '0.01em',
+                                    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                    margin: 0,
+                                    borderBottom: '2px solid rgba(0, 0, 0, 0.06)',
+                                    paddingBottom: 12
+                                }}>
+                                    👥 Tất cả TS được add vào card
+                                </Typography.Title>
+                                
+                                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                                    {getAllTSMembersAdded.map((member, index) => (
+                                        <div key={member.id} style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'space-between',
+                                            padding: '12px 16px',
+                                            backgroundColor: 'rgba(25, 118, 210, 0.05)',
+                                            borderRadius: '8px',
+                                            border: '1px solid rgba(25, 118, 210, 0.1)',
+                                            transition: 'all 0.2s ease-in-out'
+                                        }}>
+                                            <div style={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                gap: 12,
+                                                flex: 1
+                                            }}>
+                                                <Avatar
+                                                    src={member.avatar}
+                                                    size={32}
+                                                    style={{ 
+                                                        backgroundColor: '#1976d2',
+                                                        fontSize: '14px',
+                                                        fontWeight: 500
+                                                    }}
+                                                >
+                                                    {member.initials}
+                                                </Avatar>
+                                                <div>
+                                                    <Typography.Text style={{ 
+                                                        fontWeight: 600, 
+                                                        color: '#1e293b',
+                                                        fontSize: '14px',
+                                                        display: 'block'
+                                                    }}>
+                                                        {member.name}
+                                                    </Typography.Text>
+                                                    <Typography.Text style={{ 
+                                                        color: '#64748b',
+                                                        fontSize: '12px',
+                                                        display: 'block'
+                                                    }}>
+                                                        Added by: {member.addedBy}
+                                                    </Typography.Text>
+                                                </div>
+                                            </div>
+                                            <div style={{ 
+                                                textAlign: 'right',
+                                                color: '#64748b',
+                                                fontSize: '12px'
+                                            }}>
+                                                {formatDate(member.addedDate)}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </Space>
+                            </Card>
+                        )}
+
                     </Space>
                 );
 
@@ -2363,7 +2880,53 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                     <Spin size="large" />
                                 </div>
                             ) : (
-                                renderTabContent()
+                                <Tabs
+                                    activeKey={activeTab}
+                                    onChange={setActiveTab}
+                                    items={[
+                                        {
+                                            key: 'detail',
+                                            label: (
+                                                <span style={{ 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    gap: 8,
+                                                    fontWeight: 600,
+                                                    fontSize: '14px'
+                                                }}>
+                                                    📝 Details
+                                                </span>
+                                            ),
+                                            children: renderTabContent()
+                                        },
+                                        {
+                                            key: 'summary',
+                                            label: (
+                                                <span style={{ 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    gap: 8,
+                                                    fontWeight: 600,
+                                                    fontSize: '14px'
+                                                }}>
+                                                    📊 Summary
+                                                </span>
+                                            ),
+                                            children: renderTabContent()
+                                        }
+                                    ]}
+                                    style={{
+                                        backgroundColor: 'transparent'
+                                    }}
+                                    tabBarStyle={{
+                                        backgroundColor: '#ffffff',
+                                        borderRadius: '8px 8px 0 0',
+                                        margin: 0,
+                                        padding: '0 16px',
+                                        borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+                                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
+                                    }}
+                                />
                             )}
                         </div>
 
