@@ -82,11 +82,11 @@ const PerformanceTS = () => {
           <Tab label={<Typography sx={{ fontWeight: 700, fontSize: 17 }}>Cards Detail</Typography>} value="cards" />
           <Tab label={<Typography sx={{ fontWeight: 700, fontSize: 17 }}>Actions Detail</Typography>} value="actions" />
         </Tabs>
-                                            </Box>
+      </Box>
       {/* Content */}
       <Box
-                                    sx={{ 
-                                flex: 1,
+          sx={{ 
+          flex: 1,
           width: '100%',
           maxWidth: '100%',
           p: { xs: 2, sm: 3, md: 4 },
@@ -95,8 +95,8 @@ const PerformanceTS = () => {
       >
         {tab === 'cards' && <CardsDetail />}
         {tab === 'actions' && <ActionsDetail />}
-                                                    </Box>
-                                                </Box>
+      </Box>
+    </Box>
     );
 };
 

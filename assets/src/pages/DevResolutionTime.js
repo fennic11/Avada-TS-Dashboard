@@ -30,6 +30,7 @@ appData.forEach(app => {
 });
 
 const productTeams = Array.from(new Set(appData.map(app => app.product_team))).filter(Boolean);
+const appNames = Array.from(new Set(appData.map(app => app.app_name))).filter(Boolean);
 
 function getCardTeam(card) {
     let team = null;
@@ -43,6 +44,20 @@ function getCardTeam(card) {
         team = appLabelToTeam[card.cardName];
     }
     return team;
+}
+
+function getCardApp(card) {
+    if (card.appName) {
+        return card.appName;
+    }
+    if (card.labels && card.labels.length > 0) {
+        const appLabel = card.labels.find(label => label.startsWith('App: '));
+        if (appLabel) {
+            const appName = appLabel.replace('App: ', '');
+            return appName;
+        }
+    }
+    return null;
 }
 
 function calcAvg(arr, key) {
@@ -120,6 +135,7 @@ const DevResolutionTime = () => {
     const [selectedTeam, setSelectedTeam] = useState(undefined);
     const [selectedRole, setSelectedRole] = useState('ALL');
     const [selectedMember, setSelectedMember] = useState(undefined);
+    const [selectedApp, setSelectedApp] = useState(undefined);
 
     const handleFetch = async (range = dateRange) => {
         if (!range || range.length !== 2) return;
@@ -155,6 +171,11 @@ const DevResolutionTime = () => {
     let filteredCards = (!selectedTeam || selectedTeam === 'ALL')
         ? cards
         : cards.filter(card => getCardTeam(card) === selectedTeam);
+
+    // Lọc cards theo app
+    if (selectedApp && selectedApp !== 'ALL') {
+        filteredCards = filteredCards.filter(card => getCardApp(card) === selectedApp);
+    }
 
     // Lọc cards theo role
     if (selectedRole && selectedRole !== 'ALL') {
@@ -208,7 +229,7 @@ const DevResolutionTime = () => {
                 {/* Filters */}
                 <Card style={{ borderRadius: 16, marginBottom: 32, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
                     <Row gutter={[16, 16]} align="middle">
-                        <Col xs={24} sm={12} md={6}>
+                        <Col xs={24} sm={12} md={5}>
                             <RangePicker
                                 value={dateRange}
                                 onChange={setDateRange}
@@ -218,7 +239,7 @@ const DevResolutionTime = () => {
                                 placeholder={["Start date", "End date"]}
                             />
                         </Col>
-                        <Col xs={24} sm={12} md={4}>
+                        <Col xs={24} sm={12} md={3}>
                             <Select
                                 allowClear
                                 placeholder="Select Team"
@@ -232,7 +253,26 @@ const DevResolutionTime = () => {
                                 ))}
                             </Select>
                         </Col>
-                        <Col xs={24} sm={12} md={4}>
+                        <Col xs={24} sm={12} md={3}>
+                            <Select
+                                allowClear
+                                showSearch
+                                placeholder="Select App"
+                                style={{ width: '100%' }}
+                                value={selectedApp}
+                                onChange={val => setSelectedApp(val)}
+                                optionFilterProp="children"
+                                filterOption={(input, option) =>
+                                    (option?.children ?? '').toLowerCase().includes(input.toLowerCase())
+                                }
+                            >
+                                <Select.Option value="ALL">All Apps</Select.Option>
+                                {appNames.map(app => (
+                                    <Select.Option key={app} value={app}>{app}</Select.Option>
+                                ))}
+                            </Select>
+                        </Col>
+                        <Col xs={24} sm={12} md={3}>
                             <Select
                                 style={{ width: '100%' }}
                                 value={selectedRole}
@@ -244,7 +284,7 @@ const DevResolutionTime = () => {
                             </Select>
                         </Col>
                         {selectedRole && selectedRole !== 'ALL' && (
-                            <Col xs={24} sm={12} md={4}>
+                            <Col xs={24} sm={12} md={3}>
                                 <Select
                                     allowClear
                                     showSearch
@@ -263,7 +303,7 @@ const DevResolutionTime = () => {
                                 </Select>
                             </Col>
                         )}
-                        <Col xs={24} sm={12} md={6}>
+                        <Col xs={24} sm={12} md={selectedRole && selectedRole !== 'ALL' ? 3 : 6}>
                             <Button
                                 type="primary"
                                 icon={<ReloadOutlined />}

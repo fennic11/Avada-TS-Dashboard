@@ -44,6 +44,7 @@ import CardDetailModal from "./CardDetailModal";
 import errorAssignCard from "../api/errorAssignCardApi";
 import listsIdData from "../data/listsId.json";
 import rateKpiData from "../data/rateKpi.json";
+import ShortUrlGenerator from "./ShortUrlGenerator";
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -1117,6 +1118,9 @@ const DevZone = () => {
     return (
         <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {/* Short URL Generator */}
+                <ShortUrlGenerator />
+                
                 {/* Phần xử lý cards */}
                 <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
                     <Typography variant="h6" sx={{ mb: 3, color: 'primary.main', fontWeight: 'bold' }}>

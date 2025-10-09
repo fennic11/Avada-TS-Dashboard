@@ -31,6 +31,8 @@ import DevResolutionTime from './pages/DevResolutionTime';
 import ErrorCardPage from './pages/ErrorCardPage';
 import AssignCardPage from './pages/AssignCardPage';
 import ErrorAssigCardsPage from './pages/ErrorAssigCardsPage';
+import PublicDashboard from './pages/PublicDashboard';
+import ShortUrlRedirect from './components/ShortUrlRedirect';
 
 const theme = createTheme({
     palette: {
@@ -112,6 +114,8 @@ const App = () => {
                     <Router>
                         <Routes>
                             <Route path="/login" element={<Login />} />
+                            <Route path="/public" element={<PublicDashboard />} />
+                            <Route path="/s/:shortCode" element={<ShortUrlRedirect />} />
                             <Route
                                 path="/dev-zone"
                                 element={
