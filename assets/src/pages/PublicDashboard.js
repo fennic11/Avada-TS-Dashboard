@@ -19,7 +19,9 @@ import {
     StarOutlined,
     FireOutlined,
     FullscreenOutlined,
-    FullscreenExitOutlined
+    FullscreenExitOutlined,
+    ZoomInOutlined,
+    ZoomOutOutlined
 } from '@ant-design/icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import dayjs from 'dayjs';
@@ -121,6 +123,7 @@ const PublicDashboard = () => {
     const [avgResolutionTime, setAvgResolutionTime] = useState(0);
     const [leaderboard, setLeaderboard] = useState([]);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [zoomLevel, setZoomLevel] = useState(1);
 
     // Define slides
     const slides = [
@@ -133,8 +136,28 @@ const PublicDashboard = () => {
     const fetchWaitingToFixData = async () => {
         try {
             setLoading(true);
+            console.log('🔄 Fetching waiting to fix data...');
+            
             const waitingToFixListId = '63c7b1a68e5576001577d65c'; // ID for "Waiting to fix (from dev)"
             const cards = await getCardsByList(waitingToFixListId);
+            
+            console.log('📊 Cards received:', cards?.length || 0);
+            console.log('📋 Sample card:', cards?.[0]);
+            
+            if (!cards || !Array.isArray(cards)) {
+                console.warn('⚠️ No cards data received, using fallback');
+                // Use fallback data
+                setWaitingToFixCards([]);
+                setRealStats({
+                    totalCards: 0,
+                    avgResolutionTime: 0,
+                    avgFirstActionTime: 0,
+                    avgResolutionTimeDev: 0
+                });
+                setTeamStats({});
+                setLastUpdated(dayjs());
+                return;
+            }
             
             setWaitingToFixCards(cards);
             
@@ -143,6 +166,8 @@ const PublicDashboard = () => {
             const validCards = cards.filter(card => 
                 Number(card.resolutionTime) > 0 && !isNaN(Number(card.resolutionTime))
             );
+            
+            console.log('✅ Valid cards for stats:', validCards.length);
             
             const avgResolutionTime = validCards.length > 0 
                 ? Math.round(validCards.reduce((sum, card) => sum + Number(card.resolutionTime), 0) / validCards.length)
@@ -174,12 +199,33 @@ const PublicDashboard = () => {
                 }
             });
             
+            console.log('🏢 Team stats calculated:', teamCounts);
             setTeamStats(teamCounts);
             
             setLastUpdated(dayjs());
+            console.log('✅ Waiting to fix data loaded successfully');
+            
         } catch (error) {
-            console.error('Error fetching waiting to fix data:', error);
-            message.error('Failed to load data');
+            console.error('❌ Error fetching waiting to fix data:', error);
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name
+            });
+            
+            // Set fallback data instead of showing error
+            setWaitingToFixCards([]);
+            setRealStats({
+                totalCards: 0,
+                avgResolutionTime: 0,
+                avgFirstActionTime: 0,
+                avgResolutionTimeDev: 0
+            });
+            setTeamStats({});
+            setLastUpdated(dayjs());
+            
+            // Show user-friendly message
+            message.warning('Unable to load real-time data. Using fallback data.');
         } finally {
             setLoading(false);
         }
@@ -192,9 +238,18 @@ const PublicDashboard = () => {
             const startOfMonth = now.startOf('month').format('YYYY-MM-DD');
             const endOfMonth = now.endOf('month').format('YYYY-MM-DD');
             
-            console.log('Fetching resolution data from:', startOfMonth, 'to:', endOfMonth);
+            console.log('🔄 Fetching resolution data from:', startOfMonth, 'to:', endOfMonth);
             const data = await getResolutionTimes(startOfMonth, endOfMonth);
-            console.log('Resolution data received:', data);
+            console.log('📊 Resolution data received:', data?.length || 0);
+            
+            if (!data || !Array.isArray(data)) {
+                console.warn('⚠️ No resolution data received, using fallback');
+                setResolutionData([]);
+                setAvgResolutionTime(0);
+                setLeaderboard([]);
+                return;
+            }
+            
             setResolutionData(data);
             
             // Calculate average resolution time
@@ -241,18 +296,41 @@ const PublicDashboard = () => {
                 .sort((a, b) => a.avgTime - b.avgTime)
                 .slice(0, 10); // Top 10
             
-            console.log('Final leaderboard:', sortedLeaderboard);
+            console.log('✅ Final leaderboard:', sortedLeaderboard);
             setLeaderboard(sortedLeaderboard);
+            console.log('✅ Resolution data loaded successfully');
             
         } catch (error) {
-            console.error('Error fetching resolution data:', error);
+            console.error('❌ Error fetching resolution data:', error);
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name
+            });
+            
+            // Set fallback data
+            setResolutionData([]);
+            setAvgResolutionTime(0);
+            setLeaderboard([]);
+            
+            message.warning('Unable to load resolution data. Using fallback data.');
         }
     };
 
     // Load data on component mount
     useEffect(() => {
-        fetchWaitingToFixData();
-        fetchResolutionData();
+        const loadData = async () => {
+            try {
+                await Promise.all([
+                    fetchWaitingToFixData(),
+                    fetchResolutionData()
+                ]);
+            } catch (error) {
+                console.error('❌ Error loading initial data:', error);
+            }
+        };
+        
+        loadData();
     }, []);
 
     // Listen for fullscreen changes
@@ -316,7 +394,9 @@ const PublicDashboard = () => {
     }, [currentSlide, isAutoPlay, slides]);
 
     const handleRefresh = () => {
+        console.log('🔄 Manual refresh triggered');
         fetchWaitingToFixData();
+        fetchResolutionData();
     };
 
 
@@ -349,6 +429,14 @@ const PublicDashboard = () => {
                 console.error('Error attempting to exit fullscreen:', err);
             });
         }
+    };
+
+    const zoomIn = () => {
+        setZoomLevel(prev => Math.min(prev + 0.1, 2)); // Max 200%
+    };
+
+    const zoomOut = () => {
+        setZoomLevel(prev => Math.max(prev - 0.1, 0.5)); // Min 50%
     };
 
     const chartData = createChartData(mockStats);
@@ -1499,7 +1587,9 @@ const PublicDashboard = () => {
                 margin: '16px',
                 width: 'calc(100% - 32px)',
                 height: 'calc(100% - 32px)',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                transform: `scale(${zoomLevel})`,
+                transformOrigin: 'center center'
             }}>
                 {renderCurrentSlide()}
             </div>
@@ -1522,9 +1612,22 @@ const PublicDashboard = () => {
                         padding: '12px 20px',
                         color: 'white',
                         fontSize: '18px',
-                        fontWeight: 600
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px'
                     }}>
-                        {slides[currentSlide].title}
+                        <span>{slides[currentSlide].title}</span>
+                        <span style={{
+                            fontSize: '14px',
+                            fontWeight: 400,
+                            opacity: 0.8,
+                            background: 'rgba(255, 255, 255, 0.2)',
+                            padding: '4px 8px',
+                            borderRadius: '6px'
+                        }}>
+                            {Math.round(zoomLevel * 100)}%
+                        </span>
                     </div>
                     
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -1546,6 +1649,28 @@ const PublicDashboard = () => {
                             onClick={nextSlide}
                             style={{ borderRadius: '8px' }}
                             size="large"
+                        />
+                        <Button
+                            icon={<ZoomOutOutlined />}
+                            onClick={zoomOut}
+                            style={{ borderRadius: '8px' }}
+                            size="large"
+                            title="Zoom Out"
+                        />
+                        <Button
+                            icon={<ZoomInOutlined />}
+                            onClick={zoomIn}
+                            style={{ borderRadius: '8px' }}
+                            size="large"
+                            title="Zoom In"
+                        />
+                        <Button
+                            icon={<ReloadOutlined />}
+                            onClick={handleRefresh}
+                            style={{ borderRadius: '8px' }}
+                            size="large"
+                            loading={loading}
+                            title="Refresh Data"
                         />
                         <Button
                             icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
