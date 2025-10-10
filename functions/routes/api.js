@@ -19,6 +19,7 @@ router.get('/auth/user/:email', authController.getUserByEmail);
 router.post('/cards', cardController.createOrUpdateCard);
 router.get('/cards', cardController.getCards);
 router.get('/cards/:cardUrl', cardController.getCardByUrl);
+router.get('/cards/list/:listId', cardController.getCardsOnTrello);
 
 // Error Card routes
 router.post('/error-cards', errorCardController.createErrorCard);

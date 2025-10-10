@@ -1,4 +1,5 @@
 const cardService = require('../services/cardService');
+const trelloService = require('../services/trelloService');
 
 const createCard = async (req, res) => {
     try {
@@ -53,9 +54,21 @@ const getCardByUrl = async (req, res) => {
     }
 };
 
+const getCardsOnTrello = async (req, res) => {
+    try {
+        const { listId } = req.params;
+        console.log(listId);
+        const cards = await trelloService.getCardsByList(listId);
+        res.json(cards);
+    }
+    catch (err) {
+        res.status(500).json({ error: 'Lỗi khi lấy card', details: err.message });
+    }
+}
 module.exports = {
     createCard,
     getCards,
     createOrUpdateCard,
-    getCardByUrl
+    getCardByUrl,
+    getCardsOnTrello
 };

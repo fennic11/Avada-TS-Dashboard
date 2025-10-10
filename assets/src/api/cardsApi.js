@@ -51,5 +51,18 @@ export const getResolutionTimes = async (startDate, endDate) => {
         return [];
     }
 };
+export const getCardsOnTrello = async (listId) => {
+    try {
+        const response = await fetch(`${API_URL}/cards/list/${listId}`, {
+            headers: getAuthHeaders()
+        });
+        const data = await response.json();
+        return data;
+    }
+    catch (err) {
+        console.error("❌ Lỗi khi gọi API:", err);
+        return [];
+    }
+ }
 
 

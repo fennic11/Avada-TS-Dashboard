@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Statistic, Typography, Spin, Alert, Button, Space, Divider, Progress, Table, Avatar, message } from 'antd';
-import { getCardsByList } from '../api/trelloApi';
-import { getResolutionTimes } from '../api/cardsApi';
+import { getResolutionTimes, getCardsOnTrello } from '../api/cardsApi';
 import appData from '../data/app.json';
 import membersData from '../data/members.json';
 import { 
@@ -124,6 +123,7 @@ const PublicDashboard = () => {
     const [leaderboard, setLeaderboard] = useState([]);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [zoomLevel, setZoomLevel] = useState(1);
+    const [isTVMode, setIsTVMode] = useState(false);
 
     // Define slides
     const slides = [
@@ -139,7 +139,7 @@ const PublicDashboard = () => {
             console.log('🔄 Fetching waiting to fix data...');
             
             const waitingToFixListId = '63c7b1a68e5576001577d65c'; // ID for "Waiting to fix (from dev)"
-            const cards = await getCardsByList(waitingToFixListId);
+            const cards = await getCardsOnTrello(waitingToFixListId);
             
             console.log('📊 Cards received:', cards?.length || 0);
             console.log('📋 Sample card:', cards?.[0]);
@@ -317,6 +317,50 @@ const PublicDashboard = () => {
         }
     };
 
+    // TV Mode Detection
+    useEffect(() => {
+        const detectTVMode = () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const userAgent = navigator.userAgent.toLowerCase();
+            
+            // Detect Redmi TV or similar TV devices
+            const isRedmiTV = userAgent.includes('redmi') || 
+                             userAgent.includes('mi tv') || 
+                             userAgent.includes('android tv') ||
+                             userAgent.includes('tv');
+            
+            // Detect TV-like resolutions (common TV resolutions)
+            const isTVResolution = (width >= 1920 && height >= 1080) || // Full HD
+                                  (width >= 1366 && height >= 768) ||   // HD
+                                  (width >= 1280 && height >= 720);     // HD Ready
+            
+            // Detect large screen (likely TV)
+            const isLargeScreen = width >= 1920 || height >= 1080;
+            
+            const tvMode = isRedmiTV || (isTVResolution && isLargeScreen);
+            
+            console.log('📺 TV Detection:', {
+                width, height, userAgent,
+                isRedmiTV, isTVResolution, isLargeScreen,
+                tvMode
+            });
+            
+            setIsTVMode(tvMode);
+            
+            // Set appropriate zoom level for TV
+            if (tvMode) {
+                setZoomLevel(0.7); // Reduce zoom for TV
+                console.log('📺 TV Mode activated - Zoom set to 0.7');
+            }
+        };
+        
+        detectTVMode();
+        window.addEventListener('resize', detectTVMode);
+        
+        return () => window.removeEventListener('resize', detectTVMode);
+    }, []);
+
     // Load data on component mount
     useEffect(() => {
         const loadData = async () => {
@@ -332,6 +376,19 @@ const PublicDashboard = () => {
         
         loadData();
     }, []);
+
+    // Auto-fullscreen for TV mode
+    useEffect(() => {
+        if (isTVMode && !isFullscreen) {
+            // Small delay to ensure component is mounted
+            const timer = setTimeout(() => {
+                toggleFullscreen();
+                console.log('📺 Auto-entering fullscreen for TV mode');
+            }, 1000);
+            
+            return () => clearTimeout(timer);
+        }
+    }, [isTVMode]);
 
     // Listen for fullscreen changes
     useEffect(() => {
@@ -359,13 +416,37 @@ const PublicDashboard = () => {
                 event.preventDefault();
                 toggleFullscreen();
             }
+            
+            // TV mode keyboard shortcuts
+            if (isTVMode) {
+                switch (event.key) {
+                    case 'ArrowLeft':
+                        event.preventDefault();
+                        prevSlide();
+                        break;
+                    case 'ArrowRight':
+                        event.preventDefault();
+                        nextSlide();
+                        break;
+                    case ' ': // Spacebar
+                        event.preventDefault();
+                        toggleAutoPlay();
+                        break;
+                    case 'Escape':
+                        if (isFullscreen) {
+                            event.preventDefault();
+                            toggleFullscreen();
+                        }
+                        break;
+                }
+            }
         };
 
         document.addEventListener('keydown', handleKeyPress);
         return () => {
             document.removeEventListener('keydown', handleKeyPress);
         };
-    }, []);
+    }, [isTVMode, isFullscreen]);
 
     // Auto slide transition
     useEffect(() => {
@@ -490,15 +571,15 @@ const PublicDashboard = () => {
                         <Title level={1} style={{ 
                             color: '#1e293b', 
                             marginBottom: 12,
-                            fontSize: '2.2rem',
+                            fontSize: isTVMode ? '1.8rem' : '2.2rem',
                             fontWeight: 700,
                             margin: 0
                         }}>
-                            <TeamOutlined style={{ marginRight: 12, color: '#667eea', fontSize: '1.8rem' }} />
+                            <TeamOutlined style={{ marginRight: 12, color: '#667eea', fontSize: isTVMode ? '1.4rem' : '1.8rem' }} />
                             Waiting to Fix (from Dev)
                         </Title>
                         <Paragraph style={{ 
-                            fontSize: '1.2rem', 
+                            fontSize: isTVMode ? '1rem' : '1.2rem', 
                             color: '#64748b',
                             margin: '8px 0 0 0',
                             fontWeight: 500
@@ -510,9 +591,9 @@ const PublicDashboard = () => {
                     {/* Stats Section */}
                     <div style={{ 
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                        gap: '20px',
-                        maxWidth: '600px',
+                        gridTemplateColumns: isTVMode ? 'repeat(auto-fit, minmax(150px, 1fr))' : 'repeat(auto-fit, minmax(200px, 1fr))',
+                        gap: isTVMode ? '15px' : '20px',
+                        maxWidth: isTVMode ? '800px' : '600px',
                         margin: '0 auto'
                     }}>
                         <Card style={{ 
@@ -571,7 +652,7 @@ const PublicDashboard = () => {
                     <Title level={2} style={{ 
                         color: '#1e293b', 
                         marginBottom: 20,
-                        fontSize: '1.8rem',
+                        fontSize: isTVMode ? '1.4rem' : '1.8rem',
                         fontWeight: 700,
                         textAlign: 'center',
                         margin: '0 0 25px 0'
@@ -581,16 +662,16 @@ const PublicDashboard = () => {
                     
                     <div style={{ 
                         display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                        gap: '20px',
+                        gridTemplateColumns: isTVMode ? 'repeat(auto-fit, minmax(140px, 1fr))' : 'repeat(auto-fit, minmax(180px, 1fr))',
+                        gap: isTVMode ? '15px' : '20px',
                         flex: '1 1 auto',
                         overflow: 'auto'
                     }}>
                         {displayTeamEntries.map(([team, count], index) => (
                             <div key={team} style={{ 
                                 background: teamColors[index % teamColors.length].bg,
-                                borderRadius: '12px',
-                                padding: '24px',
+                                borderRadius: isTVMode ? '8px' : '12px',
+                                padding: isTVMode ? '16px' : '24px',
                                 textAlign: 'center',
                                 boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
                                 border: `2px solid ${teamColors[index % teamColors.length].border}40`,
@@ -598,7 +679,7 @@ const PublicDashboard = () => {
                                 cursor: 'pointer',
                                 position: 'relative',
                                 overflow: 'hidden',
-                                minHeight: '140px',
+                                minHeight: isTVMode ? '100px' : '140px',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 justifyContent: 'center'
@@ -628,7 +709,7 @@ const PublicDashboard = () => {
                                     <div style={{ 
                                         fontWeight: 800, 
                                         color: 'white', 
-                                        fontSize: '2.5rem',
+                                        fontSize: isTVMode ? '2rem' : '2.5rem',
                                         marginBottom: '8px',
                                         textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
                                     }}>
@@ -636,7 +717,7 @@ const PublicDashboard = () => {
                                     </div>
                                     <div style={{ 
                                         color: 'white', 
-                                        fontSize: '1.1rem',
+                                        fontSize: isTVMode ? '0.9rem' : '1.1rem',
                                         fontWeight: 600,
                                         textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)'
                                     }}>
@@ -1143,15 +1224,15 @@ const PublicDashboard = () => {
                     <Title level={1} style={{ 
                         color: '#1e293b', 
                         marginBottom: 12,
-                        fontSize: '2.2rem',
+                        fontSize: isTVMode ? '1.8rem' : '2.2rem',
                         fontWeight: 700,
                         margin: 0
                     }}>
-                        <TrophyOutlined style={{ marginRight: 12, color: '#f59e0b', fontSize: '1.8rem' }} />
+                        <TrophyOutlined style={{ marginRight: 12, color: '#f59e0b', fontSize: isTVMode ? '1.4rem' : '1.8rem' }} />
                         TS Team Leaderboard
                     </Title>
                     <Paragraph style={{ 
-                        fontSize: '1.2rem', 
+                        fontSize: isTVMode ? '1rem' : '1.2rem', 
                         color: '#64748b',
                         margin: '8px 0 0 0',
                         fontWeight: 500
@@ -1432,15 +1513,15 @@ const PublicDashboard = () => {
                     <Title level={1} style={{ 
                         color: '#1e293b', 
                         marginBottom: 12,
-                        fontSize: '2.2rem',
+                        fontSize: isTVMode ? '1.8rem' : '2.2rem',
                         fontWeight: 700,
                         margin: 0
                     }}>
-                        <BarChartOutlined style={{ marginRight: 12, color: '#667eea', fontSize: '1.8rem' }} />
+                        <BarChartOutlined style={{ marginRight: 12, color: '#667eea', fontSize: isTVMode ? '1.4rem' : '1.8rem' }} />
                         Resolution Time Analysis
                     </Title>
                     <Paragraph style={{ 
-                        fontSize: '1.2rem', 
+                        fontSize: isTVMode ? '1rem' : '1.2rem', 
                         color: '#64748b',
                         margin: '8px 0 0 0',
                         fontWeight: 500
@@ -1583,10 +1664,10 @@ const PublicDashboard = () => {
                 position: 'relative',
                 background: 'rgba(255, 255, 255, 0.95)',
                 backdropFilter: 'blur(10px)',
-                borderRadius: '20px',
-                margin: '16px',
-                width: 'calc(100% - 32px)',
-                height: 'calc(100% - 32px)',
+                borderRadius: isTVMode ? '10px' : '20px',
+                margin: isTVMode ? '8px' : '16px',
+                width: isTVMode ? 'calc(100% - 16px)' : 'calc(100% - 32px)',
+                height: isTVMode ? 'calc(100% - 16px)' : 'calc(100% - 32px)',
                 overflow: 'hidden',
                 transform: `scale(${zoomLevel})`,
                 transformOrigin: 'center center'
@@ -1595,7 +1676,7 @@ const PublicDashboard = () => {
             </div>
 
             {/* Slide Navigation */}
-            {!isFullscreen && (
+            {!isFullscreen && !isTVMode && (
                 <div style={{
                     position: 'absolute',
                     top: '20px',
@@ -1684,8 +1765,46 @@ const PublicDashboard = () => {
                 </div>
             )}
 
+            {/* TV Mode Indicator */}
+            {isTVMode && (
+                <div 
+                    style={{
+                        position: 'absolute',
+                        top: '20px',
+                        right: '20px',
+                        zIndex: 1000,
+                        background: 'rgba(0, 0, 0, 0.8)',
+                        color: 'white',
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                    }}
+                >
+                    📺 TV Mode
+                    {isFullscreen && (
+                        <Button
+                            icon={<FullscreenExitOutlined />}
+                            style={{ 
+                                borderRadius: '4px',
+                                background: 'rgba(255, 255, 255, 0.2)',
+                                border: 'none',
+                                color: 'white',
+                                marginLeft: '8px'
+                            }}
+                            size="small"
+                            title="Exit Fullscreen (F11)"
+                            onClick={toggleFullscreen}
+                        />
+                    )}
+                </div>
+            )}
+
             {/* Fullscreen Exit Overlay */}
-            {isFullscreen && (
+            {isFullscreen && !isTVMode && (
                 <div 
                     style={{
                         position: 'absolute',
@@ -1710,7 +1829,7 @@ const PublicDashboard = () => {
             )}
 
             {/* Progress Bar */}
-            {!isFullscreen && (
+            {!isFullscreen && !isTVMode && (
                 <div style={{
                     position: 'absolute',
                     bottom: '20px',
