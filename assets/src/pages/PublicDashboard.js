@@ -331,12 +331,13 @@ const PublicDashboard = () => {
                              userAgent.includes('tv');
             
             // Detect TV-like resolutions (common TV resolutions)
-            const isTVResolution = (width >= 1920 && height >= 1080) || // Full HD
+            const isTVResolution = (width >= 3840 && height >= 2160) || // 4K UHD
+                                  (width >= 1920 && height >= 1080) || // Full HD
                                   (width >= 1366 && height >= 768) ||   // HD
                                   (width >= 1280 && height >= 720);     // HD Ready
             
-            // Detect large screen (likely TV)
-            const isLargeScreen = width >= 1920 || height >= 1080;
+            // Detect large screen (likely TV) - optimized for 4K
+            const isLargeScreen = width >= 3840 || height >= 2160 || width >= 1920 || height >= 1080;
             
             const tvMode = isRedmiTV || (isTVResolution && isLargeScreen);
             
@@ -350,8 +351,10 @@ const PublicDashboard = () => {
             
             // Set appropriate zoom level for TV
             if (tvMode) {
-                setZoomLevel(0.7); // Reduce zoom for TV
-                console.log('📺 TV Mode activated - Zoom set to 0.7');
+                // Optimized for 4K 50 inch TV
+                const zoomLevel = width >= 3840 ? 1.2 : 0.9; // Larger for 4K, smaller for HD
+                setZoomLevel(zoomLevel);
+                console.log(`📺 TV Mode activated - Zoom set to ${zoomLevel} for ${width}x${height}`);
             }
         };
         
@@ -552,14 +555,14 @@ const PublicDashboard = () => {
                 display: 'flex', 
                 flexDirection: 'column', 
                 height: '100%',
-                padding: '30px',
+                padding: isTVMode ? '40px' : '30px',
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 position: 'relative'
             }}>
                 {/* Header Section */}
                 <div style={{ 
-                    marginBottom: '30px',
-                    padding: '25px',
+                    marginBottom: isTVMode ? '35px' : '30px',
+                    padding: isTVMode ? '30px' : '25px',
                     background: 'rgba(255, 255, 255, 0.95)',
                     borderRadius: '16px',
                     backdropFilter: 'blur(15px)',
@@ -571,15 +574,15 @@ const PublicDashboard = () => {
                         <Title level={1} style={{ 
                             color: '#1e293b', 
                             marginBottom: 12,
-                            fontSize: isTVMode ? '1.8rem' : '2.2rem',
+                            fontSize: isTVMode ? '2.5rem' : '2.2rem',
                             fontWeight: 700,
                             margin: 0
                         }}>
-                            <TeamOutlined style={{ marginRight: 12, color: '#667eea', fontSize: isTVMode ? '1.4rem' : '1.8rem' }} />
+                            <TeamOutlined style={{ marginRight: 12, color: '#667eea', fontSize: isTVMode ? '2rem' : '1.8rem' }} />
                             Waiting to Fix (from Dev)
                         </Title>
                         <Paragraph style={{ 
-                            fontSize: isTVMode ? '1rem' : '1.2rem', 
+                            fontSize: isTVMode ? '1.4rem' : '1.2rem', 
                             color: '#64748b',
                             margin: '8px 0 0 0',
                             fontWeight: 500
@@ -662,16 +665,16 @@ const PublicDashboard = () => {
                     
                     <div style={{ 
                         display: 'grid', 
-                        gridTemplateColumns: isTVMode ? 'repeat(auto-fit, minmax(140px, 1fr))' : 'repeat(auto-fit, minmax(180px, 1fr))',
-                        gap: isTVMode ? '15px' : '20px',
+                        gridTemplateColumns: isTVMode ? 'repeat(auto-fit, minmax(200px, 1fr))' : 'repeat(auto-fit, minmax(180px, 1fr))',
+                        gap: isTVMode ? '25px' : '20px',
                         flex: '1 1 auto',
                         overflow: 'auto'
                     }}>
                         {displayTeamEntries.map(([team, count], index) => (
                             <div key={team} style={{ 
                                 background: teamColors[index % teamColors.length].bg,
-                                borderRadius: isTVMode ? '8px' : '12px',
-                                padding: isTVMode ? '16px' : '24px',
+                                borderRadius: isTVMode ? '15px' : '12px',
+                                padding: isTVMode ? '30px' : '24px',
                                 textAlign: 'center',
                                 boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
                                 border: `2px solid ${teamColors[index % teamColors.length].border}40`,
@@ -679,7 +682,7 @@ const PublicDashboard = () => {
                                 cursor: 'pointer',
                                 position: 'relative',
                                 overflow: 'hidden',
-                                minHeight: isTVMode ? '100px' : '140px',
+                                minHeight: isTVMode ? '160px' : '140px',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 justifyContent: 'center'
@@ -709,7 +712,7 @@ const PublicDashboard = () => {
                                     <div style={{ 
                                         fontWeight: 800, 
                                         color: 'white', 
-                                        fontSize: isTVMode ? '2rem' : '2.5rem',
+                                        fontSize: isTVMode ? '3rem' : '2.5rem',
                                         marginBottom: '8px',
                                         textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
                                     }}>
@@ -717,7 +720,7 @@ const PublicDashboard = () => {
                                     </div>
                                     <div style={{ 
                                         color: 'white', 
-                                        fontSize: isTVMode ? '0.9rem' : '1.1rem',
+                                        fontSize: isTVMode ? '1.2rem' : '1.1rem',
                                         fontWeight: 600,
                                         textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)'
                                     }}>
@@ -1664,10 +1667,10 @@ const PublicDashboard = () => {
                 position: 'relative',
                 background: 'rgba(255, 255, 255, 0.95)',
                 backdropFilter: 'blur(10px)',
-                borderRadius: isTVMode ? '10px' : '20px',
-                margin: isTVMode ? '8px' : '16px',
-                width: isTVMode ? 'calc(100% - 16px)' : 'calc(100% - 32px)',
-                height: isTVMode ? 'calc(100% - 16px)' : 'calc(100% - 32px)',
+                borderRadius: isTVMode ? '20px' : '20px',
+                margin: isTVMode ? '20px' : '16px',
+                width: isTVMode ? 'calc(100% - 40px)' : 'calc(100% - 32px)',
+                height: isTVMode ? 'calc(100% - 40px)' : 'calc(100% - 32px)',
                 overflow: 'hidden',
                 transform: `scale(${zoomLevel})`,
                 transformOrigin: 'center center'
@@ -1739,8 +1742,11 @@ const PublicDashboard = () => {
                                     console.log('📺 TV Mode disabled');
                                 } else {
                                     setIsTVMode(true);
-                                    setZoomLevel(0.7);
-                                    console.log('📺 TV Mode activated');
+                                    // Set appropriate zoom for current screen size
+                                    const width = window.innerWidth;
+                                    const zoomLevel = width >= 3840 ? 1.2 : 0.9;
+                                    setZoomLevel(zoomLevel);
+                                    console.log(`📺 TV Mode activated - Zoom set to ${zoomLevel}`);
                                 }
                             }}
                             style={{ 
