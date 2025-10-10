@@ -1732,6 +1732,29 @@ const PublicDashboard = () => {
                             size="large"
                         />
                         <Button
+                            onClick={() => {
+                                if (isTVMode) {
+                                    setIsTVMode(false);
+                                    setZoomLevel(1);
+                                    console.log('📺 TV Mode disabled');
+                                } else {
+                                    setIsTVMode(true);
+                                    setZoomLevel(0.7);
+                                    console.log('📺 TV Mode activated');
+                                }
+                            }}
+                            style={{ 
+                                borderRadius: '8px',
+                                background: isTVMode ? 'rgba(102, 126, 234, 0.8)' : 'rgba(0, 0, 0, 0.7)',
+                                border: 'none',
+                                color: 'white'
+                            }}
+                            size="large"
+                            title={isTVMode ? 'Disable TV Mode' : 'Enable TV Mode'}
+                        >
+                            📺
+                        </Button>
+                        <Button
                             icon={<ZoomOutOutlined />}
                             onClick={zoomOut}
                             style={{ borderRadius: '8px' }}
