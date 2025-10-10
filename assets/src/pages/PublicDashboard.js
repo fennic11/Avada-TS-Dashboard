@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Statistic, Typography, Spin, Alert, Button, Space, Divider, Progress, Table, Avatar, message } from 'antd';
+import { Card, Statistic, Typography, Button, Progress, Table, message } from 'antd';
 import { getResolutionTimes, getCardsOnTrello } from '../api/cardsApi';
 import appData from '../data/app.json';
 import membersData from '../data/members.json';
 import { 
     TeamOutlined, 
     ClockCircleOutlined, 
-    CheckCircleOutlined, 
-    ExclamationCircleOutlined,
+    CheckCircleOutlined,
     TrophyOutlined,
     BarChartOutlined,
     ReloadOutlined,
@@ -22,7 +21,6 @@ import {
     ZoomInOutlined,
     ZoomOutOutlined
 } from '@ant-design/icons';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import dayjs from 'dayjs';
 
 const { Title, Text, Paragraph } = Typography;
@@ -47,15 +45,6 @@ const mockTeamData = [
     { name: 'Team X', resolutionTime: 203, firstActionTime: 55, devTime: 135, cards: 245 }
 ];
 
-const mockAppData = [
-    { name: 'SEO', cards: 89, avgTime: 145 },
-    { name: 'Blog', cards: 67, avgTime: 178 },
-    { name: 'Joy', cards: 123, avgTime: 165 },
-    { name: 'Chatty', cards: 98, avgTime: 192 },
-    { name: 'AEM', cards: 76, avgTime: 203 },
-    { name: 'Bundle', cards: 54, avgTime: 156 }
-];
-
 // Format minutes to readable format
 function formatMinutes(mins) {
     if (!mins || isNaN(mins)) return '—';
@@ -64,16 +53,6 @@ function formatMinutes(mins) {
     const days = Math.floor(mins / 1440);
     const hours = ((mins % 1440) / 60).toFixed(1);
     return hours > 0 ? `${days} ngày ${hours} h` : `${days} ngày`;
-}
-
-// Create chart data for resolution time distribution
-function createChartData(stats) {
-    return [
-        { name: '< 1h', value: stats.under1h, color: '#10b981' },
-        { name: '1h-12h', value: stats.oneTo12h, color: '#f59e0b' },
-        { name: '12h-24h', value: stats.twelveTo24h, color: '#ef4444' },
-        { name: '> 24h', value: stats.over24h, color: '#8b5cf6' }
-    ].filter(item => item.value > 0);
 }
 
 
@@ -125,11 +104,11 @@ const PublicDashboard = () => {
     const [zoomLevel, setZoomLevel] = useState(1);
     const [isTVMode, setIsTVMode] = useState(false);
 
-    // Define slides
+    // Define slides - optimized for TV display
     const slides = [
-        { id: 'overview', title: 'Waiting to Fix', duration: 10000 },
-        { id: 'team-stats', title: 'Team Statistics', duration: 10000 },
-        { id: 'resolution-analysis', title: 'Resolution Analysis', duration: 10000 }
+        { id: 'team-performance', title: 'Team Performance', duration: 15000 },
+        { id: 'resolution-leaderboard', title: 'TS Leaderboard', duration: 15000 },
+        { id: 'resolution-analysis', title: 'Resolution Analysis', duration: 15000 }
     ];
 
     // Fetch data from "Waiting to fix (from dev)" list
@@ -143,6 +122,13 @@ const PublicDashboard = () => {
             
             console.log('📊 Cards received:', cards?.length || 0);
             console.log('📋 Sample card:', cards?.[0]);
+            
+            // Debug labels structure
+            if (cards && cards.length > 0) {
+                console.log('🏷️ Sample card labels:', cards[0]?.labels);
+                console.log('🏷️ Labels type:', typeof cards[0]?.labels);
+                console.log('🏷️ Is array:', Array.isArray(cards[0]?.labels));
+            }
             
             if (!cards || !Array.isArray(cards)) {
                 console.warn('⚠️ No cards data received, using fallback');
@@ -523,433 +509,6 @@ const PublicDashboard = () => {
         setZoomLevel(prev => Math.max(prev - 0.1, 0.5)); // Min 50%
     };
 
-    const chartData = createChartData(mockStats);
-
-    // Slide components
-    const renderOverviewSlide = () => {
-        const teamColors = [
-            { bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: '#667eea', border: '#667eea' },
-            { bg: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: '#f5576c', border: '#f5576c' },
-            { bg: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: '#4facfe', border: '#4facfe' },
-            { bg: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: '#43e97b', border: '#43e97b' },
-            { bg: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', color: '#fa709a', border: '#fa709a' },
-            { bg: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', color: '#a8edea', border: '#a8edea' }
-        ];
-        
-        const teamEntries = Object.entries(teamStats).sort((a, b) => b[1] - a[1]);
-        
-        // Fallback data if no team stats yet
-        const fallbackTeamStats = {
-            'Falcon': 0,
-            'Starlink': 0,
-            'Tesla': 0,
-            'Solar': 0,
-            'Team X': 0
-        };
-        
-        const displayTeamStats = Object.keys(teamStats).length > 0 ? teamStats : fallbackTeamStats;
-        const displayTeamEntries = Object.entries(displayTeamStats).sort((a, b) => b[1] - a[1]);
-        
-        return (
-            <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                height: '100%',
-                padding: isTVMode ? '40px' : '30px',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                position: 'relative'
-            }}>
-                {/* Header Section */}
-                <div style={{ 
-                    marginBottom: isTVMode ? '35px' : '30px',
-                    padding: isTVMode ? '30px' : '25px',
-                    background: 'rgba(255, 255, 255, 0.95)',
-                    borderRadius: '16px',
-                    backdropFilter: 'blur(15px)',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)'
-                }}>
-                    {/* Title Section */}
-                    <div style={{ textAlign: 'center', marginBottom: '25px' }}>
-                        <Title level={1} style={{ 
-                            color: '#1e293b', 
-                            marginBottom: 12,
-                            fontSize: isTVMode ? '2.5rem' : '2.2rem',
-                            fontWeight: 700,
-                            margin: 0
-                        }}>
-                            <TeamOutlined style={{ marginRight: 12, color: '#667eea', fontSize: isTVMode ? '2rem' : '1.8rem' }} />
-                            Waiting to Fix (from Dev)
-                        </Title>
-                        <Paragraph style={{ 
-                            fontSize: isTVMode ? '1.4rem' : '1.2rem', 
-                            color: '#64748b',
-                            margin: '8px 0 0 0',
-                            fontWeight: 500
-                        }}>
-                            Cards waiting for developer fixes by Product Team
-                        </Paragraph>
-                    </div>
-
-                    {/* Stats Section */}
-                    <div style={{ 
-                        display: 'grid',
-                        gridTemplateColumns: isTVMode ? 'repeat(auto-fit, minmax(150px, 1fr))' : 'repeat(auto-fit, minmax(200px, 1fr))',
-                        gap: isTVMode ? '15px' : '20px',
-                        maxWidth: isTVMode ? '800px' : '600px',
-                        margin: '0 auto'
-                    }}>
-                        <Card style={{ 
-                            borderRadius: '12px', 
-                            padding: '20px',
-                            background: 'rgba(102, 126, 234, 0.1)',
-                            border: '2px solid rgba(102, 126, 234, 0.2)',
-                            textAlign: 'center'
-                        }}>
-                            <Statistic
-                                title="Total Cards Waiting"
-                                value={realStats.totalCards}
-                                valueStyle={{ 
-                                    color: '#667eea', 
-                                    fontSize: '2rem', 
-                                    fontWeight: 800
-                                }}
-                                prefix={<TeamOutlined style={{ marginRight: 8, color: '#667eea', fontSize: '1.2rem' }} />}
-                            />
-                        </Card>
-                        
-                        <Card style={{ 
-                            borderRadius: '12px', 
-                            padding: '20px',
-                            background: 'rgba(59, 130, 246, 0.1)',
-                            border: '2px solid rgba(59, 130, 246, 0.2)',
-                            textAlign: 'center'
-                        }}>
-                            <Statistic
-                                title="Teams Involved"
-                                value={Object.keys(displayTeamStats).length}
-                                valueStyle={{ 
-                                    color: '#3b82f6', 
-                                    fontSize: '2rem', 
-                                    fontWeight: 800
-                                }}
-                                prefix={<TeamOutlined style={{ marginRight: 8, color: '#3b82f6', fontSize: '1.2rem' }} />}
-                            />
-                        </Card>
-                    </div>
-                </div>
-
-                {/* Main Content - Team Statistics Only */}
-                <div style={{ 
-                    background: 'rgba(255, 255, 255, 0.95)',
-                    borderRadius: '16px',
-                    padding: '25px',
-                    backdropFilter: 'blur(15px)',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    flex: '1 1 auto',
-                    minHeight: 0
-                }}>
-                    <Title level={2} style={{ 
-                        color: '#1e293b', 
-                        marginBottom: 20,
-                        fontSize: isTVMode ? '1.4rem' : '1.8rem',
-                        fontWeight: 700,
-                        textAlign: 'center',
-                        margin: '0 0 25px 0'
-                    }}>
-                        Team Statistics
-                    </Title>
-                    
-                    <div style={{ 
-                        display: 'grid', 
-                        gridTemplateColumns: isTVMode ? 'repeat(auto-fit, minmax(200px, 1fr))' : 'repeat(auto-fit, minmax(180px, 1fr))',
-                        gap: isTVMode ? '25px' : '20px',
-                        flex: '1 1 auto',
-                        overflow: 'auto'
-                    }}>
-                        {displayTeamEntries.map(([team, count], index) => (
-                            <div key={team} style={{ 
-                                background: teamColors[index % teamColors.length].bg,
-                                borderRadius: isTVMode ? '15px' : '12px',
-                                padding: isTVMode ? '30px' : '24px',
-                                textAlign: 'center',
-                                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
-                                border: `2px solid ${teamColors[index % teamColors.length].border}40`,
-                                transition: 'all 0.3s ease',
-                                cursor: 'pointer',
-                                position: 'relative',
-                                overflow: 'hidden',
-                                minHeight: isTVMode ? '160px' : '140px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'center'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'translateY(-3px)';
-                                e.currentTarget.style.boxShadow = '0 6px 25px rgba(0, 0, 0, 0.15)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.1)';
-                            }}>
-                                <div style={{ 
-                                    position: 'absolute',
-                                    top: '-30%',
-                                    right: '-30%',
-                                    width: '60%',
-                                    height: '60%',
-                                    background: 'rgba(255, 255, 255, 0.1)',
-                                    borderRadius: '50%',
-                                    transform: 'rotate(45deg)'
-                                }} />
-                                <div style={{ 
-                                    position: 'relative',
-                                    zIndex: 1
-                                }}>
-                                    <div style={{ 
-                                        fontWeight: 800, 
-                                        color: 'white', 
-                                        fontSize: isTVMode ? '3rem' : '2.5rem',
-                                        marginBottom: '8px',
-                                        textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
-                                    }}>
-                                        {count}
-                                    </div>
-                                    <div style={{ 
-                                        color: 'white', 
-                                        fontSize: isTVMode ? '1.2rem' : '1.1rem',
-                                        fontWeight: 600,
-                                        textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)'
-                                    }}>
-                                        {team}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-                
-                {loading && (
-                    <div style={{ 
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        background: 'rgba(255, 255, 255, 0.95)',
-                        padding: '20px',
-                        borderRadius: '12px',
-                        backdropFilter: 'blur(15px)',
-                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)'
-                    }}>
-                        <Spin size="large" />
-                        <div style={{ marginTop: 10, color: '#64748b', fontSize: '1.1rem' }}>
-                            Loading real-time data...
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    const renderMetricsSlide = () => (
-        <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column',
-            height: '100%',
-            padding: '20px'
-        }}>
-            <Title level={1} style={{ 
-                color: '#1e293b', 
-                textAlign: 'center',
-                marginBottom: 40,
-                fontSize: '3rem',
-                fontWeight: 800
-            }}>
-                Waiting to Fix - Key Metrics
-            </Title>
-            <Row gutter={[24, 24]} style={{ flex: '1 1 auto' }}>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card style={{ 
-                        borderRadius: 20, 
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-                        background: 'rgba(255, 255, 255, 0.95)',
-                        backdropFilter: 'blur(10px)',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        height: '200px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}>
-                        <Statistic
-                            title="Total Cards Waiting"
-                            value={realStats.totalCards}
-                            valueStyle={{ 
-                                color: '#667eea', 
-                                fontSize: '3rem', 
-                                fontWeight: 800
-                            }}
-                            prefix={<TeamOutlined style={{ marginRight: 12, color: '#667eea', fontSize: '2rem' }} />}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card style={{ 
-                        borderRadius: 20, 
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-                        background: 'rgba(255, 255, 255, 0.95)',
-                        backdropFilter: 'blur(10px)',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        height: '200px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}>
-                        <Statistic
-                            title="AVG Resolution Time"
-                            value={formatMinutes(realStats.avgResolutionTime)}
-                            valueStyle={{ 
-                                color: '#3b82f6', 
-                                fontSize: '2.5rem', 
-                                fontWeight: 700
-                            }}
-                            prefix={<ClockCircleOutlined style={{ marginRight: 12, color: '#3b82f6', fontSize: '2rem' }} />}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card style={{ 
-                        borderRadius: 20, 
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-                        background: 'rgba(255, 255, 255, 0.95)',
-                        backdropFilter: 'blur(10px)',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        height: '200px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}>
-                        <Statistic
-                            title="AVG First Action Time"
-                            value={formatMinutes(realStats.avgFirstActionTime)}
-                            valueStyle={{ 
-                                color: '#10b981', 
-                                fontSize: '2.5rem', 
-                                fontWeight: 700
-                            }}
-                            prefix={<CheckCircleOutlined style={{ marginRight: 12, color: '#10b981', fontSize: '2rem' }} />}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card style={{ 
-                        borderRadius: 20, 
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-                        background: 'rgba(255, 255, 255, 0.95)',
-                        backdropFilter: 'blur(10px)',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        height: '200px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}>
-                        <Statistic
-                            title="AVG Dev Resolution Time"
-                            value={formatMinutes(realStats.avgResolutionTimeDev)}
-                            valueStyle={{ 
-                                color: '#f59e0b', 
-                                fontSize: '2.5rem', 
-                                fontWeight: 700
-                            }}
-                            prefix={<ExclamationCircleOutlined style={{ marginRight: 12, color: '#f59e0b', fontSize: '2rem' }} />}
-                        />
-                    </Card>
-                </Col>
-            </Row>
-        </div>
-    );
-
-    const renderTeamPerformanceSlide = () => (
-        <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column',
-            height: '100%',
-            padding: '20px'
-        }}>
-            <Title level={1} style={{ 
-                color: '#1e293b', 
-                textAlign: 'center',
-                marginBottom: 40,
-                fontSize: '3rem',
-                fontWeight: 800
-            }}>
-                Team Performance Analysis
-            </Title>
-            <div style={{ flex: '1 1 auto', minHeight: 0 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={mockTeamData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" fontSize={16} />
-                        <YAxis fontSize={16} />
-                        <Tooltip 
-                            formatter={(value, name) => [
-                                name === 'resolutionTime' ? formatMinutes(value) : value,
-                                name === 'resolutionTime' ? 'Resolution Time' : 
-                                name === 'firstActionTime' ? 'First Action Time' :
-                                name === 'devTime' ? 'Dev Time' : 'Cards'
-                            ]}
-                        />
-                        <Bar dataKey="resolutionTime" fill="#667eea" name="resolutionTime" />
-                        <Bar dataKey="firstActionTime" fill="#10b981" name="firstActionTime" />
-                        <Bar dataKey="devTime" fill="#f59e0b" name="devTime" />
-                    </BarChart>
-                </ResponsiveContainer>
-            </div>
-        </div>
-    );
-
-    const renderDistributionSlide = () => (
-        <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column',
-            height: '100%',
-            padding: '20px'
-        }}>
-            <Title level={1} style={{ 
-                color: '#1e293b', 
-                textAlign: 'center',
-                marginBottom: 40,
-                fontSize: '3rem',
-                fontWeight: 800
-            }}>
-                Resolution Time Distribution
-            </Title>
-            <div style={{ flex: '1 1 auto', minHeight: 0 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie
-                            data={chartData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={80}
-                            outerRadius={150}
-                            paddingAngle={5}
-                            dataKey="value"
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        >
-                            {chartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                        </Pie>
-                        <Tooltip />
-                    </PieChart>
-                </ResponsiveContainer>
-            </div>
-        </div>
-    );
-
     // Calculate resolution time by team and app
     const calculateResolutionByTeamAndApp = (cards) => {
         const teamStats = new Map();
@@ -1209,117 +768,104 @@ const PublicDashboard = () => {
                 display: 'flex', 
                 flexDirection: 'column', 
                 height: '100%',
-                padding: '30px',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                padding: isTVMode ? '40px' : '30px',
+                background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
                 position: 'relative'
             }}>
-                {/* Header Section */}
+                {/* Main Content - Vertical Layout */}
                 <div style={{ 
-                    textAlign: 'center', 
-                    marginBottom: '30px',
-                    padding: '25px',
-                    background: 'rgba(255, 255, 255, 0.95)',
-                    borderRadius: '16px',
-                    backdropFilter: 'blur(15px)',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)'
-                }}>
-                    <Title level={1} style={{ 
-                        color: '#1e293b', 
-                        marginBottom: 12,
-                        fontSize: isTVMode ? '1.8rem' : '2.2rem',
-                        fontWeight: 700,
-                        margin: 0
-                    }}>
-                        <TrophyOutlined style={{ marginRight: 12, color: '#f59e0b', fontSize: isTVMode ? '1.4rem' : '1.8rem' }} />
-                        TS Team Leaderboard
-                    </Title>
-                    <Paragraph style={{ 
-                        fontSize: isTVMode ? '1rem' : '1.2rem', 
-                        color: '#64748b',
-                        margin: '8px 0 0 0',
-                        fontWeight: 500
-                    }}>
-                        Performance Analysis - This Month
-                    </Paragraph>
-                </div>
-
-                {/* Main Content */}
-                <div style={{ 
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 2fr',
-                    gap: '25px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: isTVMode ? '25px' : '20px',
                     flex: '1 1 auto',
                     minHeight: 0
                 }}>
-                    {/* Stats Section */}
+                    {/* Top Section - Stats Row */}
                     <div style={{ 
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '20px'
+                        background: 'rgba(255, 255, 255, 0.8)',
+                        borderRadius: '16px',
+                        padding: isTVMode ? '20px' : '15px',
+                        backdropFilter: 'blur(10px)',
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)'
                     }}>
-                        <Card style={{ 
-                            borderRadius: '16px', 
-                            padding: '25px',
-                            background: 'rgba(255, 255, 255, 0.95)',
-                            backdropFilter: 'blur(15px)',
-                            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            textAlign: 'center'
+                        <Title level={2} style={{ 
+                            color: '#1e293b', 
+                            marginBottom: isTVMode ? '20px' : '15px',
+                            fontSize: isTVMode ? '1.4rem' : '1.2rem',
+                            fontWeight: 600,
+                            textAlign: 'center',
+                            margin: '0 0 20px 0'
                         }}>
-                            <Statistic
-                                title="Total Cards Resolved"
-                                value={resolutionData.length}
-                                valueStyle={{ 
-                                    color: '#3b82f6', 
-                                    fontSize: '2.2rem', 
-                                    fontWeight: 800
-                                }}
-                                prefix={<CheckCircleOutlined style={{ marginRight: 10, color: '#3b82f6', fontSize: '1.3rem' }} />}
-                            />
-                        </Card>
+                            <TrophyOutlined style={{ marginRight: 8, color: '#475569', fontSize: isTVMode ? '1.2rem' : '1rem' }} />
+                            Performance Overview
+                        </Title>
                         
-                        <Card style={{ 
-                            borderRadius: '16px', 
-                            padding: '25px',
-                            background: 'rgba(255, 255, 255, 0.95)',
-                            backdropFilter: 'blur(15px)',
-                            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            textAlign: 'center'
+                        <div style={{ 
+                            display: 'grid',
+                            gridTemplateColumns: isTVMode ? 'repeat(3, 1fr)' : 'repeat(auto-fit, minmax(200px, 1fr))',
+                            gap: isTVMode ? '20px' : '15px'
                         }}>
-                            <Statistic
-                                title="AVG Resolution Time"
-                                value={formatMinutes(avgResolutionTime)}
-                                valueStyle={{ 
-                                    color: '#10b981', 
-                                    fontSize: '2.2rem', 
-                                    fontWeight: 800
-                                }}
-                                prefix={<ClockCircleOutlined style={{ marginRight: 10, color: '#10b981', fontSize: '1.3rem' }} />}
-                            />
-                        </Card>
+                            <div style={{ 
+                                background: 'rgba(248, 250, 252, 0.6)',
+                                borderRadius: isTVMode ? '12px' : '10px',
+                                padding: isTVMode ? '20px' : '15px',
+                                textAlign: 'center',
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                                border: '1px solid rgba(226, 232, 240, 0.5)'
+                            }}>
+                                <Statistic
+                                    title="Total Cards Resolved"
+                                    value={resolutionData.length}
+                                    valueStyle={{ 
+                                        color: '#3b82f6', 
+                                        fontSize: isTVMode ? '2rem' : '1.8rem', 
+                                        fontWeight: 800
+                                    }}
+                                    prefix={<CheckCircleOutlined style={{ marginRight: 8, color: '#3b82f6', fontSize: isTVMode ? '1.2rem' : '1rem' }} />}
+                                />
+                            </div>
+                            
+                            <div style={{ 
+                                background: 'rgba(248, 250, 252, 0.6)',
+                                borderRadius: isTVMode ? '12px' : '10px',
+                                padding: isTVMode ? '20px' : '15px',
+                                textAlign: 'center',
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                                border: '1px solid rgba(226, 232, 240, 0.5)'
+                            }}>
+                                <Statistic
+                                    title="Average Resolution Time"
+                                    value={formatMinutes(avgResolutionTime)}
+                                    valueStyle={{ 
+                                        color: '#10b981', 
+                                        fontSize: isTVMode ? '2rem' : '1.8rem', 
+                                        fontWeight: 800
+                                    }}
+                                    prefix={<ClockCircleOutlined style={{ marginRight: 8, color: '#10b981', fontSize: isTVMode ? '1.2rem' : '1rem' }} />}
+                                />
+                            </div>
 
-                        <Card style={{ 
-                            borderRadius: '16px', 
-                            padding: '25px',
-                            background: 'rgba(255, 255, 255, 0.95)',
-                            backdropFilter: 'blur(15px)',
-                            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            textAlign: 'center'
-                        }}>
-                            <Statistic
-                                title="Active TS Members"
-                                value={agentLeaderboard.length}
-                                valueStyle={{ 
-                                    color: '#f59e0b', 
-                                    fontSize: '2.2rem', 
-                                    fontWeight: 800
-                                }}
-                                prefix={<TeamOutlined style={{ marginRight: 10, color: '#f59e0b', fontSize: '1.3rem' }} />}
-                            />
-                        </Card>
+                            <div style={{ 
+                                background: 'rgba(248, 250, 252, 0.6)',
+                                borderRadius: isTVMode ? '12px' : '10px',
+                                padding: isTVMode ? '20px' : '15px',
+                                textAlign: 'center',
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                                border: '1px solid rgba(226, 232, 240, 0.5)'
+                            }}>
+                                <Statistic
+                                    title="Active TS Members"
+                                    value={agentLeaderboard.length}
+                                    valueStyle={{ 
+                                        color: '#f59e0b', 
+                                        fontSize: isTVMode ? '2rem' : '1.8rem', 
+                                        fontWeight: 800
+                                    }}
+                                    prefix={<TeamOutlined style={{ marginRight: 8, color: '#f59e0b', fontSize: isTVMode ? '1.2rem' : '1rem' }} />}
+                                />
+                            </div>
+                        </div>
                     </div>
 
                     {/* Leaderboard Section */}
@@ -1639,16 +1185,278 @@ const PublicDashboard = () => {
         );
     };
 
+    // Render Team Performance Slide
+    const renderTeamPerformanceSlide = () => {
+        const teamEntries = Object.entries(teamStats).sort((a, b) => b[1] - a[1]);
+        
+        return (
+            <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                height: '100%',
+                padding: isTVMode ? '40px' : '30px',
+                background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                position: 'relative'
+            }}>
+                {/* Header Section */}
+                <div style={{ 
+                    textAlign: 'center', 
+                    marginBottom: isTVMode ? '40px' : '30px'
+                }}>
+                    <Title level={1} style={{ 
+                        color: '#1e293b', 
+                        marginBottom: 12,
+                        fontSize: isTVMode ? '2.5rem' : '2.2rem',
+                        fontWeight: 700,
+                        margin: 0
+                    }}>
+                        <TeamOutlined style={{ marginRight: 12, color: '#475569', fontSize: isTVMode ? '2rem' : '1.8rem' }} />
+                        Team Performance Overview
+                    </Title>
+                    <Paragraph style={{ 
+                        fontSize: isTVMode ? '1.2rem' : '1rem', 
+                        color: '#64748b',
+                        margin: '8px 0 0 0',
+                        fontWeight: 500
+                    }}>
+                        Cards waiting for developer fixes by Product Team
+                    </Paragraph>
+                </div>
+
+                {/* Main Content */}
+                <div style={{ 
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: isTVMode ? '20px' : '15px',
+                    flex: '1 1 auto',
+                    minHeight: 0
+                }}>
+                    {/* Top Section - Total Cards & Team Workload */}
+                    <div style={{ 
+                        background: 'rgba(255, 255, 255, 0.8)',
+                        borderRadius: '16px',
+                        padding: isTVMode ? '20px' : '15px',
+                        backdropFilter: 'blur(10px)',
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)'
+                    }}>
+                        <div style={{ 
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
+                            gap: isTVMode ? '20px' : '15px'
+                        }}>
+                            {/* Total Cards - Small in top left */}
+                            <div style={{ 
+                                background: 'rgba(248, 250, 252, 0.8)',
+                                borderRadius: isTVMode ? '12px' : '10px',
+                                padding: isTVMode ? '15px' : '12px',
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                                border: '1px solid rgba(226, 232, 240, 0.5)',
+                                minWidth: isTVMode ? '180px' : '150px',
+                                textAlign: 'center'
+                            }}>
+                                <Statistic
+                                    title="Total Cards"
+                                    value={realStats.totalCards}
+                                    valueStyle={{ 
+                                        color: '#1e293b', 
+                                        fontSize: isTVMode ? '1.8rem' : '1.5rem', 
+                                        fontWeight: 800
+                                    }}
+                                    prefix={<TeamOutlined style={{ marginRight: 6, color: '#475569', fontSize: isTVMode ? '1.2rem' : '1rem' }} />}
+                                />
+                            </div>
+
+                            {/* Team Workload - Takes remaining space */}
+                            <div style={{ flex: 1 }}>
+                                <div style={{ 
+                                    display: 'grid', 
+                                    gridTemplateColumns: isTVMode ? 'repeat(5, 1fr)' : 'repeat(auto-fit, minmax(120px, 1fr))',
+                                    gap: isTVMode ? '10px' : '8px'
+                                }}>
+                                    {teamEntries.map(([team, count], index) => {
+                                        const percentage = teamEntries.length > 0 ? Math.round((count / teamEntries.reduce((sum, [, c]) => sum + c, 0)) * 100) : 0;
+                                        
+                                        return (
+                                            <div key={team} style={{ 
+                                                background: 'rgba(248, 250, 252, 0.6)',
+                                                borderRadius: isTVMode ? '12px' : '10px',
+                                                padding: isTVMode ? '12px' : '10px',
+                                                textAlign: 'center',
+                                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                                                border: '1px solid rgba(226, 232, 240, 0.5)',
+                                                transition: 'all 0.3s ease',
+                                                cursor: 'pointer',
+                                                minHeight: isTVMode ? '80px' : '70px',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                justifyContent: 'center'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.06)';
+                                            }}>
+                                                <div style={{ 
+                                                    fontWeight: 800, 
+                                                    color: '#1e293b', 
+                                                    fontSize: isTVMode ? '1.8rem' : '1.5rem',
+                                                    marginBottom: '4px'
+                                                }}>
+                                                    {count}
+                                                </div>
+                                                <div style={{ 
+                                                    color: '#475569', 
+                                                    fontSize: isTVMode ? '0.9rem' : '0.8rem',
+                                                    fontWeight: 600,
+                                                    marginBottom: '2px'
+                                                }}>
+                                                    {team}
+                                                </div>
+                                                <div style={{ 
+                                                    color: '#64748b', 
+                                                    fontSize: isTVMode ? '0.7rem' : '0.6rem',
+                                                    fontWeight: 500,
+                                                    background: 'rgba(226, 232, 240, 0.5)',
+                                                    padding: '2px 4px',
+                                                    borderRadius: '4px',
+                                                    display: 'inline-block'
+                                                }}>
+                                                    {percentage}%
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bottom Section - Apps */}
+                    <div style={{ 
+                        background: 'rgba(255, 255, 255, 0.8)',
+                        borderRadius: '16px',
+                        padding: isTVMode ? '20px' : '15px',
+                        backdropFilter: 'blur(10px)',
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        maxHeight: isTVMode ? '400px' : 'none',
+                        overflow: 'auto'
+                    }}>
+                        <Title level={3} style={{ 
+                            color: '#1e293b', 
+                            marginBottom: isTVMode ? '15px' : '10px',
+                            fontSize: isTVMode ? '1.2rem' : '1rem',
+                            fontWeight: 600,
+                            textAlign: 'center',
+                            margin: '0 0 15px 0'
+                        }}>
+                            <BarChartOutlined style={{ marginRight: 6, color: '#475569' }} />
+                            Applications ({appData.length} apps)
+                        </Title>
+                        
+                        <div style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: isTVMode ? 'repeat(6, 1fr)' : 'repeat(auto-fit, minmax(100px, 1fr))',
+                            gap: isTVMode ? '10px' : '8px'
+                        }}>
+                            {appData.map((app, index) => {
+                                // Calculate cards count for this app using same logic as DevFixing.js
+                                const appCardsCount = waitingToFixCards.filter(card => {
+                                    if (!card.labels || !Array.isArray(card.labels)) return false;
+                                    
+                                    // Find app label (same logic as DevFixing.js)
+                                    const appLabel = card.labels.find(label => label.name && label.name.includes('App:'));
+                                    
+                                    if (appLabel) {
+                                        // Extract app name from label (same as DevFixing.js)
+                                        const appKey = appLabel.name.replace('App:', '').trim().toLowerCase();
+                                        return appKey === app.app_name.toLowerCase();
+                                    }
+                                    
+                                    return false;
+                                }).length;
+                                
+                                console.log(`App ${app.app_name}: ${appCardsCount} cards found`);
+                                
+                                // Only show apps that have cards
+                                if (appCardsCount === 0) return null;
+                                
+                                return (
+                                    <div key={app.app_name} style={{ 
+                                        background: 'rgba(248, 250, 252, 0.8)',
+                                        borderRadius: isTVMode ? '10px' : '8px',
+                                        padding: isTVMode ? '12px' : '10px',
+                                        textAlign: 'center',
+                                        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)',
+                                        border: '1px solid rgba(226, 232, 240, 0.5)',
+                                        transition: 'all 0.3s ease',
+                                        cursor: 'pointer',
+                                        minHeight: isTVMode ? '70px' : '60px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'center'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                        e.currentTarget.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.05)';
+                                    }}>
+                                        <div style={{ 
+                                            color: '#1e293b', 
+                                            fontSize: isTVMode ? '1.3rem' : '1.1rem',
+                                            fontWeight: 800,
+                                            marginBottom: '4px'
+                                        }}>
+                                            {appCardsCount}
+                                        </div>
+                                        <div style={{ 
+                                            color: '#475569', 
+                                            fontSize: isTVMode ? '0.7rem' : '0.6rem',
+                                            fontWeight: 600,
+                                            lineHeight: '1.1',
+                                            marginBottom: '2px'
+                                        }}>
+                                            {app.app_name}
+                                        </div>
+                                        <div style={{ 
+                                            color: '#64748b', 
+                                            fontSize: isTVMode ? '0.6rem' : '0.5rem',
+                                            fontWeight: 500,
+                                            background: 'rgba(226, 232, 240, 0.5)',
+                                            padding: '1px 4px',
+                                            borderRadius: '4px',
+                                            display: 'inline-block'
+                                        }}>
+                                            {app.product_team || 'N/A'}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     const renderCurrentSlide = () => {
         switch (slides[currentSlide].id) {
-            case 'overview':
-                return renderOverviewSlide();
-            case 'team-stats':
+            case 'team-performance':
+                return renderTeamPerformanceSlide();
+            case 'resolution-leaderboard':
                 return renderResolutionSlide();
             case 'resolution-analysis':
                 return renderResolutionAnalysisSlide();
             default:
-                return renderOverviewSlide();
+                return renderTeamPerformanceSlide();
         }
     };
 
