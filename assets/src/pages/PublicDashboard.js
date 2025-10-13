@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Statistic, Typography, Button, Progress, Table, message } from 'antd';
+import { Typography, Button, Progress, message } from 'antd';
 import { getResolutionTimes, getCardsOnTrello } from '../api/cardsApi';
 import appData from '../data/app.json';
 import membersData from '../data/members.json';
-import { 
-    TeamOutlined, 
-    ClockCircleOutlined, 
-    CheckCircleOutlined,
+import {
+    TeamOutlined,
     TrophyOutlined,
     BarChartOutlined,
     ReloadOutlined,
@@ -14,8 +12,6 @@ import {
     LeftOutlined,
     PlayCircleOutlined,
     PauseCircleOutlined,
-    StarOutlined,
-    FireOutlined,
     FullscreenOutlined,
     FullscreenExitOutlined,
     ZoomInOutlined,
@@ -24,26 +20,6 @@ import {
 import dayjs from 'dayjs';
 
 const { Title, Text, Paragraph } = Typography;
-
-// Mock data for demonstration
-const mockStats = {
-    totalCards: 1247,
-    avgResolutionTime: 180, // minutes
-    avgFirstActionTime: 45, // minutes
-    avgResolutionTimeDev: 120, // minutes
-    under1h: 456,
-    oneTo12h: 523,
-    twelveTo24h: 198,
-    over24h: 70
-};
-
-const mockTeamData = [
-    { name: 'Falcon', resolutionTime: 165, firstActionTime: 38, devTime: 110, cards: 234 },
-    { name: 'Starlink', resolutionTime: 195, firstActionTime: 52, devTime: 125, cards: 189 },
-    { name: 'Tesla', resolutionTime: 142, firstActionTime: 28, devTime: 95, cards: 312 },
-    { name: 'Solar', resolutionTime: 178, firstActionTime: 41, devTime: 108, cards: 267 },
-    { name: 'Team X', resolutionTime: 203, firstActionTime: 55, devTime: 135, cards: 245 }
-];
 
 // Format minutes to readable format
 function formatMinutes(mins) {
@@ -55,8 +31,7 @@ function formatMinutes(mins) {
     return hours > 0 ? `${days} ngày ${hours} h` : `${days} ngày`;
 }
 
-
-// Map app name to product_team (same as DevFixing.js)
+// Map app name to product_team
 const appToTeam = {};
 const teamSet = new Set();
 appData.forEach(app => {
@@ -64,22 +39,19 @@ appData.forEach(app => {
     if (app.product_team) teamSet.add(app.product_team);
 });
 
-// Get product team from card labels (same logic as DevFixing.js)
 function getCardTeam(card) {
     if (!card.labels || card.labels.length === 0) {
         return null;
     }
-    
-    // Find app label first
+
     const appLabel = card.labels.find(label => label.name && label.name.includes('App:'));
     if (!appLabel) {
         return null;
     }
-    
-    // Extract app name from label
+
     const appKey = appLabel.name.replace('App:', '').trim().toLowerCase();
     const productTeam = appToTeam[appKey] || null;
-    
+
     return productTeam;
 }
 
@@ -115,24 +87,10 @@ const PublicDashboard = () => {
     const fetchWaitingToFixData = async () => {
         try {
             setLoading(true);
-            console.log('🔄 Fetching waiting to fix data...');
-            
-            const waitingToFixListId = '63c7b1a68e5576001577d65c'; // ID for "Waiting to fix (from dev)"
+            const waitingToFixListId = '63c7b1a68e5576001577d65c';
             const cards = await getCardsOnTrello(waitingToFixListId);
-            
-            console.log('📊 Cards received:', cards?.length || 0);
-            console.log('📋 Sample card:', cards?.[0]);
-            
-            // Debug labels structure
-            if (cards && cards.length > 0) {
-                console.log('🏷️ Sample card labels:', cards[0]?.labels);
-                console.log('🏷️ Labels type:', typeof cards[0]?.labels);
-                console.log('🏷️ Is array:', Array.isArray(cards[0]?.labels));
-            }
-            
+
             if (!cards || !Array.isArray(cards)) {
-                console.warn('⚠️ No cards data received, using fallback');
-                // Use fallback data
                 setWaitingToFixCards([]);
                 setRealStats({
                     totalCards: 0,
@@ -144,62 +102,48 @@ const PublicDashboard = () => {
                 setLastUpdated(dayjs());
                 return;
             }
-            
+
             setWaitingToFixCards(cards);
-            
-            // Calculate real stats
+
+            // Calculate stats
             const totalCards = cards.length;
-            const validCards = cards.filter(card => 
+            const validCards = cards.filter(card =>
                 Number(card.resolutionTime) > 0 && !isNaN(Number(card.resolutionTime))
             );
-            
-            console.log('✅ Valid cards for stats:', validCards.length);
-            
-            const avgResolutionTime = validCards.length > 0 
+
+            const avgResolutionTime = validCards.length > 0
                 ? Math.round(validCards.reduce((sum, card) => sum + Number(card.resolutionTime), 0) / validCards.length)
                 : 0;
-                
-            const avgFirstActionTime = validCards.length > 0 
+
+            const avgFirstActionTime = validCards.length > 0
                 ? Math.round(validCards.reduce((sum, card) => sum + Number(card.firstActionTime || 0), 0) / validCards.length)
                 : 0;
-                
-            const avgResolutionTimeDev = validCards.length > 0 
+
+            const avgResolutionTimeDev = validCards.length > 0
                 ? Math.round(validCards.reduce((sum, card) => sum + Number(card.resolutionTimeDev || 0), 0) / validCards.length)
                 : 0;
-            
+
             setRealStats({
                 totalCards,
                 avgResolutionTime,
                 avgFirstActionTime,
                 avgResolutionTimeDev
             });
-            
+
             // Calculate team statistics
             const teamCounts = {};
-            
             cards.forEach(card => {
                 const team = getCardTeam(card);
-                
                 if (team) {
                     teamCounts[team] = (teamCounts[team] || 0) + 1;
                 }
             });
-            
-            console.log('🏢 Team stats calculated:', teamCounts);
+
             setTeamStats(teamCounts);
-            
             setLastUpdated(dayjs());
-            console.log('✅ Waiting to fix data loaded successfully');
-            
+
         } catch (error) {
-            console.error('❌ Error fetching waiting to fix data:', error);
-            console.error('Error details:', {
-                message: error.message,
-                stack: error.stack,
-                name: error.name
-            });
-            
-            // Set fallback data instead of showing error
+            console.error('Error fetching waiting to fix data:', error);
             setWaitingToFixCards([]);
             setRealStats({
                 totalCards: 0,
@@ -209,8 +153,6 @@ const PublicDashboard = () => {
             });
             setTeamStats({});
             setLastUpdated(dayjs());
-            
-            // Show user-friendly message
             message.warning('Unable to load real-time data. Using fallback data.');
         } finally {
             setLoading(false);
@@ -223,38 +165,32 @@ const PublicDashboard = () => {
             const now = dayjs();
             const startOfMonth = now.startOf('month').format('YYYY-MM-DD');
             const endOfMonth = now.endOf('month').format('YYYY-MM-DD');
-            
-            console.log('🔄 Fetching resolution data from:', startOfMonth, 'to:', endOfMonth);
+
             const data = await getResolutionTimes(startOfMonth, endOfMonth);
-            console.log('📊 Resolution data received:', data?.length || 0);
-            
+
             if (!data || !Array.isArray(data)) {
-                console.warn('⚠️ No resolution data received, using fallback');
                 setResolutionData([]);
                 setAvgResolutionTime(0);
                 setLeaderboard([]);
                 return;
             }
-            
+
             setResolutionData(data);
-            
+
             // Calculate average resolution time
             const validData = data.filter(item => item.resolutionTime && item.resolutionTime > 0);
-            const avgTime = validData.length > 0 
+            const avgTime = validData.length > 0
                 ? Math.round(validData.reduce((sum, item) => sum + item.resolutionTime, 0) / validData.length)
                 : 0;
             setAvgResolutionTime(avgTime);
-            
+
             // Calculate leaderboard for TS members
             const tsMembers = membersData.filter(member => member.role === 'TS');
-            console.log('TS Members found:', tsMembers.length);
             const memberStats = {};
-            
+
             data.forEach(item => {
-                console.log('Processing item:', item);
                 if (item.memberId && item.resolutionTime > 0) {
                     const member = tsMembers.find(m => m.id === item.memberId);
-                    console.log('Found member for item:', member);
                     if (member) {
                         if (!memberStats[member.id]) {
                             memberStats[member.id] = {
@@ -269,36 +205,24 @@ const PublicDashboard = () => {
                     }
                 }
             });
-            
-            console.log('Member stats calculated:', memberStats);
-            
+
             // Calculate average time for each member
             Object.values(memberStats).forEach(stat => {
                 stat.avgTime = Math.round(stat.totalTime / stat.cards);
             });
-            
+
             // Sort by average resolution time (ascending - faster is better)
             const sortedLeaderboard = Object.values(memberStats)
                 .sort((a, b) => a.avgTime - b.avgTime)
-                .slice(0, 10); // Top 10
-            
-            console.log('✅ Final leaderboard:', sortedLeaderboard);
+                .slice(0, 10);
+
             setLeaderboard(sortedLeaderboard);
-            console.log('✅ Resolution data loaded successfully');
-            
+
         } catch (error) {
-            console.error('❌ Error fetching resolution data:', error);
-            console.error('Error details:', {
-                message: error.message,
-                stack: error.stack,
-                name: error.name
-            });
-            
-            // Set fallback data
+            console.error('Error fetching resolution data:', error);
             setResolutionData([]);
             setAvgResolutionTime(0);
             setLeaderboard([]);
-            
             message.warning('Unable to load resolution data. Using fallback data.');
         }
     };
@@ -309,44 +233,30 @@ const PublicDashboard = () => {
             const width = window.innerWidth;
             const height = window.innerHeight;
             const userAgent = navigator.userAgent.toLowerCase();
-            
-            // Detect Redmi TV or similar TV devices
-            const isRedmiTV = userAgent.includes('redmi') || 
-                             userAgent.includes('mi tv') || 
+
+            const isRedmiTV = userAgent.includes('redmi') ||
+                             userAgent.includes('mi tv') ||
                              userAgent.includes('android tv') ||
                              userAgent.includes('tv');
-            
-            // Detect TV-like resolutions (common TV resolutions)
-            const isTVResolution = (width >= 3840 && height >= 2160) || // 4K UHD
-                                  (width >= 1920 && height >= 1080) || // Full HD
-                                  (width >= 1366 && height >= 768) ||   // HD
-                                  (width >= 1280 && height >= 720);     // HD Ready
-            
-            // Detect large screen (likely TV) - optimized for 4K
+
+            const isTVResolution = (width >= 3840 && height >= 2160) ||
+                                  (width >= 1920 && height >= 1080) ||
+                                  (width >= 1366 && height >= 768) ||
+                                  (width >= 1280 && height >= 720);
+
             const isLargeScreen = width >= 3840 || height >= 2160 || width >= 1920 || height >= 1080;
-            
             const tvMode = isRedmiTV || (isTVResolution && isLargeScreen);
-            
-            console.log('📺 TV Detection:', {
-                width, height, userAgent,
-                isRedmiTV, isTVResolution, isLargeScreen,
-                tvMode
-            });
-            
+
             setIsTVMode(tvMode);
-            
-            // Set appropriate zoom level for TV
+
             if (tvMode) {
-                // Optimized for 4K 50 inch TV
-                const zoomLevel = width >= 3840 ? 1.2 : 0.9; // Larger for 4K, smaller for HD
-                setZoomLevel(zoomLevel);
-                console.log(`📺 TV Mode activated - Zoom set to ${zoomLevel} for ${width}x${height}`);
+                setZoomLevel(1);
             }
         };
-        
+
         detectTVMode();
         window.addEventListener('resize', detectTVMode);
-        
+
         return () => window.removeEventListener('resize', detectTVMode);
     }, []);
 
@@ -369,12 +279,10 @@ const PublicDashboard = () => {
     // Auto-fullscreen for TV mode
     useEffect(() => {
         if (isTVMode && !isFullscreen) {
-            // Small delay to ensure component is mounted
             const timer = setTimeout(() => {
                 toggleFullscreen();
-                console.log('📺 Auto-entering fullscreen for TV mode');
             }, 1000);
-            
+
             return () => clearTimeout(timer);
         }
     }, [isTVMode]);
@@ -464,11 +372,9 @@ const PublicDashboard = () => {
     }, [currentSlide, isAutoPlay, slides]);
 
     const handleRefresh = () => {
-        console.log('🔄 Manual refresh triggered');
         fetchWaitingToFixData();
         fetchResolutionData();
     };
-
 
     const nextSlide = () => {
         setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -509,12 +415,10 @@ const PublicDashboard = () => {
         setZoomLevel(prev => Math.max(prev - 0.1, 0.5)); // Min 50%
     };
 
-    // Calculate resolution time by team and app
     const calculateResolutionByTeamAndApp = (cards) => {
         const teamStats = new Map();
         const appStats = new Map();
-        
-        // Initialize team stats
+
         const productTeams = Array.from(new Set(appData.map(app => app.product_team))).filter(Boolean);
         productTeams.forEach(team => {
             teamStats.set(team, {
@@ -524,8 +428,7 @@ const PublicDashboard = () => {
                 avgTime: 0
             });
         });
-        
-        // Initialize app stats
+
         appData.forEach(app => {
             appStats.set(app.app_name, {
                 app: app.app_name,
@@ -535,20 +438,17 @@ const PublicDashboard = () => {
                 avgTime: 0
             });
         });
-        
-        // Process each card
+
         cards.forEach(card => {
             if (!card.resolutionTime || card.resolutionTime <= 0) return;
-            
-            // Get apps from card labels and group by team
+
             if (card.labels && card.labels.length > 0) {
                 const cardApps = [];
                 card.labels.forEach(label => {
                     if (label.startsWith("App:")) {
                         const appName = label.replace("App:", "").trim();
                         cardApps.push(appName);
-                        
-                        // Update app stats
+
                         if (appStats.has(appName)) {
                             const appStat = appStats.get(appName);
                             appStat.totalTime += card.resolutionTime;
@@ -556,8 +456,7 @@ const PublicDashboard = () => {
                         }
                     }
                 });
-                
-                // Group apps by their product_team and update team stats
+
                 const teamAppMap = {};
                 cardApps.forEach(appName => {
                     const appDataItem = appData.find(app => app.app_name === appName);
@@ -569,8 +468,7 @@ const PublicDashboard = () => {
                         teamAppMap[team].push(appName);
                     }
                 });
-                
-                // Update team stats for each team that has apps in this card
+
                 Object.keys(teamAppMap).forEach(team => {
                     if (teamStats.has(team)) {
                         const teamStat = teamStats.get(team);
@@ -580,23 +478,21 @@ const PublicDashboard = () => {
                 });
             }
         });
-        
-        // Calculate averages
+
         teamStats.forEach(stat => {
             stat.avgTime = stat.cardCount > 0 ? Math.round((stat.totalTime / stat.cardCount) * 10) / 10 : 0;
         });
-        
+
         appStats.forEach(stat => {
             stat.avgTime = stat.cardCount > 0 ? Math.round((stat.totalTime / stat.cardCount) * 10) / 10 : 0;
         });
-        
+
         return {
             teams: Array.from(teamStats.values()).filter(stat => stat.cardCount > 0).sort((a, b) => a.avgTime - b.avgTime),
             apps: Array.from(appStats.values()).filter(stat => stat.cardCount > 0).sort((a, b) => a.avgTime - b.avgTime)
         };
     };
 
-    // Calculate agent leaderboard (same as RevolutionTime.js)
     const calculateAgentLeaderboard = (cards) => {
         const agentStats = new Map();
 
@@ -650,268 +546,365 @@ const PublicDashboard = () => {
     // Render Resolution Time Slide
     const renderResolutionSlide = () => {
         const agentLeaderboard = calculateAgentLeaderboard(resolutionData);
-        
-        const leaderboardColumns = [
-            {
-                title: 'Rank',
-                key: 'rank',
-                width: 80,
-                render: (_, record, index) => {
-                    let color = 'default';
-                    let icon = null;
-                    
-                    if (index === 0) {
-                        color = 'gold';
-                        icon = <TrophyOutlined />;
-                    } else if (index === 1) {
-                        color = 'silver';
-                        icon = <StarOutlined />;
-                    } else if (index === 2) {
-                        color = 'bronze';
-                        icon = <FireOutlined />;
-                    }
 
-                    return (
-                        <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center',
-                            fontWeight: 800, 
-                            fontSize: '1.2rem',
-                            color: index < 3 ? '#f59e0b' : '#64748b'
-                        }}>
-                            {icon && <span style={{ marginRight: 8 }}>{icon}</span>}
-                            #{index + 1}
-                        </div>
-                    );
-                }
-            },
-            {
-                title: 'Member',
-                dataIndex: 'name',
-                key: 'name',
-                render: (text) => (
-                    <div style={{ 
-                        fontWeight: 600, 
-                        fontSize: '1rem',
-                        color: '#1e293b'
-                    }}>
-                        {text}
-                    </div>
-                )
-            },
-            {
-                title: 'Cards',
-                dataIndex: 'cardCount',
-                key: 'cardCount',
-                width: 80,
-                render: (value) => (
-                    <div style={{ 
-                        fontWeight: 700, 
-                        fontSize: '1.1rem',
-                        color: '#3b82f6',
-                        textAlign: 'center'
-                    }}>
-                        {value}
-                    </div>
-                )
-            },
-            {
-                title: 'Avg Resolution',
-                dataIndex: 'avgResolutionTime',
-                key: 'avgResolutionTime',
-                width: 120,
-                render: (value) => (
-                    <div style={{ 
-                        fontWeight: 700, 
-                        fontSize: '1rem',
-                        color: '#3b82f6'
-                    }}>
-                        {formatMinutes(value)}
-                    </div>
-                )
-            },
-            {
-                title: 'Avg First Action',
-                dataIndex: 'avgFirstActionTime',
-                key: 'avgFirstActionTime',
-                width: 120,
-                render: (value) => (
-                    <div style={{ 
-                        fontWeight: 700, 
-                        fontSize: '1rem',
-                        color: '#6366f1'
-                    }}>
-                        {formatMinutes(value)}
-                    </div>
-                )
-            },
-            {
-                title: 'Avg TS Done',
-                dataIndex: 'avgResolutionTimeTS',
-                key: 'avgResolutionTimeTS',
-                width: 120,
-                render: (value) => (
-                    <div style={{ 
-                        fontWeight: 700, 
-                        fontSize: '1rem',
-                        color: '#0ea5e9'
-                    }}>
-                        {formatMinutes(value)}
-                    </div>
-                )
-            }
+        // Podium colors
+        const podiumColors = [
+            { bg: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)', text: '#ffffff', medal: '🥇' },
+            { bg: 'linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%)', text: '#ffffff', medal: '🥈' },
+            { bg: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)', text: '#ffffff', medal: '🥉' },
         ];
 
         return (
-            <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
+            <div style={{
+                display: 'flex',
+                flexDirection: 'column',
                 height: '100%',
-                padding: isTVMode ? '40px' : '30px',
-                background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                padding: isTVMode ? '30px' : '25px',
+                background: '#f8fafc',
                 position: 'relative'
             }}>
-                {/* Main Content - Vertical Layout */}
-                <div style={{ 
-                    display: 'flex',
-                    flexDirection: 'column',
+                {/* Header Section */}
+                <div style={{
+                    textAlign: 'center',
+                    marginBottom: isTVMode ? '25px' : '20px',
+                    background: 'rgba(255, 255, 255, 0.95)',
+                    borderRadius: '20px',
+                    padding: isTVMode ? '25px' : '20px',
+                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)'
+                }}>
+                    <Title level={1} style={{
+                        color: '#1e293b',
+                        marginBottom: 8,
+                        fontSize: isTVMode ? '2.2rem' : '2rem',
+                        fontWeight: 700,
+                        margin: 0
+                    }}>
+                        <TrophyOutlined style={{ marginRight: 12, color: '#f5576c', fontSize: isTVMode ? '2rem' : '1.8rem' }} />
+                        TS Performance Leaderboard
+                    </Title>
+                    <Paragraph style={{
+                        fontSize: isTVMode ? '1rem' : '0.9rem',
+                        color: '#64748b',
+                        margin: '8px 0 0 0',
+                        fontWeight: 500
+                    }}>
+                        This Month • Top Performers by Resolution Time
+                    </Paragraph>
+                </div>
+
+                {/* Main Content */}
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 2fr',
                     gap: isTVMode ? '25px' : '20px',
                     flex: '1 1 auto',
                     minHeight: 0
                 }}>
-                    {/* Top Section - Stats Row */}
-                    <div style={{ 
-                        background: 'rgba(255, 255, 255, 0.8)',
-                        borderRadius: '16px',
-                        padding: isTVMode ? '20px' : '15px',
-                        backdropFilter: 'blur(10px)',
-                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)'
+                    {/* Left Column - Stats & Top 3 */}
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: isTVMode ? '20px' : '15px'
                     }}>
-                        <Title level={2} style={{ 
-                            color: '#1e293b', 
-                            marginBottom: isTVMode ? '20px' : '15px',
-                            fontSize: isTVMode ? '1.4rem' : '1.2rem',
-                            fontWeight: 600,
-                            textAlign: 'center',
-                            margin: '0 0 20px 0'
-                        }}>
-                            <TrophyOutlined style={{ marginRight: 8, color: '#475569', fontSize: isTVMode ? '1.2rem' : '1rem' }} />
-                            Performance Overview
-                        </Title>
-                        
-                        <div style={{ 
+                        {/* Stats Cards */}
+                        <div style={{
                             display: 'grid',
-                            gridTemplateColumns: isTVMode ? 'repeat(3, 1fr)' : 'repeat(auto-fit, minmax(200px, 1fr))',
-                            gap: isTVMode ? '20px' : '15px'
+                            gridTemplateColumns: '1fr',
+                            gap: isTVMode ? '15px' : '12px'
                         }}>
-                            <div style={{ 
-                                background: 'rgba(248, 250, 252, 0.6)',
-                                borderRadius: isTVMode ? '12px' : '10px',
-                                padding: isTVMode ? '20px' : '15px',
+                            <div style={{
+                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                borderRadius: '16px',
+                                padding: isTVMode ? '20px' : '18px',
                                 textAlign: 'center',
-                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
-                                border: '1px solid rgba(226, 232, 240, 0.5)'
+                                boxShadow: '0 8px 25px rgba(102, 126, 234, 0.3)'
                             }}>
-                                <Statistic
-                                    title="Total Cards Resolved"
-                                    value={resolutionData.length}
-                                    valueStyle={{ 
-                                        color: '#3b82f6', 
-                                        fontSize: isTVMode ? '2rem' : '1.8rem', 
-                                        fontWeight: 800
-                                    }}
-                                    prefix={<CheckCircleOutlined style={{ marginRight: 8, color: '#3b82f6', fontSize: isTVMode ? '1.2rem' : '1rem' }} />}
-                                />
-                            </div>
-                            
-                            <div style={{ 
-                                background: 'rgba(248, 250, 252, 0.6)',
-                                borderRadius: isTVMode ? '12px' : '10px',
-                                padding: isTVMode ? '20px' : '15px',
-                                textAlign: 'center',
-                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
-                                border: '1px solid rgba(226, 232, 240, 0.5)'
-                            }}>
-                                <Statistic
-                                    title="Average Resolution Time"
-                                    value={formatMinutes(avgResolutionTime)}
-                                    valueStyle={{ 
-                                        color: '#10b981', 
-                                        fontSize: isTVMode ? '2rem' : '1.8rem', 
-                                        fontWeight: 800
-                                    }}
-                                    prefix={<ClockCircleOutlined style={{ marginRight: 8, color: '#10b981', fontSize: isTVMode ? '1.2rem' : '1rem' }} />}
-                                />
+                                <div style={{
+                                    fontSize: isTVMode ? '0.8rem' : '0.75rem',
+                                    color: 'rgba(255, 255, 255, 0.9)',
+                                    fontWeight: 600,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '1px',
+                                    marginBottom: '8px'
+                                }}>
+                                    Total Resolved
+                                </div>
+                                <div style={{
+                                    fontSize: isTVMode ? '3rem' : '2.5rem',
+                                    fontWeight: 900,
+                                    color: '#ffffff',
+                                    lineHeight: 1
+                                }}>
+                                    {resolutionData.length}
+                                </div>
                             </div>
 
-                            <div style={{ 
-                                background: 'rgba(248, 250, 252, 0.6)',
-                                borderRadius: isTVMode ? '12px' : '10px',
-                                padding: isTVMode ? '20px' : '15px',
+                            <div style={{
+                                background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+                                borderRadius: '16px',
+                                padding: isTVMode ? '20px' : '18px',
                                 textAlign: 'center',
-                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
-                                border: '1px solid rgba(226, 232, 240, 0.5)'
+                                boxShadow: '0 8px 25px rgba(67, 233, 123, 0.3)'
                             }}>
-                                <Statistic
-                                    title="Active TS Members"
-                                    value={agentLeaderboard.length}
-                                    valueStyle={{ 
-                                        color: '#f59e0b', 
-                                        fontSize: isTVMode ? '2rem' : '1.8rem', 
-                                        fontWeight: 800
-                                    }}
-                                    prefix={<TeamOutlined style={{ marginRight: 8, color: '#f59e0b', fontSize: isTVMode ? '1.2rem' : '1rem' }} />}
-                                />
+                                <div style={{
+                                    fontSize: isTVMode ? '0.8rem' : '0.75rem',
+                                    color: 'rgba(255, 255, 255, 0.9)',
+                                    fontWeight: 600,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '1px',
+                                    marginBottom: '8px'
+                                }}>
+                                    Avg Time
+                                </div>
+                                <div style={{
+                                    fontSize: isTVMode ? '2rem' : '1.8rem',
+                                    fontWeight: 900,
+                                    color: '#ffffff',
+                                    lineHeight: 1
+                                }}>
+                                    {formatMinutes(avgResolutionTime)}
+                                </div>
+                            </div>
+
+                            <div style={{
+                                background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                                borderRadius: '16px',
+                                padding: isTVMode ? '20px' : '18px',
+                                textAlign: 'center',
+                                boxShadow: '0 8px 25px rgba(250, 112, 154, 0.3)'
+                            }}>
+                                <div style={{
+                                    fontSize: isTVMode ? '0.8rem' : '0.75rem',
+                                    color: 'rgba(255, 255, 255, 0.9)',
+                                    fontWeight: 600,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '1px',
+                                    marginBottom: '8px'
+                                }}>
+                                    Active Members
+                                </div>
+                                <div style={{
+                                    fontSize: isTVMode ? '3rem' : '2.5rem',
+                                    fontWeight: 900,
+                                    color: '#ffffff',
+                                    lineHeight: 1
+                                }}>
+                                    {agentLeaderboard.length}
+                                </div>
                             </div>
                         </div>
+
+                        {/* Top 3 Podium */}
+                        {agentLeaderboard.length > 0 && (
+                            <div style={{
+                                background: 'rgba(255, 255, 255, 0.95)',
+                                borderRadius: '20px',
+                                padding: isTVMode ? '25px' : '20px',
+                                boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
+                                flex: '1 1 auto'
+                            }}>
+                                <div style={{
+                                    fontSize: isTVMode ? '1.1rem' : '1rem',
+                                    fontWeight: 700,
+                                    color: '#1e293b',
+                                    marginBottom: isTVMode ? '20px' : '15px',
+                                    textAlign: 'center'
+                                }}>
+                                    <TrophyOutlined style={{ marginRight: 8, color: '#f59e0b' }} />
+                                    Top 3 Champions
+                                </div>
+                                <div style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: isTVMode ? '12px' : '10px'
+                                }}>
+                                    {agentLeaderboard.slice(0, 3).map((member, index) => {
+                                        const color = podiumColors[index];
+                                        return (
+                                            <div key={member.name} style={{
+                                                background: color.bg,
+                                                borderRadius: '12px',
+                                                padding: isTVMode ? '15px' : '12px',
+                                                boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '12px'
+                                            }}>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '2.5rem' : '2rem',
+                                                    lineHeight: 1
+                                                }}>
+                                                    {color.medal}
+                                                </div>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{
+                                                        fontSize: isTVMode ? '1.1rem' : '1rem',
+                                                        fontWeight: 700,
+                                                        color: color.text,
+                                                        marginBottom: '4px'
+                                                    }}>
+                                                        {member.name}
+                                                    </div>
+                                                    <div style={{
+                                                        fontSize: isTVMode ? '0.85rem' : '0.8rem',
+                                                        color: 'rgba(255, 255, 255, 0.9)',
+                                                        fontWeight: 600
+                                                    }}>
+                                                        {member.cardCount} cards • {formatMinutes(member.avgResolutionTime)}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Leaderboard Section */}
-                    <div style={{ 
+                    {/* Right Column - Full Leaderboard */}
+                    <div style={{
                         background: 'rgba(255, 255, 255, 0.95)',
-                        borderRadius: '16px',
-                        padding: '25px',
-                        backdropFilter: 'blur(15px)',
-                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        borderRadius: '20px',
+                        padding: isTVMode ? '25px' : '20px',
+                        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
                         display: 'flex',
-                        flexDirection: 'column'
+                        flexDirection: 'column',
+                        minHeight: 0
                     }}>
-                        <Title level={2} style={{ 
-                            color: '#1e293b', 
-                            marginBottom: 20,
-                            fontSize: '1.6rem',
+                        <div style={{
+                            fontSize: isTVMode ? '1.3rem' : '1.2rem',
                             fontWeight: 700,
+                            color: '#1e293b',
+                            marginBottom: isTVMode ? '20px' : '15px',
                             textAlign: 'center',
-                            margin: '0 0 20px 0'
+                            paddingBottom: isTVMode ? '15px' : '12px',
+                            borderBottom: '2px solid #e2e8f0'
                         }}>
-                            <TrophyOutlined style={{ marginRight: 8, color: '#f59e0b' }} />
-                            TS Performance Leaderboard ({agentLeaderboard.length} members)
-                        </Title>
-                        
-                        <div style={{ flex: '1 1 auto', overflow: 'auto' }}>
+                            <BarChartOutlined style={{ marginRight: 8, color: '#f5576c' }} />
+                            All Members ({agentLeaderboard.length})
+                        </div>
+
+                        <div style={{
+                            overflow: 'auto',
+                            flex: '1 1 auto'
+                        }}>
                             {agentLeaderboard.length > 0 ? (
-                                <Table
-                                    columns={leaderboardColumns}
-                                    dataSource={agentLeaderboard}
-                                    pagination={false}
-                                    size="middle"
-                                    rowKey="name"
-                                    style={{ width: '100%' }}
-                                />
-                            ) : (
-                                <div style={{ 
-                                    textAlign: 'center', 
-                                    padding: '40px',
-                                    color: '#64748b',
-                                    fontSize: '1.1rem'
+                                <div style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: isTVMode ? '10px' : '8px'
                                 }}>
-                                    <TrophyOutlined style={{ fontSize: '2rem', marginBottom: '16px' }} />
-                                    <div>No resolution data available for this month</div>
+                                    {agentLeaderboard.map((member, index) => (
+                                        <div key={member.name} style={{
+                                            background: index < 3
+                                                ? 'linear-gradient(135deg, #f8fafc 0%, #fff7ed 100%)'
+                                                : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                                            borderRadius: '12px',
+                                            padding: isTVMode ? '15px 18px' : '12px 15px',
+                                            border: index < 3 ? '2px solid #fbbf24' : '1px solid #e2e8f0',
+                                            display: 'grid',
+                                            gridTemplateColumns: '50px 1fr auto auto auto',
+                                            gap: isTVMode ? '15px' : '12px',
+                                            alignItems: 'center',
+                                            transition: 'transform 0.2s ease',
+                                            cursor: 'pointer'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(5px)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}>
+                                            <div style={{
+                                                fontSize: isTVMode ? '1.5rem' : '1.3rem',
+                                                fontWeight: 900,
+                                                color: index < 3 ? '#f59e0b' : '#64748b',
+                                                textAlign: 'center'
+                                            }}>
+                                                #{index + 1}
+                                            </div>
+                                            <div style={{
+                                                fontSize: isTVMode ? '1rem' : '0.95rem',
+                                                fontWeight: 700,
+                                                color: '#1e293b'
+                                            }}>
+                                                {member.name}
+                                            </div>
+                                            <div style={{
+                                                background: '#e0f2fe',
+                                                padding: isTVMode ? '8px 12px' : '6px 10px',
+                                                borderRadius: '8px',
+                                                textAlign: 'center'
+                                            }}>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '0.7rem' : '0.65rem',
+                                                    color: '#0369a1',
+                                                    fontWeight: 600,
+                                                    marginBottom: '2px'
+                                                }}>
+                                                    Cards
+                                                </div>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '1.1rem' : '1rem',
+                                                    fontWeight: 900,
+                                                    color: '#0c4a6e'
+                                                }}>
+                                                    {member.cardCount}
+                                                </div>
+                                            </div>
+                                            <div style={{
+                                                background: '#dcfce7',
+                                                padding: isTVMode ? '8px 12px' : '6px 10px',
+                                                borderRadius: '8px',
+                                                textAlign: 'center'
+                                            }}>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '0.7rem' : '0.65rem',
+                                                    color: '#15803d',
+                                                    fontWeight: 600,
+                                                    marginBottom: '2px'
+                                                }}>
+                                                    Avg Resolution
+                                                </div>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '1rem' : '0.9rem',
+                                                    fontWeight: 900,
+                                                    color: '#14532d'
+                                                }}>
+                                                    {formatMinutes(member.avgResolutionTime)}
+                                                </div>
+                                            </div>
+                                            <div style={{
+                                                background: '#e0e7ff',
+                                                padding: isTVMode ? '8px 12px' : '6px 10px',
+                                                borderRadius: '8px',
+                                                textAlign: 'center'
+                                            }}>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '0.7rem' : '0.65rem',
+                                                    color: '#4338ca',
+                                                    fontWeight: 600,
+                                                    marginBottom: '2px'
+                                                }}>
+                                                    Avg First Action
+                                                </div>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '1rem' : '0.9rem',
+                                                    fontWeight: 900,
+                                                    color: '#312e81'
+                                                }}>
+                                                    {formatMinutes(member.avgFirstActionTime)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div style={{
+                                    textAlign: 'center',
+                                    padding: '40px',
+                                    color: '#64748b'
+                                }}>
+                                    <TrophyOutlined style={{ fontSize: '3rem', marginBottom: '16px', color: '#cbd5e1' }} />
+                                    <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>No Data Yet</div>
                                     <div style={{ fontSize: '0.9rem', marginTop: '8px' }}>
-                                        Data will appear when TS members complete cards
+                                        Leaderboard will appear when TS members complete cards
                                     </div>
                                 </div>
                             )}
@@ -925,257 +918,363 @@ const PublicDashboard = () => {
     // Render Resolution Analysis Slide
     const renderResolutionAnalysisSlide = () => {
         const analysisData = calculateResolutionByTeamAndApp(resolutionData);
-        
-        const teamColumns = [
-            {
-                title: 'Team',
-                dataIndex: 'team',
-                key: 'team',
-                render: (text) => (
-                    <div style={{ 
-                        fontWeight: 600, 
-                        fontSize: '1rem',
-                        color: '#1e293b'
-                    }}>
-                        {text}
-                    </div>
-                )
-            },
-            {
-                title: 'Cards',
-                dataIndex: 'cardCount',
-                key: 'cardCount',
-                width: 80,
-                render: (value) => (
-                    <div style={{ 
-                        fontWeight: 700, 
-                        fontSize: '1.1rem',
-                        color: '#3b82f6',
-                        textAlign: 'center'
-                    }}>
-                        {value}
-                    </div>
-                )
-            },
-            {
-                title: 'AVG Resolution Time',
-                dataIndex: 'avgTime',
-                key: 'avgTime',
-                width: 150,
-                render: (value) => (
-                    <div style={{ 
-                        fontWeight: 700, 
-                        fontSize: '1rem',
-                        color: '#10b981'
-                    }}>
-                        {formatMinutes(value)}
-                    </div>
-                )
-            }
-        ];
 
-        const appColumns = [
-            {
-                title: 'App',
-                dataIndex: 'app',
-                key: 'app',
-                width: 110,
-                render: (text) => (
-                    <div style={{ 
-                        fontWeight: 600, 
-                        fontSize: '0.8rem',
-                        color: '#1e293b',
-                        lineHeight: '1.1'
-                    }}>
-                        {text}
-                    </div>
-                )
-            },
-            {
-                title: 'Team',
-                dataIndex: 'team',
-                key: 'team',
-                width: 70,
-                render: (text) => (
-                    <div style={{ 
-                        fontWeight: 500, 
-                        fontSize: '0.7rem',
-                        color: '#64748b'
-                    }}>
-                        {text}
-                    </div>
-                )
-            },
-            {
-                title: 'Cards',
-                dataIndex: 'cardCount',
-                key: 'cardCount',
-                width: 50,
-                render: (value) => (
-                    <div style={{ 
-                        fontWeight: 700, 
-                        fontSize: '0.8rem',
-                        color: '#3b82f6',
-                        textAlign: 'center'
-                    }}>
-                        {value}
-                    </div>
-                )
-            },
-            {
-                title: 'AVG Time',
-                dataIndex: 'avgTime',
-                key: 'avgTime',
-                width: 90,
-                render: (value) => (
-                    <div style={{ 
-                        fontWeight: 700, 
-                        fontSize: '0.75rem',
-                        color: '#10b981'
-                    }}>
-                        {formatMinutes(value)}
-                    </div>
-                )
-            }
+        // Team colors matching slide 1
+        const teamColors = [
+            { bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', text: '#ffffff' },
+            { bg: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', text: '#ffffff' },
+            { bg: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', text: '#ffffff' },
+            { bg: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', text: '#ffffff' },
+            { bg: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', text: '#ffffff' },
         ];
 
         return (
-            <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
+            <div style={{
+                display: 'flex',
+                flexDirection: 'column',
                 height: '100%',
-                padding: '30px',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                padding: isTVMode ? '30px' : '25px',
+                background: '#f8fafc',
                 position: 'relative'
             }}>
                 {/* Header Section */}
-                <div style={{ 
-                    textAlign: 'center', 
-                    marginBottom: '30px',
-                    padding: '25px',
+                <div style={{
+                    textAlign: 'center',
+                    marginBottom: isTVMode ? '25px' : '20px',
                     background: 'rgba(255, 255, 255, 0.95)',
-                    borderRadius: '16px',
-                    backdropFilter: 'blur(15px)',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)'
+                    borderRadius: '20px',
+                    padding: isTVMode ? '25px' : '20px',
+                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)'
                 }}>
-                    <Title level={1} style={{ 
-                        color: '#1e293b', 
-                        marginBottom: 12,
-                        fontSize: isTVMode ? '1.8rem' : '2.2rem',
+                    <Title level={1} style={{
+                        color: '#1e293b',
+                        marginBottom: 8,
+                        fontSize: isTVMode ? '2.2rem' : '2rem',
                         fontWeight: 700,
                         margin: 0
                     }}>
-                        <BarChartOutlined style={{ marginRight: 12, color: '#667eea', fontSize: isTVMode ? '1.4rem' : '1.8rem' }} />
+                        <BarChartOutlined style={{ marginRight: 12, color: '#00f2fe', fontSize: isTVMode ? '2rem' : '1.8rem' }} />
                         Resolution Time Analysis
                     </Title>
-                    <Paragraph style={{ 
-                        fontSize: isTVMode ? '1rem' : '1.2rem', 
+                    <Paragraph style={{
+                        fontSize: isTVMode ? '1rem' : '0.9rem',
                         color: '#64748b',
                         margin: '8px 0 0 0',
                         fontWeight: 500
                     }}>
-                        Performance by Team & App - This Month
+                        This Month • Performance by Teams & Applications
                     </Paragraph>
                 </div>
 
                 {/* Main Content */}
-                <div style={{ 
+                <div style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr 1.2fr',
-                    gap: '25px',
+                    gridTemplateColumns: '1fr 1.5fr',
+                    gap: isTVMode ? '25px' : '20px',
                     flex: '1 1 auto',
                     minHeight: 0
                 }}>
-                    {/* Team Analysis */}
-                    <div style={{ 
-                        background: 'rgba(255, 255, 255, 0.95)',
-                        borderRadius: '16px',
-                        padding: '25px',
-                        backdropFilter: 'blur(15px)',
-                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                    {/* Left Column - Teams */}
+                    <div style={{
                         display: 'flex',
-                        flexDirection: 'column'
+                        flexDirection: 'column',
+                        gap: isTVMode ? '15px' : '12px'
                     }}>
-                        <Title level={2} style={{ 
-                            color: '#1e293b', 
-                            marginBottom: 20,
-                            fontSize: '1.6rem',
-                            fontWeight: 700,
-                            textAlign: 'center',
-                            margin: '0 0 20px 0'
+                        <div style={{
+                            background: 'rgba(255, 255, 255, 0.95)',
+                            borderRadius: '20px',
+                            padding: isTVMode ? '25px' : '20px',
+                            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
+                            flex: '1 1 auto',
+                            display: 'flex',
+                            flexDirection: 'column'
                         }}>
-                            <TeamOutlined style={{ marginRight: 8, color: '#3b82f6' }} />
-                            By Product Team ({analysisData.teams.length} teams)
-                        </Title>
-                        
-                        <div style={{ flex: '1 1 auto' }}>
-                            {analysisData.teams.length > 0 ? (
-                                <Table
-                                    columns={teamColumns}
-                                    dataSource={analysisData.teams}
-                                    pagination={false}
-                                    size="middle"
-                                    rowKey="team"
-                                    style={{ width: '100%' }}
-                                />
-                            ) : (
-                                <div style={{ 
-                                    textAlign: 'center', 
-                                    padding: '40px',
-                                    color: '#64748b',
-                                    fontSize: '1.1rem'
-                                }}>
-                                    <TeamOutlined style={{ fontSize: '2rem', marginBottom: '16px' }} />
-                                    <div>No team data available</div>
-                                </div>
-                            )}
+                            <div style={{
+                                fontSize: isTVMode ? '1.3rem' : '1.2rem',
+                                fontWeight: 700,
+                                color: '#1e293b',
+                                marginBottom: isTVMode ? '20px' : '15px',
+                                textAlign: 'center',
+                                paddingBottom: isTVMode ? '15px' : '12px',
+                                borderBottom: '2px solid #e2e8f0'
+                            }}>
+                                <TeamOutlined style={{ marginRight: 8, color: '#4facfe' }} />
+                                Product Teams ({analysisData.teams.length})
+                            </div>
+
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: isTVMode ? '12px' : '10px',
+                                overflow: 'auto',
+                                flex: '1 1 auto'
+                            }}>
+                                {analysisData.teams.length > 0 ? (
+                                    analysisData.teams.map((team, index) => {
+                                        const color = teamColors[index % teamColors.length];
+                                        const isFastest = index === 0;
+
+                                        return (
+                                            <div key={team.team} style={{
+                                                background: color.bg,
+                                                borderRadius: '12px',
+                                                padding: isTVMode ? '12px 15px' : '10px 12px',
+                                                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.12)',
+                                                border: isFastest ? '2px solid #fbbf24' : 'none',
+                                                position: 'relative',
+                                                transition: 'transform 0.2s ease',
+                                                cursor: 'pointer'
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+                                                {isFastest && (
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        top: '-8px',
+                                                        right: '-8px',
+                                                        background: '#fbbf24',
+                                                        borderRadius: '50%',
+                                                        width: '30px',
+                                                        height: '30px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        fontSize: '1.2rem',
+                                                        boxShadow: '0 3px 10px rgba(251, 191, 36, 0.4)'
+                                                    }}>
+                                                        🏆
+                                                    </div>
+                                                )}
+                                                <div style={{
+                                                    fontSize: isTVMode ? '1rem' : '0.95rem',
+                                                    fontWeight: 700,
+                                                    color: color.text,
+                                                    marginBottom: '8px',
+                                                    textAlign: 'center'
+                                                }}>
+                                                    {team.team}
+                                                </div>
+                                                <div style={{
+                                                    display: 'grid',
+                                                    gridTemplateColumns: '1fr 1fr',
+                                                    gap: '8px'
+                                                }}>
+                                                    <div style={{
+                                                        background: 'rgba(255, 255, 255, 0.2)',
+                                                        padding: '8px 6px',
+                                                        borderRadius: '8px',
+                                                        textAlign: 'center'
+                                                    }}>
+                                                        <div style={{
+                                                            fontSize: isTVMode ? '0.65rem' : '0.6rem',
+                                                            color: 'rgba(255, 255, 255, 0.9)',
+                                                            fontWeight: 600,
+                                                            marginBottom: '3px'
+                                                        }}>
+                                                            Cards
+                                                        </div>
+                                                        <div style={{
+                                                            fontSize: isTVMode ? '1.4rem' : '1.3rem',
+                                                            fontWeight: 900,
+                                                            color: color.text
+                                                        }}>
+                                                            {team.cardCount}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{
+                                                        background: 'rgba(255, 255, 255, 0.2)',
+                                                        padding: '8px 6px',
+                                                        borderRadius: '8px',
+                                                        textAlign: 'center'
+                                                    }}>
+                                                        <div style={{
+                                                            fontSize: isTVMode ? '0.65rem' : '0.6rem',
+                                                            color: 'rgba(255, 255, 255, 0.9)',
+                                                            fontWeight: 600,
+                                                            marginBottom: '3px'
+                                                        }}>
+                                                            Avg Time
+                                                        </div>
+                                                        <div style={{
+                                                            fontSize: isTVMode ? '0.9rem' : '0.85rem',
+                                                            fontWeight: 900,
+                                                            color: color.text
+                                                        }}>
+                                                            {formatMinutes(team.avgTime)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <div style={{
+                                        textAlign: 'center',
+                                        padding: '40px',
+                                        color: '#64748b'
+                                    }}>
+                                        <TeamOutlined style={{ fontSize: '3rem', marginBottom: '16px', color: '#cbd5e1' }} />
+                                        <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>No Team Data</div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    {/* App Analysis */}
-                    <div style={{ 
+                    {/* Right Column - Apps */}
+                    <div style={{
                         background: 'rgba(255, 255, 255, 0.95)',
-                        borderRadius: '16px',
-                        padding: '25px',
-                        backdropFilter: 'blur(15px)',
-                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        borderRadius: '20px',
+                        padding: isTVMode ? '25px' : '20px',
+                        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
                         display: 'flex',
-                        flexDirection: 'column'
+                        flexDirection: 'column',
+                        minHeight: 0
                     }}>
-                        <Title level={2} style={{ 
-                            color: '#1e293b', 
-                            marginBottom: 20,
-                            fontSize: '1.6rem',
+                        <div style={{
+                            fontSize: isTVMode ? '1.3rem' : '1.2rem',
                             fontWeight: 700,
+                            color: '#1e293b',
+                            marginBottom: isTVMode ? '20px' : '15px',
                             textAlign: 'center',
-                            margin: '0 0 20px 0'
+                            paddingBottom: isTVMode ? '15px' : '12px',
+                            borderBottom: '2px solid #e2e8f0'
                         }}>
-                            <BarChartOutlined style={{ marginRight: 8, color: '#10b981' }} />
-                            By App ({analysisData.apps.length} apps)
-                        </Title>
-                        
-                        <div style={{ flex: '1 1 auto' }}>
+                            <BarChartOutlined style={{ marginRight: 8, color: '#00f2fe' }} />
+                            Applications Breakdown ({analysisData.apps.length})
+                        </div>
+
+                        <div style={{
+                            overflow: 'auto',
+                            flex: '1 1 auto'
+                        }}>
                             {analysisData.apps.length > 0 ? (
-                                <Table
-                                    columns={appColumns}
-                                    dataSource={analysisData.apps}
-                                    pagination={false}
-                                    size="small"
-                                    rowKey="app"
-                                    style={{ width: '100%' }}
-                                />
-                            ) : (
-                                <div style={{ 
-                                    textAlign: 'center', 
-                                    padding: '40px',
-                                    color: '#64748b',
-                                    fontSize: '1.1rem'
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: isTVMode ? 'repeat(auto-fill, minmax(140px, 1fr))' : 'repeat(auto-fill, minmax(130px, 1fr))',
+                                    gap: isTVMode ? '12px' : '10px'
                                 }}>
-                                    <BarChartOutlined style={{ fontSize: '2rem', marginBottom: '16px' }} />
-                                    <div>No app data available</div>
+                                    {analysisData.apps.map((app, index) => {
+                                        const isFastest = index === 0;
+
+                                        return (
+                                            <div key={app.app} style={{
+                                                background: isFastest
+                                                    ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)'
+                                                    : 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                                                borderRadius: '12px',
+                                                padding: isTVMode ? '16px 12px' : '14px 10px',
+                                                textAlign: 'center',
+                                                boxShadow: isFastest ? '0 6px 20px rgba(251, 191, 36, 0.3)' : '0 3px 10px rgba(0, 0, 0, 0.08)',
+                                                border: isFastest ? '2px solid #fbbf24' : '2px solid rgba(79, 172, 254, 0.1)',
+                                                transition: 'all 0.3s ease',
+                                                cursor: 'pointer',
+                                                position: 'relative',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: '8px'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.transform = 'translateY(-4px) scale(1.03)';
+                                                e.currentTarget.style.boxShadow = isFastest
+                                                    ? '0 10px 30px rgba(251, 191, 36, 0.4)'
+                                                    : '0 8px 25px rgba(79, 172, 254, 0.3)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                                                e.currentTarget.style.boxShadow = isFastest
+                                                    ? '0 6px 20px rgba(251, 191, 36, 0.3)'
+                                                    : '0 3px 10px rgba(0, 0, 0, 0.08)';
+                                            }}>
+                                                {isFastest && (
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        top: '-8px',
+                                                        right: '-8px',
+                                                        fontSize: '1.2rem'
+                                                    }}>
+                                                        ⭐
+                                                    </div>
+                                                )}
+                                                <div style={{
+                                                    fontSize: isTVMode ? '0.8rem' : '0.75rem',
+                                                    fontWeight: 700,
+                                                    color: '#1e293b',
+                                                    lineHeight: '1.2',
+                                                    minHeight: '2.4em',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center'
+                                                }}>
+                                                    {app.app}
+                                                </div>
+                                                <div style={{
+                                                    background: isFastest ? 'rgba(251, 191, 36, 0.2)' : 'rgba(79, 172, 254, 0.1)',
+                                                    padding: '6px 8px',
+                                                    borderRadius: '8px'
+                                                }}>
+                                                    <div style={{
+                                                        fontSize: isTVMode ? '0.65rem' : '0.6rem',
+                                                        color: '#64748b',
+                                                        fontWeight: 600,
+                                                        marginBottom: '2px'
+                                                    }}>
+                                                        Cards
+                                                    </div>
+                                                    <div style={{
+                                                        fontSize: isTVMode ? '1.4rem' : '1.3rem',
+                                                        fontWeight: 900,
+                                                        color: isFastest ? '#b45309' : '#4facfe'
+                                                    }}>
+                                                        {app.cardCount}
+                                                    </div>
+                                                </div>
+                                                <div style={{
+                                                    background: isFastest ? 'rgba(251, 191, 36, 0.2)' : 'rgba(67, 233, 123, 0.1)',
+                                                    padding: '6px 8px',
+                                                    borderRadius: '8px'
+                                                }}>
+                                                    <div style={{
+                                                        fontSize: isTVMode ? '0.65rem' : '0.6rem',
+                                                        color: '#64748b',
+                                                        fontWeight: 600,
+                                                        marginBottom: '2px'
+                                                    }}>
+                                                        Avg Time
+                                                    </div>
+                                                    <div style={{
+                                                        fontSize: isTVMode ? '0.85rem' : '0.8rem',
+                                                        fontWeight: 900,
+                                                        color: isFastest ? '#b45309' : '#15803d'
+                                                    }}>
+                                                        {formatMinutes(app.avgTime)}
+                                                    </div>
+                                                </div>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '0.6rem' : '0.55rem',
+                                                    color: '#94a3b8',
+                                                    fontWeight: 600,
+                                                    background: 'rgba(148, 163, 184, 0.1)',
+                                                    padding: '4px 6px',
+                                                    borderRadius: '6px'
+                                                }}>
+                                                    {app.team}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div style={{
+                                    textAlign: 'center',
+                                    padding: '40px',
+                                    color: '#64748b'
+                                }}>
+                                    <BarChartOutlined style={{ fontSize: '3rem', marginBottom: '16px', color: '#cbd5e1' }} />
+                                    <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>No App Data</div>
+                                    <div style={{ fontSize: '0.9rem', marginTop: '8px' }}>
+                                        Data will appear when apps have resolved cards
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -1188,251 +1287,298 @@ const PublicDashboard = () => {
     // Render Team Performance Slide
     const renderTeamPerformanceSlide = () => {
         const teamEntries = Object.entries(teamStats).sort((a, b) => b[1] - a[1]);
-        
+        const totalTeamCards = teamEntries.reduce((sum, [, count]) => sum + count, 0);
+
+        // Team colors for visual distinction
+        const teamColors = [
+            { bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', text: '#ffffff' },
+            { bg: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', text: '#ffffff' },
+            { bg: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', text: '#ffffff' },
+            { bg: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', text: '#ffffff' },
+            { bg: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', text: '#ffffff' },
+        ];
+
         return (
-            <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
+            <div style={{
+                display: 'flex',
+                flexDirection: 'column',
                 height: '100%',
-                padding: isTVMode ? '40px' : '30px',
-                background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                padding: isTVMode ? '30px' : '25px',
+                background: '#f8fafc',
                 position: 'relative'
             }}>
                 {/* Header Section */}
-                <div style={{ 
-                    textAlign: 'center', 
-                    marginBottom: isTVMode ? '40px' : '30px'
+                <div style={{
+                    textAlign: 'center',
+                    marginBottom: isTVMode ? '25px' : '20px',
+                    background: 'rgba(255, 255, 255, 0.95)',
+                    borderRadius: '20px',
+                    padding: isTVMode ? '25px' : '20px',
+                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)'
                 }}>
-                    <Title level={1} style={{ 
-                        color: '#1e293b', 
-                        marginBottom: 12,
-                        fontSize: isTVMode ? '2.5rem' : '2.2rem',
+                    <Title level={1} style={{
+                        color: '#1e293b',
+                        marginBottom: 8,
+                        fontSize: isTVMode ? '2.2rem' : '2rem',
                         fontWeight: 700,
                         margin: 0
                     }}>
-                        <TeamOutlined style={{ marginRight: 12, color: '#475569', fontSize: isTVMode ? '2rem' : '1.8rem' }} />
-                        Team Performance Overview
+                        <TeamOutlined style={{ marginRight: 12, color: '#667eea', fontSize: isTVMode ? '2rem' : '1.8rem' }} />
+                        Team Performance Dashboard
                     </Title>
-                    <Paragraph style={{ 
-                        fontSize: isTVMode ? '1.2rem' : '1rem', 
+                    <Paragraph style={{
+                        fontSize: isTVMode ? '1rem' : '0.9rem',
                         color: '#64748b',
                         margin: '8px 0 0 0',
                         fontWeight: 500
                     }}>
-                        Cards waiting for developer fixes by Product Team
+                        Real-time Overview • Cards Waiting for Developer Fixes
                     </Paragraph>
                 </div>
 
-                {/* Main Content */}
-                <div style={{ 
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: isTVMode ? '20px' : '15px',
+                {/* Main Content - 2 Column Layout */}
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 2fr',
+                    gap: isTVMode ? '25px' : '20px',
                     flex: '1 1 auto',
                     minHeight: 0
                 }}>
-                    {/* Top Section - Total Cards & Team Workload */}
-                    <div style={{ 
-                        background: 'rgba(255, 255, 255, 0.8)',
-                        borderRadius: '16px',
-                        padding: isTVMode ? '20px' : '15px',
-                        backdropFilter: 'blur(10px)',
-                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)'
+                    {/* Left Column - Summary Stats */}
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: isTVMode ? '20px' : '15px'
                     }}>
-                        <div style={{ 
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'flex-start',
-                            gap: isTVMode ? '20px' : '15px'
+                        {/* Total Cards - Big Hero Card */}
+                        <div style={{
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            borderRadius: '20px',
+                            padding: isTVMode ? '35px 25px' : '30px 20px',
+                            textAlign: 'center',
+                            boxShadow: '0 10px 40px rgba(102, 126, 234, 0.3)',
+                            border: '2px solid rgba(255, 255, 255, 0.2)'
                         }}>
-                            {/* Total Cards - Small in top left */}
-                            <div style={{ 
-                                background: 'rgba(248, 250, 252, 0.8)',
-                                borderRadius: isTVMode ? '12px' : '10px',
-                                padding: isTVMode ? '15px' : '12px',
-                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
-                                border: '1px solid rgba(226, 232, 240, 0.5)',
-                                minWidth: isTVMode ? '180px' : '150px',
+                            <div style={{
+                                fontSize: isTVMode ? '1rem' : '0.9rem',
+                                color: 'rgba(255, 255, 255, 0.9)',
+                                fontWeight: 600,
+                                marginBottom: '12px',
+                                textTransform: 'uppercase',
+                                letterSpacing: '1px'
+                            }}>
+                                Total Cards
+                            </div>
+                            <div style={{
+                                fontSize: isTVMode ? '5rem' : '4.5rem',
+                                fontWeight: 900,
+                                color: '#ffffff',
+                                lineHeight: 1,
+                                textShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
+                            }}>
+                                {realStats.totalCards}
+                            </div>
+                            <div style={{
+                                fontSize: isTVMode ? '0.85rem' : '0.75rem',
+                                color: 'rgba(255, 255, 255, 0.8)',
+                                marginTop: '12px',
+                                fontWeight: 500
+                            }}>
+                                Waiting for Fix
+                            </div>
+                        </div>
+
+                        {/* Team Summary Cards */}
+                        <div style={{
+                            background: 'rgba(255, 255, 255, 0.95)',
+                            borderRadius: '20px',
+                            padding: isTVMode ? '25px' : '20px',
+                            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
+                            flex: '1 1 auto',
+                            display: 'flex',
+                            flexDirection: 'column'
+                        }}>
+                            <div style={{
+                                fontSize: isTVMode ? '1.1rem' : '1rem',
+                                fontWeight: 700,
+                                color: '#1e293b',
+                                marginBottom: isTVMode ? '20px' : '15px',
                                 textAlign: 'center'
                             }}>
-                                <Statistic
-                                    title="Total Cards"
-                                    value={realStats.totalCards}
-                                    valueStyle={{ 
-                                        color: '#1e293b', 
-                                        fontSize: isTVMode ? '1.8rem' : '1.5rem', 
-                                        fontWeight: 800
-                                    }}
-                                    prefix={<TeamOutlined style={{ marginRight: 6, color: '#475569', fontSize: isTVMode ? '1.2rem' : '1rem' }} />}
-                                />
+                                <TeamOutlined style={{ marginRight: 8, color: '#667eea' }} />
+                                Product Teams ({teamEntries.length})
                             </div>
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: isTVMode ? '12px' : '10px',
+                                flex: '1 1 auto',
+                                overflow: 'auto'
+                            }}>
+                                {teamEntries.map(([team, count], index) => {
+                                    const percentage = totalTeamCards > 0 ? Math.round((count / totalTeamCards) * 100) : 0;
+                                    const color = teamColors[index % teamColors.length];
 
-                            {/* Team Workload - Takes remaining space */}
-                            <div style={{ flex: 1 }}>
-                                <div style={{ 
-                                    display: 'grid', 
-                                    gridTemplateColumns: isTVMode ? 'repeat(5, 1fr)' : 'repeat(auto-fit, minmax(120px, 1fr))',
-                                    gap: isTVMode ? '10px' : '8px'
-                                }}>
-                                    {teamEntries.map(([team, count], index) => {
-                                        const percentage = teamEntries.length > 0 ? Math.round((count / teamEntries.reduce((sum, [, c]) => sum + c, 0)) * 100) : 0;
-                                        
-                                        return (
-                                            <div key={team} style={{ 
-                                                background: 'rgba(248, 250, 252, 0.6)',
-                                                borderRadius: isTVMode ? '12px' : '10px',
-                                                padding: isTVMode ? '12px' : '10px',
-                                                textAlign: 'center',
-                                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
-                                                border: '1px solid rgba(226, 232, 240, 0.5)',
-                                                transition: 'all 0.3s ease',
-                                                cursor: 'pointer',
-                                                minHeight: isTVMode ? '80px' : '70px',
+                                    return (
+                                        <div key={team} style={{
+                                            background: color.bg,
+                                            borderRadius: '12px',
+                                            padding: isTVMode ? '15px' : '12px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
+                                            transition: 'transform 0.2s ease',
+                                            cursor: 'pointer'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(5px)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}>
+                                            <div style={{
                                                 display: 'flex',
-                                                flexDirection: 'column',
-                                                justifyContent: 'center'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.transform = 'translateY(-2px)';
-                                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.transform = 'translateY(0)';
-                                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.06)';
+                                                alignItems: 'center',
+                                                gap: '12px',
+                                                flex: 1
                                             }}>
-                                                <div style={{ 
-                                                    fontWeight: 800, 
-                                                    color: '#1e293b', 
-                                                    fontSize: isTVMode ? '1.8rem' : '1.5rem',
-                                                    marginBottom: '4px'
+                                                <div style={{
+                                                    fontSize: isTVMode ? '2rem' : '1.8rem',
+                                                    fontWeight: 900,
+                                                    color: color.text,
+                                                    minWidth: isTVMode ? '50px' : '45px',
+                                                    textAlign: 'center'
                                                 }}>
                                                     {count}
                                                 </div>
-                                                <div style={{ 
-                                                    color: '#475569', 
-                                                    fontSize: isTVMode ? '0.9rem' : '0.8rem',
-                                                    fontWeight: 600,
-                                                    marginBottom: '2px'
-                                                }}>
-                                                    {team}
-                                                </div>
-                                                <div style={{ 
-                                                    color: '#64748b', 
-                                                    fontSize: isTVMode ? '0.7rem' : '0.6rem',
-                                                    fontWeight: 500,
-                                                    background: 'rgba(226, 232, 240, 0.5)',
-                                                    padding: '2px 4px',
-                                                    borderRadius: '4px',
-                                                    display: 'inline-block'
-                                                }}>
-                                                    {percentage}%
+                                                <div>
+                                                    <div style={{
+                                                        fontSize: isTVMode ? '1rem' : '0.9rem',
+                                                        fontWeight: 700,
+                                                        color: color.text,
+                                                        lineHeight: 1.2
+                                                    }}>
+                                                        {team}
+                                                    </div>
+                                                    <div style={{
+                                                        fontSize: isTVMode ? '0.75rem' : '0.7rem',
+                                                        color: 'rgba(255, 255, 255, 0.9)',
+                                                        fontWeight: 600
+                                                    }}>
+                                                        {percentage}% of total
+                                                    </div>
                                                 </div>
                                             </div>
-                                        );
-                                    })}
-                                </div>
+                                            <Progress
+                                                type="circle"
+                                                percent={percentage}
+                                                width={isTVMode ? 50 : 45}
+                                                strokeColor="#ffffff"
+                                                trailColor="rgba(255, 255, 255, 0.3)"
+                                                strokeWidth={8}
+                                                format={(percent) => (
+                                                    <span style={{ color: color.text, fontSize: '0.7rem', fontWeight: 700 }}>
+                                                        {percent}%
+                                                    </span>
+                                                )}
+                                            />
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
 
-                    {/* Bottom Section - Apps */}
-                    <div style={{ 
-                        background: 'rgba(255, 255, 255, 0.8)',
-                        borderRadius: '16px',
-                        padding: isTVMode ? '20px' : '15px',
-                        backdropFilter: 'blur(10px)',
-                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                        maxHeight: isTVMode ? '400px' : 'none',
-                        overflow: 'auto'
+                    {/* Right Column - Apps Grid */}
+                    <div style={{
+                        background: 'rgba(255, 255, 255, 0.95)',
+                        borderRadius: '20px',
+                        padding: isTVMode ? '25px' : '20px',
+                        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        minHeight: 0
                     }}>
-                        <Title level={3} style={{ 
-                            color: '#1e293b', 
-                            marginBottom: isTVMode ? '15px' : '10px',
-                            fontSize: isTVMode ? '1.2rem' : '1rem',
-                            fontWeight: 600,
+                        <div style={{
+                            fontSize: isTVMode ? '1.3rem' : '1.2rem',
+                            fontWeight: 700,
+                            color: '#1e293b',
+                            marginBottom: isTVMode ? '20px' : '15px',
                             textAlign: 'center',
-                            margin: '0 0 15px 0'
+                            paddingBottom: isTVMode ? '15px' : '12px',
+                            borderBottom: '2px solid #e2e8f0'
                         }}>
-                            <BarChartOutlined style={{ marginRight: 6, color: '#475569' }} />
-                            Applications ({appData.length} apps)
-                        </Title>
-                        
-                        <div style={{ 
-                            display: 'grid', 
-                            gridTemplateColumns: isTVMode ? 'repeat(6, 1fr)' : 'repeat(auto-fit, minmax(100px, 1fr))',
-                            gap: isTVMode ? '10px' : '8px'
+                            <BarChartOutlined style={{ marginRight: 8, color: '#667eea' }} />
+                            Applications Breakdown
+                        </div>
+
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: isTVMode ? 'repeat(auto-fill, minmax(110px, 1fr))' : 'repeat(auto-fill, minmax(100px, 1fr))',
+                            gap: isTVMode ? '12px' : '10px',
+                            overflow: 'auto',
+                            flex: '1 1 auto',
+                            alignContent: 'start'
                         }}>
                             {appData.map((app, index) => {
-                                // Calculate cards count for this app using same logic as DevFixing.js
                                 const appCardsCount = waitingToFixCards.filter(card => {
                                     if (!card.labels || !Array.isArray(card.labels)) return false;
-                                    
-                                    // Find app label (same logic as DevFixing.js)
                                     const appLabel = card.labels.find(label => label.name && label.name.includes('App:'));
-                                    
                                     if (appLabel) {
-                                        // Extract app name from label (same as DevFixing.js)
                                         const appKey = appLabel.name.replace('App:', '').trim().toLowerCase();
                                         return appKey === app.app_name.toLowerCase();
                                     }
-                                    
                                     return false;
                                 }).length;
-                                
-                                console.log(`App ${app.app_name}: ${appCardsCount} cards found`);
-                                
-                                // Only show apps that have cards
+
                                 if (appCardsCount === 0) return null;
-                                
+
                                 return (
-                                    <div key={app.app_name} style={{ 
-                                        background: 'rgba(248, 250, 252, 0.8)',
-                                        borderRadius: isTVMode ? '10px' : '8px',
-                                        padding: isTVMode ? '12px' : '10px',
+                                    <div key={app.app_name} style={{
+                                        background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                                        borderRadius: '12px',
+                                        padding: isTVMode ? '15px 10px' : '12px 8px',
                                         textAlign: 'center',
-                                        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)',
-                                        border: '1px solid rgba(226, 232, 240, 0.5)',
+                                        boxShadow: '0 3px 10px rgba(0, 0, 0, 0.08)',
+                                        border: '2px solid rgba(102, 126, 234, 0.1)',
                                         transition: 'all 0.3s ease',
                                         cursor: 'pointer',
-                                        minHeight: isTVMode ? '70px' : '60px',
                                         display: 'flex',
                                         flexDirection: 'column',
-                                        justifyContent: 'center'
+                                        justifyContent: 'center',
+                                        gap: '6px'
                                     }}
                                     onMouseEnter={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(-2px)';
-                                        e.currentTarget.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.1)';
+                                        e.currentTarget.style.transform = 'translateY(-4px) scale(1.05)';
+                                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.3)';
+                                        e.currentTarget.style.borderColor = '#667eea';
                                     }}
                                     onMouseLeave={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                        e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.05)';
+                                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                                        e.currentTarget.style.boxShadow = '0 3px 10px rgba(0, 0, 0, 0.08)';
+                                        e.currentTarget.style.borderColor = 'rgba(102, 126, 234, 0.1)';
                                     }}>
-                                        <div style={{ 
-                                            color: '#1e293b', 
-                                            fontSize: isTVMode ? '1.3rem' : '1.1rem',
-                                            fontWeight: 800,
-                                            marginBottom: '4px'
+                                        <div style={{
+                                            color: '#667eea',
+                                            fontSize: isTVMode ? '2rem' : '1.8rem',
+                                            fontWeight: 900,
+                                            lineHeight: 1
                                         }}>
                                             {appCardsCount}
                                         </div>
-                                        <div style={{ 
-                                            color: '#475569', 
-                                            fontSize: isTVMode ? '0.7rem' : '0.6rem',
-                                            fontWeight: 600,
+                                        <div style={{
+                                            color: '#1e293b',
+                                            fontSize: isTVMode ? '0.75rem' : '0.7rem',
+                                            fontWeight: 700,
                                             lineHeight: '1.1',
-                                            marginBottom: '2px'
+                                            wordBreak: 'break-word'
                                         }}>
                                             {app.app_name}
                                         </div>
-                                        <div style={{ 
-                                            color: '#64748b', 
-                                            fontSize: isTVMode ? '0.6rem' : '0.5rem',
-                                            fontWeight: 500,
-                                            background: 'rgba(226, 232, 240, 0.5)',
-                                            padding: '1px 4px',
-                                            borderRadius: '4px',
+                                        <div style={{
+                                            color: '#64748b',
+                                            fontSize: isTVMode ? '0.65rem' : '0.6rem',
+                                            fontWeight: 600,
+                                            background: 'rgba(100, 116, 139, 0.1)',
+                                            padding: '2px 6px',
+                                            borderRadius: '6px',
                                             display: 'inline-block'
                                         }}>
                                             {app.product_team || 'N/A'}
@@ -1461,27 +1607,25 @@ const PublicDashboard = () => {
     };
 
     return (
-        <div style={{ 
-            width: '100vw', 
-            height: '100vh', 
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        <div style={{
+            width: '100vw',
+            height: '100vh',
+            background: '#f8fafc',
             overflow: 'hidden',
             position: 'relative'
         }}>
             {/* Slide Content */}
-            <div style={{ 
-                width: '100%', 
-                height: '100%',
+            <div style={{
                 position: 'relative',
-                background: 'rgba(255, 255, 255, 0.95)',
-                backdropFilter: 'blur(10px)',
-                borderRadius: isTVMode ? '20px' : '20px',
+                background: '#ffffff',
+                borderRadius: '20px',
                 margin: isTVMode ? '20px' : '16px',
                 width: isTVMode ? 'calc(100% - 40px)' : 'calc(100% - 32px)',
                 height: isTVMode ? 'calc(100% - 40px)' : 'calc(100% - 32px)',
                 overflow: 'hidden',
-                transform: `scale(${zoomLevel})`,
-                transformOrigin: 'center center'
+                transform: isTVMode ? 'none' : `scale(${zoomLevel})`,
+                transformOrigin: 'center center',
+                boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)'
             }}>
                 {renderCurrentSlide()}
             </div>
@@ -1547,14 +1691,9 @@ const PublicDashboard = () => {
                                 if (isTVMode) {
                                     setIsTVMode(false);
                                     setZoomLevel(1);
-                                    console.log('📺 TV Mode disabled');
                                 } else {
                                     setIsTVMode(true);
-                                    // Set appropriate zoom for current screen size
-                                    const width = window.innerWidth;
-                                    const zoomLevel = width >= 3840 ? 1.2 : 0.9;
-                                    setZoomLevel(zoomLevel);
-                                    console.log(`📺 TV Mode activated - Zoom set to ${zoomLevel}`);
+                                    setZoomLevel(1);
                                 }
                             }}
                             style={{ 
