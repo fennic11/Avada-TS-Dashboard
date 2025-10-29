@@ -53,7 +53,8 @@ export const ROLE_PERMISSIONS = {
     [ROLES.BA]: {
         allowedTabs: [
             TABS.BUGS,
-            TABS.BA_PAGE
+            TABS.BA_PAGE,
+            TABS.PERFORMANCE_TS
         ],
         description: 'Access to BA related features'
     },
