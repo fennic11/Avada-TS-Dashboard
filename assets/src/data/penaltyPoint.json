@@ -47,12 +47,12 @@
     {
         "id": "TSP10",
         "name": "Không được từ chối support khách hàng",
-        "points": 50
+        "points": 40
     },
     {
         "id": "TSP11",
         "name": "Không support đúng tính năng của app",
-        "points": 50
+        "points": 40
     },
     {
         "id": "TSP12",
