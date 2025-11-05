@@ -175,10 +175,10 @@ const BaSummary = () => {
         try {
             const today = new Date();
             const formattedDate = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
-            
+
             // Group cards by product team
             const teamStats = {};
-            
+
             filteredCards.forEach(card => {
                 card.labels?.forEach(label => {
                     if (label.name.startsWith('App')) {
@@ -187,14 +187,14 @@ const BaSummary = () => {
                         if (appInfo) {
                             const productTeam = appInfo.product_team;
                             const groupTS = appInfo.group_ts;
-                            
+
                             if (!teamStats[productTeam]) {
                                 teamStats[productTeam] = {
                                     totalCards: 0,
                                     groupTS: groupTS
                                 };
                             }
-                            
+
                             teamStats[productTeam].totalCards += 1;
                         }
                     }
@@ -204,7 +204,7 @@ const BaSummary = () => {
             // Convert to tab-separated format
             const headers = ['Date', 'Product Team', 'Total Cards', 'Group TS'];
             const rows = [];
-            
+
             Object.entries(teamStats).forEach(([team, data]) => {
                 rows.push([
                     formattedDate,
@@ -215,9 +215,9 @@ const BaSummary = () => {
             });
 
             const exportData = [headers.join('\t'), ...rows].join('\n');
-            
+
             await navigator.clipboard.writeText(exportData);
-            
+
             setSnackbar({
                 open: true,
                 message: 'Team data copied to clipboard successfully!',
@@ -228,6 +228,46 @@ const BaSummary = () => {
             setSnackbar({
                 open: true,
                 message: 'Error copying team data to clipboard',
+                severity: 'error'
+            });
+        }
+    };
+
+    // Copy card details (link, name, app)
+    const handleCopyCardDetails = async () => {
+        try {
+            // Convert to tab-separated format
+            const headers = ['Card Link', 'Card Name', 'App'];
+            const rows = [];
+
+            filteredCards.forEach(card => {
+                // Get app labels
+                const appLabels = card.labels
+                    ?.filter(label => label.name.startsWith('App'))
+                    .map(label => label.name)
+                    .join(', ') || 'No App';
+
+                rows.push([
+                    card.shortUrl || card.url,
+                    card.name,
+                    appLabels
+                ].join('\t'));
+            });
+
+            const exportData = [headers.join('\t'), ...rows].join('\n');
+
+            await navigator.clipboard.writeText(exportData);
+
+            setSnackbar({
+                open: true,
+                message: `Copied ${filteredCards.length} card details to clipboard successfully!`,
+                severity: 'success'
+            });
+        } catch (error) {
+            console.error('Error copying card details:', error);
+            setSnackbar({
+                open: true,
+                message: 'Error copying card details to clipboard',
                 severity: 'error'
             });
         }
@@ -522,6 +562,30 @@ const BaSummary = () => {
                         }}
                     >
                         Copy Team Data
+                    </Button>
+
+                    {/* Copy Card Details Button */}
+                    <Button
+                        variant="contained"
+                        onClick={handleCopyCardDetails}
+                        disabled={filteredCards.length === 0}
+                        sx={{
+                            backgroundColor: '#9333ea',
+                            color: 'white',
+                            fontWeight: 600,
+                            borderRadius: 2,
+                            px: 3,
+                            py: 1.2,
+                            '&:hover': {
+                                backgroundColor: '#7c3aed',
+                            },
+                            '&.Mui-disabled': {
+                                backgroundColor: '#9ca3af',
+                                color: '#6b7280'
+                            }
+                        }}
+                    >
+                        Copy Card Details
                     </Button>
                 </Box>
 

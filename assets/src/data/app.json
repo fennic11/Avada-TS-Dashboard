@@ -160,6 +160,11 @@
         "app_name": "Post Purchase Upsell",
         "group_ts": "TS1",
         "product_team": "Team X"
+    },
+    {
+        "label_trello": "App: ShopVid",
+        "app_name": "ShopVid",
+        "group_ts": "TS2",
+        "product_team": "Solar"
     }
-    
 ]
