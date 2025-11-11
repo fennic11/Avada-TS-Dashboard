@@ -12,9 +12,15 @@ const firebaseController = require('../controllers/firebaseController');
 const errorCardController = require('../controllers/errorCardController');
 const assignCardsController = require('../controllers/cardAssignController');
 const errorAssignCardController = require('../controllers/errorAssignCardController');
+const reviewsController = require('../controllers/reviewsController');
+const conversController = require('../controllers/conversController');
 // Auth routes
 router.put('/auth/user', authController.createOrUpdateUser);
 router.get('/auth/user/:email', authController.getUserByEmail);
+// Reviews routes
+router.get('/reviews', reviewsController.getReviews);
+// Convers routes
+router.get('/convers', conversController.getConversation);  
 // Card routes
 router.post('/cards', cardController.createOrUpdateCard);
 router.get('/cards', cardController.getCards);

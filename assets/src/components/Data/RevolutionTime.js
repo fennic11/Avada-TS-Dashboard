@@ -135,6 +135,46 @@ function groupAverageByDate(cards, field) {
         }));
 }
 
+function groupAverageByWeek(cards, field) {
+    const map = new Map();
+
+    cards.forEach(card => {
+        const value = Number(card[field]);
+        if (isNaN(value)) return;
+
+        const date = dayjs(card.createdAt);
+        // Get week of year
+        const weekKey = `${date.year()}-W${date.week().toString().padStart(2, '0')}`;
+        const weekStart = date.startOf('week');
+
+        if (!map.has(weekKey)) {
+            map.set(weekKey, {
+                total: 0,
+                count: 0,
+                weekStart: weekStart.format('YYYY-MM-DD')
+            });
+        }
+
+        map.get(weekKey).total += value;
+        map.get(weekKey).count += 1;
+    });
+
+    return Array.from(map.entries())
+        .sort((a, b) => {
+            // Sort by weekStart date ascending (oldest to newest = left to right)
+            const dateA = new Date(a[1].weekStart);
+            const dateB = new Date(b[1].weekStart);
+            return dateA - dateB;
+        })
+        .map(([weekKey, { total, count, weekStart }]) => ({
+            week: dayjs(weekStart).format('MMM DD'), // Format as "Jan 01"
+            weekKey,
+            weekStart,
+            average: count > 0 ? Math.round((total / count) * 10) / 10 : 0,
+            count
+        }));
+}
+
 function getCardTeam(card) {
     let team = null;
     if (card.labels && card.labels.length > 0) {
@@ -161,18 +201,6 @@ function getCardGroup(card) {
         group = appLabelToGroup[card.cardName];
     }
     return group;
-}
-
-function getCardApps(card) {
-    const apps = [];
-    if (card.labels && card.labels.length > 0) {
-        card.labels.forEach(label => {
-            if (label.startsWith("App:")) {
-                apps.push(label);
-            }
-        });
-    }
-    return apps;
 }
 
 function groupByTimeAndCount(cards, field, groupBy) {
@@ -282,41 +310,6 @@ function calculateAgentLeaderboard(cards) {
         .sort((a, b) => a.averageTime - b.averageTime);
 }
 
-// Helper functions for trending analysis
-function calculateTrendingMetrics(cards) {
-    if (!cards || cards.length === 0) {
-        return {
-            totalCards: 0,
-            avgResolutionTime: 0,
-            avgFirstActionTime: 0,
-            avgResolutionTimeTS: 0,
-            totalResolutionTime: 0,
-            totalFirstActionTime: 0,
-            totalResolutionTimeTS: 0
-        };
-    }
-
-    const validCards = cards.filter(card => 
-        !isNaN(Number(card.resolutionTime)) && 
-        Number(card.resolutionTime) > 0
-    );
-
-    const totalCards = validCards.length;
-    const totalResolutionTime = validCards.reduce((sum, card) => sum + (Number(card.resolutionTime) || 0), 0);
-    const totalFirstActionTime = validCards.reduce((sum, card) => sum + (Number(card.firstActionTime) || 0), 0);
-    const totalResolutionTimeTS = validCards.reduce((sum, card) => sum + (Number(card.resolutionTimeTS) || 0), 0);
-
-    return {
-        totalCards,
-        avgResolutionTime: totalCards > 0 ? Math.round((totalResolutionTime / totalCards) * 10) / 10 : 0,
-        avgFirstActionTime: totalCards > 0 ? Math.round((totalFirstActionTime / totalCards) * 10) / 10 : 0,
-        avgResolutionTimeTS: totalCards > 0 ? Math.round((totalResolutionTimeTS / totalCards) * 10) / 10 : 0,
-        totalResolutionTime,
-        totalFirstActionTime,
-        totalResolutionTimeTS
-    };
-}
-
 function calculateTrendPercentage(current, previous) {
     if (!previous || previous === 0) return current > 0 ? 100 : 0;
     return Math.round(((current - previous) / previous) * 100);
@@ -350,8 +343,6 @@ function getTrendIcon(percentage, metricType = 'general') {
     return <MinusOutlined style={{ color: '#8c8c8c' }} />;
 }
 
-const teamColors = ['#1976d2', '#2e7d32', '#ed6c02', '#9c27b0', '#d32f2f', '#7b1fa2', '#388e3c'];
-
 const ResolutionTimeList = () => {
     const [data, setData] = useState([]);
     const [filteredData, setFilteredData] = useState([]);
@@ -376,7 +367,15 @@ const ResolutionTimeList = () => {
     const [selectedMember, setSelectedMember] = useState("");
     const [selectedTeam, setSelectedTeam] = useState("");
     const [selectedGroup, setSelectedGroup] = useState("");
-    const [dateRange, setDateRange] = useState([
+
+    // Data range for fetching (3 months)
+    const [dataRange] = useState([
+        dayjs().subtract(3, 'month'),
+        dayjs()
+    ]);
+
+    // Filter range for display (1 week by default)
+    const [filterRange, setFilterRange] = useState([
         dayjs().subtract(7, 'day'),
         dayjs()
     ]);
@@ -399,57 +398,59 @@ const ResolutionTimeList = () => {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            // Check if dateRange is null or undefined
-            if (!dateRange || !dateRange[0] || !dateRange[1]) {
-                console.warn("Date range is not set, skipping data fetch");
+            // Check if dataRange is null or undefined
+            if (!dataRange || !dataRange[0] || !dataRange[1]) {
+                console.warn("Data range is not set, skipping data fetch");
                 setData([]);
                 return;
             }
-            
-            const startDate = dateRange[0].format('YYYY-MM-DD');
-            const endDate = dateRange[1].format('YYYY-MM-DD');
+
+            const startDate = dataRange[0].format('YYYY-MM-DD');
+            const endDate = dataRange[1].format('YYYY-MM-DD');
+            console.log(`📊 Fetching data for 3 months: ${startDate} to ${endDate}`);
             const results = await getResolutionTimes(startDate, endDate);
             const validCards = results.filter(card =>
                 !isNaN(Number(card.resolutionTime)) &&
                 Number(card.resolutionTime) > 0 &&
                 card.members?.some(id => memberIds.includes(id))
             );
+            console.log(`✅ Fetched ${validCards.length} cards for 3 months`);
             setData(validCards);
         } catch (err) {
             console.error("❌ Lỗi xử lý dữ liệu:", err);
         } finally {
             setLoading(false);
         }
-    }, [dateRange]);
+    }, [dataRange]);
 
     // New function to fetch trending data - previous year comparison
     const fetchTrendingData = useCallback(async () => {
         setTrendingLoading(true);
         try {
-            // Check if dateRange is null or undefined
-            if (!dateRange || !dateRange[0] || !dateRange[1]) {
-                console.warn("Date range is not set, skipping trending data fetch");
+            // Check if dataRange is null or undefined
+            if (!dataRange || !dataRange[0] || !dataRange[1]) {
+                console.warn("Data range is not set, skipping trending data fetch");
                 setTrendingData({ current: [], previous: [] });
                 return;
             }
-            
-            // Calculate previous year date range - exact same period
-            const currentStartDate = dateRange[0];
-            const currentEndDate = dateRange[1];
-            
+
+            // Calculate previous year date range - exact same period (3 months from last year)
+            const currentStartDate = dataRange[0];
+            const currentEndDate = dataRange[1];
+
             // Get the exact same dates from last year
             const previousYearStart = currentStartDate.subtract(1, 'year');
             const previousYearEnd = currentEndDate.subtract(1, 'year');
 
-            console.log('Current period:', currentStartDate.format('YYYY-MM-DD'), 'to', currentEndDate.format('YYYY-MM-DD'));
-            console.log('Previous year period:', previousYearStart.format('YYYY-MM-DD'), 'to', previousYearEnd.format('YYYY-MM-DD'));
+            console.log('Current period (3 months):', currentStartDate.format('YYYY-MM-DD'), 'to', currentEndDate.format('YYYY-MM-DD'));
+            console.log('Previous year period (3 months):', previousYearStart.format('YYYY-MM-DD'), 'to', previousYearEnd.format('YYYY-MM-DD'));
 
             // Fetch previous year data
             const previousYearResults = await getResolutionTimes(
-                previousYearStart.format('YYYY-MM-DD'), 
+                previousYearStart.format('YYYY-MM-DD'),
                 previousYearEnd.format('YYYY-MM-DD')
             );
-            
+
             const previousYearValidCards = previousYearResults.filter(card =>
                 !isNaN(Number(card.resolutionTime)) &&
                 Number(card.resolutionTime) > 0 &&
@@ -467,7 +468,7 @@ const ResolutionTimeList = () => {
         } finally {
             setTrendingLoading(false);
         }
-    }, [dateRange]);
+    }, [dataRange]);
 
     // Initial data fetch
     useEffect(() => {
@@ -478,70 +479,35 @@ const ResolutionTimeList = () => {
         }
     }, [isInitialLoad, fetchData, fetchTrendingData]);
 
-    // Fetch trending data when dateRange changes
-    useEffect(() => {
-        const fetchTrending = async () => {
-            setTrendingLoading(true);
-            try {
-                // Check if dateRange is null or undefined
-                if (!dateRange || !dateRange[0] || !dateRange[1]) {
-                    console.warn("Date range is not set, skipping trending data fetch");
-                    setTrendingData(prev => ({ ...prev, previous: [] }));
-                    return;
-                }
-                
-                // Calculate previous period based on current date range
-                const currentStart = dateRange[0];
-                const currentEnd = dateRange[1];
-                const duration = currentEnd.diff(currentStart, 'day');
-                
-                // Previous period is the same duration before current period
-                const previousStart = currentStart.subtract(duration + 1, 'day');
-                const previousEnd = currentStart.subtract(1, 'day');
-
-                const previousResults = await getResolutionTimes(
-                    previousStart.format('YYYY-MM-DD'), 
-                    previousEnd.format('YYYY-MM-DD')
-                );
-
-                const previousValidCards = previousResults.filter(card =>
-                    !isNaN(Number(card.resolutionTime)) &&
-                    Number(card.resolutionTime) > 0 &&
-                    card.members?.some(id => memberIds.includes(id))
-                );
-
-                setTrendingData(prev => ({
-                    ...prev,
-                    previous: previousValidCards
-                }));
-            } catch (err) {
-                console.error("❌ Lỗi xử lý trending data:", err);
-            } finally {
-                setTrendingLoading(false);
-            }
-        };
-
-        if (!isInitialLoad) {
-            fetchTrending();
-        }
-    }, [dateRange, isInitialLoad]);
-
     // Update filtered data when filters change
     useEffect(() => {
-        // First apply all basic filters (app, member, team, group, time range)
+        // First apply date filter (filterRange)
         let filtered = data.filter((card) => {
+            if (!filterRange || !filterRange[0] || !filterRange[1]) return true;
+
+            const cardDate = dayjs(card.createdAt);
+            const isInDateRange = cardDate.isAfter(filterRange[0].startOf('day')) &&
+                                  cardDate.isBefore(filterRange[1].endOf('day'));
+
+            return isInDateRange;
+        });
+
+        console.log(`📅 Filtered by date range: ${filtered.length} cards (from ${data.length} total)`);
+
+        // Then apply other filters (app, member, team, group, time range)
+        filtered = filtered.filter((card) => {
             const hasApp = selectedApp ? card.labels?.some(l => l === selectedApp) : true;
             const hasMember = selectedMember ? card.members?.includes(selectedMember) : true;
             const hasTeam = selectedTeam ? getCardTeam(card) === selectedTeam : true;
             const hasGroup = selectedGroup ? getCardGroup(card) === selectedGroup : true;
-            
-            // Time range filter
+
+            // Time range filter (hour of day)
             const hasTimeRange = !timeRangeFilter.enabled ? true : (() => {
                 const cardDate = new Date(card.createdAt);
                 const cardHour = cardDate.getHours();
                 return cardHour >= timeRangeFilter.startHour && cardHour <= timeRangeFilter.endHour;
             })();
-            
+
             return hasApp && hasMember && hasTeam && hasGroup && hasTimeRange;
         });
 
@@ -569,13 +535,13 @@ const ResolutionTimeList = () => {
         }
 
         setFilteredData(filtered);
-        
+
         // Update trending data current with filtered data
         setTrendingData(prev => ({
             ...prev,
             current: filtered
         }));
-    }, [data, selectedApp, selectedMember, selectedTeam, selectedGroup, heatmapFilter, timeRangeFilter]);
+    }, [data, selectedApp, selectedMember, selectedTeam, selectedGroup, heatmapFilter, timeRangeFilter, filterRange]);
 
     // Handle manual data fetch
     const handleFetchData = () => {
@@ -617,6 +583,13 @@ const ResolutionTimeList = () => {
         resolutionTimeTS: groupAverageByDate(filteredData, "resolutionTimeTS")
     };
 
+    // Weekly trend data for 3-month line chart (uses all 3 months data, not filtered)
+    const weeklyTrendData = {
+        resolutionTime: groupAverageByWeek(data, "resolutionTime"),
+        firstActionTime: groupAverageByWeek(data, "firstActionTime"),
+        resolutionTimeTS: groupAverageByWeek(data, "resolutionTimeTS")
+    };
+
     const timeAndCountData = {
         member: {
             resolutionTime: groupByTimeAndCount(filteredData, "resolutionTime", "member"),
@@ -639,11 +612,6 @@ const ResolutionTimeList = () => {
     const handleRowClick = (card) => {
         setSelectedCardId(card.cardId);
         setCardDetailModalOpen(true);
-    };
-
-    const handleCloseModal = () => {
-        setModalOpen(false);
-        setSelectedCard(null);
     };
 
     const handleChartClick = (chartData, title) => {
@@ -827,20 +795,20 @@ const ResolutionTimeList = () => {
                     <Row gutter={[16, 16]} align="middle">
                         <Col xs={24} sm={12} md={6}>
                             <RangePicker
-                                value={dateRange}
+                                value={filterRange}
                                 onChange={(dates) => {
-                                    setDateRange(dates);
-                                    // If dates are cleared, reset the data
-                                    if (!dates || !dates[0] || !dates[1]) {
-                                        setData([]);
-                                        setFilteredData([]);
-                                        setTrendingData({ current: [], previous: [] });
-                                    }
+                                    setFilterRange(dates);
                                 }}
                                 format="YYYY-MM-DD"
-                                allowClear
+                                allowClear={false}
                                 style={{ width: '100%' }}
                                 placeholder={["Start date", "End date"]}
+                                disabledDate={(current) => {
+                                    // Disable dates outside the 3-month data range
+                                    if (!current) return false;
+                                    return current.isBefore(dataRange[0].startOf('day')) ||
+                                           current.isAfter(dataRange[1].endOf('day'));
+                                }}
                             />
                         </Col>
                         <Col xs={24} sm={12} md={4}>
@@ -946,10 +914,10 @@ const ResolutionTimeList = () => {
                                 </div>
                                 
                                 {/* Comparison Info */}
-                                {trendingData.previous.length > 0 && dateRange && dateRange[0] && dateRange[1] && (
+                                {trendingData.previous.length > 0 && filterRange && filterRange[0] && filterRange[1] && (
                                     <Text style={{ fontSize: 12, color: '#64748b' }}>
-                                        📈 Comparing: <strong>{dateRange[0].format('MMM DD, YYYY')} - {dateRange[1].format('MMM DD, YYYY')}</strong> vs{' '}
-                                        <strong>{dateRange[0].subtract(dateRange[1].diff(dateRange[0], 'day') + 1, 'day').format('MMM DD, YYYY')} - {dateRange[0].subtract(1, 'day').format('MMM DD, YYYY')}</strong>
+                                        📈 Comparing: <strong>{filterRange[0].format('MMM DD, YYYY')} - {filterRange[1].format('MMM DD, YYYY')}</strong> vs{' '}
+                                        <strong>previous period</strong> • Data range: <strong>{dataRange[0].format('MMM DD')} - {dataRange[1].format('MMM DD, YYYY')}</strong> (3 months)
                                     </Text>
                                 )}
                             </div>
@@ -966,13 +934,13 @@ const ResolutionTimeList = () => {
                         {/* Key Metrics with Trending */}
                         <Row gutter={[24, 24]} style={{ marginBottom: 32 }}>
                             <Col xs={24} sm={12} md={6}>
-                                <Card style={{ 
-                                    borderRadius: 12, 
+                                <Card style={{
+                                    borderRadius: 12,
                                     boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
                                     background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                                        <div>
+                                        <div style={{ flex: 1 }}>
                                             <div style={{ fontSize: 14, color: '#64748b', marginBottom: 4 }}>Total Cards</div>
                                             <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b' }}>
                                                 {filteredData.length.toLocaleString()}
@@ -980,7 +948,7 @@ const ResolutionTimeList = () => {
                                             {trendingData.previous && trendingData.previous.length > 0 && (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                                                     {getTrendIcon(calculateTrendPercentage(filteredData.length, trendingData.previous.length), 'count')}
-                                                    <Text style={{ 
+                                                    <Text style={{
                                                         color: getTrendColor(calculateTrendPercentage(filteredData.length, trendingData.previous.length), 'count'),
                                                         fontWeight: 600,
                                                         fontSize: 12
@@ -992,11 +960,48 @@ const ResolutionTimeList = () => {
                                                     </Text>
                                                 </div>
                                             )}
+
+                                            {/* Team Breakdown */}
+                                            <div style={{
+                                                marginTop: 12,
+                                                paddingTop: 12,
+                                                borderTop: '1px solid #e5e7eb',
+                                                display: 'flex',
+                                                gap: 16
+                                            }}>
+                                                {(() => {
+                                                    const ts1Cards = filteredData.filter(card => getCardGroup(card) === 'TS1');
+                                                    const ts2Cards = filteredData.filter(card => getCardGroup(card) === 'TS2');
+
+                                                    return (
+                                                        <>
+                                                            <div>
+                                                                <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>TS1</div>
+                                                                <div style={{ fontSize: 16, fontWeight: 700, color: '#3b82f6' }}>
+                                                                    {ts1Cards.length}
+                                                                </div>
+                                                                <div style={{ fontSize: 9, color: '#94a3b8' }}>
+                                                                    {ts1Cards.length > 0 ? ((ts1Cards.length / filteredData.length) * 100).toFixed(0) : 0}%
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>TS2</div>
+                                                                <div style={{ fontSize: 16, fontWeight: 700, color: '#6366f1' }}>
+                                                                    {ts2Cards.length}
+                                                                </div>
+                                                                <div style={{ fontSize: 9, color: '#94a3b8' }}>
+                                                                    {ts2Cards.length > 0 ? ((ts2Cards.length / filteredData.length) * 100).toFixed(0) : 0}%
+                                                                </div>
+                                                            </div>
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
                                         </div>
-                                        <div style={{ 
-                                            width: 24, 
-                                            height: 24, 
-                                            borderRadius: '50%', 
+                                        <div style={{
+                                            width: 24,
+                                            height: 24,
+                                            borderRadius: '50%',
                                             background: '#2563eb20',
                                             display: 'flex',
                                             alignItems: 'center',
@@ -1050,13 +1055,13 @@ const ResolutionTimeList = () => {
                                 </Card>
                             </Col>
                             <Col xs={24} sm={12} md={6}>
-                                <Card style={{ 
-                                    borderRadius: 12, 
+                                <Card style={{
+                                    borderRadius: 12,
                                     boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
                                     background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                                        <div>
+                                        <div style={{ flex: 1 }}>
                                             <div style={{ fontSize: 14, color: '#64748b', marginBottom: 4 }}>AVG Resolution Time</div>
                                             <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b' }}>
                                                 {formatMinutes(averages.resolutionTime)}
@@ -1064,7 +1069,7 @@ const ResolutionTimeList = () => {
                                             {trendingData.previous && trendingData.previous.length > 0 && (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                                                     {getTrendIcon(calculateTrendPercentage(averages.resolutionTime, averageTime(trendingData.previous, "resolutionTime")), 'time')}
-                                                    <Text style={{ 
+                                                    <Text style={{
                                                         color: getTrendColor(calculateTrendPercentage(averages.resolutionTime, averageTime(trendingData.previous, "resolutionTime")), 'time'),
                                                         fontWeight: 600,
                                                         fontSize: 12
@@ -1076,11 +1081,53 @@ const ResolutionTimeList = () => {
                                                     </Text>
                                                 </div>
                                             )}
+
+                                            {/* Team Breakdown */}
+                                            <div style={{
+                                                marginTop: 12,
+                                                paddingTop: 12,
+                                                borderTop: '1px solid #e5e7eb',
+                                                display: 'flex',
+                                                gap: 16
+                                            }}>
+                                                {(() => {
+                                                    // Calculate average for TS1
+                                                    const ts1Cards = filteredData.filter(card => getCardGroup(card) === 'TS1');
+                                                    const ts1Avg = averageTime(ts1Cards, "resolutionTime");
+
+                                                    // Calculate average for TS2
+                                                    const ts2Cards = filteredData.filter(card => getCardGroup(card) === 'TS2');
+                                                    const ts2Avg = averageTime(ts2Cards, "resolutionTime");
+
+                                                    return (
+                                                        <>
+                                                            <div>
+                                                                <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>TS1</div>
+                                                                <div style={{ fontSize: 16, fontWeight: 700, color: '#3b82f6' }}>
+                                                                    {formatMinutes(ts1Avg)}
+                                                                </div>
+                                                                <div style={{ fontSize: 9, color: '#94a3b8' }}>
+                                                                    {ts1Cards.length} cards
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>TS2</div>
+                                                                <div style={{ fontSize: 16, fontWeight: 700, color: '#6366f1' }}>
+                                                                    {formatMinutes(ts2Avg)}
+                                                                </div>
+                                                                <div style={{ fontSize: 9, color: '#94a3b8' }}>
+                                                                    {ts2Cards.length} cards
+                                                                </div>
+                                                            </div>
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
                                         </div>
-                                        <div style={{ 
-                                            width: 24, 
-                                            height: 24, 
-                                            borderRadius: '50%', 
+                                        <div style={{
+                                            width: 24,
+                                            height: 24,
+                                            borderRadius: '50%',
                                             background: '#3b82f620',
                                             display: 'flex',
                                             alignItems: 'center',
@@ -1134,13 +1181,13 @@ const ResolutionTimeList = () => {
                                 </Card>
                             </Col>
                             <Col xs={24} sm={12} md={6}>
-                                <Card style={{ 
-                                    borderRadius: 12, 
+                                <Card style={{
+                                    borderRadius: 12,
                                     boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
                                     background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                                        <div>
+                                        <div style={{ flex: 1 }}>
                                             <div style={{ fontSize: 14, color: '#64748b', marginBottom: 4 }}>AVG First Action Time</div>
                                             <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b' }}>
                                                 {formatMinutes(averages.firstActionTime)}
@@ -1148,7 +1195,7 @@ const ResolutionTimeList = () => {
                                             {trendingData.previous && trendingData.previous.length > 0 && (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                                                     {getTrendIcon(calculateTrendPercentage(averages.firstActionTime, averageTime(trendingData.previous, "firstActionTime")), 'time')}
-                                                    <Text style={{ 
+                                                    <Text style={{
                                                         color: getTrendColor(calculateTrendPercentage(averages.firstActionTime, averageTime(trendingData.previous, "firstActionTime")), 'time'),
                                                         fontWeight: 600,
                                                         fontSize: 12
@@ -1160,11 +1207,51 @@ const ResolutionTimeList = () => {
                                                     </Text>
                                                 </div>
                                             )}
+
+                                            {/* Team Breakdown */}
+                                            <div style={{
+                                                marginTop: 12,
+                                                paddingTop: 12,
+                                                borderTop: '1px solid #e5e7eb',
+                                                display: 'flex',
+                                                gap: 16
+                                            }}>
+                                                {(() => {
+                                                    const ts1Cards = filteredData.filter(card => getCardGroup(card) === 'TS1');
+                                                    const ts1Avg = averageTime(ts1Cards, "firstActionTime");
+
+                                                    const ts2Cards = filteredData.filter(card => getCardGroup(card) === 'TS2');
+                                                    const ts2Avg = averageTime(ts2Cards, "firstActionTime");
+
+                                                    return (
+                                                        <>
+                                                            <div>
+                                                                <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>TS1</div>
+                                                                <div style={{ fontSize: 16, fontWeight: 700, color: '#3b82f6' }}>
+                                                                    {formatMinutes(ts1Avg)}
+                                                                </div>
+                                                                <div style={{ fontSize: 9, color: '#94a3b8' }}>
+                                                                    {ts1Cards.length} cards
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>TS2</div>
+                                                                <div style={{ fontSize: 16, fontWeight: 700, color: '#6366f1' }}>
+                                                                    {formatMinutes(ts2Avg)}
+                                                                </div>
+                                                                <div style={{ fontSize: 9, color: '#94a3b8' }}>
+                                                                    {ts2Cards.length} cards
+                                                                </div>
+                                                            </div>
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
                                         </div>
-                                        <div style={{ 
-                                            width: 24, 
-                                            height: 24, 
-                                            borderRadius: '50%', 
+                                        <div style={{
+                                            width: 24,
+                                            height: 24,
+                                            borderRadius: '50%',
                                             background: '#6366f120',
                                             display: 'flex',
                                             alignItems: 'center',
@@ -1218,13 +1305,13 @@ const ResolutionTimeList = () => {
                                 </Card>
                             </Col>
                             <Col xs={24} sm={12} md={6}>
-                                <Card style={{ 
-                                    borderRadius: 12, 
+                                <Card style={{
+                                    borderRadius: 12,
                                     boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
                                     background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                                        <div>
+                                        <div style={{ flex: 1 }}>
                                             <div style={{ fontSize: 14, color: '#64748b', marginBottom: 4 }}>AVG TS Done Time</div>
                                             <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b' }}>
                                                 {formatMinutes(averages.resolutionTimeTS)}
@@ -1232,7 +1319,7 @@ const ResolutionTimeList = () => {
                                             {trendingData.previous && trendingData.previous.length > 0 && (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                                                     {getTrendIcon(calculateTrendPercentage(averages.resolutionTimeTS, averageTime(trendingData.previous, "resolutionTimeTS")), 'time')}
-                                                    <Text style={{ 
+                                                    <Text style={{
                                                         color: getTrendColor(calculateTrendPercentage(averages.resolutionTimeTS, averageTime(trendingData.previous, "resolutionTimeTS")), 'time'),
                                                         fontWeight: 600,
                                                         fontSize: 12
@@ -1244,11 +1331,51 @@ const ResolutionTimeList = () => {
                                                     </Text>
                                                 </div>
                                             )}
+
+                                            {/* Team Breakdown */}
+                                            <div style={{
+                                                marginTop: 12,
+                                                paddingTop: 12,
+                                                borderTop: '1px solid #e5e7eb',
+                                                display: 'flex',
+                                                gap: 16
+                                            }}>
+                                                {(() => {
+                                                    const ts1Cards = filteredData.filter(card => getCardGroup(card) === 'TS1');
+                                                    const ts1Avg = averageTime(ts1Cards, "resolutionTimeTS");
+
+                                                    const ts2Cards = filteredData.filter(card => getCardGroup(card) === 'TS2');
+                                                    const ts2Avg = averageTime(ts2Cards, "resolutionTimeTS");
+
+                                                    return (
+                                                        <>
+                                                            <div>
+                                                                <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>TS1</div>
+                                                                <div style={{ fontSize: 16, fontWeight: 700, color: '#3b82f6' }}>
+                                                                    {formatMinutes(ts1Avg)}
+                                                                </div>
+                                                                <div style={{ fontSize: 9, color: '#94a3b8' }}>
+                                                                    {ts1Cards.length} cards
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>TS2</div>
+                                                                <div style={{ fontSize: 16, fontWeight: 700, color: '#6366f1' }}>
+                                                                    {formatMinutes(ts2Avg)}
+                                                                </div>
+                                                                <div style={{ fontSize: 9, color: '#94a3b8' }}>
+                                                                    {ts2Cards.length} cards
+                                                                </div>
+                                                            </div>
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
                                         </div>
-                                        <div style={{ 
-                                            width: 24, 
-                                            height: 24, 
-                                            borderRadius: '50%', 
+                                        <div style={{
+                                            width: 24,
+                                            height: 24,
+                                            borderRadius: '50%',
                                             background: '#0ea5e920',
                                             display: 'flex',
                                             alignItems: 'center',
@@ -1303,7 +1430,199 @@ const ResolutionTimeList = () => {
                             </Col>
                         </Row>
 
-
+                        {/* 3-Month Trend Line Chart */}
+                        <Card
+                            title={
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ fontWeight: 700, fontSize: 18 }}>📈 3-Month Weekly Resolution Time Trend</span>
+                                    <Badge count={`${weeklyTrendData.resolutionTime.length} weeks`} style={{ backgroundColor: '#2563eb' }} />
+                                </div>
+                            }
+                            style={{ borderRadius: 16, marginBottom: 32, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                        >
+                            <Tabs defaultActiveKey="resolutionTime">
+                                <TabPane tab="Resolution Time" key="resolutionTime">
+                                    <div style={{ height: 400 }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <LineChart
+                                                data={weeklyTrendData.resolutionTime}
+                                                margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                                <XAxis
+                                                    dataKey="week"
+                                                    angle={-45}
+                                                    textAnchor="end"
+                                                    height={80}
+                                                    tick={{ fontSize: 11 }}
+                                                />
+                                                <YAxis
+                                                    tick={{ fontSize: 12 }}
+                                                    label={{ value: 'Minutes', angle: -90, position: 'insideLeft' }}
+                                                />
+                                                <RechartsTooltip
+                                                    formatter={(value, name) => [formatMinutes(value), 'Avg Resolution Time']}
+                                                    labelFormatter={(label) => `Week of: ${label}`}
+                                                    contentStyle={{
+                                                        backgroundColor: 'white',
+                                                        border: '1px solid #d9d9d9',
+                                                        borderRadius: '6px',
+                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                                                    }}
+                                                />
+                                                <Line
+                                                    type="monotone"
+                                                    dataKey="average"
+                                                    stroke="#3b82f6"
+                                                    strokeWidth={2}
+                                                    dot={{ fill: '#3b82f6', r: 4 }}
+                                                    activeDot={{ r: 6 }}
+                                                />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div style={{ marginTop: 16, padding: '12px 16px', background: '#f8fafc', borderRadius: 8, maxHeight: 200, overflowY: 'auto' }}>
+                                        <Row gutter={[16, 8]}>
+                                            {weeklyTrendData.resolutionTime.map((item, index) => (
+                                                <Col xs={24} sm={12} md={8} lg={6} key={index}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <Text strong style={{ fontSize: 12 }}>Week {item.week}:</Text>
+                                                        <div>
+                                                            <Text style={{ color: '#3b82f6', fontWeight: 600, marginRight: 8, fontSize: 12 }}>
+                                                                {formatMinutes(item.average)}
+                                                            </Text>
+                                                            <Text type="secondary" style={{ fontSize: 11 }}>
+                                                                ({item.count})
+                                                            </Text>
+                                                        </div>
+                                                    </div>
+                                                </Col>
+                                            ))}
+                                        </Row>
+                                    </div>
+                                </TabPane>
+                                <TabPane tab="First Action Time" key="firstActionTime">
+                                    <div style={{ height: 400 }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <LineChart
+                                                data={weeklyTrendData.firstActionTime}
+                                                margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                                <XAxis
+                                                    dataKey="week"
+                                                    angle={-45}
+                                                    textAnchor="end"
+                                                    height={80}
+                                                    tick={{ fontSize: 11 }}
+                                                />
+                                                <YAxis
+                                                    tick={{ fontSize: 12 }}
+                                                    label={{ value: 'Minutes', angle: -90, position: 'insideLeft' }}
+                                                />
+                                                <RechartsTooltip
+                                                    formatter={(value, name) => [formatMinutes(value), 'Avg First Action Time']}
+                                                    labelFormatter={(label) => `Week of: ${label}`}
+                                                    contentStyle={{
+                                                        backgroundColor: 'white',
+                                                        border: '1px solid #d9d9d9',
+                                                        borderRadius: '6px',
+                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                                                    }}
+                                                />
+                                                <Line
+                                                    type="monotone"
+                                                    dataKey="average"
+                                                    stroke="#6366f1"
+                                                    strokeWidth={2}
+                                                    dot={{ fill: '#6366f1', r: 4 }}
+                                                    activeDot={{ r: 6 }}
+                                                />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div style={{ marginTop: 16, padding: '12px 16px', background: '#f8fafc', borderRadius: 8, maxHeight: 200, overflowY: 'auto' }}>
+                                        <Row gutter={[16, 8]}>
+                                            {weeklyTrendData.firstActionTime.map((item, index) => (
+                                                <Col xs={24} sm={12} md={8} lg={6} key={index}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <Text strong style={{ fontSize: 12 }}>Week {item.week}:</Text>
+                                                        <div>
+                                                            <Text style={{ color: '#6366f1', fontWeight: 600, marginRight: 8, fontSize: 12 }}>
+                                                                {formatMinutes(item.average)}
+                                                            </Text>
+                                                            <Text type="secondary" style={{ fontSize: 11 }}>
+                                                                ({item.count})
+                                                            </Text>
+                                                        </div>
+                                                    </div>
+                                                </Col>
+                                            ))}
+                                        </Row>
+                                    </div>
+                                </TabPane>
+                                <TabPane tab="TS Done Time" key="resolutionTimeTS">
+                                    <div style={{ height: 400 }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <LineChart
+                                                data={weeklyTrendData.resolutionTimeTS}
+                                                margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                                <XAxis
+                                                    dataKey="week"
+                                                    angle={-45}
+                                                    textAnchor="end"
+                                                    height={80}
+                                                    tick={{ fontSize: 11 }}
+                                                />
+                                                <YAxis
+                                                    tick={{ fontSize: 12 }}
+                                                    label={{ value: 'Minutes', angle: -90, position: 'insideLeft' }}
+                                                />
+                                                <RechartsTooltip
+                                                    formatter={(value, name) => [formatMinutes(value), 'Avg TS Done Time']}
+                                                    labelFormatter={(label) => `Week of: ${label}`}
+                                                    contentStyle={{
+                                                        backgroundColor: 'white',
+                                                        border: '1px solid #d9d9d9',
+                                                        borderRadius: '6px',
+                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                                                    }}
+                                                />
+                                                <Line
+                                                    type="monotone"
+                                                    dataKey="average"
+                                                    stroke="#0ea5e9"
+                                                    strokeWidth={2}
+                                                    dot={{ fill: '#0ea5e9', r: 4 }}
+                                                    activeDot={{ r: 6 }}
+                                                />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div style={{ marginTop: 16, padding: '12px 16px', background: '#f8fafc', borderRadius: 8, maxHeight: 200, overflowY: 'auto' }}>
+                                        <Row gutter={[16, 8]}>
+                                            {weeklyTrendData.resolutionTimeTS.map((item, index) => (
+                                                <Col xs={24} sm={12} md={8} lg={6} key={index}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <Text strong style={{ fontSize: 12 }}>Week {item.week}:</Text>
+                                                        <div>
+                                                            <Text style={{ color: '#0ea5e9', fontWeight: 600, marginRight: 8, fontSize: 12 }}>
+                                                                {formatMinutes(item.average)}
+                                                            </Text>
+                                                            <Text type="secondary" style={{ fontSize: 11 }}>
+                                                                ({item.count})
+                                                            </Text>
+                                                        </div>
+                                                    </div>
+                                                </Col>
+                                            ))}
+                                        </Row>
+                                    </div>
+                                </TabPane>
+                            </Tabs>
+                        </Card>
 
                         {/* Heatmap Section */}
                         <Card

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Typography, Button, Progress, message } from 'antd';
 import { getResolutionTimes, getCardsOnTrello } from '../api/cardsApi';
+import getReviews from '../api/reviewsApi';
+import getConversation from '../api/conversApi';
 import appData from '../data/app.json';
-import membersData from '../data/members.json';
+import membersData from '../data/allMembers.json';
 import {
     TeamOutlined,
     TrophyOutlined,
@@ -75,12 +77,16 @@ const PublicDashboard = () => {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [zoomLevel, setZoomLevel] = useState(1);
     const [isTVMode, setIsTVMode] = useState(false);
+    const [reviewsData, setReviewsData] = useState([]);
+    const [conversationsData, setConversationsData] = useState([]);
 
     // Define slides - optimized for TV display
     const slides = [
         { id: 'team-performance', title: 'Team Performance', duration: 15000 },
         { id: 'resolution-leaderboard', title: 'TS Leaderboard', duration: 15000 },
-        { id: 'resolution-analysis', title: 'Resolution Analysis', duration: 15000 }
+        { id: 'resolution-analysis', title: 'Resolution Analysis', duration: 15000 },
+        { id: 'member-conversations', title: 'Member Conversations', duration: 15000 },
+        { id: 'member-reviews', title: 'Member Reviews', duration: 15000 }
     ];
 
     // Fetch data from "Waiting to fix (from dev)" list
@@ -227,6 +233,51 @@ const PublicDashboard = () => {
         }
     };
 
+    // Fetch reviews data
+    const fetchReviewsData = async () => {
+        try {
+            const now = dayjs();
+            const startOfMonth = now.startOf('month').format('YYYY-MM-DD');
+            const endOfMonth = now.endOf('month').format('YYYY-MM-DD');
+
+            const data = await getReviews(startOfMonth, endOfMonth);
+            console.log('Reviews data:', data);
+
+            if (!data || !Array.isArray(data)) {
+                setReviewsData([]);
+                return;
+            }
+
+            setReviewsData(data);
+        } catch (error) {
+            console.error('Error fetching reviews data:', error);
+            setReviewsData([]);
+            message.warning('Unable to load reviews data.');
+        }
+    };
+
+    // Fetch conversations data
+    const fetchConversationsData = async () => {
+        try {
+            const now = dayjs();
+            const startOfMonth = now.startOf('month').format('YYYY-MM-DD');
+            const endOfMonth = now.endOf('month').format('YYYY-MM-DD');
+
+            const data = await getConversation(startOfMonth, endOfMonth);
+
+            if (!data || !Array.isArray(data)) {
+                setConversationsData([]);
+                return;
+            }
+
+            setConversationsData(data);
+        } catch (error) {
+            console.error('Error fetching conversations data:', error);
+            setConversationsData([]);
+            message.warning('Unable to load conversations data.');
+        }
+    };
+
     // TV Mode Detection
     useEffect(() => {
         const detectTVMode = () => {
@@ -266,13 +317,15 @@ const PublicDashboard = () => {
             try {
                 await Promise.all([
                     fetchWaitingToFixData(),
-                    fetchResolutionData()
+                    fetchResolutionData(),
+                    fetchReviewsData(),
+                    fetchConversationsData()
                 ]);
             } catch (error) {
                 console.error('❌ Error loading initial data:', error);
             }
         };
-        
+
         loadData();
     }, []);
 
@@ -374,6 +427,8 @@ const PublicDashboard = () => {
     const handleRefresh = () => {
         fetchWaitingToFixData();
         fetchResolutionData();
+        fetchReviewsData();
+        fetchConversationsData();
     };
 
     const nextSlide = () => {
@@ -1593,6 +1648,816 @@ const PublicDashboard = () => {
         );
     };
 
+    // Render Member Conversations Slide
+    const renderMemberConversationsSlide = () => {
+        // Calculate member stats
+        const memberConvStats = {};
+
+        // Initialize stats for all CS members
+        membersData
+            .filter(member => member.role === 'CS')
+            .forEach(member => {
+                memberConvStats[member.email] = {
+                    id: member.id,
+                    name: member.fullName,
+                    email: member.email,
+                    total: 0,
+                    resolved: 0,
+                    pending: 0,
+                    resolutionRate: 0
+                };
+            });
+
+        // Count conversations for each member using supporter email
+        console.log('Total conversations to process:', conversationsData.length);
+        console.log('Sample conversation data (first 3):', conversationsData.slice(0, 3));
+        console.log('Available member emails (Conv):', Object.keys(memberConvStats));
+
+        let convMatchedCount = 0;
+        let convUnmatchedCount = 0;
+        const convUnmatchedEmails = new Set();
+
+        conversationsData.forEach(conv => {
+            const supporterEmail = conv.supporter || conv.assignedTo;
+
+            if (supporterEmail && memberConvStats[supporterEmail]) {
+                memberConvStats[supporterEmail].total += 1;
+                if (conv.status === 'resolved' || conv.resolved) {
+                    memberConvStats[supporterEmail].resolved += 1;
+                } else {
+                    memberConvStats[supporterEmail].pending += 1;
+                }
+                convMatchedCount++;
+            } else {
+                convUnmatchedCount++;
+                if (supporterEmail) {
+                    convUnmatchedEmails.add(supporterEmail);
+                }
+            }
+        });
+
+        console.log('Matched conversations:', convMatchedCount);
+        console.log('Unmatched conversations:', convUnmatchedCount);
+        console.log('Unmatched supporter emails (Conv):', Array.from(convUnmatchedEmails));
+        console.log('Member conv stats after processing:', Object.values(memberConvStats).filter(s => s.total > 0));
+
+        // Calculate resolution rate
+        Object.values(memberConvStats).forEach(stat => {
+            stat.resolutionRate = stat.total > 0 ? Math.round((stat.resolved / stat.total) * 100) : 0;
+        });
+
+        // Sort by total conversations (descending)
+        const sortedMembers = Object.values(memberConvStats)
+            .filter(stat => stat.total > 0)
+            .sort((a, b) => b.total - a.total);
+
+        // Calculate totals
+        const totalConversations = sortedMembers.reduce((sum, member) => sum + member.total, 0);
+        const totalResolved = sortedMembers.reduce((sum, member) => sum + member.resolved, 0);
+        const totalPending = sortedMembers.reduce((sum, member) => sum + member.pending, 0);
+        const avgResolutionRate = totalConversations > 0 ? Math.round((totalResolved / totalConversations) * 100) : 0;
+
+        return (
+            <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+                padding: isTVMode ? '40px' : '30px',
+                background: 'transparent',
+                position: 'relative'
+            }}>
+                {/* Header */}
+                <div style={{
+                    textAlign: 'center',
+                    marginBottom: isTVMode ? '20px' : '15px'
+                }}>
+                    <Title level={1} style={{
+                        color: '#ffffff',
+                        marginBottom: 4,
+                        fontSize: isTVMode ? '2rem' : '1.8rem',
+                        fontWeight: 700,
+                        margin: 0,
+                        textShadow: '0 2px 10px rgba(0, 0, 0, 0.3)'
+                    }}>
+                        💬 CS Member Conversations
+                    </Title>
+                    <Paragraph style={{
+                        fontSize: isTVMode ? '0.9rem' : '0.8rem',
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        margin: '4px 0 0 0',
+                        fontWeight: 500
+                    }}>
+                        This Month • Performance Overview
+                    </Paragraph>
+                </div>
+
+                {/* Hero Section - Large KPI */}
+                <div style={{
+                    background: 'linear-gradient(135deg, rgba(79, 172, 254, 0.15) 0%, rgba(0, 242, 254, 0.15) 100%)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    borderRadius: '24px',
+                    padding: isTVMode ? '40px' : '35px',
+                    textAlign: 'center',
+                    marginBottom: isTVMode ? '20px' : '15px',
+                    border: '1px solid rgba(79, 172, 254, 0.3)',
+                    boxShadow: '0 15px 50px rgba(79, 172, 254, 0.2)'
+                }}>
+                    <div style={{
+                        fontSize: isTVMode ? '1rem' : '0.9rem',
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        fontWeight: 600,
+                        marginBottom: '10px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '2px'
+                    }}>
+                        Total Conversations
+                    </div>
+                    <div style={{
+                        fontSize: isTVMode ? '7rem' : '6rem',
+                        fontWeight: 900,
+                        color: '#ffffff',
+                        lineHeight: 1,
+                        textShadow: '0 4px 30px rgba(79, 172, 254, 0.5)',
+                        marginBottom: '10px'
+                    }}>
+                        {totalConversations}
+                    </div>
+                    <div style={{
+                        fontSize: isTVMode ? '0.85rem' : '0.75rem',
+                        color: 'rgba(255, 255, 255, 0.6)',
+                        fontWeight: 500
+                    }}>
+                        Handled by {sortedMembers.length} CS Members
+                    </div>
+                </div>
+
+                {/* Three Metric Cards */}
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr 1fr',
+                    gap: isTVMode ? '15px' : '12px',
+                    marginBottom: isTVMode ? '20px' : '15px'
+                }}>
+                    <div style={{
+                        background: 'rgba(67, 233, 123, 0.12)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        borderRadius: '16px',
+                        padding: isTVMode ? '20px' : '18px',
+                        textAlign: 'center',
+                        border: '1px solid rgba(67, 233, 123, 0.3)',
+                        boxShadow: '0 8px 25px rgba(67, 233, 123, 0.15)'
+                    }}>
+                        <div style={{
+                            fontSize: isTVMode ? '0.75rem' : '0.7rem',
+                            color: 'rgba(67, 233, 123, 0.9)',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '1px',
+                            marginBottom: '8px'
+                        }}>
+                            ✅ Resolved
+                        </div>
+                        <div style={{
+                            fontSize: isTVMode ? '3rem' : '2.5rem',
+                            fontWeight: 900,
+                            color: '#43e97b',
+                            lineHeight: 1,
+                            textShadow: '0 2px 15px rgba(67, 233, 123, 0.4)'
+                        }}>
+                            {totalResolved}
+                        </div>
+                    </div>
+
+                    <div style={{
+                        background: 'rgba(250, 112, 154, 0.12)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        borderRadius: '16px',
+                        padding: isTVMode ? '20px' : '18px',
+                        textAlign: 'center',
+                        border: '1px solid rgba(250, 112, 154, 0.3)',
+                        boxShadow: '0 8px 25px rgba(250, 112, 154, 0.15)'
+                    }}>
+                        <div style={{
+                            fontSize: isTVMode ? '0.75rem' : '0.7rem',
+                            color: 'rgba(250, 112, 154, 0.9)',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '1px',
+                            marginBottom: '8px'
+                        }}>
+                            ⏳ Pending
+                        </div>
+                        <div style={{
+                            fontSize: isTVMode ? '3rem' : '2.5rem',
+                            fontWeight: 900,
+                            color: '#fa709a',
+                            lineHeight: 1,
+                            textShadow: '0 2px 15px rgba(250, 112, 154, 0.4)'
+                        }}>
+                            {totalPending}
+                        </div>
+                    </div>
+
+                    <div style={{
+                        background: 'rgba(102, 126, 234, 0.12)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        borderRadius: '16px',
+                        padding: isTVMode ? '20px' : '18px',
+                        textAlign: 'center',
+                        border: '1px solid rgba(102, 126, 234, 0.3)',
+                        boxShadow: '0 8px 25px rgba(102, 126, 234, 0.15)'
+                    }}>
+                        <div style={{
+                            fontSize: isTVMode ? '0.75rem' : '0.7rem',
+                            color: 'rgba(102, 126, 234, 0.9)',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '1px',
+                            marginBottom: '8px'
+                        }}>
+                            📊 Success Rate
+                        </div>
+                        <div style={{
+                            fontSize: isTVMode ? '3rem' : '2.5rem',
+                            fontWeight: 900,
+                            color: '#667eea',
+                            lineHeight: 1,
+                            textShadow: '0 2px 15px rgba(102, 126, 234, 0.4)'
+                        }}>
+                            {avgResolutionRate}%
+                        </div>
+                    </div>
+                </div>
+
+                {/* Leaderboard */}
+                <div style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    borderRadius: '20px',
+                    padding: isTVMode ? '25px' : '20px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
+                    flex: '1 1 auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    minHeight: 0
+                }}>
+                    <div style={{
+                        fontSize: isTVMode ? '1.2rem' : '1.1rem',
+                        fontWeight: 700,
+                        color: '#ffffff',
+                        marginBottom: isTVMode ? '18px' : '15px',
+                        textAlign: 'center',
+                        paddingBottom: isTVMode ? '12px' : '10px',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
+                    }}>
+                        🏆 Top Performers ({sortedMembers.length})
+                    </div>
+
+                    <div style={{
+                        overflow: 'auto',
+                        flex: '1 1 auto'
+                    }}>
+                        {sortedMembers.length > 0 ? (
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: isTVMode ? '10px' : '8px'
+                            }}>
+                                {sortedMembers.map((member, index) => {
+                                    const isTop3 = index < 3;
+                                    const medals = ['🥇', '🥈', '🥉'];
+
+                                    return (
+                                        <div key={member.id} style={{
+                                            background: isTop3
+                                                ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%)'
+                                                : 'rgba(255, 255, 255, 0.03)',
+                                            borderRadius: '14px',
+                                            padding: isTVMode ? '16px 18px' : '14px 16px',
+                                            boxShadow: isTop3 ? '0 4px 20px rgba(251, 191, 36, 0.2)' : '0 2px 10px rgba(0, 0, 0, 0.2)',
+                                            border: isTop3 ? '1px solid rgba(251, 191, 36, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+                                            transition: 'all 0.3s ease',
+                                            cursor: 'pointer',
+                                            display: 'grid',
+                                            gridTemplateColumns: '40px 2fr 1fr 1fr 1fr 1fr',
+                                            gap: isTVMode ? '15px' : '12px',
+                                            alignItems: 'center'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.transform = 'translateX(5px)';
+                                            e.currentTarget.style.background = isTop3
+                                                ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(245, 158, 11, 0.25) 100%)'
+                                                : 'rgba(255, 255, 255, 0.08)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = 'translateX(0)';
+                                            e.currentTarget.style.background = isTop3
+                                                ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%)'
+                                                : 'rgba(255, 255, 255, 0.03)';
+                                        }}>
+                                            <div style={{
+                                                fontSize: isTVMode ? '1.5rem' : '1.3rem',
+                                                fontWeight: 900,
+                                                color: isTop3 ? '#fbbf24' : 'rgba(255, 255, 255, 0.5)',
+                                                textAlign: 'center'
+                                            }}>
+                                                {isTop3 ? medals[index] : `#${index + 1}`}
+                                            </div>
+                                            <div style={{
+                                                fontSize: isTVMode ? '0.95rem' : '0.9rem',
+                                                fontWeight: 700,
+                                                color: '#ffffff'
+                                            }}>
+                                                {member.name}
+                                            </div>
+                                            <div style={{ textAlign: 'center' }}>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '0.6rem' : '0.55rem',
+                                                    color: 'rgba(255, 255, 255, 0.5)',
+                                                    fontWeight: 600,
+                                                    marginBottom: '4px'
+                                                }}>
+                                                    Total
+                                                </div>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '1.4rem' : '1.2rem',
+                                                    fontWeight: 900,
+                                                    color: '#4facfe'
+                                                }}>
+                                                    {member.total}
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'center' }}>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '0.6rem' : '0.55rem',
+                                                    color: 'rgba(255, 255, 255, 0.5)',
+                                                    fontWeight: 600,
+                                                    marginBottom: '4px'
+                                                }}>
+                                                    Resolved
+                                                </div>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '1.4rem' : '1.2rem',
+                                                    fontWeight: 900,
+                                                    color: '#43e97b'
+                                                }}>
+                                                    {member.resolved}
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'center' }}>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '0.6rem' : '0.55rem',
+                                                    color: 'rgba(255, 255, 255, 0.5)',
+                                                    fontWeight: 600,
+                                                    marginBottom: '4px'
+                                                }}>
+                                                    Pending
+                                                </div>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '1.4rem' : '1.2rem',
+                                                    fontWeight: 900,
+                                                    color: '#fa709a'
+                                                }}>
+                                                    {member.pending}
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'center' }}>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '0.6rem' : '0.55rem',
+                                                    color: 'rgba(255, 255, 255, 0.5)',
+                                                    fontWeight: 600,
+                                                    marginBottom: '4px'
+                                                }}>
+                                                    Rate
+                                                </div>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '1.2rem' : '1rem',
+                                                    fontWeight: 900,
+                                                    color: '#667eea'
+                                                }}>
+                                                    {member.resolutionRate}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div style={{
+                                textAlign: 'center',
+                                padding: '40px',
+                                color: 'rgba(255, 255, 255, 0.5)'
+                            }}>
+                                <div style={{ fontSize: '3rem', marginBottom: '16px' }}>💬</div>
+                                <div style={{ fontSize: '1.2rem', fontWeight: 600, color: '#ffffff' }}>No Data Yet</div>
+                                <div style={{ fontSize: '0.9rem', marginTop: '8px' }}>
+                                    Data will appear when CS members handle conversations
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // Render Member Reviews Slide
+    const renderMemberReviewsSlide = () => {
+        // Calculate member stats
+        const memberReviewStats = {};
+
+        // Initialize stats for all CS members
+        membersData
+            .filter(member => member.role === 'CS')
+            .forEach(member => {
+                memberReviewStats[member.email] = {
+                    id: member.id,
+                    name: member.fullName,
+                    email: member.email,
+                    totalReviews: 0,
+                    totalRating: 0,
+                    avgRating: 0,
+                    ratings: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+                };
+            });
+
+        // Count reviews for each member using supporter email
+        console.log('Total reviews to process:', reviewsData.length);
+        console.log('Sample review data (first 3):', reviewsData.slice(0, 3));
+        console.log('Available member emails:', Object.keys(memberReviewStats));
+
+        let matchedCount = 0;
+        let unmatchedCount = 0;
+        const unmatchedEmails = new Set();
+
+        reviewsData.forEach(review => {
+            const supporterEmail = review.supporter;
+            const rating = parseInt(review.reviewRating) || 0;
+
+            if (supporterEmail && memberReviewStats[supporterEmail]) {
+                memberReviewStats[supporterEmail].totalReviews += 1;
+                memberReviewStats[supporterEmail].totalRating += rating;
+                if (rating >= 1 && rating <= 5) {
+                    memberReviewStats[supporterEmail].ratings[rating] =
+                        (memberReviewStats[supporterEmail].ratings[rating] || 0) + 1;
+                }
+                matchedCount++;
+            } else {
+                unmatchedCount++;
+                if (supporterEmail) {
+                    unmatchedEmails.add(supporterEmail);
+                }
+            }
+        });
+
+        console.log('Matched reviews:', matchedCount);
+        console.log('Unmatched reviews:', unmatchedCount);
+        console.log('Unmatched supporter emails:', Array.from(unmatchedEmails));
+        console.log('Member stats after processing:', Object.values(memberReviewStats).filter(s => s.totalReviews > 0));
+
+        // Calculate average rating
+        Object.values(memberReviewStats).forEach(stat => {
+            stat.avgRating = stat.totalReviews > 0
+                ? (stat.totalRating / stat.totalReviews).toFixed(1)
+                : 0;
+        });
+
+        // Sort by total reviews (descending)
+        const sortedMembers = Object.values(memberReviewStats)
+            .filter(stat => stat.totalReviews > 0)
+            .sort((a, b) => b.totalReviews - a.totalReviews);
+
+        // Calculate totals
+        const totalReviews = sortedMembers.reduce((sum, member) => sum + member.totalReviews, 0);
+        const overallAvgRating = totalReviews > 0
+            ? (sortedMembers.reduce((sum, member) => sum + parseFloat(member.avgRating) * member.totalReviews, 0) / totalReviews).toFixed(1)
+            : 0;
+
+        // Count 5-star reviews
+        const fiveStarReviews = sortedMembers.reduce((sum, member) => sum + (member.ratings[5] || 0), 0);
+
+        return (
+            <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+                padding: isTVMode ? '40px' : '30px',
+                background: 'transparent',
+                position: 'relative'
+            }}>
+                {/* Header */}
+                <div style={{
+                    textAlign: 'center',
+                    marginBottom: isTVMode ? '20px' : '15px'
+                }}>
+                    <Title level={1} style={{
+                        color: '#ffffff',
+                        marginBottom: 4,
+                        fontSize: isTVMode ? '2rem' : '1.8rem',
+                        fontWeight: 700,
+                        margin: 0,
+                        textShadow: '0 2px 10px rgba(0, 0, 0, 0.3)'
+                    }}>
+                        ⭐ CS Member Reviews
+                    </Title>
+                    <Paragraph style={{
+                        fontSize: isTVMode ? '0.9rem' : '0.8rem',
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        margin: '4px 0 0 0',
+                        fontWeight: 500
+                    }}>
+                        This Month • Customer Satisfaction
+                    </Paragraph>
+                </div>
+
+                {/* Hero Section - Large KPI */}
+                <div style={{
+                    background: 'linear-gradient(135deg, rgba(240, 147, 251, 0.15) 0%, rgba(245, 87, 108, 0.15) 100%)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    borderRadius: '24px',
+                    padding: isTVMode ? '40px' : '35px',
+                    textAlign: 'center',
+                    marginBottom: isTVMode ? '20px' : '15px',
+                    border: '1px solid rgba(240, 147, 251, 0.3)',
+                    boxShadow: '0 15px 50px rgba(240, 147, 251, 0.2)'
+                }}>
+                    <div style={{
+                        fontSize: isTVMode ? '1rem' : '0.9rem',
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        fontWeight: 600,
+                        marginBottom: '10px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '2px'
+                    }}>
+                        Total Reviews
+                    </div>
+                    <div style={{
+                        fontSize: isTVMode ? '7rem' : '6rem',
+                        fontWeight: 900,
+                        color: '#ffffff',
+                        lineHeight: 1,
+                        textShadow: '0 4px 30px rgba(240, 147, 251, 0.5)',
+                        marginBottom: '10px'
+                    }}>
+                        {totalReviews}
+                    </div>
+                    <div style={{
+                        fontSize: isTVMode ? '0.85rem' : '0.75rem',
+                        color: 'rgba(255, 255, 255, 0.6)',
+                        fontWeight: 500
+                    }}>
+                        Received by {sortedMembers.length} CS Members
+                    </div>
+                </div>
+
+                {/* Three Metric Cards */}
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr 1fr',
+                    gap: isTVMode ? '15px' : '12px',
+                    marginBottom: isTVMode ? '20px' : '15px'
+                }}>
+                    <div style={{
+                        background: 'rgba(251, 191, 36, 0.12)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        borderRadius: '16px',
+                        padding: isTVMode ? '20px' : '18px',
+                        textAlign: 'center',
+                        border: '1px solid rgba(251, 191, 36, 0.3)',
+                        boxShadow: '0 8px 25px rgba(251, 191, 36, 0.15)'
+                    }}>
+                        <div style={{
+                            fontSize: isTVMode ? '0.75rem' : '0.7rem',
+                            color: 'rgba(251, 191, 36, 0.9)',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '1px',
+                            marginBottom: '8px'
+                        }}>
+                            ⭐ Avg Rating
+                        </div>
+                        <div style={{
+                            fontSize: isTVMode ? '3rem' : '2.5rem',
+                            fontWeight: 900,
+                            color: '#fbbf24',
+                            lineHeight: 1,
+                            textShadow: '0 2px 15px rgba(251, 191, 36, 0.4)'
+                        }}>
+                            {overallAvgRating}
+                        </div>
+                    </div>
+
+                    <div style={{
+                        background: 'rgba(67, 233, 123, 0.12)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        borderRadius: '16px',
+                        padding: isTVMode ? '20px' : '18px',
+                        textAlign: 'center',
+                        border: '1px solid rgba(67, 233, 123, 0.3)',
+                        boxShadow: '0 8px 25px rgba(67, 233, 123, 0.15)'
+                    }}>
+                        <div style={{
+                            fontSize: isTVMode ? '0.75rem' : '0.7rem',
+                            color: 'rgba(67, 233, 123, 0.9)',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '1px',
+                            marginBottom: '8px'
+                        }}>
+                            🌟 5-Star Reviews
+                        </div>
+                        <div style={{
+                            fontSize: isTVMode ? '3rem' : '2.5rem',
+                            fontWeight: 900,
+                            color: '#43e97b',
+                            lineHeight: 1,
+                            textShadow: '0 2px 15px rgba(67, 233, 123, 0.4)'
+                        }}>
+                            {fiveStarReviews}
+                        </div>
+                    </div>
+
+                    <div style={{
+                        background: 'rgba(102, 126, 234, 0.12)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        borderRadius: '16px',
+                        padding: isTVMode ? '20px' : '18px',
+                        textAlign: 'center',
+                        border: '1px solid rgba(102, 126, 234, 0.3)',
+                        boxShadow: '0 8px 25px rgba(102, 126, 234, 0.15)'
+                    }}>
+                        <div style={{
+                            fontSize: isTVMode ? '0.75rem' : '0.7rem',
+                            color: 'rgba(102, 126, 234, 0.9)',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '1px',
+                            marginBottom: '8px'
+                        }}>
+                            👥 Active Members
+                        </div>
+                        <div style={{
+                            fontSize: isTVMode ? '3rem' : '2.5rem',
+                            fontWeight: 900,
+                            color: '#667eea',
+                            lineHeight: 1,
+                            textShadow: '0 2px 15px rgba(102, 126, 234, 0.4)'
+                        }}>
+                            {sortedMembers.length}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Leaderboard */}
+                <div style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    borderRadius: '20px',
+                    padding: isTVMode ? '25px' : '20px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
+                    flex: '1 1 auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    minHeight: 0
+                }}>
+                    <div style={{
+                        fontSize: isTVMode ? '1.2rem' : '1.1rem',
+                        fontWeight: 700,
+                        color: '#ffffff',
+                        marginBottom: isTVMode ? '18px' : '15px',
+                        textAlign: 'center',
+                        paddingBottom: isTVMode ? '12px' : '10px',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
+                    }}>
+                        🏆 Top Rated CS Members ({sortedMembers.length})
+                    </div>
+
+                    <div style={{
+                        overflow: 'auto',
+                        flex: '1 1 auto'
+                    }}>
+                        {sortedMembers.length > 0 ? (
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: isTVMode ? '10px' : '8px'
+                            }}>
+                                {sortedMembers.map((member, index) => {
+                                    const isTop3 = index < 3;
+                                    const medals = ['🥇', '🥈', '🥉'];
+
+                                    return (
+                                        <div key={member.id} style={{
+                                            background: isTop3
+                                                ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%)'
+                                                : 'rgba(255, 255, 255, 0.03)',
+                                            borderRadius: '14px',
+                                            padding: isTVMode ? '16px 18px' : '14px 16px',
+                                            boxShadow: isTop3 ? '0 4px 20px rgba(251, 191, 36, 0.2)' : '0 2px 10px rgba(0, 0, 0, 0.2)',
+                                            border: isTop3 ? '1px solid rgba(251, 191, 36, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+                                            transition: 'all 0.3s ease',
+                                            cursor: 'pointer',
+                                            display: 'grid',
+                                            gridTemplateColumns: '40px 2fr 1fr 1fr',
+                                            gap: isTVMode ? '15px' : '12px',
+                                            alignItems: 'center'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.transform = 'translateX(5px)';
+                                            e.currentTarget.style.background = isTop3
+                                                ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.25) 0%, rgba(245, 158, 11, 0.25) 100%)'
+                                                : 'rgba(255, 255, 255, 0.08)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = 'translateX(0)';
+                                            e.currentTarget.style.background = isTop3
+                                                ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%)'
+                                                : 'rgba(255, 255, 255, 0.03)';
+                                        }}>
+                                            <div style={{
+                                                fontSize: isTVMode ? '1.5rem' : '1.3rem',
+                                                fontWeight: 900,
+                                                color: isTop3 ? '#fbbf24' : 'rgba(255, 255, 255, 0.5)',
+                                                textAlign: 'center'
+                                            }}>
+                                                {isTop3 ? medals[index] : `#${index + 1}`}
+                                            </div>
+                                            <div style={{
+                                                fontSize: isTVMode ? '0.95rem' : '0.9rem',
+                                                fontWeight: 700,
+                                                color: '#ffffff'
+                                            }}>
+                                                {member.name}
+                                            </div>
+                                            <div style={{ textAlign: 'center' }}>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '0.6rem' : '0.55rem',
+                                                    color: 'rgba(255, 255, 255, 0.5)',
+                                                    fontWeight: 600,
+                                                    marginBottom: '4px'
+                                                }}>
+                                                    Total
+                                                </div>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '1.4rem' : '1.2rem',
+                                                    fontWeight: 900,
+                                                    color: '#f5576c'
+                                                }}>
+                                                    {member.totalReviews}
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'center' }}>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '0.6rem' : '0.55rem',
+                                                    color: 'rgba(255, 255, 255, 0.5)',
+                                                    fontWeight: 600,
+                                                    marginBottom: '4px'
+                                                }}>
+                                                    Rating
+                                                </div>
+                                                <div style={{
+                                                    fontSize: isTVMode ? '1.2rem' : '1rem',
+                                                    fontWeight: 900,
+                                                    color: '#fbbf24'
+                                                }}>
+                                                    {member.avgRating}⭐
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div style={{
+                                textAlign: 'center',
+                                padding: '40px',
+                                color: 'rgba(255, 255, 255, 0.5)'
+                            }}>
+                                <div style={{ fontSize: '3rem', marginBottom: '16px' }}>⭐</div>
+                                <div style={{ fontSize: '1.2rem', fontWeight: 600, color: '#ffffff' }}>No Data Yet</div>
+                                <div style={{ fontSize: '0.9rem', marginTop: '8px' }}>
+                                    Data will appear when CS members receive reviews
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     const renderCurrentSlide = () => {
         switch (slides[currentSlide].id) {
             case 'team-performance':
@@ -1601,36 +2466,105 @@ const PublicDashboard = () => {
                 return renderResolutionSlide();
             case 'resolution-analysis':
                 return renderResolutionAnalysisSlide();
+            case 'member-conversations':
+                return renderMemberConversationsSlide();
+            case 'member-reviews':
+                return renderMemberReviewsSlide();
             default:
                 return renderTeamPerformanceSlide();
         }
     };
 
     return (
-        <div style={{
-            width: '100vw',
-            height: '100vh',
-            background: '#f8fafc',
-            overflow: 'hidden',
-            position: 'relative'
-        }}>
-            {/* Slide Content */}
-            <div style={{
-                position: 'relative',
-                background: '#ffffff',
-                borderRadius: '20px',
-                margin: isTVMode ? '20px' : '16px',
-                width: isTVMode ? 'calc(100% - 40px)' : 'calc(100% - 32px)',
-                height: isTVMode ? 'calc(100% - 40px)' : 'calc(100% - 32px)',
-                overflow: 'hidden',
-                transform: isTVMode ? 'none' : `scale(${zoomLevel})`,
-                transformOrigin: 'center center',
-                boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)'
-            }}>
-                {renderCurrentSlide()}
-            </div>
+        <>
+            {/* CSS Animations */}
+            <style>{`
+                @keyframes gradientShift {
+                    0%, 100% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                }
+                @keyframes float {
+                    0%, 100% { transform: translateY(0px) scale(1); }
+                    50% { transform: translateY(-20px) scale(1.05); }
+                }
+                @keyframes slideIn {
+                    from { opacity: 0; transform: translateY(30px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
 
-            {/* Slide Navigation */}
+            <div style={{
+                width: '100vw',
+                height: '100vh',
+                background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 35%, #334155 100%)',
+                backgroundSize: '200% 200%',
+                animation: 'gradientShift 15s ease infinite',
+                overflow: 'hidden',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+            }}>
+                {/* Animated Background Orbs */}
+                <div style={{
+                    position: 'absolute',
+                    width: '100%',
+                    height: '100%',
+                    opacity: 0.4,
+                    pointerEvents: 'none'
+                }}>
+                    <div style={{
+                        position: 'absolute',
+                        width: '600px',
+                        height: '600px',
+                        borderRadius: '50%',
+                        background: 'radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%)',
+                        top: '-10%',
+                        left: '-5%',
+                        animation: 'float 20s ease-in-out infinite',
+                        filter: 'blur(60px)'
+                    }} />
+                    <div style={{
+                        position: 'absolute',
+                        width: '500px',
+                        height: '500px',
+                        borderRadius: '50%',
+                        background: 'radial-gradient(circle, rgba(168, 85, 247, 0.3) 0%, transparent 70%)',
+                        bottom: '-10%',
+                        right: '-5%',
+                        animation: 'float 18s ease-in-out infinite 5s',
+                        filter: 'blur(60px)'
+                    }} />
+                </div>
+
+                {/* Main Content Container with Glassmorphism */}
+                <div style={{
+                    position: 'relative',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    backdropFilter: 'blur(40px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+                    borderRadius: '32px',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    // TV Mode: Use fixed dimensions and scale to fit
+                    width: isTVMode ? '1600px' : 'calc(100% - 32px)',
+                    height: isTVMode ? '900px' : 'calc(100% - 32px)',
+                    margin: isTVMode ? '0' : '16px',
+                    // Calculate scale to fit TV screen perfectly
+                    transform: isTVMode
+                        ? `scale(${Math.min(window.innerWidth / 1600, window.innerHeight / 900)})`
+                        : `scale(${zoomLevel})`,
+                    transformOrigin: 'center center',
+                    overflow: 'hidden',
+                    boxShadow: `
+                        0 30px 90px rgba(0, 0, 0, 0.6),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                        0 0 0 1px rgba(0, 0, 0, 0.1)
+                    `
+                }}>
+                    {renderCurrentSlide()}
+                </div>
+
+                {/* Slide Navigation */}
             {!isFullscreen && !isTVMode && (
                 <div style={{
                     position: 'absolute',
@@ -1867,7 +2801,8 @@ const PublicDashboard = () => {
                     </div>
                 </div>
             )}
-        </div>
+            </div>
+        </>
     );
 };
 
