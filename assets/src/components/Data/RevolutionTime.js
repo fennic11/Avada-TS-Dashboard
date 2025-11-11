@@ -368,8 +368,8 @@ const ResolutionTimeList = () => {
     const [selectedTeam, setSelectedTeam] = useState("");
     const [selectedGroup, setSelectedGroup] = useState("");
 
-    // Data range for fetching (3 months)
-    const [dataRange] = useState([
+    // Data range for fetching (3 months initially, will expand if user selects dates outside)
+    const [dataRange, setDataRange] = useState([
         dayjs().subtract(3, 'month'),
         dayjs()
     ]);
@@ -407,14 +407,15 @@ const ResolutionTimeList = () => {
 
             const startDate = dataRange[0].format('YYYY-MM-DD');
             const endDate = dataRange[1].format('YYYY-MM-DD');
-            console.log(`📊 Fetching data for 3 months: ${startDate} to ${endDate}`);
+            const duration = dataRange[1].diff(dataRange[0], 'month');
+            console.log(`📊 Fetching data for ${duration} months: ${startDate} to ${endDate}`);
             const results = await getResolutionTimes(startDate, endDate);
             const validCards = results.filter(card =>
                 !isNaN(Number(card.resolutionTime)) &&
                 Number(card.resolutionTime) > 0 &&
                 card.members?.some(id => memberIds.includes(id))
             );
-            console.log(`✅ Fetched ${validCards.length} cards for 3 months`);
+            console.log(`✅ Fetched ${validCards.length} cards`);
             setData(validCards);
         } catch (err) {
             console.error("❌ Lỗi xử lý dữ liệu:", err);
@@ -442,8 +443,8 @@ const ResolutionTimeList = () => {
             const previousYearStart = currentStartDate.subtract(1, 'year');
             const previousYearEnd = currentEndDate.subtract(1, 'year');
 
-            console.log('Current period (3 months):', currentStartDate.format('YYYY-MM-DD'), 'to', currentEndDate.format('YYYY-MM-DD'));
-            console.log('Previous year period (3 months):', previousYearStart.format('YYYY-MM-DD'), 'to', previousYearEnd.format('YYYY-MM-DD'));
+            console.log('Current period:', currentStartDate.format('YYYY-MM-DD'), 'to', currentEndDate.format('YYYY-MM-DD'));
+            console.log('Previous year period:', previousYearStart.format('YYYY-MM-DD'), 'to', previousYearEnd.format('YYYY-MM-DD'));
 
             // Fetch previous year data
             const previousYearResults = await getResolutionTimes(
@@ -478,6 +479,31 @@ const ResolutionTimeList = () => {
             setIsInitialLoad(false);
         }
     }, [isInitialLoad, fetchData, fetchTrendingData]);
+
+    // Check if filterRange is outside dataRange and fetch more data if needed
+    useEffect(() => {
+        if (!filterRange || !filterRange[0] || !filterRange[1]) return;
+        if (isInitialLoad) return; // Don't run on initial load
+
+        const needsRefetch =
+            filterRange[0].isBefore(dataRange[0].startOf('day')) ||
+            filterRange[1].isAfter(dataRange[1].endOf('day'));
+
+        if (needsRefetch) {
+            console.log('📊 Filter range is outside data range, fetching new data...');
+
+            // Expand dataRange to include filterRange
+            const newStartDate = filterRange[0].isBefore(dataRange[0])
+                ? filterRange[0]
+                : dataRange[0];
+            const newEndDate = filterRange[1].isAfter(dataRange[1])
+                ? filterRange[1]
+                : dataRange[1];
+
+            setDataRange([newStartDate, newEndDate]);
+            // fetchData will be called automatically by useEffect on dataRange change
+        }
+    }, [filterRange, dataRange, isInitialLoad]);
 
     // Update filtered data when filters change
     useEffect(() => {
@@ -583,7 +609,7 @@ const ResolutionTimeList = () => {
         resolutionTimeTS: groupAverageByDate(filteredData, "resolutionTimeTS")
     };
 
-    // Weekly trend data for 3-month line chart (uses all 3 months data, not filtered)
+    // Weekly trend data for line chart (uses all fetched data, not filtered)
     const weeklyTrendData = {
         resolutionTime: groupAverageByWeek(data, "resolutionTime"),
         firstActionTime: groupAverageByWeek(data, "firstActionTime"),
@@ -803,12 +829,6 @@ const ResolutionTimeList = () => {
                                 allowClear={false}
                                 style={{ width: '100%' }}
                                 placeholder={["Start date", "End date"]}
-                                disabledDate={(current) => {
-                                    // Disable dates outside the 3-month data range
-                                    if (!current) return false;
-                                    return current.isBefore(dataRange[0].startOf('day')) ||
-                                           current.isAfter(dataRange[1].endOf('day'));
-                                }}
                             />
                         </Col>
                         <Col xs={24} sm={12} md={4}>
@@ -917,7 +937,7 @@ const ResolutionTimeList = () => {
                                 {trendingData.previous.length > 0 && filterRange && filterRange[0] && filterRange[1] && (
                                     <Text style={{ fontSize: 12, color: '#64748b' }}>
                                         📈 Comparing: <strong>{filterRange[0].format('MMM DD, YYYY')} - {filterRange[1].format('MMM DD, YYYY')}</strong> vs{' '}
-                                        <strong>previous period</strong> • Data range: <strong>{dataRange[0].format('MMM DD')} - {dataRange[1].format('MMM DD, YYYY')}</strong> (3 months)
+                                        <strong>previous period</strong> • Data available: <strong>{dataRange[0].format('MMM DD')} - {dataRange[1].format('MMM DD, YYYY')}</strong>
                                     </Text>
                                 )}
                             </div>
@@ -1430,11 +1450,11 @@ const ResolutionTimeList = () => {
                             </Col>
                         </Row>
 
-                        {/* 3-Month Trend Line Chart */}
+                        {/* Weekly Trend Line Chart */}
                         <Card
                             title={
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <span style={{ fontWeight: 700, fontSize: 18 }}>📈 3-Month Weekly Resolution Time Trend</span>
+                                    <span style={{ fontWeight: 700, fontSize: 18 }}>📈 Weekly Resolution Time Trend</span>
                                     <Badge count={`${weeklyTrendData.resolutionTime.length} weeks`} style={{ backgroundColor: '#2563eb' }} />
                                 </div>
                             }
