@@ -1,16 +1,15 @@
 // src/App.js
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { Box, Container } from '@mui/material';
 import Login from './pages/Login';
 import DevZone from './components/DevZone';
 import { isAuthenticated, getCurrentUser } from './api/usersApi';
 import Header from './components/Header';
 import { SnackbarProvider } from 'notistack';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import { TABS, ROLES, hasTabAccess, getAccessibleTabs } from './utils/roles';
+import { hasTabAccess, getAccessibleTabs } from './utils/roles';
 
 
 // Import existing pages

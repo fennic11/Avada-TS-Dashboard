@@ -1,4 +1,4 @@
-import { API_URL, getAuthHeaders, handleResponse } from './apiConfig';
+import { API_URL, getAuthHeaders } from './apiConfig';
 
 const assignCard = {
     createAssignCards: async (assignCards) => {
