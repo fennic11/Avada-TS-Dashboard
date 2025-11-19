@@ -365,8 +365,8 @@ const ResolutionTimeList = () => {
 
     const [selectedApp, setSelectedApp] = useState("");
     const [selectedMember, setSelectedMember] = useState("");
-    const [selectedTeam, setSelectedTeam] = useState("");
-    const [selectedGroup, setSelectedGroup] = useState("");
+    const [selectedProductTeam, setSelectedProductTeam] = useState(""); // Product Team filter (Falcon, Solar, etc.)
+    const [selectedGroup, setSelectedGroup] = useState(""); // TS Group filter (TS1, TS2)
 
     // Data range for fetching (3 months initially, will expand if user selects dates outside)
     const [dataRange, setDataRange] = useState([
@@ -520,11 +520,11 @@ const ResolutionTimeList = () => {
 
         console.log(`📅 Filtered by date range: ${filtered.length} cards (from ${data.length} total)`);
 
-        // Then apply other filters (app, member, team, group, time range)
+        // Then apply other filters (app, member, product team, group, time range)
         filtered = filtered.filter((card) => {
             const hasApp = selectedApp ? card.labels?.some(l => l === selectedApp) : true;
             const hasMember = selectedMember ? card.members?.includes(selectedMember) : true;
-            const hasTeam = selectedTeam ? getCardTeam(card) === selectedTeam : true;
+            const hasProductTeam = selectedProductTeam ? getCardTeam(card) === selectedProductTeam : true;
             const hasGroup = selectedGroup ? getCardGroup(card) === selectedGroup : true;
 
             // Time range filter (hour of day)
@@ -534,7 +534,7 @@ const ResolutionTimeList = () => {
                 return cardHour >= timeRangeFilter.startHour && cardHour <= timeRangeFilter.endHour;
             })();
 
-            return hasApp && hasMember && hasTeam && hasGroup && hasTimeRange;
+            return hasApp && hasMember && hasProductTeam && hasGroup && hasTimeRange;
         });
 
         // Filter out cards that don't have any TS members
@@ -567,7 +567,7 @@ const ResolutionTimeList = () => {
             ...prev,
             current: filtered
         }));
-    }, [data, selectedApp, selectedMember, selectedTeam, selectedGroup, heatmapFilter, timeRangeFilter, filterRange]);
+    }, [data, selectedApp, selectedMember, selectedProductTeam, selectedGroup, heatmapFilter, timeRangeFilter, filterRange]);
 
     // Handle manual data fetch
     const handleFetchData = () => {
@@ -848,10 +848,10 @@ const ResolutionTimeList = () => {
                         <Col xs={24} sm={12} md={4}>
                             <Select
                                 allowClear
-                                placeholder="Select Team"
+                                placeholder="Select Product Team"
                                 style={{ width: '100%' }}
-                                value={selectedTeam}
-                                onChange={val => setSelectedTeam(val)}
+                                value={selectedProductTeam}
+                                onChange={val => setSelectedProductTeam(val)}
                             >
                                 <Select.Option value="">All Teams</Select.Option>
                                 {productTeams.map(team => (
@@ -926,8 +926,8 @@ const ResolutionTimeList = () => {
                                         📊 Showing <strong>{filteredData.length}</strong> cards
                                         {selectedApp && ` • App: ${selectedApp}`}
                                         {selectedMember && ` • Member: ${members.find(m => m.id === selectedMember)?.fullName}`}
-                                        {selectedTeam && ` • Team: ${selectedTeam}`}
-                                        {selectedGroup && ` • Group: ${selectedGroup}`}
+                                        {selectedProductTeam && ` • Product Team: ${selectedProductTeam}`}
+                                        {selectedGroup && ` • TS Group: ${selectedGroup}`}
                                         {timeRangeFilter.enabled && ` • Time: ${timeRangeFilter.startHour}:00-${timeRangeFilter.endHour}:00`}
                                         {heatmapFilter && ` • Heatmap: ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][heatmapFilter.weekday]} ${heatmapFilter.hour}:00`}
                                     </Text>
@@ -1707,14 +1707,14 @@ const ResolutionTimeList = () => {
                                                     const clearedFilteredData = data.filter((card) => {
                                                         const hasApp = selectedApp ? card.labels?.some(l => l === selectedApp) : true;
                                                         const hasMember = selectedMember ? card.members?.includes(selectedMember) : true;
-                                                        const hasTeam = selectedTeam ? getCardTeam(card) === selectedTeam : true;
+                                                        const hasProductTeam = selectedProductTeam ? getCardTeam(card) === selectedProductTeam : true;
                                                         const hasGroup = selectedGroup ? getCardGroup(card) === selectedGroup : true;
                                                         const hasTimeRange = !timeRangeFilter.enabled ? true : (() => {
                                                             const cardDate = new Date(card.createdAt);
                                                             const cardHour = cardDate.getHours();
                                                             return cardHour >= timeRangeFilter.startHour && cardHour <= timeRangeFilter.endHour;
                                                         })();
-                                                        return hasApp && hasMember && hasTeam && hasGroup && hasTimeRange;
+                                                        return hasApp && hasMember && hasProductTeam && hasGroup && hasTimeRange;
                                                     });
                                                     setFilteredData(clearedFilteredData);
                                                     setTrendingData(prev => ({

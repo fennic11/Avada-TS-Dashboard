@@ -45,6 +45,7 @@ const CardsDetail = () => {
     const [isCardDetailModalOpen, setIsCardDetailModalOpen] = useState(false);
     const [selectedApp, setSelectedApp] = useState('');
     const [selectedTSGroup, setSelectedTSGroup] = useState('');
+    const [selectedProductTeam, setSelectedProductTeam] = useState('');
     const [heatmapFilter, setHeatmapFilter] = useState(null);
     const [createdCardsHeatmapFilter, setCreatedCardsHeatmapFilter] = useState(null);
     const [heatmapFilterTS1, setHeatmapFilterTS1] = useState(null);
@@ -137,7 +138,18 @@ const CardsDetail = () => {
                 });
             });
         }
-        
+
+        // Apply product team filter if selected
+        if (selectedProductTeam) {
+            dataForCount = dataForCount.filter(card => {
+                const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+                return appLabels.some(label => {
+                    const app = appData.find(a => a.label_trello === label.name);
+                    return app && app.product_team === selectedProductTeam;
+                });
+            });
+        }
+
         return dataForCount.filter(card => Array.isArray(card.idMembers) && card.idMembers.includes(memberId)).length;
     };
 
@@ -271,26 +283,37 @@ const CardsDetail = () => {
         })
         : filteredByApp;
 
+    // Filter by product team if selected
+    const filteredByProductTeam = selectedProductTeam
+        ? filteredByTSGroup.filter(card => {
+            const appLabels = (card.labels || []).filter(l => l.name.startsWith('App:'));
+            return appLabels.some(label => {
+                const app = appData.find(a => a.label_trello === label.name);
+                return app && app.product_team === selectedProductTeam;
+            });
+        })
+        : filteredByTSGroup;
+
     // Filter by heatmap hour if selected (Completed Cards)
     const filteredByCompletedHeatmap = heatmapFilter !== null
-        ? filteredByTSGroup.filter(card => {
+        ? filteredByProductTeam.filter(card => {
             if (Array.isArray(card.actions) && card.dueComplete) {
-                const completeAction = [...card.actions].reverse().find(action => 
-                    action.type === 'updateCard' && 
+                const completeAction = [...card.actions].reverse().find(action =>
+                    action.type === 'updateCard' &&
                     action.data?.old?.dueComplete === false &&
-                    action.data?.card?.dueComplete === true && 
+                    action.data?.card?.dueComplete === true &&
                     action.date
                 );
-                
+
                 // Fallback: if no old.dueComplete found, look for any updateCard with dueComplete: true
-                const fallbackAction = !completeAction ? [...card.actions].reverse().find(action => 
-                    action.type === 'updateCard' && 
-                    action.data?.card?.dueComplete === true && 
+                const fallbackAction = !completeAction ? [...card.actions].reverse().find(action =>
+                    action.type === 'updateCard' &&
+                    action.data?.card?.dueComplete === true &&
                     action.date
                 ) : null;
-                
+
                 const finalAction = completeAction || fallbackAction;
-                
+
                 if (finalAction && finalAction.date) {
                     const hour = dayjs(finalAction.date).hour();
                     return hour === heatmapFilter;
@@ -298,7 +321,7 @@ const CardsDetail = () => {
             }
             return false;
         })
-        : filteredByApp;
+        : filteredByProductTeam;
 
     // Filter by created cards heatmap hour if selected
     const filteredByCreatedHeatmap = createdCardsHeatmapFilter !== null
@@ -574,7 +597,7 @@ const CardsDetail = () => {
     // Function to get completed cards heatmap data by team
     const getCompletedCardsHeatmapByTeam = (team) => {
         const heatmap = Array.from({ length: 24 }, () => ({ count: 0, cards: [] }));
-        const cardsToProcess = filteredByTSGroup;
+        const cardsToProcess = filteredByProductTeam;
         cardsToProcess.forEach(card => {
             if (card.dueComplete) {
                 // Check if card belongs to the specified team
@@ -647,7 +670,7 @@ const CardsDetail = () => {
     // Function to get created cards heatmap data by team
     const getCreatedCardsHeatmapByTeam = (team) => {
         const heatmap = Array.from({ length: 24 }, () => ({ count: 0, cards: [] }));
-        const cardsToProcess = filteredByTSGroup;
+        const cardsToProcess = filteredByProductTeam;
         cardsToProcess.forEach(card => {
             if (Array.isArray(card.actions)) {
                 const createAction = card.actions.find(action => action.type === 'createCard');
@@ -2657,6 +2680,66 @@ const CardsDetail = () => {
                                         '&.Mui-focused': { color: '#1565c0' }
                                     }
                                 }}>
+                                    <InputLabel>Product Team</InputLabel>
+                                    <Select
+                                        value={selectedProductTeam}
+                                        onChange={e => setSelectedProductTeam(e.target.value)}
+                                        label="Product Team"
+                                        MenuProps={{
+                                            PaperProps: {
+                                                sx: {
+                                                    borderRadius: 2,
+                                                    boxShadow: '0 4px 24px 0 #b6c2d933',
+                                                    mt: 1
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        <MenuItem value="">
+                                            <em>All</em>
+                                        </MenuItem>
+                                        {[...new Set(appData.map(app => app.product_team))].sort().map(team => (
+                                            <MenuItem key={team} value={team} sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 2,
+                                                py: 1.2,
+                                                px: 1.5,
+                                                borderRadius: 2,
+                                                fontWeight: 500,
+                                                backgroundColor: selectedProductTeam === team ? '#e3f2fd' : 'inherit',
+                                                '&:hover': {
+                                                    backgroundColor: '#e3e8ee'
+                                                }
+                                            }}>
+                                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                                    <Typography sx={{ fontWeight: 700, fontSize: 15, color: '#1976d2', lineHeight: 1 }}>{team}</Typography>
+                                                </Box>
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12} sm={6} md={2}>
+                                <FormControl fullWidth size="small" sx={{
+                                    background: 'white',
+                                    borderRadius: 2,
+                                    '& .MuiOutlinedInput-root': {
+                                        fontSize: 16,
+                                        fontWeight: 500,
+                                        background: 'white',
+                                        borderRadius: 2,
+                                        '& fieldset': { borderColor: '#e3e8ee' },
+                                        '&:hover fieldset': { borderColor: '#1976d2' },
+                                        '&.Mui-focused fieldset': { borderColor: '#1976d2', borderWidth: 2 }
+                                    },
+                                    '& .MuiInputLabel-root': {
+                                        color: '#1976d2',
+                                        fontWeight: 600,
+                                        fontSize: 15,
+                                        '&.Mui-focused': { color: '#1565c0' }
+                                    }
+                                }}>
                                     <InputLabel>TS</InputLabel>
                                     <Select
                                         value={selectedTS}
@@ -2730,7 +2813,7 @@ const CardsDetail = () => {
                             </Grid>
                         </Grid>
                         {/* Active filter chips */}
-                        {(selectedTS || selectedShift || selectedList || selectedApp || selectedTSGroup || heatmapFilter !== null || createdCardsHeatmapFilter !== null || heatmapFilterTS1 !== null || createdCardsHeatmapFilterTS1 !== null || heatmapFilterTS2 !== null || createdCardsHeatmapFilterTS2 !== null) && (
+                        {(selectedTS || selectedShift || selectedList || selectedApp || selectedTSGroup || selectedProductTeam || heatmapFilter !== null || createdCardsHeatmapFilter !== null || heatmapFilterTS1 !== null || createdCardsHeatmapFilterTS1 !== null || heatmapFilterTS2 !== null || createdCardsHeatmapFilterTS2 !== null) && (
                             <Box sx={{
                                 mt: 3,
                                 display: 'flex',
@@ -2816,8 +2899,26 @@ const CardsDetail = () => {
                                         onDelete={() => setSelectedTSGroup('')}
                                         color="secondary"
                                         size="small"
-                                        sx={{ 
-                                            fontWeight: 600, 
+                                        sx={{
+                                            fontWeight: 600,
+                                            fontSize: 14,
+                                            '& .MuiChip-deleteIcon': {
+                                                color: 'white',
+                                                '&:hover': {
+                                                    color: '#e3e8ee'
+                                                }
+                                            }
+                                        }}
+                                    />
+                                )}
+                                {selectedProductTeam && (
+                                    <Chip
+                                        label={`Product Team: ${selectedProductTeam}`}
+                                        onDelete={() => setSelectedProductTeam('')}
+                                        color="primary"
+                                        size="small"
+                                        sx={{
+                                            fontWeight: 600,
                                             fontSize: 14,
                                             '& .MuiChip-deleteIcon': {
                                                 color: 'white',
