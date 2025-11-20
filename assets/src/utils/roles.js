@@ -28,7 +28,8 @@ export const ROLES = {
     DEV: 'dev',
     TS_LEAD: 'ts-lead',
     PM: 'pm',
-    CSL: 'csl'
+    CSL: 'csl',
+    FENNICADMIN: "FennicAdmin"
 };
 
 // Define permissions for each role

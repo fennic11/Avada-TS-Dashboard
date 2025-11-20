@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Card, Typography, Row, Col, Button, Select, DatePicker, Spin, Tag, Space, Statistic, Badge, Checkbox } from 'antd';
-import { getDevFixingCards } from '../../api/trelloApi';
+import { Table, Card, Typography, Row, Col, Button, Select, DatePicker, Spin, Tag, Space, Statistic, Badge, Checkbox, message } from 'antd';
+import { getDevFixingCards, addCommentToCard, updateCardDueComplete } from '../../api/trelloApi';
 import appData from '../../data/app.json';
-import { ReloadOutlined, BugOutlined, TeamOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { ReloadOutlined, BugOutlined, TeamOutlined, AppstoreOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import CardDetailModal from '../CardDetailModal';
@@ -36,6 +36,7 @@ export default function DevFixingDashboard() {
     pending: true,
     done: false
   });
+  const [processingCards, setProcessingCards] = useState(new Set());
 
   // List IDs for different statuses
   const LIST_IDS = {
@@ -313,6 +314,38 @@ export default function DevFixingDashboard() {
       avgWait: parseFloat(stats.avgWaitTime)
     }));
 
+  // Handle marking card as done
+  const handleDoneCard = async (cardId, cardName) => {
+    try {
+      // Add to processing set
+      setProcessingCards(prev => new Set(prev).add(cardId));
+
+      // Add comment to card
+      const commentText = "@card case này done rồi nhé, team nhớ rep khách và kéo card nhé ạ";
+      await addCommentToCard(cardId, commentText);
+
+      // Mark card as done
+      await updateCardDueComplete(cardId, true);
+
+      // Show success message
+      message.success(`Card "${cardName}" đã được đánh dấu hoàn thành!`);
+
+      // Refresh data
+      await fetchData();
+
+    } catch (error) {
+      console.error('Error marking card as done:', error);
+      message.error(`Không thể đánh dấu card hoàn thành: ${error.message}`);
+    } finally {
+      // Remove from processing set
+      setProcessingCards(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(cardId);
+        return newSet;
+      });
+    }
+  };
+
   // Table columns
   const columns = [
     {
@@ -413,11 +446,48 @@ export default function DevFixingDashboard() {
       ) : (
         <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Không có</span>
       )
+    },
+    {
+      title: 'Action',
+      key: 'action',
+      width: 120,
+      align: 'center',
+      render: (_, record) => {
+        const isProcessing = processingCards.has(record.id);
+        const isDone = record.dueComplete;
+
+        return (
+          <Button
+            type="primary"
+            icon={<CheckCircleOutlined />}
+            size="small"
+            loading={isProcessing}
+            disabled={isDone || isProcessing}
+            onClick={() => handleDoneCard(record.id, record.name)}
+            style={{
+              backgroundColor: isDone ? '#52c41a' : undefined,
+              borderColor: isDone ? '#52c41a' : undefined,
+            }}
+          >
+            {isDone ? 'Done' : 'Mark Done'}
+          </Button>
+        );
+      }
     }
   ];
 
   return (
     <div style={{ width: '100%', minHeight: '100vh', background: '#f5f5f5', padding: 0 }}>
+      <style>
+        {`
+          .done-card-row {
+            background-color: #d1fae5 !important;
+          }
+          .done-card-row:hover > td {
+            background-color: #a7f3d0 !important;
+          }
+        `}
+      </style>
       <div style={{ maxWidth: '100%', margin: '0 auto', padding: '24px' }}>
         
         {/* Header */}
@@ -889,6 +959,7 @@ export default function DevFixingDashboard() {
               style={{ width: '100%' }}
               scroll={{ x: 1000 }}
               size="middle"
+              rowClassName={(record) => record.dueComplete ? 'done-card-row' : ''}
             />
           </Spin>
         </Card>
