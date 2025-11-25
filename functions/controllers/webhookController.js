@@ -4,6 +4,7 @@ const cardService = require('../services/cardService');
 
 const receiveWebhookController = async (req, res) => {
     if (req.body.action.type === 'createCard') {
+        console.log(req.body.action);
         const data = await trelloService.getCardById(req.body.action.data.card.id);
         await cardService.pushCardToFirebase(data);
     }
