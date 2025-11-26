@@ -65,7 +65,8 @@ export const ROLE_PERMISSIONS = {
             TABS.BUGS,
             TABS.BA_PAGE,
             TABS.ISSUES,
-            TABS.DEV_RESOLUTION_TIME
+            TABS.DEV_RESOLUTION_TIME,
+            TABS.TS_LEAD
         ],
         description: 'Access to PM related features'
     },
