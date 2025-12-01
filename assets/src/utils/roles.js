@@ -56,6 +56,7 @@ export const ROLE_PERMISSIONS = {
             TABS.BUGS,
             TABS.BA_PAGE,
             TABS.RESOLUTION_TIME,
+            TABS.DEV_RESOLUTION_TIME,
             TABS.PERFORMANCE_TS
         ],
         description: 'Access to BA related features'

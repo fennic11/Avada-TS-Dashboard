@@ -32,16 +32,16 @@
     "name": "Done"
   },
   {
-    "id": "69085c527c0ee3473ab077fb",
-    "name": "Done-T11-2025"
-  },
-  {
     "id": "663ae7d6feac5f2f8d7a1c86",
     "name": "Fix done from dev"
   },
   {
     "id": "64dde9dc1fa67c936d8fec89",
     "name": "Billing"
+  },
+  {
+    "id": "691689f87f0aaba1ff62f90c",
+    "name": "Frozen Store"
   },
   {
     "id": "67931344e4b8ba8d2295df93",
@@ -106,6 +106,10 @@
   {
     "id": "68e3203c485d993dc59dfe86",
     "name": "Done-T10-2025"
+  },
+  {
+    "id": "69085c527c0ee3473ab077fb",
+    "name": "Done-T11-2025"
   },
   {
     "id": "64a4d4612b86d11acb86a591",
@@ -402,6 +406,14 @@
   {
     "id": "69096a94aae4f1d9aceb867f",
     "name": "SpeedUp-T10-2025"
+  },
+  {
+    "id": "69118b9f4f09984e92efa633",
+    "name": "trial Shop T11/2025"
+  },
+  {
+    "id": "692d3e5d6fc121c08bdb73db",
+    "name": "FixDoneFromDev-T11-2025"
   },
   {
     "id": "67b297d9788d3e7d985323c7",
