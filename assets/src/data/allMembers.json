@@ -452,5 +452,23 @@
       "username": "aov_avada",
       "role": "TS",
       "group": "TS1"
+    },
+    {
+      "id": "68b7bfeacf92bddcc4abe0e5",
+      "fullName": "Olivia",
+      "username": "olivia01_avada",
+      "role": "CS",
+      "group": "CS4",
+      "kpiName": "AnNT",
+      "slackId": "U069GRY1A7Q"
+    },
+    {
+      "id": "68be59040cae7e7c11783883",
+      "fullName": "Andy_Avada",
+      "username": "andy_avada",
+      "role": "CS",
+      "group": "CS2",
+      "kpiName": "AnhBD",
+      "slackId": "U09DC212XN0"
     }
   ]
