@@ -212,14 +212,14 @@ const ModalKPIDetail = ({ open, onClose, kpiData }) => {
                         </Card>
                     </Grid>
 
-                    {/* Shift Details */}
+                    {/* Shift Summary */}
                     {shiftDetails.length > 0 && (
                         <Grid item xs={12} md={6}>
                             <Card sx={{ height: '100%' }}>
                                 <CardContent>
                                     <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: '#3498db' }}>
                                         <WorkIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                                        Chi tiết Ca trực
+                                        Tổng hợp Ca trực
                                     </Typography>
                                     <TableContainer component={Paper} sx={{ maxHeight: 300 }}>
                                         <Table size="small">
@@ -246,6 +246,77 @@ const ModalKPIDetail = ({ open, onClose, kpiData }) => {
                                                         </TableCell>
                                                     </TableRow>
                                                 ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    )}
+
+                    {/* Shift Details - Full List */}
+                    {shiftDetails.length > 0 && (
+                        <Grid item xs={12}>
+                            <Card>
+                                <CardContent>
+                                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: '#3498db' }}>
+                                        <WorkIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                                        Chi tiết từng Ca trực ({shiftDetails.length} ca)
+                                    </Typography>
+                                    <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+                                        <Table size="small" stickyHeader>
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f8f9fa' }}>STT</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f8f9fa' }}>Ngày</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f8f9fa' }}>Ca trực</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: '#f8f9fa' }} align="center">Điểm</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {shiftDetails
+                                                    .sort((a, b) => new Date(a.date) - new Date(b.date))
+                                                    .map((shift, index) => {
+                                                        const shiftDate = shift.date ? new Date(shift.date) : null;
+                                                        const formattedDate = shiftDate
+                                                            ? shiftDate.toLocaleDateString('vi-VN', {
+                                                                weekday: 'short',
+                                                                day: '2-digit',
+                                                                month: '2-digit',
+                                                                year: 'numeric'
+                                                            })
+                                                            : 'N/A';
+
+                                                        return (
+                                                            <TableRow
+                                                                key={index}
+                                                                sx={{
+                                                                    '&:nth-of-type(odd)': { backgroundColor: '#f8f9fa' },
+                                                                    '&:hover': { backgroundColor: '#e3f2fd' }
+                                                                }}
+                                                            >
+                                                                <TableCell>{index + 1}</TableCell>
+                                                                <TableCell>
+                                                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                                                        {formattedDate}
+                                                                    </Typography>
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <Chip
+                                                                        label={shift.shiftName}
+                                                                        size="small"
+                                                                        color="primary"
+                                                                        variant="outlined"
+                                                                    />
+                                                                </TableCell>
+                                                                <TableCell align="center">
+                                                                    <Typography sx={{ fontWeight: 'bold', color: '#3498db' }}>
+                                                                        {shift.rate?.toLocaleString() || 0}
+                                                                    </Typography>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    })}
                                             </TableBody>
                                         </Table>
                                     </TableContainer>
