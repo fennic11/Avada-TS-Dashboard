@@ -958,7 +958,8 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
             updateWorkflowMoves: [],
             waitingToFixMoves: [],
             customerConfirmationMoves: [],
-            doneMoves: []
+            doneMoves: [],
+            markCompleteAction: null
         };
 
         // Sort actions by date (oldest first)
@@ -1057,6 +1058,29 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                             avatar: memberAvatar
                         }
                     });
+                }
+            }
+
+            // Track mark complete action
+            if (action.type === 'updateCard' && action.data?.old?.dueComplete !== undefined) {
+                if (action.data.card?.dueComplete === true) {
+                    const memberId = action.memberCreator?.id;
+                    const memberName = action.memberCreator?.fullName || action.memberCreator?.username || 'Unknown';
+                    const memberInitials = action.memberCreator?.initials || 'U';
+                    const memberAvatar = action.memberCreator?.avatarUrl ||
+                        (action.memberCreator?.avatarHash ?
+                            `https://trello-members.s3.amazonaws.com/${memberId}/${action.memberCreator.avatarHash}/170.png` :
+                            null);
+
+                    journey.markCompleteAction = {
+                        date: actionDate,
+                        member: {
+                            id: memberId,
+                            name: memberName,
+                            initials: memberInitials,
+                            avatar: memberAvatar
+                        }
+                    };
                 }
             }
         });
@@ -1757,12 +1781,61 @@ const CardDetailModal = ({ open, onClose, cardId }) => {
                                             color: '#1e293b',
                                             fontWeight: 500
                                         }}>
-                                            {analyzeCardJourney.cardCreated ? 
-                                                formatDate(analyzeCardJourney.cardCreated) : 
+                                            {analyzeCardJourney.cardCreated ?
+                                                formatDate(analyzeCardJourney.cardCreated) :
                                                 'Không tìm thấy thông tin'
                                             }
                                         </Typography.Text>
                                     </div>
+
+                                    {/* Mark Complete */}
+                                    {analyzeCardJourney.markCompleteAction && (
+                                        <div style={{
+                                            padding: 16,
+                                            backgroundColor: 'rgba(76, 175, 80, 0.05)',
+                                            borderRadius: '8px',
+                                            border: '1px solid rgba(76, 175, 80, 0.1)'
+                                        }}>
+                                            <Typography.Text style={{ fontWeight: 600, color: '#2E7D32', fontSize: '14px' }}>
+                                                ✅ Card được Mark Complete:
+                                            </Typography.Text>
+                                            <div style={{
+                                                marginTop: 8,
+                                                padding: '8px 12px',
+                                                backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                                                borderRadius: '6px',
+                                                fontSize: '12px',
+                                                border: '1px solid rgba(76, 175, 80, 0.2)'
+                                            }}>
+                                                <div style={{ fontWeight: 600, marginBottom: 4, color: '#1e293b' }}>
+                                                    {formatDate(analyzeCardJourney.markCompleteAction.date)}
+                                                </div>
+                                                {analyzeCardJourney.markCompleteAction.member && (
+                                                    <div style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 6,
+                                                        marginTop: 4
+                                                    }}>
+                                                        <Avatar
+                                                            src={analyzeCardJourney.markCompleteAction.member.avatar}
+                                                            size={20}
+                                                            style={{
+                                                                backgroundColor: '#4CAF50',
+                                                                fontSize: '10px',
+                                                                fontWeight: 500
+                                                            }}
+                                                        >
+                                                            {analyzeCardJourney.markCompleteAction.member.initials}
+                                                        </Avatar>
+                                                        <span style={{ color: '#2E7D32', fontWeight: 600 }}>
+                                                            {analyzeCardJourney.markCompleteAction.member.name}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* 2. Doing Moves */}
                                     <div style={{ 

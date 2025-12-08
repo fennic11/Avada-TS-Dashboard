@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     Box,
     Paper,
@@ -23,18 +23,29 @@ const LiveAction = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [lastRefresh, setLastRefresh] = useState(null);
     const [selectedCardId, setSelectedCardId] = useState(null);
+    const [newActionIds, setNewActionIds] = useState(new Set());
+    const previousActionIds = useRef(new Set());
 
     // Get action type label and color
-    const getActionTypeInfo = (type) => {
+    const getActionTypeInfo = (type, action) => {
+        // Check for Mark complete action
+        if (type === 'updateCard' && action?.data?.old?.dueComplete !== undefined) {
+            if (action.data.card?.dueComplete) {
+                return { label: 'Mark Complete', color: 'success' };
+            } else {
+                return { label: 'Unmark Complete', color: 'warning' };
+            }
+        }
+
         switch (type) {
             case 'createCard':
-                return { label: 'Tao Card', color: 'success' };
+                return { label: 'Create Card', color: 'success' };
             case 'updateCard':
-                return { label: 'Cap nhat', color: 'info' };
+                return { label: 'Update', color: 'info' };
             case 'addMemberToCard':
-                return { label: 'Them Member', color: 'primary' };
+                return { label: 'Add Member', color: 'primary' };
             case 'removeMemberFromCard':
-                return { label: 'Xoa Member', color: 'warning' };
+                return { label: 'Remove Member', color: 'warning' };
             case 'commentCard':
                 return { label: 'Comment', color: 'secondary' };
             default:
@@ -59,8 +70,31 @@ const LiveAction = () => {
                 new Date(b.date) - new Date(a.date)
             );
 
+            // Find new actions (not in previous list)
+            const currentIds = new Set(sortedActions.map(a => a.id));
+            const newIds = new Set();
+
+            if (previousActionIds.current.size > 0) {
+                sortedActions.forEach(action => {
+                    if (!previousActionIds.current.has(action.id)) {
+                        newIds.add(action.id);
+                    }
+                });
+            }
+
+            // Update previous action ids for next comparison
+            previousActionIds.current = currentIds;
+
+            setNewActionIds(newIds);
             setActions(sortedActions);
             setLastRefresh(now.format('HH:mm:ss'));
+
+            // Clear highlight after 5 seconds
+            if (newIds.size > 0) {
+                setTimeout(() => {
+                    setNewActionIds(new Set());
+                }, 5000);
+            }
         } catch (error) {
             console.error('Error fetching actions:', error);
             setActions([]);
@@ -128,7 +162,7 @@ const LiveAction = () => {
                                 </TableRow>
                             ) : (
                                 actions.map((action, index) => {
-                                    const typeInfo = getActionTypeInfo(action.type);
+                                    const typeInfo = getActionTypeInfo(action.type, action);
                                     const cardName = action.data?.card?.name || '-';
                                     const memberName = action.memberCreator?.fullName || action.memberCreator?.username || '-';
 
@@ -142,7 +176,10 @@ const LiveAction = () => {
                                         if (action.data?.listAfter) {
                                             details = `Move: "${action.data.listBefore?.name}" -> "${action.data.listAfter?.name}"`;
                                         } else if (action.data?.old?.dueComplete !== undefined) {
-                                            details = action.data.card?.dueComplete ? 'Mark complete' : 'Unmark complete';
+                                            const byMember = action.memberCreator?.fullName || action.memberCreator?.username || '';
+                                            details = action.data.card?.dueComplete
+                                                ? `Mark complete by ${byMember}`
+                                                : `Unmark complete by ${byMember}`;
                                         } else if (action.data?.old?.name) {
                                             details = `Rename from "${action.data.old.name}"`;
                                         }
@@ -151,6 +188,7 @@ const LiveAction = () => {
                                     }
 
                                     const cardId = action.data?.card?.id;
+                                    const isNew = newActionIds.has(action.id);
 
                                     return (
                                         <TableRow
@@ -158,8 +196,14 @@ const LiveAction = () => {
                                             onClick={() => cardId && setSelectedCardId(cardId)}
                                             sx={{
                                                 cursor: cardId ? 'pointer' : 'default',
-                                                '&:hover': { backgroundColor: cardId ? '#e3f2fd' : '#f9f9f9' },
-                                                '&:nth-of-type(odd)': { backgroundColor: '#fafafa' }
+                                                backgroundColor: isNew ? '#c8e6c9' : 'inherit',
+                                                animation: isNew ? 'highlight 0.5s ease-in-out' : 'none',
+                                                '@keyframes highlight': {
+                                                    '0%': { backgroundColor: '#81c784' },
+                                                    '100%': { backgroundColor: '#c8e6c9' }
+                                                },
+                                                '&:hover': { backgroundColor: isNew ? '#a5d6a7' : (cardId ? '#e3f2fd' : '#f9f9f9') },
+                                                '&:nth-of-type(odd)': { backgroundColor: isNew ? '#c8e6c9' : '#fafafa' }
                                             }}
                                         >
                                             <TableCell>{index + 1}</TableCell>
