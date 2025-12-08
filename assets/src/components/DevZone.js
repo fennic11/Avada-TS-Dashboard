@@ -27,7 +27,9 @@ import {
     createWebhook,
     getWebhooks,
     deleteWebhook,
-    getAddMemberToCardActionsByDate
+    getAddMemberToCardActionsByDate,
+    getCreateCardAction,
+    getCardById
 } from "../api/trelloApi";
 import { calculateResolutionTime } from "../utils/resolutionTime";
 import { postCards } from "../api/cardsApi";
@@ -45,9 +47,21 @@ import errorAssignCard from "../api/errorAssignCardApi";
 import listsIdData from "../data/listsId.json";
 import rateKpiData from "../data/rateKpi.json";
 import ShortUrlGenerator from "./ShortUrlGenerator";
+import { saveCardsToDatabase, getCardsCreate } from "../api/cardCreateApi";
+import { Table } from "antd";
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Extract createdAt from Trello card ID (first 8 hex chars = timestamp)
+function getCreatedAtFromCardId(cardId) {
+    try {
+        const timestamp = parseInt(cardId.substring(0, 8), 16) * 1000;
+        return new Date(timestamp).toISOString();
+    } catch (error) {
+        return null;
+    }
 }
 
 const DevZone = () => {
@@ -119,6 +133,21 @@ const DevZone = () => {
     const [isQaLoading, setIsQaLoading] = useState(false);
     const [qaLog, setQaLog] = useState("");
     const [overdueCards, setOverdueCards] = useState([]);
+
+    // Push Cards to Database states
+    const [isPushingCards, setIsPushingCards] = useState(false);
+    const [pushCardLog, setPushCardLog] = useState("");
+    const [pushCardResult, setPushCardResult] = useState(null);
+    const [selectedPushListId, setSelectedPushListId] = useState("");
+
+    // View Cards by Date states
+    const [viewCardsStartDate, setViewCardsStartDate] = useState(new Date().toISOString().split('T')[0]);
+    const [viewCardsEndDate, setViewCardsEndDate] = useState(new Date().toISOString().split('T')[0]);
+    const [isLoadingViewCards, setIsLoadingViewCards] = useState(false);
+    const [viewCardsData, setViewCardsData] = useState([]);
+    const [isViewCardsModalOpen, setIsViewCardsModalOpen] = useState(false);
+    const [isUpdatingViewCards, setIsUpdatingViewCards] = useState(false);
+    const [updateViewCardsLog, setUpdateViewCardsLog] = useState("");
 
     // CardDetailModal states
     const [isCardDetailModalOpen, setIsCardDetailModalOpen] = useState(false);
@@ -1114,6 +1143,243 @@ const DevZone = () => {
         setIsKPIStatsModalOpen(false);
     };
 
+    // Process cards in batches - reusable function
+    const processCardsInBatches = async (trelloCards, onLog) => {
+        const BATCH_SIZE = 10;
+        const totalBatches = Math.ceil(trelloCards.length / BATCH_SIZE);
+        let totalCreated = 0;
+        let totalUpdated = 0;
+        let totalErrors = 0;
+
+        for (let i = 0; i < trelloCards.length; i += BATCH_SIZE) {
+            const batch = trelloCards.slice(i, i + BATCH_SIZE);
+            const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+
+            onLog(`Batch ${batchNumber}/${totalBatches}: Đang lấy createdAt cho ${batch.length} cards...`);
+
+            // Process each card in the batch concurrently to get createdAt
+            const batchCards = await Promise.all(
+                batch.map(async (card) => {
+                    // Try to get createdAt from Trello API first, fallback to extracting from card ID
+                    const createdAt = await getCreateCardAction(card.id) || getCreatedAtFromCardId(card.id);
+
+                    // Skip card if no createdAt
+                    if (!createdAt) {
+                        return null;
+                    }
+
+                    return {
+                        cardId: card.id,
+                        cardName: card.name,
+                        cardUrl: card.shortUrl || card.url,
+                        dueComplete: card.dueComplete || false,
+                        labels: card.labels ? card.labels.map(l => l.name) : [],
+                        members: card.idMembers || [],
+                        createdAt: createdAt
+                    };
+                })
+            );
+
+            // Filter out null values (cards without createdAt)
+            const validBatchCards = batchCards.filter(c => c !== null);
+            const skippedCount = batchCards.length - validBatchCards.length;
+
+            if (validBatchCards.length === 0) {
+                onLog(`Batch ${batchNumber}/${totalBatches}: Bỏ qua - không có card nào có createdAt`);
+                continue;
+            }
+
+            // Push batch to database immediately
+            onLog(`Batch ${batchNumber}/${totalBatches}: Đang push ${validBatchCards.length} cards lên database...${skippedCount > 0 ? ` (Bỏ qua ${skippedCount} cards không có createdAt)` : ''}`);
+            const result = await saveCardsToDatabase(validBatchCards);
+
+            totalCreated += result.results.created;
+            totalUpdated += result.results.updated;
+            totalErrors += result.results.errors;
+
+            onLog(`Batch ${batchNumber}/${totalBatches}: Hoàn thành (Created: ${result.results.created}, Updated: ${result.results.updated})`);
+        }
+
+        return {
+            total: trelloCards.length,
+            created: totalCreated,
+            updated: totalUpdated,
+            errors: totalErrors
+        };
+    };
+
+    // Handle push cards to database
+    const handlePushCardsToDatabase = async () => {
+        if (!selectedPushListId) {
+            setPushCardLog("Vui lòng chọn list trước!");
+            return;
+        }
+
+        setIsPushingCards(true);
+        setPushCardLog("Đang lấy cards từ Trello...");
+        setPushCardResult(null);
+
+        try {
+            // Step 1: Get cards from Trello (frontend)
+            const trelloCards = await getCardsByList(selectedPushListId);
+
+            if (!trelloCards || trelloCards.length === 0) {
+                setPushCardLog("❌ Không tìm thấy card nào trong list này!");
+                setIsPushingCards(false);
+                return;
+            }
+
+            setPushCardLog(`Đã lấy ${trelloCards.length} cards từ Trello. Đang xử lý và push từng batch...`);
+
+            // Step 2: Process cards in batches
+            const result = await processCardsInBatches(trelloCards, setPushCardLog);
+
+            setPushCardResult(result);
+            setPushCardLog(`✅ Hoàn thành! Đã xử lý ${result.total} cards (Created: ${result.created}, Updated: ${result.updated}, Errors: ${result.errors})`);
+        } catch (error) {
+            setPushCardLog(`❌ Lỗi: ${error.message}`);
+            setPushCardResult(null);
+        } finally {
+            setIsPushingCards(false);
+        }
+    };
+
+    // Handle view cards by date range
+    const handleViewCardsByDate = async () => {
+        if (!viewCardsStartDate || !viewCardsEndDate) return;
+
+        setIsLoadingViewCards(true);
+        try {
+            const result = await getCardsCreate(viewCardsStartDate, viewCardsEndDate);
+            setViewCardsData(result.data || []);
+            setIsViewCardsModalOpen(true);
+        } catch (error) {
+            console.error('Error getting cards by date:', error);
+            setViewCardsData([]);
+        } finally {
+            setIsLoadingViewCards(false);
+        }
+    };
+
+    // Handle update cards from search results
+    const handleUpdateViewCards = async () => {
+        if (!viewCardsData || viewCardsData.length === 0) {
+            setUpdateViewCardsLog("❌ Không có cards để update!");
+            return;
+        }
+
+        setIsUpdatingViewCards(true);
+        setUpdateViewCardsLog("Đang lấy data mới từ Trello...");
+
+        try {
+            const BATCH_SIZE = 10;
+            const totalBatches = Math.ceil(viewCardsData.length / BATCH_SIZE);
+            let totalCreated = 0;
+            let totalUpdated = 0;
+            let totalErrors = 0;
+
+            for (let i = 0; i < viewCardsData.length; i += BATCH_SIZE) {
+                const batch = viewCardsData.slice(i, i + BATCH_SIZE);
+                const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+
+                setUpdateViewCardsLog(`Batch ${batchNumber}/${totalBatches}: Đang lấy data mới cho ${batch.length} cards...`);
+
+                // Get fresh data from Trello for each card in batch
+                const batchCards = await Promise.all(
+                    batch.map(async (card) => {
+                        try {
+                            const freshCard = await getCardById(card.cardId);
+                            if (freshCard) {
+                                return {
+                                    cardId: freshCard.id,
+                                    cardName: freshCard.name,
+                                    cardUrl: freshCard.shortUrl || freshCard.url,
+                                    dueComplete: freshCard.dueComplete || false,
+                                    labels: freshCard.labels ? freshCard.labels.map(l => l.name) : [],
+                                    members: freshCard.idMembers || [],
+                                    createdAt: card.createdAt // Keep original createdAt
+                                };
+                            }
+                            return null;
+                        } catch (err) {
+                            console.error(`Error fetching card ${card.cardId}:`, err);
+                            return null;
+                        }
+                    })
+                );
+
+                // Filter out null values (failed fetches)
+                const validCards = batchCards.filter(c => c !== null);
+
+                if (validCards.length > 0) {
+                    setUpdateViewCardsLog(`Batch ${batchNumber}/${totalBatches}: Đang update ${validCards.length} cards lên database...`);
+                    const result = await saveCardsToDatabase(validCards);
+
+                    totalCreated += result.results.created;
+                    totalUpdated += result.results.updated;
+                    totalErrors += result.results.errors;
+                }
+
+                setUpdateViewCardsLog(`Batch ${batchNumber}/${totalBatches}: Hoàn thành`);
+            }
+
+            setUpdateViewCardsLog(`✅ Hoàn thành! Updated: ${totalUpdated}, Created: ${totalCreated}, Errors: ${totalErrors}`);
+
+            // Refresh the data
+            const refreshResult = await getCardsCreate(viewCardsStartDate, viewCardsEndDate);
+            setViewCardsData(refreshResult.data || []);
+        } catch (error) {
+            setUpdateViewCardsLog(`❌ Lỗi: ${error.message}`);
+        } finally {
+            setIsUpdatingViewCards(false);
+        }
+    };
+
+    // Columns for view cards table
+    const viewCardsColumns = [
+        {
+            title: 'STT',
+            key: 'index',
+            width: 60,
+            render: (_, __, index) => index + 1
+        },
+        {
+            title: 'Card Name',
+            dataIndex: 'cardName',
+            key: 'cardName',
+            render: (text, record) => (
+                <a href={record.cardUrl} target="_blank" rel="noopener noreferrer">
+                    {text}
+                </a>
+            )
+        },
+        {
+            title: 'Labels',
+            dataIndex: 'labels',
+            key: 'labels',
+            render: (labels) => labels?.join(', ') || '-'
+        },
+        {
+            title: 'Members',
+            dataIndex: 'members',
+            key: 'members',
+            render: (members) => members?.length || 0
+        },
+        {
+            title: 'Due Complete',
+            dataIndex: 'dueComplete',
+            key: 'dueComplete',
+            width: 100,
+            render: (value) => value ? '✅' : '❌'
+        },
+        {
+            title: 'Created At',
+            dataIndex: 'createdAt',
+            key: 'createdAt',
+            width: 180,
+            render: (date) => date ? new Date(date).toLocaleString('vi-VN') : '-'
+        }
+    ];
 
     return (
         <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 3 }}>
@@ -1193,6 +1459,164 @@ const DevZone = () => {
                     </Box>
                 )}
 
+                {/* Push Cards to Database */}
+                <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3, mt: 4, border: '2px solid #4caf50' }}>
+                    <Typography variant="h6" sx={{ mb: 3, color: '#4caf50', fontWeight: 'bold' }}>
+                        📤 Push Cards to Database (cardsCreate)
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                        <FormControl fullWidth>
+                            <InputLabel id="push-list-select-label">Chọn List để Push</InputLabel>
+                            <Select
+                                labelId="push-list-select-label"
+                                value={selectedPushListId}
+                                label="Chọn List để Push"
+                                onChange={e => setSelectedPushListId(e.target.value)}
+                            >
+                                {lists.map((list) => (
+                                    <MenuItem key={list.id} value={list.id}>
+                                        {list.name}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                        <Button
+                            variant="contained"
+                            onClick={handlePushCardsToDatabase}
+                            disabled={isPushingCards || !selectedPushListId}
+                            sx={{
+                                minWidth: 200,
+                                backgroundColor: '#4caf50',
+                                '&:hover': { backgroundColor: '#388e3c' }
+                            }}
+                        >
+                            {isPushingCards ? 'Đang Push...' : 'Push Cards to DB'}
+                        </Button>
+                    </Box>
+                    {pushCardLog && (
+                        <Box sx={{
+                            mt: 2,
+                            p: 2,
+                            backgroundColor: pushCardLog.includes('❌') ? '#ffebee' : '#e8f5e9',
+                            borderRadius: 1
+                        }}>
+                            <Typography sx={{
+                                color: pushCardLog.includes('❌') ? '#c62828' : '#2e7d32',
+                                fontWeight: 500
+                            }}>
+                                {pushCardLog}
+                            </Typography>
+                        </Box>
+                    )}
+                    {pushCardResult && (
+                        <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+                            <Chip label={`Total: ${pushCardResult.total}`} color="primary" />
+                            <Chip label={`Created: ${pushCardResult.created}`} color="success" />
+                            <Chip label={`Updated: ${pushCardResult.updated}`} color="info" />
+                            {pushCardResult.errors > 0 && (
+                                <Chip label={`Errors: ${pushCardResult.errors}`} color="error" />
+                            )}
+                        </Box>
+                    )}
+
+                    {/* View Cards by Date */}
+                    <Box sx={{ mt: 3, pt: 3, borderTop: '1px solid #e0e0e0' }}>
+                        <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold', color: '#1976d2' }}>
+                            📋 Xem Cards theo ngày
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                            <TextField
+                                type="date"
+                                label="Từ ngày"
+                                value={viewCardsStartDate}
+                                onChange={(e) => setViewCardsStartDate(e.target.value)}
+                                size="small"
+                                sx={{ width: 170 }}
+                                InputLabelProps={{ shrink: true }}
+                            />
+                            <TextField
+                                type="date"
+                                label="Đến ngày"
+                                value={viewCardsEndDate}
+                                onChange={(e) => setViewCardsEndDate(e.target.value)}
+                                size="small"
+                                sx={{ width: 170 }}
+                                InputLabelProps={{ shrink: true }}
+                            />
+                            <Button
+                                variant="outlined"
+                                onClick={handleViewCardsByDate}
+                                disabled={isLoadingViewCards}
+                                sx={{ minWidth: 150 }}
+                            >
+                                {isLoadingViewCards ? 'Đang tải...' : 'Xem Cards'}
+                            </Button>
+                            {viewCardsData.length > 0 && !isViewCardsModalOpen && (
+                                <Chip
+                                    label={`${viewCardsData.length} cards`}
+                                    color="primary"
+                                    size="small"
+                                    onClick={() => setIsViewCardsModalOpen(true)}
+                                    sx={{ cursor: 'pointer' }}
+                                />
+                            )}
+                        </Box>
+                    </Box>
+                </Paper>
+
+                {/* Modal View Cards by Date */}
+                <Dialog
+                    open={isViewCardsModalOpen}
+                    onClose={() => setIsViewCardsModalOpen(false)}
+                    maxWidth="lg"
+                    fullWidth
+                >
+                    <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box>
+                            📋 Cards từ {viewCardsStartDate} đến {viewCardsEndDate}
+                            <Chip label={`${viewCardsData.length} cards`} size="small" color="primary" sx={{ ml: 2 }} />
+                        </Box>
+                        <IconButton onClick={() => setIsViewCardsModalOpen(false)}>
+                            <CloseIcon />
+                        </IconButton>
+                    </DialogTitle>
+                    <DialogContent>
+                        {updateViewCardsLog && (
+                            <Box sx={{
+                                mb: 2,
+                                p: 2,
+                                backgroundColor: updateViewCardsLog.includes('❌') ? '#ffebee' : updateViewCardsLog.includes('✅') ? '#e8f5e9' : '#e3f2fd',
+                                borderRadius: 1
+                            }}>
+                                <Typography sx={{
+                                    color: updateViewCardsLog.includes('❌') ? '#c62828' : updateViewCardsLog.includes('✅') ? '#2e7d32' : '#1565c0',
+                                    fontWeight: 500
+                                }}>
+                                    {updateViewCardsLog}
+                                </Typography>
+                            </Box>
+                        )}
+                        <Table
+                            columns={viewCardsColumns}
+                            dataSource={viewCardsData}
+                            rowKey="cardId"
+                            size="small"
+                            pagination={{ pageSize: 20 }}
+                            scroll={{ y: 500 }}
+                        />
+                    </DialogContent>
+                    <DialogActions>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={handleUpdateViewCards}
+                            disabled={isUpdatingViewCards || viewCardsData.length === 0}
+                        >
+                            {isUpdatingViewCards ? 'Đang update...' : `Update ${viewCardsData.length} cards`}
+                        </Button>
+                        <Button onClick={() => setIsViewCardsModalOpen(false)}>Đóng</Button>
+                    </DialogActions>
+                </Dialog>
 
                 {/* Phần lấy Card Details */}
                 <Paper sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>

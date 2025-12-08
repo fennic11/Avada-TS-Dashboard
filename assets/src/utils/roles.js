@@ -6,6 +6,7 @@ export const TABS = {
     DEV_RESOLUTION_TIME: 'dev-resolution-time',
     DATA_KPI: 'data-kpi',
     TS_LEAD: 'TS-lead-workspace',
+    LIVE_ACTION: 'live-action',
     // TS_WORKSPACE: 'TS-workspace',
     BA_PAGE: 'ba-page',
     DEV_ZONE: 'dev-zone',

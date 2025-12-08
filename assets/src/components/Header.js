@@ -25,7 +25,8 @@ import {
   BellOutlined,
   LogoutOutlined,
   SettingOutlined,
-  MenuOutlined
+  MenuOutlined,
+  ThunderboltOutlined
 } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 import { getCurrentUser, logout } from '../api/usersApi';
@@ -69,6 +70,7 @@ const getTabIcon = (tab) => {
   if (tab.includes('plan-ts-team')) return <TeamOutlined />;
   if (tab.includes('checkout')) return <CheckCircleOutlined />;
   if (tab.includes('kpi-ts-team')) return <DollarOutlined />;
+  if (tab.includes('live-action')) return <ThunderboltOutlined />;
   return <DashboardOutlined />;
 };
 

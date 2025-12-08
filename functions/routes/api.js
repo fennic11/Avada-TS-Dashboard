@@ -14,6 +14,7 @@ const assignCardsController = require('../controllers/cardAssignController');
 const errorAssignCardController = require('../controllers/errorAssignCardController');
 const reviewsController = require('../controllers/reviewsController');
 const conversController = require('../controllers/conversController');
+const cardCreateController = require('../controllers/cardCreateController');
 // Auth routes
 router.put('/auth/user', authController.createOrUpdateUser);
 router.get('/auth/user/:email', authController.getUserByEmail);
@@ -76,6 +77,11 @@ router.get('/firebase/:collectionName/:docId', firebaseController.getData);
 router.delete('/firebase/:collectionName/:docId', firebaseController.deleteData);
 router.post('/firebase/batch-push', firebaseController.batchPush);
 router.post('/firebase/query', firebaseController.queryData);
+
+// Card Create routes
+router.post('/cards-create', cardCreateController.saveCards);
+router.get('/cards-create', cardCreateController.getCardsCreate);
+router.get('/cards-create/date/:date', cardCreateController.getCardsByDate);
 
 module.exports = router;
 

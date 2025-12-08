@@ -949,5 +949,15 @@
       "group": "CS2",
       "kpiName": "AnhBD",
       "slackId": "U09DC212XN0"
+    },
+    {
+      "id": "68d0cb961e1d099238622bc4",
+      "fullName": "Thu Hiền Phạm",
+      "emai": "hienpt@avadagroup.com",
+      "username": "hazel_avada",
+      "role": "CS",
+      "group": "CS2",
+      "kpiName": "HienPT",
+      "slackId": "U09FYACFH2T"
     }
   ]

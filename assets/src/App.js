@@ -32,6 +32,7 @@ import AssignCardPage from './pages/AssignCardPage';
 import ErrorAssigCardsPage from './pages/ErrorAssigCardsPage';
 import PublicDashboard from './pages/PublicDashboard';
 import ShortUrlRedirect from './components/ShortUrlRedirect';
+import LiveAction from './pages/LiveAction';
 
 const theme = createTheme({
     palette: {
@@ -293,6 +294,16 @@ const App = () => {
                                     <PrivateRoute>
                                         <Layout>
                                             <ErrorAssigCardsPage />
+                                        </Layout>
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path="/live-action"
+                                element={
+                                    <PrivateRoute>
+                                        <Layout>
+                                            <LiveAction />
                                         </Layout>
                                     </PrivateRoute>
                                 }
