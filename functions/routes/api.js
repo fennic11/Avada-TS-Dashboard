@@ -25,8 +25,9 @@ router.get('/convers', conversController.getConversation);
 // Card routes
 router.post('/cards', cardController.createOrUpdateCard);
 router.get('/cards', cardController.getCards);
-router.get('/cards/:cardUrl', cardController.getCardByUrl);
 router.get('/cards/list/:listId', cardController.getCardsOnTrello);
+router.get('/cards/trello/:cardId/actions', cardController.getCardWithActions);
+router.get('/cards/:cardUrl', cardController.getCardByUrl);
 
 // Error Card routes
 router.post('/error-cards', errorCardController.createErrorCard);

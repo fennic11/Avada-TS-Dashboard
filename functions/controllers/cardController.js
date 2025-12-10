@@ -65,10 +65,32 @@ const getCardsOnTrello = async (req, res) => {
         res.status(500).json({ error: 'Lỗi khi lấy card', details: err.message });
     }
 }
+
+const getCardWithActions = async (req, res) => {
+    try {
+        const { cardId } = req.params;
+        console.log('📋 Fetching card with actions:', cardId);
+        const cardWithActions = await trelloService.getCardWithActions(cardId);
+
+        if (!cardWithActions) {
+            return res.status(404).json({
+                success: false,
+                message: 'Card not found'
+            });
+        }
+
+        res.json(cardWithActions);
+    } catch (err) {
+        console.error('❌ Error fetching card with actions:', err);
+        res.status(500).json({ error: 'Error fetching card with actions', details: err.message });
+    }
+}
+
 module.exports = {
     createCard,
     getCards,
     createOrUpdateCard,
     getCardByUrl,
-    getCardsOnTrello
+    getCardsOnTrello,
+    getCardWithActions
 };

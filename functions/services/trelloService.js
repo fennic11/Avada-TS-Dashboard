@@ -65,8 +65,62 @@ const getCardById = async (cardId) => {
     return filteredData;
 }
 
+// Get card actions by card ID
+const getCardActions = async (cardId) => {
+    try {
+        const response = await fetch(
+            `https://api.trello.com/1/cards/${cardId}/actions?key=${key}&token=${token}&filter=all&limit=50`,
+            {
+                headers: {
+                    Accept: "application/json"
+                }
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch card actions: ${response.statusText}`);
+        }
+
+        const actions = await response.json();
+        return actions;
+    } catch (error) {
+        console.error('Error getCardActions:', error);
+        return [];
+    }
+}
+
+// Get card details with actions
+const getCardWithActions = async (cardId) => {
+    try {
+        // Fetch card details and actions in parallel
+        const [cardResponse, actions] = await Promise.all([
+            fetch(
+                `https://api.trello.com/1/cards/${cardId}?key=${key}&token=${token}&fields=name,desc,shortUrl,labels,idMembers,dueComplete,due,idList`,
+                { headers: { Accept: "application/json" } }
+            ),
+            getCardActions(cardId)
+        ]);
+
+        if (!cardResponse.ok) {
+            throw new Error(`Failed to fetch card: ${cardResponse.statusText}`);
+        }
+
+        const card = await cardResponse.json();
+
+        return {
+            ...card,
+            actions: actions
+        };
+    } catch (error) {
+        console.error('Error getCardWithActions:', error);
+        return null;
+    }
+}
+
 module.exports = {
     getCardsByList,
     getBoardActionsByMemberAndDate,
-    getCardById
+    getCardById,
+    getCardActions,
+    getCardWithActions
 }

@@ -13,7 +13,9 @@ import {
     Avatar,
     Collapse,
     Badge,
-    LinearProgress
+    LinearProgress,
+    ToggleButtonGroup,
+    ToggleButton
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ViewKanbanIcon from '@mui/icons-material/ViewKanban';
@@ -26,10 +28,16 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import PendingIcon from '@mui/icons-material/Pending';
 import PlayCircleIcon from '@mui/icons-material/PlayCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import TimerIcon from '@mui/icons-material/Timer';
+import SpeedIcon from '@mui/icons-material/Speed';
 import { DatePicker } from 'antd';
 import dayjs from 'dayjs';
+import weekOfYear from 'dayjs/plugin/weekOfYear';
 import membersData from '../data/members.json';
 import appData from '../data/app.json';
+import MobilePopupCard from '../components/MobilePopupCard';
+
+dayjs.extend(weekOfYear);
 
 // API base URL for backend
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://us-central1-avada-apps-hub.cloudfunctions.net/api';
@@ -66,6 +74,21 @@ const getCardsByListFromBackend = async (listId) => {
         return await response.json();
     } catch (error) {
         console.error('Error fetching cards from backend:', error);
+        return [];
+    }
+};
+
+// Fetch resolution time cards from backend
+const getResolutionTimesFromBackend = async (startDate, endDate) => {
+    try {
+        const params = new URLSearchParams({ start: startDate, end: endDate });
+        const response = await fetch(`${API_BASE_URL}/cards?${params}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch resolution times: ${response.statusText}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching resolution times:', error);
         return [];
     }
 };
@@ -114,11 +137,40 @@ const MobileView = () => {
     const [activeTab, setActiveTab] = useState(0);
     const [trelloCards, setTrelloCards] = useState([]);
     const [dbCards, setDbCards] = useState([]);
+    const [selectedCard, setSelectedCard] = useState(null);
+    const [popupOpen, setPopupOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [lastRefresh, setLastRefresh] = useState(null);
     const [selectedDate, setSelectedDate] = useState(dayjs());
     const [expandedMembers, setExpandedMembers] = useState({});
     const [expandedShifts, setExpandedShifts] = useState({});
+    const [resolutionCards, setResolutionCards] = useState([]);
+    const [dateRange, setDateRange] = useState('day'); // 'day', 'week', 'month'
+
+    // Calculate date range based on selection
+    const getDateRange = useCallback(() => {
+        const today = selectedDate;
+        let startDate, endDate;
+
+        switch (dateRange) {
+            case 'week':
+                startDate = today.startOf('week');
+                endDate = today.endOf('week');
+                break;
+            case 'month':
+                startDate = today.startOf('month');
+                endDate = today.endOf('month');
+                break;
+            default: // day
+                startDate = today;
+                endDate = today;
+        }
+
+        return {
+            start: startDate.format('YYYY-MM-DD'),
+            end: endDate.format('YYYY-MM-DD')
+        };
+    }, [selectedDate, dateRange]);
 
     // Fetch Trello cards from backend
     const fetchTrelloCards = useCallback(async () => {
@@ -158,8 +210,8 @@ const MobileView = () => {
     const fetchDbCards = useCallback(async () => {
         setIsLoading(true);
         try {
-            const dateStr = selectedDate.format('YYYY-MM-DD');
-            const result = await getCardsCreateFromBackend(dateStr, dateStr);
+            const { start, end } = getDateRange();
+            const result = await getCardsCreateFromBackend(start, end);
             setDbCards(result.data || []);
             setLastRefresh(dayjs().format('HH:mm:ss'));
 
@@ -174,7 +226,22 @@ const MobileView = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [selectedDate]);
+    }, [getDateRange]);
+
+    // Fetch Resolution Time cards from backend
+    const fetchResolutionCards = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const { start, end } = getDateRange();
+            const result = await getResolutionTimesFromBackend(start, end);
+            setResolutionCards(result || []);
+            setLastRefresh(dayjs().format('HH:mm:ss'));
+        } catch (error) {
+            console.error('Error fetching resolution cards:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [getDateRange]);
 
     // Group cards by TS member and status
     const groupedCards = useMemo(() => {
@@ -303,21 +370,98 @@ const MobileView = () => {
         };
     }, [dbCards]);
 
+    // Process resolution time cards
+    const resolutionAnalysis = useMemo(() => {
+        if (!resolutionCards || resolutionCards.length === 0) {
+            return { cards: [], avgTotal: 0, avgTs: 0, avgFirst: 0, byMember: [] };
+        }
+
+        // Filter cards with valid resolution times
+        const validCards = resolutionCards.filter(card =>
+            card.resolutionTime !== null && card.resolutionTime !== undefined
+        );
+
+        // Calculate averages
+        const totalResolution = validCards.reduce((sum, card) => sum + (card.resolutionTime || 0), 0);
+        const totalTs = validCards.reduce((sum, card) => sum + (card.TSResolutionTime || 0), 0);
+        const totalFirst = validCards.reduce((sum, card) => sum + (card.firstActionTime || 0), 0);
+
+        const avgTotal = validCards.length > 0 ? Math.round(totalResolution / validCards.length) : 0;
+        const avgTs = validCards.length > 0 ? Math.round(totalTs / validCards.length) : 0;
+        const avgFirst = validCards.length > 0 ? Math.round(totalFirst / validCards.length) : 0;
+
+        // Initialize byMember with TS members from members.json (using member ID as key)
+        const byMember = {};
+        TS_MEMBERS.forEach(member => {
+            byMember[member.id] = {
+                id: member.id,
+                name: member.fullName,
+                kpiName: member.kpiName,
+                cards: [],
+                totalResolution: 0,
+                totalTs: 0,
+                count: 0
+            };
+        });
+
+        // Group cards by TS member (match by member ID in card.members array)
+        validCards.forEach(card => {
+            const cardMemberIds = card.members || [];
+
+            // Find TS members in this card's members array
+            cardMemberIds.forEach(memberId => {
+                if (byMember[memberId]) {
+                    byMember[memberId].cards.push(card);
+                    byMember[memberId].totalResolution += card.resolutionTime || 0;
+                    byMember[memberId].totalTs += card.TSResolutionTime || card.resolutionTimeTS || 0;
+                    byMember[memberId].count++;
+                }
+            });
+        });
+
+        // Calculate averages per member and filter out members with no cards
+        const memberStats = Object.values(byMember)
+            .filter(m => m.count > 0)
+            .map(m => ({
+                ...m,
+                avgResolution: Math.round(m.totalResolution / m.count),
+                avgTs: Math.round(m.totalTs / m.count)
+            }))
+            .sort((a, b) => a.avgResolution - b.avgResolution);
+
+        // Sort cards by resolution time (highest to lowest)
+        const sortedCards = [...validCards].sort((a, b) =>
+            (b.resolutionTime || 0) - (a.resolutionTime || 0)
+        );
+
+        return {
+            cards: sortedCards,
+            avgTotal,
+            avgTs,
+            avgFirst,
+            byMember: memberStats
+        };
+    }, [resolutionCards]);
+
     // Initial fetch
     useEffect(() => {
         if (activeTab === 0) {
             fetchTrelloCards();
-        } else {
+        } else if (activeTab === 1) {
             fetchDbCards();
+        } else if (activeTab === 2) {
+            fetchResolutionCards();
         }
-    }, [activeTab, fetchTrelloCards, fetchDbCards]);
+    }, [activeTab, fetchTrelloCards, fetchDbCards, fetchResolutionCards]);
 
     // Handle refresh
     const handleRefresh = () => {
         if (activeTab === 0) {
             fetchTrelloCards();
-        } else {
+        } else if (activeTab === 1) {
             fetchDbCards();
+        } else if (activeTab === 2) {
+            fetchResolutionCards();
         }
     };
 
@@ -342,12 +486,14 @@ const MobileView = () => {
         }));
     };
 
-    // Refetch when date changes (for DB tab)
+    // Refetch when date or date range changes (for DB tab and Resolution tab)
     useEffect(() => {
         if (activeTab === 1) {
             fetchDbCards();
+        } else if (activeTab === 2) {
+            fetchResolutionCards();
         }
-    }, [selectedDate, activeTab, fetchDbCards]);
+    }, [selectedDate, dateRange, activeTab, fetchDbCards, fetchResolutionCards]);
 
     // Render card item for Trello
     const renderTrelloCard = (card) => {
@@ -362,7 +508,10 @@ const MobileView = () => {
                     border: '1px solid #e0e0e0',
                     position: 'relative'
                 }}
-                onClick={() => window.open(card.shortUrl || card.url, '_blank')}
+                onClick={() => {
+                    setSelectedCard(card);
+                    setPopupOpen(true);
+                }}
             >
                 <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
@@ -584,6 +733,26 @@ const MobileView = () => {
         );
     };
 
+    // Format minutes to readable time
+    const formatMinutes = (minutes) => {
+        if (minutes < 60) return `${minutes}m`;
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        if (hours < 24) return `${hours}h ${mins}m`;
+        const days = Math.floor(hours / 24);
+        const remainingHours = hours % 24;
+        return `${days}d ${remainingHours}h`;
+    };
+
+    // Get color based on resolution time
+    const getResolutionColor = (minutes) => {
+        if (minutes <= 30) return '#4caf50';
+        if (minutes <= 60) return '#8bc34a';
+        if (minutes <= 120) return '#ffeb3b';
+        if (minutes <= 240) return '#ff9800';
+        return '#f44336';
+    };
+
     // Render shift cards
     const renderShiftGroup = (shiftData) => {
         const { shift, cards, count } = shiftData;
@@ -642,7 +811,12 @@ const MobileView = () => {
                                     boxShadow: 'none',
                                     border: '1px solid #e0e0e0'
                                 }}
-                                onClick={() => card.cardUrl && window.open(card.cardUrl, '_blank')}
+                                onClick={() => {
+                                    if (card.cardId) {
+                                        setSelectedCard({ ...card, id: card.cardId });
+                                        setPopupOpen(true);
+                                    }
+                                }}
                             >
                                 <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
                                     <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
@@ -710,12 +884,14 @@ const MobileView = () => {
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box>
                         <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
-                            {activeTab === 0 ? 'TS Overview' : 'Cards by Shift'}
+                            {activeTab === 0 ? 'TS Overview' : activeTab === 1 ? 'Cards by Shift' : 'Resolution Time'}
                         </Typography>
                         <Typography variant="caption" sx={{ opacity: 0.9 }}>
                             {activeTab === 0
                                 ? `P:${totalCards.pending} D:${totalCards.doing} Done:${totalCards.done}`
-                                : `${dbCards.length} cards - ${selectedDate.format('DD/MM/YYYY')}`
+                                : activeTab === 1
+                                    ? `${dbCards.length} cards - ${dateRange === 'day' ? selectedDate.format('DD/MM') : dateRange === 'week' ? `Tuần ${selectedDate.week()}` : selectedDate.format('MM/YYYY')}`
+                                    : `${resolutionAnalysis.cards.length} cards - ${dateRange === 'day' ? selectedDate.format('DD/MM') : dateRange === 'week' ? `Tuần ${selectedDate.week()}` : selectedDate.format('MM/YYYY')}`
                             }
                         </Typography>
                     </Box>
@@ -775,13 +951,45 @@ const MobileView = () => {
                     </Box>
                 )}
 
-                {/* Date picker for DB tab */}
-                {activeTab === 1 && (
+                {/* Date range toggle and date picker for DB tab and Resolution tab */}
+                {(activeTab === 1 || activeTab === 2) && (
                     <Box sx={{ mt: 1.5 }}>
+                        {/* Date Range Toggle */}
+                        <ToggleButtonGroup
+                            value={dateRange}
+                            exclusive
+                            onChange={(_, value) => value && setDateRange(value)}
+                            size="small"
+                            sx={{
+                                mb: 1,
+                                width: '100%',
+                                '& .MuiToggleButton-root': {
+                                    flex: 1,
+                                    color: 'rgba(255,255,255,0.7)',
+                                    borderColor: 'rgba(255,255,255,0.3)',
+                                    fontSize: '0.75rem',
+                                    py: 0.5,
+                                    '&.Mui-selected': {
+                                        bgcolor: 'rgba(255,255,255,0.2)',
+                                        color: 'white',
+                                        '&:hover': {
+                                            bgcolor: 'rgba(255,255,255,0.3)'
+                                        }
+                                    }
+                                }
+                            }}
+                        >
+                            <ToggleButton value="day">Ngày</ToggleButton>
+                            <ToggleButton value="week">Tuần</ToggleButton>
+                            <ToggleButton value="month">Tháng</ToggleButton>
+                        </ToggleButtonGroup>
+
+                        {/* Date Picker */}
                         <DatePicker
                             value={selectedDate}
                             onChange={handleDateChange}
-                            format="DD/MM/YYYY"
+                            picker={dateRange === 'month' ? 'month' : dateRange === 'week' ? 'week' : 'date'}
+                            format={dateRange === 'month' ? 'MM/YYYY' : dateRange === 'week' ? 'wo [tuần] YYYY' : 'DD/MM/YYYY'}
                             style={{ width: '100%' }}
                             size="small"
                         />
@@ -796,7 +1004,7 @@ const MobileView = () => {
                 p: 1.5,
                 pb: 10
             }}>
-                {isLoading && (activeTab === 0 ? trelloCards : dbCards).length === 0 ? (
+                {isLoading && (activeTab === 0 ? trelloCards : activeTab === 1 ? dbCards : resolutionCards).length === 0 ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
                         <CircularProgress />
                     </Box>
@@ -813,7 +1021,7 @@ const MobileView = () => {
                             ) : (
                                 groupedCards.map(renderMemberGroup)
                             )
-                        ) : (
+                        ) : activeTab === 1 ? (
                             dbCards.length === 0 ? (
                                 <Box sx={{ textAlign: 'center', py: 8 }}>
                                     <StorageIcon sx={{ fontSize: 48, color: '#bdbdbd', mb: 2 }} />
@@ -833,6 +1041,155 @@ const MobileView = () => {
                                         Card Details by Shift
                                     </Typography>
                                     {dbCardsAnalysis.byShift.map(renderShiftGroup)}
+                                </>
+                            )
+                        ) : (
+                            resolutionAnalysis.cards.length === 0 ? (
+                                <Box sx={{ textAlign: 'center', py: 8 }}>
+                                    <TimerIcon sx={{ fontSize: 48, color: '#bdbdbd', mb: 2 }} />
+                                    <Typography color="text.secondary">
+                                        No resolution data for this date
+                                    </Typography>
+                                </Box>
+                            ) : (
+                                <>
+                                    {/* Summary Stats */}
+                                    <Paper sx={{ p: 1.5, mb: 1.5, borderRadius: 2 }}>
+                                        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, fontSize: '0.85rem' }}>
+                                            Average Resolution Time
+                                        </Typography>
+                                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                            <Chip
+                                                icon={<TimerIcon sx={{ fontSize: 16 }} />}
+                                                label={`Total: ${formatMinutes(resolutionAnalysis.avgTotal)}`}
+                                                sx={{ bgcolor: getResolutionColor(resolutionAnalysis.avgTotal), color: 'white' }}
+                                            />
+                                            <Chip
+                                                icon={<SpeedIcon sx={{ fontSize: 16 }} />}
+                                                label={`TS: ${formatMinutes(resolutionAnalysis.avgTs)}`}
+                                                sx={{ bgcolor: getResolutionColor(resolutionAnalysis.avgTs), color: 'white' }}
+                                            />
+                                            <Chip
+                                                icon={<AccessTimeIcon sx={{ fontSize: 16 }} />}
+                                                label={`First: ${formatMinutes(resolutionAnalysis.avgFirst)}`}
+                                                sx={{ bgcolor: '#1976d2', color: 'white' }}
+                                            />
+                                        </Box>
+                                    </Paper>
+
+                                    {/* By Member */}
+                                    <Paper sx={{ p: 1.5, mb: 1.5, borderRadius: 2 }}>
+                                        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, fontSize: '0.85rem' }}>
+                                            Resolution Time by Member
+                                        </Typography>
+                                        {resolutionAnalysis.byMember.map((member, idx) => (
+                                            <Box key={idx} sx={{ mb: 1.5 }}>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                        <Avatar sx={{ width: 24, height: 24, fontSize: '0.7rem', bgcolor: '#1976d2' }}>
+                                                            {member.name?.charAt(0)}
+                                                        </Avatar>
+                                                        <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                                                            {member.name}
+                                                        </Typography>
+                                                    </Box>
+                                                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                                        <Chip
+                                                            size="small"
+                                                            label={formatMinutes(member.avgResolution)}
+                                                            sx={{
+                                                                height: 20,
+                                                                fontSize: '0.65rem',
+                                                                bgcolor: getResolutionColor(member.avgResolution),
+                                                                color: 'white'
+                                                            }}
+                                                        />
+                                                        <Chip
+                                                            size="small"
+                                                            label={`${member.count} cards`}
+                                                            sx={{ height: 20, fontSize: '0.65rem' }}
+                                                        />
+                                                    </Box>
+                                                </Box>
+                                                <LinearProgress
+                                                    variant="determinate"
+                                                    value={Math.min((member.avgResolution / 240) * 100, 100)}
+                                                    sx={{
+                                                        height: 6,
+                                                        borderRadius: 3,
+                                                        bgcolor: '#f0f0f0',
+                                                        '& .MuiLinearProgress-bar': {
+                                                            borderRadius: 3,
+                                                            bgcolor: getResolutionColor(member.avgResolution)
+                                                        }
+                                                    }}
+                                                />
+                                            </Box>
+                                        ))}
+                                    </Paper>
+
+                                    {/* Card List */}
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mt: 2, mb: 1, px: 0.5 }}>
+                                        Card Details ({resolutionAnalysis.cards.length})
+                                    </Typography>
+                                    {resolutionAnalysis.cards.map((card, idx) => (
+                                        <Card
+                                            key={idx}
+                                            sx={{
+                                                mb: 1,
+                                                borderRadius: 1.5,
+                                                boxShadow: 'none',
+                                                border: '1px solid #e0e0e0',
+                                                borderLeft: `4px solid ${getResolutionColor(card.resolutionTime)}`
+                                            }}
+                                            onClick={() => {
+                                                if (card.cardId) {
+                                                    setSelectedCard({ ...card, id: card.cardId });
+                                                    setPopupOpen(true);
+                                                }
+                                            }}
+                                        >
+                                            <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                                                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                                                    <TimerIcon sx={{ fontSize: 18, color: getResolutionColor(card.resolutionTime) }} />
+                                                    <Box sx={{ flex: 1 }}>
+                                                        <Typography
+                                                            variant="body2"
+                                                            sx={{
+                                                                fontWeight: 500,
+                                                                fontSize: '0.8rem',
+                                                                lineHeight: 1.3,
+                                                                display: '-webkit-box',
+                                                                WebkitLineClamp: 2,
+                                                                WebkitBoxOrient: 'vertical',
+                                                                overflow: 'hidden'
+                                                            }}
+                                                        >
+                                                            {card.cardName}
+                                                        </Typography>
+                                                        <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+                                                            <Chip
+                                                                size="small"
+                                                                label={`Total: ${formatMinutes(card.resolutionTime)}`}
+                                                                sx={{ height: 18, fontSize: '0.6rem', bgcolor: getResolutionColor(card.resolutionTime), color: 'white' }}
+                                                            />
+                                                            <Chip
+                                                                size="small"
+                                                                label={`TS: ${formatMinutes(card.TSResolutionTime)}`}
+                                                                sx={{ height: 18, fontSize: '0.6rem' }}
+                                                            />
+                                                            <Chip
+                                                                size="small"
+                                                                label={card.memberName || 'Unknown'}
+                                                                sx={{ height: 18, fontSize: '0.6rem' }}
+                                                            />
+                                                        </Box>
+                                                    </Box>
+                                                    <OpenInNewIcon sx={{ fontSize: 14, color: '#bbb' }} />
+                                                </Box>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
                                 </>
                             )
                         )}
@@ -858,15 +1215,30 @@ const MobileView = () => {
                     showLabels
                 >
                     <BottomNavigationAction
-                        label="TS Overview"
+                        label="TS"
                         icon={<ViewKanbanIcon />}
                     />
                     <BottomNavigationAction
-                        label="By Shift"
+                        label="Shift"
                         icon={<StorageIcon />}
+                    />
+                    <BottomNavigationAction
+                        label="Time"
+                        icon={<TimerIcon />}
                     />
                 </BottomNavigation>
             </Paper>
+
+            {/* Card Detail Popup */}
+            <MobilePopupCard
+                open={popupOpen}
+                onClose={() => {
+                    setPopupOpen(false);
+                    setSelectedCard(null);
+                }}
+                card={selectedCard}
+                cardId={selectedCard?.id}
+            />
         </Box>
     );
 };
