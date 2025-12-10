@@ -33,6 +33,7 @@ import ErrorAssigCardsPage from './pages/ErrorAssigCardsPage';
 import PublicDashboard from './pages/PublicDashboard';
 import ShortUrlRedirect from './components/ShortUrlRedirect';
 import LiveAction from './pages/LiveAction';
+import MobileView from './pages/MobileView';
 
 const theme = createTheme({
     palette: {
@@ -115,6 +116,7 @@ const App = () => {
                         <Routes>
                             <Route path="/login" element={<Login />} />
                             <Route path="/public" element={<PublicDashboard />} />
+                            <Route path="/mobile" element={<MobileView />} />
                             <Route path="/s/:shortCode" element={<ShortUrlRedirect />} />
                             <Route
                                 path="/dev-zone"
