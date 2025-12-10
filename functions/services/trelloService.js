@@ -39,10 +39,18 @@ const getCardById = async (cardId) => {
     const data = await response.json();
     
     // Filter and transform the data
+    // Trello stores time in UTC, add 7 hours to convert to Vietnam time
+    let createAt = null;
+    if (data.actions && data.actions.length > 0) {
+        const utcDate = new Date(data.actions[0].date);
+        const vnDate = new Date(utcDate.getTime() + 7 * 60 * 60 * 1000);
+        createAt = vnDate.toISOString();
+    }
+
     const filteredData = {
         ...data,
         labels: data.labels.map(label => ({name: label.name})),
-        createAt: data.actions && data.actions.length > 0 ? data.actions[0].date : null,
+        createAt: createAt,
         idMemberCreator: data.actions && data.actions.length > 0 ? data.actions[0].idMemberCreator : null
     };
     

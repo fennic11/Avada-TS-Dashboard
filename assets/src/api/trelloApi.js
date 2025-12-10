@@ -151,7 +151,10 @@ export async function getCreateCardAction(cardId) {
 
         const actions = await resp.json();
         if (actions && actions.length > 0) {
-            return actions[0].date;
+            // Trello stores time in UTC, add 7 hours to convert to Vietnam time
+            const utcDate = new Date(actions[0].date);
+            const vnDate = new Date(utcDate.getTime() + 7 * 60 * 60 * 1000);
+            return vnDate.toISOString();
         }
         return null;
     } catch (error) {

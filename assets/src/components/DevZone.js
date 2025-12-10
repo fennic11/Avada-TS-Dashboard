@@ -58,7 +58,9 @@ function sleep(ms) {
 function getCreatedAtFromCardId(cardId) {
     try {
         const timestamp = parseInt(cardId.substring(0, 8), 16) * 1000;
-        return new Date(timestamp).toISOString();
+        // Trello stores time in UTC, add 7 hours to convert to Vietnam time
+        const vnTimestamp = timestamp + 7 * 60 * 60 * 1000;
+        return new Date(vnTimestamp).toISOString();
     } catch (error) {
         return null;
     }
@@ -205,7 +207,10 @@ const DevZone = () => {
 
                     const actions = await getActionsByCard(card.id);
                     const resolution = calculateResolutionTime(actions);
-                    console.log(new Date(actions[actions.length - 1].date));
+                    // Trello stores time in UTC, add 7 hours to convert to Vietnam time
+                    const utcDate = new Date(actions[actions.length - 1].date);
+                    const vnDate = new Date(utcDate.getTime() + 7 * 60 * 60 * 1000);
+                    console.log(vnDate);
                     if (resolution !== null) {
                         await postCards({
                             cardId: card.id,
@@ -216,7 +221,7 @@ const DevZone = () => {
                             resolutionTimeTS: resolution.TSResolutionTime,
                             firstActionTime: resolution.firstActionTime,
                             members: card.idMembers || [],
-                            createdAt: new Date(actions[actions.length - 1].date)
+                            createdAt: vnDate
                         });
                     } else {
                         console.log(`⚠️ Card ${card.id} không có đủ dữ liệu để tính resolution time`);
@@ -264,6 +269,9 @@ const DevZone = () => {
                     const actions = await getActionsByCard(card.id);
                     const resolution = calculateDevResolutionTime(actions);
                     if (resolution !== null) {
+                        // Trello stores time in UTC, add 7 hours to convert to Vietnam time
+                        const utcDateDev = new Date(actions[actions.length - 1].date);
+                        const vnDateDev = new Date(utcDateDev.getTime() + 7 * 60 * 60 * 1000);
                         await postDevCards({
                             cardId: card.id,
                             cardName: card.name || "",
@@ -273,7 +281,7 @@ const DevZone = () => {
                             resolutionTimeDev: resolution.resolutionTimeDev,
                             firstActionTime: resolution.firstActionTime,
                             members: card.idMembers || [],
-                            createdAt: new Date(actions[actions.length - 1].date)
+                            createdAt: vnDateDev
                         });
                     } else {
                         console.log(`⚠️ Card ${card.id} không có đủ dữ liệu để tính resolution time`);
@@ -1290,6 +1298,8 @@ const DevZone = () => {
                         try {
                             const freshCard = await getCardById(card.cardId);
                             if (freshCard) {
+                                // Get createdAt from Trello API (already has +7h) or fallback to card ID
+                                const createdAt = await getCreateCardAction(card.cardId) || getCreatedAtFromCardId(card.cardId) || card.createdAt;
                                 return {
                                     cardId: freshCard.id,
                                     cardName: freshCard.name,
@@ -1297,7 +1307,7 @@ const DevZone = () => {
                                     dueComplete: freshCard.dueComplete || false,
                                     labels: freshCard.labels ? freshCard.labels.map(l => l.name) : [],
                                     members: freshCard.idMembers || [],
-                                    createdAt: card.createdAt // Keep original createdAt
+                                    createdAt: createdAt
                                 };
                             }
                             return null;
@@ -1377,7 +1387,18 @@ const DevZone = () => {
             dataIndex: 'createdAt',
             key: 'createdAt',
             width: 180,
-            render: (date) => date ? new Date(date).toLocaleString('vi-VN') : '-'
+            render: (date) => {
+                if (!date) return '-';
+                // Database stores VN time, just format without timezone conversion
+                const d = new Date(date);
+                const day = String(d.getUTCDate()).padStart(2, '0');
+                const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+                const year = d.getUTCFullYear();
+                const hours = String(d.getUTCHours()).padStart(2, '0');
+                const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+                const seconds = String(d.getUTCSeconds()).padStart(2, '0');
+                return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+            }
         }
     ];
 

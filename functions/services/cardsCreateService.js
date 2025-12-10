@@ -57,18 +57,34 @@ const createOrUpdateCards = async (cards) => {
 const getCards = async (startDate, endDate) => {
     console.log(`[CardsCreateService] Getting cards with date range: ${startDate || 'none'} - ${endDate || 'none'}`);
 
-    let query = {};
+    try {
+        // Data in DB is stored as Vietnam time in UTC format
+        // e.g., card created at 00:05 Vietnam (9/12) is stored as 2025-12-09T00:05:00Z
+        // So we query directly without timezone conversion
 
-    if (startDate && endDate) {
-        query.createdAt = {
-            $gte: new Date(startDate),
-            $lte: new Date(endDate)
-        };
+        const fromDateStart = new Date(`${startDate}T00:00:00.000Z`);
+        const toDateEnd = new Date(`${endDate}T23:59:59.999Z`);
+
+        console.log('[CardsCreateService] Query date range:', {
+            startDate,
+            endDate,
+            fromDateStart: fromDateStart.toISOString(),
+            toDateEnd: toDateEnd.toISOString(),
+        });
+
+        const cards = await CardCreate.find({
+            createdAt: {
+                $gte: fromDateStart,
+                $lte: toDateEnd,
+            },
+        }).sort({ createdAt: -1 });
+
+        console.log(`[CardsCreateService] Found ${cards.length} cards`);
+        return cards;
+    } catch (error) {
+        console.error('[CardsCreateService] Error in getCards:', error);
+        throw error;
     }
-
-    const cards = await CardCreate.find(query).sort({ createdAt: -1 });
-    console.log(`[CardsCreateService] Found ${cards.length} cards`);
-    return cards;
 };
 
 // Get cards by specific date (single day)

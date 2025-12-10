@@ -16,12 +16,23 @@ import { format, formatDistanceToNow } from "date-fns";
 // Function to render formatted text (markdown-like to HTML)
 const renderFormattedText = (text) => {
     if (!text) return '';
-    
+
+    // Clean up smartCard-inline and other HTML artifacts from Trello
+    // Pattern: https://url "smartCard-inline"" target="_blank" rel="noopener noreferrer" style="...">https://url
+    let cleanedText = text
+        // Remove the entire smartCard pattern including duplicate URL at the end
+        // Match: URL + "smartCard-inline"" + attributes + >URL
+        .replace(/(https?:\/\/[^\s"]+)\s+"smartCard-inline""\s+target="_blank"\s+rel="noopener\s+noreferrer"\s+style="[^"]*">https?:\/\/[^\s]*/gi, '$1')
+        // Fallback: remove any remaining smartCard patterns
+        .replace(/\s+"smartCard-inline""\s+target="_blank"[^>]*>https?:\/\/[^\s]*/gi, '')
+        // Remove standalone smartCard-inline patterns
+        .replace(/\s*"smartCard-inline""\s*/gi, ' ');
+
     // Remove markdown links that point to image URLs: [text](imageUrl) - keep the image URLs for @URL format
-    let textWithoutImageLinks = text
+    let textWithoutImageLinks = cleanedText
         // Remove markdown links that point to image URLs: [text](imageUrl)
         .replace(/\[([^\]]*)\]\((https?:\/\/[^\s<>"']+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s<>"']*)?)\)/gi, '$2');
-    
+
     // Escape HTML characters first to prevent XSS
     let escapedText = textWithoutImageLinks
         .replace(/&/g, '&amp;')
@@ -29,7 +40,7 @@ const renderFormattedText = (text) => {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#x27;');
-    
+
     // Convert markdown-like formatting to HTML
     let formattedText = escapedText
         // Bold: **text** -> <strong>text</strong>
@@ -121,29 +132,6 @@ const renderTextWithImages = (text) => {
 
 const { Text, Title } = Typography;
 
-const getActionBackgroundColor = (type) => {
-    switch (type) {
-        case "commentCard":
-            return "rgba(76, 175, 80, 0.15)"; // Light green with 15% opacity
-        case "updateCard":
-            return "rgba(33, 150, 243, 0.15)"; // Light blue with 15% opacity
-        case "addMemberToCard":
-            return "rgba(156, 39, 176, 0.15)"; // Light secondary color with 15% opacity
-        case "removeMemberFromCard":
-            return "rgba(244, 67, 54, 0.15)"; // Light red with 15% opacity
-        case "addAttachmentToCard":
-            return "rgba(255, 152, 0, 0.15)"; // Light orange with 15% opacity
-        case "deleteAttachmentFromCard":
-            return "rgba(233, 30, 99, 0.15)"; // Light red with 15% opacity
-        case "addChecklistToCard":
-            return "rgba(0, 188, 212, 0.15)"; // Light cyan with 15% opacity
-        case "createCard":
-            return "rgba(139, 195, 74, 0.15)"; // Light green with 15% opacity
-        default:
-            return "rgba(96, 125, 139, 0.15)"; // Light grey with 15% opacity
-    }
-};
-
 const CardActivityHistory = ({ actions }) => {
     const [filter, setFilter] = useState('all'); // 'all' or 'comments'
     const [previewVisible, setPreviewVisible] = useState(false);
@@ -153,11 +141,6 @@ const CardActivityHistory = ({ actions }) => {
         if (newFilter !== null) {
             setFilter(newFilter);
         }
-    };
-
-    const handleImagePreview = (imageUrl) => {
-        setPreviewImage(imageUrl);
-        setPreviewVisible(true);
     };
 
     const handlePreviewCancel = () => {
