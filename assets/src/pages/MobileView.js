@@ -180,6 +180,54 @@ const MobileView = () => {
     const [dateRange, setDateRange] = useState('day'); // 'day', 'week', 'month'
     const [bugsTeamExpanded, setBugsTeamExpanded] = useState({});
 
+    // Swipe gesture handlers
+    const minSwipeDistance = 50;
+
+    // Add touch event listeners to window for swipe detection
+    useEffect(() => {
+        let touchStartX = null;
+        let touchEndX = null;
+
+        const handleTouchStart = (e) => {
+            touchStartX = e.targetTouches[0].clientX;
+            touchEndX = null;
+        };
+
+        const handleTouchMove = (e) => {
+            touchEndX = e.targetTouches[0].clientX;
+        };
+
+        const handleTouchEnd = () => {
+            if (!touchStartX || touchEndX === null) return;
+            
+            const distance = touchStartX - touchEndX;
+            const isLeftSwipe = distance > minSwipeDistance;
+            const isRightSwipe = distance < -minSwipeDistance;
+            
+            // Swipe from left edge to right (open menu)
+            if (isRightSwipe && touchStartX < 50 && !menuOpen) {
+                setMenuOpen(true);
+            }
+            // Swipe from right to left (close menu)
+            else if (isLeftSwipe && menuOpen) {
+                setMenuOpen(false);
+            }
+            
+            touchStartX = null;
+            touchEndX = null;
+        };
+
+        window.addEventListener('touchstart', handleTouchStart);
+        window.addEventListener('touchmove', handleTouchMove);
+        window.addEventListener('touchend', handleTouchEnd);
+        
+        return () => {
+            window.removeEventListener('touchstart', handleTouchStart);
+            window.removeEventListener('touchmove', handleTouchMove);
+            window.removeEventListener('touchend', handleTouchEnd);
+        };
+    }, [menuOpen]);
+
     // Calculate date range based on selection
     const getDateRange = useCallback(() => {
         const today = selectedDate;
