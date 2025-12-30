@@ -226,10 +226,10 @@ const MobileView = () => {
             setTrelloCards(allCards);
             setLastRefresh(dayjs().format('HH:mm:ss'));
 
-            // Auto-expand all members initially
+            // Default all members collapsed
             const initialExpanded = {};
             TS_MEMBERS.forEach(m => {
-                initialExpanded[m.id] = true;
+                initialExpanded[m.id] = false;
             });
             setExpandedMembers(initialExpanded);
         } catch (error) {
@@ -620,18 +620,28 @@ const MobileView = () => {
             <Card
                 key={card.id}
                 style={{
-                    marginBottom: 8,
-                    borderRadius: 6,
-                    boxShadow: 'none',
-                    border: '1px solid #e0e0e0',
+                    marginBottom: 10,
+                    borderRadius: 10,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                    border: '1px solid #e8e8e8',
                     position: 'relative',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    backgroundColor: '#ffffff'
                 }}
                 onClick={() => {
                     setSelectedCard(card);
                     setPopupOpen(true);
                 }}
-                bodyStyle={{ padding: 12 }}
+                bodyStyle={{ padding: 14 }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                }}
             >
                 <Flex align="flex-start" gap={8}>
                     <StatusIcon style={{
@@ -722,10 +732,12 @@ const MobileView = () => {
             <Card
                 key={member.id}
                 style={{
-                    marginBottom: 12,
-                    borderRadius: 8,
+                    marginBottom: 14,
+                    borderRadius: 12,
                     overflow: 'hidden',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                    border: '1px solid #f0f0f0',
+                    backgroundColor: '#ffffff'
                 }}
             >
                 {/* Member Header */}
@@ -734,26 +746,29 @@ const MobileView = () => {
                     style={{
                         display: 'flex',
                         alignItems: 'center',
-                        padding: 12,
-                        backgroundColor: '#fafafa',
+                        padding: 14,
+                        background: isExpanded 
+                            ? 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)'
+                            : 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)',
                         cursor: 'pointer',
-                        borderBottom: isExpanded ? '1px solid #eee' : 'none'
+                        borderBottom: isExpanded ? '1px solid #e8e8e8' : 'none',
+                        transition: 'all 0.2s ease'
                     }}
                 >
-                    <Badge count={total} size="small">
-                        <Avatar
-                            size={32}
-                            style={{
-                                fontSize: '0.8rem',
-                                backgroundColor: '#1976d2',
-                                marginRight: 12
-                            }}
-                        >
-                            {member.fullName?.charAt(0) || member.username?.charAt(0)}
-                        </Avatar>
-                    </Badge>
+                    <Avatar
+                        size={36}
+                        style={{
+                            fontSize: '0.85rem',
+                            background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
+                            marginRight: 14,
+                            boxShadow: '0 2px 6px rgba(25, 118, 210, 0.3)',
+                            fontWeight: 600
+                        }}
+                    >
+                        {member.fullName?.charAt(0) || member.username?.charAt(0)}
+                    </Avatar>
                     <div style={{ flex: 1 }}>
-                        <Typography.Text strong style={{ fontSize: '0.9rem', display: 'block' }}>
+                        <Typography.Text strong style={{ fontSize: '0.95rem', display: 'block', fontWeight: 600, color: '#1a1a1a', letterSpacing: '0.2px' }}>
                             {member.fullName || member.username}
                         </Typography.Text>
                         <Space size={8} style={{ marginTop: 4 }}>
@@ -807,12 +822,35 @@ const MobileView = () => {
                             )}
                         </Space>
                     </div>
-                    {isExpanded ? <UpOutlined /> : <DownOutlined />}
+                    <Tag
+                        style={{
+                            marginRight: 10,
+                            backgroundColor: '#1976d2',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 8,
+                            fontSize: '0.9rem',
+                            fontWeight: 700,
+                            padding: '4px 12px',
+                            height: 32,
+                            lineHeight: '24px',
+                            boxShadow: '0 2px 6px rgba(25, 118, 210, 0.4)',
+                            minWidth: 36,
+                            textAlign: 'center'
+                        }}
+                    >
+                        {total}
+                    </Tag>
+                    {isExpanded ? (
+                        <UpOutlined style={{ fontSize: 16, color: '#666', transition: 'transform 0.2s' }} />
+                    ) : (
+                        <DownOutlined style={{ fontSize: 16, color: '#999', transition: 'transform 0.2s' }} />
+                    )}
                 </div>
 
                 {/* Cards */}
                 {isExpanded && (
-                    <div style={{ padding: 12 }}>
+                    <div style={{ padding: 16, backgroundColor: '#fafbfc' }}>
                         {renderStatusSection(pending, 'pending', 'Pending')}
                         {renderStatusSection(doing, 'doing', 'Doing')}
                         {renderStatusSection(done, 'done', 'Done')}
@@ -889,10 +927,12 @@ const MobileView = () => {
             <Card
                 key={name}
                 style={{
-                    marginBottom: 12,
-                    borderRadius: 8,
+                    marginBottom: 14,
+                    borderRadius: 12,
                     overflow: 'hidden',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                    border: '1px solid #ffe5d9',
+                    backgroundColor: '#ffffff'
                 }}
             >
                 <div
@@ -905,37 +945,45 @@ const MobileView = () => {
                     style={{
                         display: 'flex',
                         alignItems: 'center',
-                        padding: 12,
-                        backgroundColor: '#fff5f0',
+                        padding: 14,
+                        background: isExpanded 
+                            ? 'linear-gradient(135deg, #fff5f0 0%, #ffe5d9 100%)'
+                            : 'linear-gradient(135deg, #ffffff 0%, #fff5f0 100%)',
                         borderLeft: '4px solid #ff6b35',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
                     }}
                 >
-                    <BugOutlined style={{ color: '#ff6b35', marginRight: 8, fontSize: 18 }} />
+                    <BugOutlined style={{ color: '#ff6b35', marginRight: 12, fontSize: 20, fontWeight: 600 }} />
                     <div style={{ flex: 1 }}>
-                        <Typography.Text strong style={{ fontSize: '0.9rem' }}>
+                        <Typography.Text strong style={{ fontSize: '0.95rem', fontWeight: 600, color: '#1a1a1a', letterSpacing: '0.2px' }}>
                             {name}
                         </Typography.Text>
                     </div>
                     <Tag
                         color="#ff6b35"
                         style={{
-                            fontWeight: 600,
-                            marginRight: 8,
-                            border: 'none'
+                            fontWeight: 700,
+                            marginRight: 10,
+                            border: 'none',
+                            boxShadow: '0 2px 4px rgba(255, 107, 53, 0.3)',
+                            fontSize: '0.85rem',
+                            padding: '2px 10px',
+                            height: 24,
+                            lineHeight: '20px'
                         }}
                     >
                         {count}
                     </Tag>
                     {isExpanded ? (
-                        <UpOutlined style={{ fontSize: 14, color: '#b36a4b' }} />
+                        <UpOutlined style={{ fontSize: 16, color: '#ff6b35', transition: 'transform 0.2s' }} />
                     ) : (
-                        <DownOutlined style={{ fontSize: 14, color: '#b36a4b' }} />
+                        <DownOutlined style={{ fontSize: 16, color: '#ff6b35', transition: 'transform 0.2s' }} />
                     )}
                 </div>
 
                 {isExpanded && (
-                    <div style={{ padding: 12 }}>
+                    <div style={{ padding: 16, backgroundColor: '#fafbfc' }}>
                         {cards.map(card => renderTrelloCard(card))}
                     </div>
                 )}
@@ -1078,14 +1126,15 @@ const MobileView = () => {
                     top: 0,
                     zIndex: 100,
                     borderRadius: 0,
-                    backgroundColor: '#1976d2',
+                    background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
                     color: 'white',
-                    padding: '12px 16px'
+                    padding: '16px 20px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
                 }}
             >
                 <Flex justify="space-between" align="center" gap={12}>
                     <div>
-                        <Typography.Title level={5} style={{ color: 'white', margin: 0, fontSize: '1.1rem' }}>
+                        <Typography.Title level={5} style={{ color: 'white', margin: 0, fontSize: '1.15rem', fontWeight: 700, letterSpacing: '0.3px' }}>
                             {activeTab === 0
                                 ? 'TS Overview'
                                 : activeTab === 1
@@ -1094,7 +1143,7 @@ const MobileView = () => {
                                         ? 'Resolution Time'
                                         : 'Bugs'}
                         </Typography.Title>
-                        <Typography.Text style={{ opacity: 0.9, fontSize: '0.75rem', color: 'white' }}>
+                        <Typography.Text style={{ opacity: 0.95, fontSize: '0.8rem', color: 'white', fontWeight: 400, marginTop: 2, display: 'block' }}>
                             {activeTab === 0
                                 ? `P:${totalCards.pending} D:${totalCards.doing} Done:${totalCards.done}`
                                 : activeTab === 1
@@ -1132,11 +1181,15 @@ const MobileView = () => {
                         <Tag
                             icon={<HourglassOutlined style={{ fontSize: 14 }} />}
                             style={{
-                                backgroundColor: 'rgba(255,255,255,0.2)',
+                                backgroundColor: 'rgba(255,255,255,0.25)',
                                 color: 'white',
                                 border: 'none',
-                                height: 24,
-                                lineHeight: '24px'
+                                height: 26,
+                                lineHeight: '26px',
+                                padding: '0 10px',
+                                borderRadius: 6,
+                                fontWeight: 600,
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                             }}
                         >
                             {totalCards.pending}
@@ -1144,11 +1197,15 @@ const MobileView = () => {
                         <Tag
                             icon={<PlayCircleOutlined style={{ fontSize: 14 }} />}
                             style={{
-                                backgroundColor: 'rgba(255,255,255,0.2)',
+                                backgroundColor: 'rgba(255,255,255,0.25)',
                                 color: 'white',
                                 border: 'none',
-                                height: 24,
-                                lineHeight: '24px'
+                                height: 26,
+                                lineHeight: '26px',
+                                padding: '0 10px',
+                                borderRadius: 6,
+                                fontWeight: 600,
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                             }}
                         >
                             {totalCards.doing}
@@ -1156,11 +1213,15 @@ const MobileView = () => {
                         <Tag
                             icon={<CheckCircleOutlined style={{ fontSize: 14 }} />}
                             style={{
-                                backgroundColor: 'rgba(255,255,255,0.2)',
+                                backgroundColor: 'rgba(255,255,255,0.25)',
                                 color: 'white',
                                 border: 'none',
-                                height: 24,
-                                lineHeight: '24px'
+                                height: 26,
+                                lineHeight: '26px',
+                                padding: '0 10px',
+                                borderRadius: 6,
+                                fontWeight: 600,
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                             }}
                         >
                             {totalCards.done}
@@ -1204,8 +1265,9 @@ const MobileView = () => {
             <div style={{
                 flex: 1,
                 overflow: 'auto',
-                padding: 16,
-                paddingBottom: 80
+                padding: 20,
+                paddingBottom: 80,
+                backgroundColor: '#f8f9fa'
             }}>
                 {isLoading && (activeTab === 0 ? trelloCards : activeTab === 1 ? dbCards : activeTab === 2 ? resolutionCards : bugsCards).length === 0 ? (
                     <div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}>
