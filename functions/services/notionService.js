@@ -1,7 +1,7 @@
 const { Client } = require('@notionhq/client');
 
 const notion = new Client({
-    auth: "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"
+    auth: ""
 });
 
 // Tìm kiếm tất cả
